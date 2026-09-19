@@ -88,8 +88,13 @@ export class MainGameScene extends Phaser.Scene {
     // useSolidBackground = ยังไม่มีอาร์ต วาดท้องฟ้าสีเรียบแทน (ดู _buildBackground) — ไม่มีภาพให้โหลด
     for (const key of LEVEL_ORDER) {
       const level = LEVELS[key];
-      if (level.useSolidBackground) continue;
       const ext = level.backgroundExt ?? "jpg";
+      // backgroundImage = ภาพเดียวทุกฤดู วางเต็ม world ตรงๆ ไม่สเกล (แมพหลายชั้นที่ world = ขนาดภาพเป๊ะอยู่แล้ว)
+      if (level.backgroundImage) {
+        this.load.image(level.backgroundImage, `assets/backgrounds/${level.backgroundImage}.${ext}`);
+        continue;
+      }
+      if (level.useSolidBackground) continue;
       for (const bgKey of new Set(Object.values(level.backgrounds))) {
         this.load.image(bgKey, `assets/backgrounds/${bgKey}.${ext}`);
       }
@@ -165,6 +170,18 @@ export class MainGameScene extends Phaser.Scene {
       return;
     }
 
+    // แมพหลายชั้นที่ออกแบบ world = ขนาดภาพต้นฉบับเป๊ะอยู่แล้ว — วางเต็ม (0,0) ตรงๆ ไม่ต้องคำนวณ scale/offset
+    // เหมือน flatArena (ซึ่งมีแค่พื้นเดียวจึงต้องเลื่อนภาพให้ตรง roofY — แมพนี้ตำแหน่ง platform อ้างอิงจากภาพเองอยู่แล้ว)
+    if (this.level.backgroundImage) {
+      this.bgImage = this.add
+        .image(0, 0, this.level.backgroundImage)
+        .setOrigin(0, 0)
+        .setDisplaySize(this.level.worldWidth, this.level.worldHeight)
+        .setDepth(-10)
+        .setScrollFactor(1);
+      return;
+    }
+
     const art = this.level.artReference;
     const scale = this.level.worldWidth / art.width;
     const offsetY = this.level.platforms[0].y - art.roofY * scale;
@@ -178,7 +195,7 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   _setBackgroundSeason(seasonKey) {
-    if (this.level.useSolidBackground) return; // สีพื้นหลังเดียวทุกฤดู
+    if (this.level.useSolidBackground || this.level.backgroundImage) return; // ภาพ/สีเดียวทุกฤดู
     const bgKey = this.level.backgrounds[seasonKey];
     if (bgKey) {
       this.bgImage.setTexture(bgKey);
@@ -195,8 +212,10 @@ export class MainGameScene extends Phaser.Scene {
       const tile = this.platformsGroup.create(centerX, centerY, "roof_tile");
       tile.setDisplaySize(plat.width, plat.height);
       tile.refreshBody();
+      // มีอาร์ตจริงวาดพื้นไว้ให้แล้ว (level.backgroundImage) — ซ่อน collision debug ทั้งหมด ไม่วาดทับภาพ
+      if (this.level.backgroundImage) tile.setVisible(false);
       // plat.color = สีเจาะจงต่อก้อน (เช่น แมพหลายโซนสี) ชนะสีตาม kind เสมอ
-      if (plat.color != null) tile.setTint(plat.color);
+      else if (plat.color != null) tile.setTint(plat.color);
       // แยกสีให้ดูออกว่าอันไหนตึก อันไหนแพลตฟอร์มลอย (แมพ blockout ยังไม่มีอาร์ต)
       else if (plat.kind === "floating") tile.setTint(0x94a3b8);
       else if (plat.kind === "building") tile.setTint(0x64748b);
@@ -204,7 +223,8 @@ export class MainGameScene extends Phaser.Scene {
       else if (plat.kind === "ground") tile.setVisible(false);
 
       // ก้อนทึบใต้พื้นเดินได้ — แค่ภาพประกอบให้ดูเป็นโซน/ตึก ไม่มี collision (เดินทะลุใต้พื้นได้ปกติ)
-      if (plat.fillDepth) {
+      // ข้ามถ้ามีอาร์ตจริงแล้ว (ภาพวาดชั้น/เสาไว้ให้แล้ว ไม่ต้องวาดกล่องสีทับ)
+      if (plat.fillDepth && !this.level.backgroundImage) {
         this.add
           .rectangle(centerX, plat.y + plat.height, plat.width, plat.fillDepth, plat.fillColor ?? plat.color ?? 0x334155)
           .setOrigin(0.5, 0)

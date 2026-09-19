@@ -142,14 +142,15 @@ function setup(level) {
   ok(scene.hp.get(A) === 200, "เท้ายังไม่ถึงปากเหว ไม่โดนดาเมจ");
 }
 
-// ── โครงสร้างแมพ Neon Underline Bangkok จริง — sanity check ──
+// ── โครงสร้างแมพ Neon Underline Bangkok จริง (v2 — มีอาร์ตจริงแล้ว) — sanity check ──
 {
   const L = NEON_UNDERLINE_BANGKOK;
   ok(L.platforms.length === 6 && L.ladders.length === 4 && L.pits.length === 1, "6 พื้น 4 บันได 1 เหว");
+  ok(L.backgroundImage === "neon_underline_bangkok" && L.backgroundExt === "jpg", "ใช้อาร์ตจริงแล้ว (ไม่ใช่ blockout สีเรียบ)");
   ok(L.spawnPoints[0].floorY != null && L.spawnPoints[3].floorY != null, "spawn P1/P2 (index 0,3) ระบุ floorY ตรง (ไม่ต้องเดาจาก platform เพราะ x ซ้อนกันหลายชั้น)");
-  const gaps = new Set();
-  for (const L2 of L.ladders) gaps.add(L2.bottomY - L2.topY);
-  ok([...gaps].every((g) => g <= 137), `ทุกบันไดเชื่อมต่างระดับ ${[...gaps].join(",")} ≤137 (กระโดดเดียวไหวถ้าจะทำ one-way เพิ่มทีหลัง)`);
+  // ทุกบันไดต้องเชื่อม topY < bottomY จริง (ไม่ใช่ทุกช่วงต้องกระโดดเดียวไหว — ดีไซน์นี้ขึ้น-ลงผ่านบันไดเท่านั้น
+  // ไม่ใช่กระโดด ต่างระดับกลาง->ล่าง 235px ถึงเกิน single-jump ก็ใช้ได้ปกติเพราะปีนบันไดไม่สนระยะกระโดด)
+  ok(L.ladders.every((l) => l.bottomY > l.topY), "ทุกบันไดมีทิศขึ้น-ลงถูกต้อง (bottomY > topY)");
   ok(Math.round(720 / L.worldHeight * 100) / 100 >= 0.9, `zoom ${Math.round(720 / L.worldHeight * 100) / 100} ยังไม่ทำให้ตัวละครเล็กลงเกิน 10%`);
 }
 
