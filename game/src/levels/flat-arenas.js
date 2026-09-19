@@ -106,3 +106,51 @@ export const TOKYO_STREET = flatArena({
   floorY: 620, // ถนนใต้รางรถไฟฟ้า
   characterTint: 0xeae6ee, // ซากุระ/ฟ้าใส: อมฟ้า-ชมพูอ่อน
 });
+
+// ── แมพชุดใหม่ (สนามยักษ์/ธีมองค์กร Peterson) ──
+// floorY วัดแบบเดียวกับชุดบน (variance ต่อแถวพิกเซล) — ลานหินอ่อน/หินสะท้อนแสงทุกภาพ ดูจากเท้าคนแถวหน้าฉากเป็นหลัก
+
+export const HERO_PLAZA = flatArena({
+  id: "hero-plaza",
+  imageKey: "hero_plaza",
+  width: 2078,
+  height: 757,
+  floorY: 620, // ลานหินอ่อนสะท้อนแสงหน้ารูปปั้นยักษ์
+  characterTint: 0xf0f0f7, // เมืองอนาคตสีขาว แดดจัดฟ้าใส: แทบไม่กดสี อมฟ้าจาง ๆ
+});
+
+export const GORILLA_TEMPLE = flatArena({
+  id: "gorilla-temple",
+  imageKey: "gorilla_temple",
+  width: 2079,
+  height: 756,
+  floorY: 630, // ลานหินทรายหน้าวิหาร
+  characterTint: 0xf0e2bd, // แดดทะเลทราย หินทรายสีทอง: กดลงนิดอมเหลืองทอง
+});
+
+export const PETERSON_BANGKOK = flatArena({
+  id: "peterson-bangkok",
+  imageKey: "peterson_bangkok",
+  width: 2078,
+  height: 757,
+  floorY: 630, // ลานหน้ารูปปั้นทองสัมฤทธิ์
+  characterTint: 0xe8d7ae, // เย็นแดดร่ม โทนทอง: กดลงอมเหลืองทองอุ่น
+});
+
+export const PETERSON_STAGE = flatArena({
+  id: "peterson-stage",
+  imageKey: "peterson_stage",
+  width: 2078,
+  height: 757,
+  floorY: 640, // พื้นเวทีลายโลโก้ P
+  characterTint: 0xf0e6e2, // เวทีกลางแจ้ง ไฟแดงเสริม: โทนกลางอมแดงจาง ๆ
+});
+
+export const PETERSON_FLAGSHIP = flatArena({
+  id: "peterson-flagship",
+  imageKey: "peterson_flagship",
+  width: 1983,
+  height: 793,
+  floorY: 665, // ดาดฟ้าเรือรบเปียกสะท้อนแสง
+  characterTint: 0x8f7c88, // โพล้เพล้ แสงส้ม-ชมพูอมม่วง เข้มกว่าชุดพระอาทิตย์ตกอื่น
+});

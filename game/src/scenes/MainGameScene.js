@@ -9,7 +9,10 @@ import {
 } from "../entities/roster.js";
 import { applySeasonModifiers } from "../config/physics.config.js";
 import { SAKURA_TERRACE } from "../levels/sakura-terrace.js";
-import { CITY_NIGHT, CITY_DUSK, RIVER_SUNSET, WAT_PHRA_KAEW, BANGKOK_RIVER, TOKYO_STREET } from "../levels/flat-arenas.js";
+import {
+  CITY_NIGHT, CITY_DUSK, RIVER_SUNSET, WAT_PHRA_KAEW, BANGKOK_RIVER, TOKYO_STREET,
+  HERO_PLAZA, GORILLA_TEMPLE, PETERSON_BANGKOK, PETERSON_STAGE, PETERSON_FLAGSHIP,
+} from "../levels/flat-arenas.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
 import { GunEffects } from "../effects/GunEffects.js";
@@ -49,6 +52,11 @@ const LEVELS = {
   wat_phra_kaew: WAT_PHRA_KAEW,
   bangkok_river: BANGKOK_RIVER,
   tokyo_street: TOKYO_STREET,
+  hero_plaza: HERO_PLAZA,
+  gorilla_temple: GORILLA_TEMPLE,
+  peterson_bangkok: PETERSON_BANGKOK,
+  peterson_stage: PETERSON_STAGE,
+  peterson_flagship: PETERSON_FLAGSHIP,
   sakura: SAKURA_TERRACE,
 };
 
@@ -56,6 +64,7 @@ const LEVELS = {
 const LEVEL_ORDER = [
   "wat_phra_kaew", "bangkok_river", "tokyo_street",
   "city_night", "city_dusk", "river_sunset",
+  "hero_plaza", "gorilla_temple", "peterson_bangkok", "peterson_stage", "peterson_flagship",
 ];
 
 const STARTING_STOCKS = 3; // จำนวนชีวิตต่อผู้เล่น — ตกครบแล้วตกรอบ ไม่ respawn อีก
