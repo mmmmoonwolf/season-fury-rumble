@@ -188,7 +188,9 @@ export const DEARV2_BALLOON = {
       { key: "jackbox", label: "JACK-BOX", icon: "🎁", color: "#fbbf24" },
       { key: "swarm", label: "CLOWN SWARM", icon: "🤡", color: "#f472b6" },
     ],
-    poison: { burstDamage: 6, tickDamage: 4, tickMs: 500, durationMs: 2500, radius: 130, scale: 1.0, fps: 18 },
+    /** ควันพิษ — แก้ไข: วงกว้างขึ้น (130->190) + ขยายตัวไวตอนระเบิด (spreadMs) + โดนแล้วติดพิษต่อเนื่อง
+     *  poisonMs = พิษยังติ๊กดาเมจต่ออีกเท่านี้แม้เดินออกจากวงแล้ว (ไม่ใช่ต้องยืนในควันตลอด) · ยืนต่อในควัน = ต่ออายุพิษเรื่อย ๆ */
+    poison: { burstDamage: 6, tickDamage: 4, tickMs: 500, durationMs: 2500, radius: 190, scale: 1.4, spreadMs: 260, poisonMs: 3000, fps: 18 },
     jackbox: { damage: 14, radius: 115, knockbackX: 140, knockbackY: -820, hitstun: 750, popAtMs: 170, holdMs: 1300, scale: 0.7, fps: 24 },
     /** ตัวตลกตัวเล็ก 3 ตัว — ไล่หาเป้าที่ใกล้ที่สุดแล้วรุมแทง · ไล่ไม่ทันภายใน chaseMs (ไม่เจอเป้า/เป้าหนีทัน) = จางหาย */
     swarm: {

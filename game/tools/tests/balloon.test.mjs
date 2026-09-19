@@ -130,6 +130,36 @@ function setup() {
   ok(!scene.balloons.effects.some((e) => e.kind === "poison"), "ควันหมดอายุหายไป");
 }
 
+// ── S2 ควันพิษ (แก้ไข): วงกว้างขึ้น 130 -> 190 โดนแม้ยืนไกลกว่ารัศมีเดิม ──
+{
+  const { scene, A, B, step } = setup();
+  A.trapMode = 0;
+  scene.balloons.placeTrap(A);
+  const tr = scene.balloons.traps[0];
+  B.x = tr.x + 150; // ไกลกว่ารัศมีเดิม (130) แต่ยังอยู่ในรัศมีใหม่ (190)
+  ok(BB.trap.poison.radius > 130, `รัศมีควันพิษกว้างขึ้นจากเดิม (${BB.trap.poison.radius} > 130)`);
+  step(BB.trap.fuseMs + 50);
+  ok(scene.hp.get(B) < 200, `ยืนห่าง 150px ยังโดนดาเมจ (วงกว้าง ${BB.trap.poison.radius})`);
+}
+
+// ── S2 ควันพิษ (แก้ไข): ติดพิษต่อเนื่อง ติ๊กดาเมจต่อแม้เดินออกจากวงแล้ว ──
+{
+  const { scene, A, B, step } = setup();
+  A.trapMode = 0;
+  scene.balloons.placeTrap(A);
+  const tr = scene.balloons.traps[0];
+  B.x = tr.x + 10; // ยืนกลางวง -> โดน burst + ติดพิษ
+  step(BB.trap.fuseMs + 50);
+  const afterBurst = scene.hp.get(B);
+  ok(afterBurst < 200, "โดน burst + ติดพิษตอนระเบิด");
+  B.x = tr.x + 5000; // วิ่งหนีออกจากวงไปไกลลิบทันที
+  step(BB.trap.poison.poisonMs - 100);
+  ok(scene.hp.get(B) < afterBurst, "หนีออกจากวงพิษไปแล้ว ก็ยังโดนพิษติ๊กดาเมจต่อ (ไม่ต้องยืนในควัน)");
+  const hpBeforeExpire = scene.hp.get(B);
+  step(BB.trap.poison.tickMs + 200); // เลย poisonMs ไปแล้ว
+  ok(scene.hp.get(B) === hpBeforeExpire, "พิษหมดอายุ (poisonMs) แล้วเลิกติ๊ก");
+}
+
 // ── S2 กล่องไขลาน: ศัตรูเดินชนก่อนครบฟิวส์ ──
 {
   const { scene, A, B, step } = setup();

@@ -7,7 +7,8 @@ import { CombatSystem } from "./CombatSystem.js";
  *
  * throwBalloon(owner) — S1 พวงลูกโป่งลอยไปข้างหน้า ชนคนแรก -> confetti + มึนงง (root + silence + blind)
  * placeTrap(owner)    — S2 ลูกโป่งบนพื้น ระเบิดเมื่อศัตรูแตะ/ครบฟิวส์ · ผลตาม owner.trapMode:
- *                        0 ควันพิษ (AOE ค้าง ติ๊กดาเมจ) · 1 กล่องไขลาน (ดาเมจ + ตีลอย) · 2 ตัวตลกตัวเล็ก 3 ตัว
+ *                        0 ควันพิษ (วงกว้าง ขยายตัวไวตอนระเบิด · โดนแล้วติดพิษต่อเนื่อง ticks ต่อแม้เดินออกจากวงแล้ว)
+ *                        1 กล่องไขลาน (ดาเมจ + ตีลอย) · 2 ตัวตลกตัวเล็ก 3 ตัว
  *                        (ไล่หาเป้าที่ใกล้ที่สุด ~chaseMs วิ แล้วรุมแทง · ไม่เจอเป้า/เป้าหนีทัน = จางหาย · ไม่โดนตี)
  *
  * scene เรียก update(dt, players, isAlive) ทุกเฟรม — หยุดพร้อม hitstop เหมือนระบบอื่น
@@ -47,6 +48,7 @@ export class BalloonSystem {
     this.traps = [];
     this.effects = []; // confetti / poison zone / jackbox (มีอายุ)
     this.clowns = [];
+    this.poisoned = new Map(); // victim -> { owner, left, tick, tickMs, tickDamage } — ติ๊กดาเมจต่อแม้ออกจากวงควันแล้ว
   }
 
   // ---------- ภาพ ----------
@@ -161,10 +163,17 @@ export class BalloonSystem {
       const Z = P.poison;
       const sp = this._fxSprite("poison", tr.x, tr.y, Z.scale);
       sp.play?.("dv2fx/poison");
+      // กระจายตัวไว: เริ่มเล็กแล้วขยายพรวดสู่วงกว้างเต็มที่ (แทนที่จะโผล่มาเต็มขนาดทันที)
+      const fullScale = sp.scaleX;
+      sp.setScale?.(fullScale * 0.35);
+      this.scene.tweens?.add({ targets: sp, scaleX: fullScale, scaleY: fullScale, duration: Z.spreadMs, ease: "Quad.easeOut" });
       this.scene.audio?.playSample?.("dv2_pop_poison");
       const zone = { kind: "poison", owner: tr.owner, sp, x: tr.x, y: tr.y, t: 0, life: Z.durationMs, tick: Z.tickMs };
       this.effects.push(zone);
-      this._hitRadius(zone.owner, tr.x, tr.y - 60, Z.radius, players, isAlive, (v) => this._damage(zone.owner, v, Z.burstDamage));
+      this._hitRadius(zone.owner, tr.x, tr.y - 60, Z.radius, players, isAlive, (v) => {
+        this._damage(zone.owner, v, Z.burstDamage);
+        this._poison(zone.owner, v, Z);
+      });
     } else if (tr.mode === "jackbox") {
       const J = P.jackbox;
       const sp = this._fxSprite("jackbox", tr.x, tr.y, J.scale, 0.5);
@@ -190,7 +199,8 @@ export class BalloonSystem {
         e.tick -= dt;
         if (e.tick <= 0 && e.t < e.life) {
           e.tick += P.poison.tickMs;
-          this._hitRadius(e.owner, e.x, e.y - 60, P.poison.radius, players, isAlive, (v) => this._damage(e.owner, v, P.poison.tickDamage));
+          // ยืนในวง = ติดพิษต่อ (ต่ออายุ) — ดาเมจจริงติ๊กที่ _updatePoisoned เอง ไม่ใช่ที่นี่
+          this._hitRadius(e.owner, e.x, e.y - 60, P.poison.radius, players, isAlive, (v) => this._poison(e.owner, v, P.poison));
         }
         if (e.t > e.life - 500) e.sp.setAlpha?.(Math.max(0, (e.life - e.t) / 500)); // จางออกครึ่งวิสุดท้าย
       } else if (e.kind === "jackbox" && !e.popped && e.t >= P.jackbox.popAtMs) {
@@ -218,8 +228,34 @@ export class BalloonSystem {
     this._updateProjectiles(dt, players, isAlive);
     this._updateTraps(dt, players, isAlive);
     this._updateEffects(dt, players, isAlive);
+    this._updatePoisoned(dt, players, isAlive);
     for (const c of this.clowns) c.update(dt, players, isAlive);
     this._sweep(this.clowns, (c) => c.destroy());
+  }
+
+  // ---------- พิษต่อเนื่อง (ควันพิษ S2) ----------
+
+  /** โดนควันพิษ -> ติดพิษ (ต่ออายุถ้าติดอยู่แล้ว) ติ๊กดาเมจต่อไปแม้เดินออกจากวงแล้ว */
+  _poison(owner, v, Z) {
+    if (v.isInvulnerable?.()) return;
+    const cur = this.poisoned.get(v);
+    this.poisoned.set(v, { owner, left: Z.poisonMs, tick: cur?.tick ?? Z.tickMs, tickMs: Z.tickMs, tickDamage: Z.tickDamage });
+  }
+
+  _updatePoisoned(dt, players, isAlive) {
+    for (const [v, p] of this.poisoned) {
+      if (!isAlive(v) || v.isInvulnerable?.()) {
+        this.poisoned.delete(v);
+        continue;
+      }
+      p.left -= dt;
+      p.tick -= dt;
+      if (p.tick <= 0 && p.left > 0) {
+        p.tick += p.tickMs;
+        this._damage(p.owner, v, p.tickDamage);
+      }
+      if (p.left <= 0) this.poisoned.delete(v);
+    }
   }
 
   /** เจ้าของตาย / เริ่มรอบใหม่ (owner ว่าง = ล้างหมด) — confetti ที่กำลังโปรยปล่อยให้จบเอง */
@@ -227,6 +263,7 @@ export class BalloonSystem {
     const mine = (o) => !owner || o.owner === owner;
     for (const list of [this.projectiles, this.traps, this.clowns]) for (const o of list) if (mine(o)) o.done = true;
     for (const e of this.effects) if (e.kind !== "confetti" && mine(e)) e.done = true;
+    for (const [v, p] of this.poisoned) if (mine(p)) this.poisoned.delete(v);
     this._sweep(this.projectiles, (p) => p.sp.destroy?.());
     this._sweep(this.traps, (t) => t.sp.destroy?.());
     this._sweep(this.effects, (e) => e.sp.destroy?.());
