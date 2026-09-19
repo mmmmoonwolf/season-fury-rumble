@@ -4,7 +4,7 @@ class Body {
     this.y=0;this.width=40;this.height=180;this.offset={x:0,y:0};this.sourceHeight=180;this.enable=true;}
   get x(){return this.o.x-20} set x(v){}
   get right(){return this.o.x+20} get bottom(){return this.o.y+90} get center(){return {x:this.o.x,y:this.o.y}}
-  setGravityY(){} setCollideWorldBounds(){} setDragX(){} setSize(){} setOffset(){} updateBounds(){}
+  setGravityY(){} setCollideWorldBounds(){} setDragX(){} setSize(){} setOffset(){} updateBounds(){} setAllowGravity(){}
   setVelocityX(v){this.velocity.x=v} setVelocityY(v){this.velocity.y=v} setVelocity(x,y){this.velocity.x=x;this.velocity.y=y}
 }
 class Sprite {

@@ -7,12 +7,13 @@ import {
   getCharacterClass,
   nextCharacterKey,
 } from "../entities/roster.js";
-import { applySeasonModifiers } from "../config/physics.config.js";
+import { applySeasonModifiers, PHYSICS } from "../config/physics.config.js";
 import { SAKURA_TERRACE } from "../levels/sakura-terrace.js";
 import {
   CITY_NIGHT, CITY_DUSK, RIVER_SUNSET, WAT_PHRA_KAEW, BANGKOK_RIVER, TOKYO_STREET,
   HERO_PLAZA, GORILLA_TEMPLE, PETERSON_BANGKOK, PETERSON_STAGE, PETERSON_FLAGSHIP,
 } from "../levels/flat-arenas.js";
+import { NEON_UNDERLINE_BANGKOK } from "../levels/neon-underline-bangkok.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
 import { GunEffects } from "../effects/GunEffects.js";
@@ -57,11 +58,13 @@ const LEVELS = {
   peterson_bangkok: PETERSON_BANGKOK,
   peterson_stage: PETERSON_STAGE,
   peterson_flagship: PETERSON_FLAGSHIP,
+  neon_underline_bangkok: NEON_UNDERLINE_BANGKOK,
   sakura: SAKURA_TERRACE,
 };
 
-/** ลำดับการสลับด้วยปุ่ม M — ไม่มี sakura อยู่ในลิสต์ = ปิดใช้งาน */
+/** ลำดับการสลับด้วยปุ่ม M — ไม่มี sakura อยู่ในลิสต์ = ปิดใช้งาน · ตัวแรก = แมพเริ่มต้น */
 const LEVEL_ORDER = [
+  "neon_underline_bangkok",
   "wat_phra_kaew", "bangkok_river", "tokyo_street",
   "city_night", "city_dusk", "river_sunset",
   "hero_plaza", "gorilla_temple", "peterson_bangkok", "peterson_stage", "peterson_flagship",
@@ -82,8 +85,10 @@ export class MainGameScene extends Phaser.Scene {
 
   preload() {
     // โหลดภาพพื้นหลังของทุกแมพในลิสต์ ตอน preload รอบเดียว — สลับแมพกลางเกมจะได้ไม่ต้องรอโหลด
+    // useSolidBackground = ยังไม่มีอาร์ต วาดท้องฟ้าสีเรียบแทน (ดู _buildBackground) — ไม่มีภาพให้โหลด
     for (const key of LEVEL_ORDER) {
       const level = LEVELS[key];
+      if (level.useSolidBackground) continue;
       const ext = level.backgroundExt ?? "jpg";
       for (const bgKey of new Set(Object.values(level.backgrounds))) {
         this.load.image(bgKey, `assets/backgrounds/${bgKey}.${ext}`);
@@ -131,6 +136,7 @@ export class MainGameScene extends Phaser.Scene {
 
     this._buildBackground();
     this._buildPlatforms();
+    this._buildHazards();
     this._spawnPlayer();
     this._setupCamera(); // หลัง _spawnPlayer เพราะกล้องเล็งจากตำแหน่งผู้เล่น
     this._setupInput();
@@ -148,6 +154,17 @@ export class MainGameScene extends Phaser.Scene {
    * แล้วเลื่อนแนวตั้งให้ "เส้นพื้นในภาพ" (artReference.roofY) ตรงกับพื้น collision ของแมพ
    */
   _buildBackground() {
+    // ยังไม่มีอาร์ตจริง — วาดท้องฟ้าสีเรียบเต็ม world แทน (ดู src/levels/unused/blockout-arena.js ต้นแบบ)
+    // ฤดูไม่เปลี่ยนสีพื้นหลัง (ไม่มี backgrounds ให้สลับ) — ปุ่ม 1-5 ยังเปลี่ยน particle/physics ได้ตามปกติ
+    if (this.level.useSolidBackground) {
+      this.bgImage = this.add
+        .rectangle(0, 0, this.level.worldWidth, this.level.worldHeight, this.level.skyTopColor ?? 0x1e293b)
+        .setOrigin(0, 0)
+        .setDepth(-10)
+        .setScrollFactor(1);
+      return;
+    }
+
     const art = this.level.artReference;
     const scale = this.level.worldWidth / art.width;
     const offsetY = this.level.platforms[0].y - art.roofY * scale;
@@ -161,6 +178,7 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   _setBackgroundSeason(seasonKey) {
+    if (this.level.useSolidBackground) return; // สีพื้นหลังเดียวทุกฤดู
     const bgKey = this.level.backgrounds[seasonKey];
     if (bgKey) {
       this.bgImage.setTexture(bgKey);
@@ -177,19 +195,46 @@ export class MainGameScene extends Phaser.Scene {
       const tile = this.platformsGroup.create(centerX, centerY, "roof_tile");
       tile.setDisplaySize(plat.width, plat.height);
       tile.refreshBody();
+      // plat.color = สีเจาะจงต่อก้อน (เช่น แมพหลายโซนสี) ชนะสีตาม kind เสมอ
+      if (plat.color != null) tile.setTint(plat.color);
       // แยกสีให้ดูออกว่าอันไหนตึก อันไหนแพลตฟอร์มลอย (แมพ blockout ยังไม่มีอาร์ต)
-      if (plat.kind === "floating") tile.setTint(0x94a3b8);
+      else if (plat.kind === "floating") tile.setTint(0x94a3b8);
       else if (plat.kind === "building") tile.setTint(0x64748b);
       // kind "ground" = พื้นที่มีภาพวาดทับอยู่แล้ว ซ่อน collision ไว้ใต้ภาพ ไม่ต้องวาดทับ
       else if (plat.kind === "ground") tile.setVisible(false);
 
-      // ตัวตึกทึบใต้หลังคา — แค่ภาพประกอบให้เห็นเป็นตึก ไม่มี collision
+      // ก้อนทึบใต้พื้นเดินได้ — แค่ภาพประกอบให้ดูเป็นโซน/ตึก ไม่มี collision (เดินทะลุใต้พื้นได้ปกติ)
+      if (plat.fillDepth) {
+        this.add
+          .rectangle(centerX, plat.y + plat.height, plat.width, plat.fillDepth, plat.fillColor ?? plat.color ?? 0x334155)
+          .setOrigin(0.5, 0)
+          .setDepth(-5);
+      }
       if (plat.kind === "building") {
         this.add
           .rectangle(centerX, plat.y + plat.height, plat.width, this.level.worldHeight - plat.y, 0x334155)
           .setOrigin(0.5, 0)
           .setDepth(-5);
       }
+    }
+  }
+
+  /**
+   * วาด level.ladders (โซนปีน — ยังไม่มีท่าปีนเฉพาะ ใช้แถบสีเหลืองแทนบันไดจริงไปก่อน)
+   * และ level.pits (เหวอันตราย) เป็นรูปสี่เหลี่ยม ไม่มี collision ทั้งคู่ — ชนด้วยระยะใน
+   * _checkLadderEntry/_checkPitHazard ไม่ใช่ physics body
+   */
+  _buildHazards() {
+    for (const L of this.level.ladders ?? []) {
+      this.add
+        .rectangle(L.x, (L.topY + L.bottomY) / 2, L.width, L.bottomY - L.topY, 0xfacc15, 0.35)
+        .setStrokeStyle(2, 0xfde047, 0.8)
+        .setDepth(-4);
+    }
+    for (const pit of this.level.pits ?? []) {
+      this.add
+        .rectangle(pit.x + pit.width / 2, pit.y + (this.level.worldHeight - pit.y) / 2, pit.width, this.level.worldHeight - pit.y, 0x7f1d1d, 0.5)
+        .setDepth(-4);
     }
   }
 
@@ -287,10 +332,15 @@ export class MainGameScene extends Phaser.Scene {
    */
   _placeAtSpawn(player, spawnIndex) {
     const spawn = this.level.spawnPoints[spawnIndex % this.level.spawnPoints.length];
-    // หา platform ที่อยู่ใต้จุดเกิดนี้ เพื่อใช้ผิวบนเป็นระดับเท้า
-    const platform =
-      this.level.platforms.find((p) => spawn.x >= p.x && spawn.x <= p.x + p.width) ?? this.level.platforms[0];
-    player.placeFeetAt(spawn.x, platform.y - 2); // ลอยเหนือพื้นเล็กน้อย ให้ตกลงมาแตะพื้นเอง
+    // spawn.floorY ระบุตรงมา = ใช้เลย (จำเป็นสำหรับแมพหลายชั้นซ้อน x ทับกัน เช่นชั้นบน/กลาง/ล่างที่ x เดียวกัน
+    // หา platform จาก x อย่างเดียวแยกไม่ออกว่าหมายถึงชั้นไหน) · ไม่ระบุ = เดาจาก platform ใต้จุดเกิด (แมพเก่า)
+    let floorY = spawn.floorY;
+    if (floorY == null) {
+      const platform =
+        this.level.platforms.find((p) => spawn.x >= p.x && spawn.x <= p.x + p.width) ?? this.level.platforms[0];
+      floorY = platform.y;
+    }
+    player.placeFeetAt(spawn.x, floorY - 2); // ลอยเหนือพื้นเล็กน้อย ให้ตกลงมาแตะพื้นเอง
     player.jumpsUsed = 0;
   }
 
@@ -299,6 +349,47 @@ export class MainGameScene extends Phaser.Scene {
     if (player.isStunned?.()) player.stateMachine.setState("idle"); // ตายตอนการ์ดแตก/โดนตี ไม่ให้ค้างไปชีวิตใหม่
     player.guard = GUARD.max;
     this._placeAtSpawn(player, spawnIndex);
+  }
+
+  // ---------- บันได/ทางลาด (level.ladders) ----------
+  /**
+   * เช็คทุกเฟรมก่อน handleMovement — ยืนอยู่ในโซนบันได + กดขึ้น/ลงค้าง = เริ่มปีน (Player.startClimb)
+   * ปีนอยู่แล้วไม่ต้องทำอะไร (Player._handleClimbing คุมเอง) · คุมตัวไม่ได้ (สตัน/ท่ายาว) ก็ปีนไม่ได้
+   */
+  _checkLadderEntry(player, input) {
+    const ladders = this.level.ladders;
+    if (!ladders || player.isClimbing() || (!input.upHeld && !input.downHeld)) return;
+    if (player.isStunned?.() || player.isAttacking?.() || player.isUsingSkill?.() || player.isTransforming?.()) return;
+    for (const L of ladders) {
+      if (Math.abs(player.x - L.x) > L.width / 2) continue;
+      // ต้องอยู่ในช่วงความสูงของบันได (เผื่อขอบเล็กน้อยกันจับไม่ติดตอนเพิ่งลงจอด/เพิ่งก้าวออก)
+      if (player.body.bottom < L.topY - 4 || player.body.bottom > L.bottomY + 4) continue;
+      player.startClimb(L);
+      return;
+    }
+  }
+
+  // ---------- เหวกลาง (level.pits) ----------
+  /**
+   * ตกลงไปในเหว = เสีย HP ตามสัดส่วน (trueDamage ไม่สนการกัน) + เด้งกลับขึ้นตรงจุดที่ตกทันที
+   * คนละแบบกับตกขอบล่างของ world (เสีย 1 stock) — ต้องเช็คก่อนตัวจะร่วงลึกไปโดนกฎนั้นด้วย
+   */
+  _checkPitHazard(player, dt) {
+    if (player._pitGrace > 0) player._pitGrace -= dt;
+    const pits = this.level.pits;
+    if (!pits || player.isInvulnerable?.()) return;
+    if (player._pitGrace > 0) return; // เพิ่งเด้งไป กันโดนซ้ำระหว่างลอยขึ้นผ่านโซนเดิม
+    for (const pit of pits) {
+      if (player.x < pit.x || player.x > pit.x + pit.width) continue;
+      if (player.body.bottom < pit.y) continue; // เท้ายังไม่ถึงระดับปากเหว (ยืนบนพื้นข้างๆ อยู่)
+      const dmg = Math.round((pit.damagePercent ?? 0.2) * MAX_HP);
+      this._applyDamage(player, dmg, false, { trueDamage: true });
+      player.body.setVelocity(0, pit.bounceVelocityY ?? PHYSICS.JUMP_VELOCITY);
+      player.jumpsUsed = 0;
+      player._pitGrace = 600; // ms — พอให้ลอยพ้นปากเหวก่อนเช็คซ้ำ
+      this.showFloatLabel?.(player, "-" + dmg, "#f87171");
+      return;
+    }
   }
 
   // ---------- Hitstop ----------
@@ -854,6 +945,9 @@ export class MainGameScene extends Phaser.Scene {
       left: this.moveLeftKey.isDown || this.cursors.left.isDown,
       right: this.moveRightKey.isDown || this.cursors.right.isDown,
       jumpPressed: upJustDown,
+      // ปีนบันได (ค้างกด ไม่ใช่ edge แบบ jumpPressed): W/ลูกศรขึ้น = ขึ้น, ลูกศรลง = ลง (S เป็นปุ่มกันอยู่แล้ว ไม่ชนกัน)
+      upHeld: jumpDown,
+      downHeld: this.cursors.down.isDown,
       attackPressed: attackP1JustDown,
       summonPressed: summonP1JustDown,
       tauntPressed: tauntP1JustDown,
@@ -902,12 +996,16 @@ export class MainGameScene extends Phaser.Scene {
     }
 
     if (this.playerAlive.get(this.p1)) {
-      this.p1.handleMovement(this._readP1Input(), delta);
+      const inputP1 = this._readP1Input();
+      this._checkLadderEntry(this.p1, inputP1);
+      this.p1.handleMovement(inputP1, delta);
     }
 
     if (this.playerAlive.get(this.p2)) {
       // ฝั่งตรงข้ามเป็น NPC แล้ว (ไม่ได้บังคับด้วยคีย์บอร์ด) — ดู _npcInput()
-      this.p2.handleMovement(this._npcInput(delta), delta);
+      const inputP2 = this._npcInput(delta);
+      this._checkLadderEntry(this.p2, inputP2);
+      this.p2.handleMovement(inputP2, delta);
     }
 
 
@@ -924,6 +1022,11 @@ export class MainGameScene extends Phaser.Scene {
       if (this.playerAlive.get(player) && player.y > this.level.worldHeight + 50) {
         this._handlePlayerDeath(player);
       }
+    }
+
+    // เหวกลาง (level.pits) — ตกแล้วเสีย HP + เด้งกลับขึ้นตรงจุดที่ตก คนละแบบกับตกขอบแมพด้านบน (ไม่เสีย stock)
+    for (const player of this.players) {
+      if (this.playerAlive.get(player)) this._checkPitHazard(player, delta);
     }
 
     // เคลียร์ธงปุ่มบนจอ ให้ทำงานครั้งเดียวต่อการกด 1 ครั้ง เหมือน justDown

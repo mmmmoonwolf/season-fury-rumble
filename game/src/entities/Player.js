@@ -255,6 +255,19 @@ export class Player extends Phaser.GameObjects.Sprite {
             p.stateMachine.setState(Math.abs(p.body.velocity.x) > 5 ? (p.isWalking ? "walk" : "run") : "idle");
           }
         },
+      })
+      // ปีนบันได/ทางลาด — scene สั่งเข้าออกผ่าน startClimb()/_handleClimbing() (ดูหัวข้อ "ปีนบันได" ด้านล่าง)
+      // ตัดออกจาก state อื่นอัตโนมัติ: applyHit เปลี่ยนไป "hitstun" ซึ่งเรียก onExit ที่นี่ให้เอง (คืนแรงโน้มถ่วง)
+      .addState("climb", {
+        onEnter: (p) => {
+          p.body.setAllowGravity(false);
+          p.body.setVelocity(0, 0);
+          p.play?.("run", true); // ยืมท่าวิ่งไปก่อน ยังไม่มีท่าปีนเฉพาะ
+        },
+        onExit: (p) => {
+          p.body.setAllowGravity(true);
+          p._climbZone = null;
+        },
       });
   }
 
@@ -1148,6 +1161,54 @@ export class Player extends Phaser.GameObjects.Sprite {
     }
   }
 
+  // ---------- ปีนบันได/ทางลาด ----------
+  // scene (MainGameScene._checkLadderEntry) ตรวจโซน + กดขึ้น/ลงเอง แล้วเรียก startClimb(zone) ให้
+  // zone = { x, topY, bottomY } — x = เส้นกลางบันได, topY/bottomY = floorY ของชั้นบน/ล่างที่เชื่อมกัน
+  // ปีนขึ้นบันไดแทนการเดิน/กระโดดทะลุพื้น ทุก platform ในเอนจิ้นนี้ยังทึบทุกด้านเหมือนเดิม
+
+  /** เข้าสู่โหมดปีน — ล็อกแนวนอนไว้กลางบันไดทันที (เท้าอยู่ที่เดิม เปลี่ยนแค่ x) */
+  startClimb(zone) {
+    this._climbZone = zone;
+    this.placeFeetAt(zone.x, this.body.bottom);
+    this.stateMachine.setState("climb", true);
+  }
+
+  isClimbing() {
+    return this.stateMachine.is("climb");
+  }
+
+  /** เรียกจาก handleMovement ทุกเฟรมที่ isClimbing() — ใช้ input.upHeld/downHeld (ค้างกด ไม่ใช่ edge แบบ jumpPressed) */
+  _handleClimbing(input, dt) {
+    const z = this._climbZone;
+    if (!z) {
+      this.stateMachine.setState("fall", true);
+      return;
+    }
+    // หลุดบันไดกลางทาง: กดทิศซ้าย/ขวา = ก้าวออก · กดกระโดด = โดดหลบออกจากบันได
+    if (input.left || input.right || input.jumpPressed) {
+      if (input.jumpPressed) {
+        this.body.setVelocityY(PHYSICS.JUMP_VELOCITY);
+        this.jumpsUsed = 1; // นับเหมือนใช้จั๊มพ์แรกไปแล้ว เหลือแค่ double jump ต่อได้
+        this.stateMachine.setState("jump", true);
+      } else {
+        this.stateMachine.setState("fall", true);
+      }
+      return;
+    }
+    const speed = PHYSICS.CLIMB_SPEED;
+    if (input.upHeld) this.body.setVelocityY(-speed);
+    else if (input.downHeld) this.body.setVelocityY(speed);
+    else this.body.setVelocityY(0);
+    // ถึงปลายบน/ล่างของบันได = ก้าวออกไปยืนบนชั้นนั้นเลย (เหมือนเพิ่งลงจอด)
+    if (this.body.bottom <= z.topY) {
+      this.placeFeetAt(z.x, z.topY);
+      this.stateMachine.setState("land", true);
+    } else if (this.body.bottom >= z.bottomY) {
+      this.placeFeetAt(z.x, z.bottomY);
+      this.stateMachine.setState("land", true);
+    }
+  }
+
   /** หันตามปุ่มทิศที่กดอยู่ตอนเริ่มแทงใหม่ (รัวแทงไปพลางหันกลับได้) */
   _faceFromInput(input) {
     if (input.left && !input.right) {
@@ -1396,6 +1457,14 @@ export class Player extends Phaser.GameObjects.Sprite {
     this._tickComboTimers(dt);
     this._tickStatus(dt);
     input = this._filterInputByStatus(input);
+
+    // ปีนบันได/ทางลาดอยู่ — คุมแนวตั้งเอง ไม่ผ่าน logic เดิน/กระโดด/ต่อสู้ด้านล่างเลย
+    // (โดนตีระหว่างปีน: applyHit เปลี่ยนไป "hitstun" ซึ่งออกจาก state นี้ให้เองผ่าน onExit)
+    if (this.isClimbing()) {
+      this._handleClimbing(input, dt);
+      this.stateMachine.update(dt);
+      return;
+    }
 
     // กำลังแปลงร่าง / ใช้สกิลยาว = คุมตัวไม่ได้ จนกว่าท่าจะจบ
     if (this.isTransforming() || this.isUsingSkill()) {
