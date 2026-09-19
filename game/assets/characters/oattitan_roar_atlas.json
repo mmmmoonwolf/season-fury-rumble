@@ -1,0 +1,632 @@
+{
+ "frames": {
+  "roar_1.png": {
+   "frame": {
+    "x": 2,
+    "y": 2,
+    "w": 395,
+    "h": 379
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 52,
+    "w": 395,
+    "h": 379
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_2.png": {
+   "frame": {
+    "x": 399,
+    "y": 2,
+    "w": 413,
+    "h": 378
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 53,
+    "y": 54,
+    "w": 413,
+    "h": 378
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_3.png": {
+   "frame": {
+    "x": 814,
+    "y": 2,
+    "w": 421,
+    "h": 370
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 53,
+    "y": 61,
+    "w": 421,
+    "h": 370
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_4.png": {
+   "frame": {
+    "x": 1237,
+    "y": 2,
+    "w": 419,
+    "h": 363
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 55,
+    "y": 68,
+    "w": 419,
+    "h": 363
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_5.png": {
+   "frame": {
+    "x": 2,
+    "y": 383,
+    "w": 418,
+    "h": 359
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 55,
+    "y": 72,
+    "w": 418,
+    "h": 359
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_6.png": {
+   "frame": {
+    "x": 422,
+    "y": 383,
+    "w": 415,
+    "h": 379
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 52,
+    "w": 415,
+    "h": 379
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_7.png": {
+   "frame": {
+    "x": 839,
+    "y": 383,
+    "w": 416,
+    "h": 355
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 55,
+    "y": 76,
+    "w": 416,
+    "h": 355
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_8.png": {
+   "frame": {
+    "x": 1257,
+    "y": 383,
+    "w": 415,
+    "h": 355
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 59,
+    "y": 76,
+    "w": 415,
+    "h": 355
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_9.png": {
+   "frame": {
+    "x": 2,
+    "y": 764,
+    "w": 414,
+    "h": 357
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 59,
+    "y": 74,
+    "w": 414,
+    "h": 357
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_10.png": {
+   "frame": {
+    "x": 418,
+    "y": 764,
+    "w": 458,
+    "h": 359
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 60,
+    "y": 72,
+    "w": 458,
+    "h": 359
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_11.png": {
+   "frame": {
+    "x": 878,
+    "y": 764,
+    "w": 415,
+    "h": 360
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 60,
+    "y": 71,
+    "w": 415,
+    "h": 360
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_12.png": {
+   "frame": {
+    "x": 1295,
+    "y": 764,
+    "w": 428,
+    "h": 366
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 58,
+    "y": 65,
+    "w": 428,
+    "h": 366
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_13.png": {
+   "frame": {
+    "x": 2,
+    "y": 1132,
+    "w": 429,
+    "h": 377
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 57,
+    "y": 54,
+    "w": 429,
+    "h": 377
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_14.png": {
+   "frame": {
+    "x": 433,
+    "y": 1132,
+    "w": 423,
+    "h": 385
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 57,
+    "y": 46,
+    "w": 423,
+    "h": 385
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_15.png": {
+   "frame": {
+    "x": 858,
+    "y": 1132,
+    "w": 429,
+    "h": 392
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 57,
+    "y": 39,
+    "w": 429,
+    "h": 392
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_16.png": {
+   "frame": {
+    "x": 1289,
+    "y": 1132,
+    "w": 441,
+    "h": 395
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 55,
+    "y": 36,
+    "w": 441,
+    "h": 395
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_17.png": {
+   "frame": {
+    "x": 2,
+    "y": 1529,
+    "w": 441,
+    "h": 397
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 55,
+    "y": 34,
+    "w": 441,
+    "h": 397
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_18.png": {
+   "frame": {
+    "x": 445,
+    "y": 1529,
+    "w": 444,
+    "h": 397
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 52,
+    "y": 34,
+    "w": 444,
+    "h": 397
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_19.png": {
+   "frame": {
+    "x": 891,
+    "y": 1529,
+    "w": 440,
+    "h": 398
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 440,
+    "h": 398
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_20.png": {
+   "frame": {
+    "x": 1333,
+    "y": 1529,
+    "w": 441,
+    "h": 398
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 441,
+    "h": 398
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_21.png": {
+   "frame": {
+    "x": 2,
+    "y": 1929,
+    "w": 440,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 440,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_22.png": {
+   "frame": {
+    "x": 444,
+    "y": 1929,
+    "w": 440,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 440,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_23.png": {
+   "frame": {
+    "x": 886,
+    "y": 1929,
+    "w": 440,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 440,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_24.png": {
+   "frame": {
+    "x": 1328,
+    "y": 1929,
+    "w": 433,
+    "h": 398
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 59,
+    "y": 33,
+    "w": 433,
+    "h": 398
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_25.png": {
+   "frame": {
+    "x": 2,
+    "y": 2330,
+    "w": 436,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 58,
+    "y": 33,
+    "w": 436,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_26.png": {
+   "frame": {
+    "x": 440,
+    "y": 2330,
+    "w": 484,
+    "h": 398
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 484,
+    "h": 398
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_27.png": {
+   "frame": {
+    "x": 926,
+    "y": 2330,
+    "w": 449,
+    "h": 398
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 449,
+    "h": 398
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_28.png": {
+   "frame": {
+    "x": 1377,
+    "y": 2330,
+    "w": 495,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 61,
+    "y": 33,
+    "w": 495,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_29.png": {
+   "frame": {
+    "x": 2,
+    "y": 2731,
+    "w": 468,
+    "h": 398
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 62,
+    "y": 33,
+    "w": 468,
+    "h": 398
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_30.png": {
+   "frame": {
+    "x": 472,
+    "y": 2731,
+    "w": 509,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 57,
+    "y": 33,
+    "w": 509,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  },
+  "roar_31.png": {
+   "frame": {
+    "x": 983,
+    "y": 2731,
+    "w": 473,
+    "h": 399
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 56,
+    "y": 33,
+    "w": 473,
+    "h": 399
+   },
+   "sourceSize": {
+    "w": 640,
+    "h": 470
+   }
+  }
+ },
+ "meta": {
+  "image": "oattitan_roar_atlas.png",
+  "size": {
+   "w": 1874,
+   "h": 3132
+  },
+  "scale": "1"
+ }
+}

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Four Seasons Brawler — Phase 1 Movement Test</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0f172a; overflow: hidden; }
+    canvas { image-rendering: pixelated; }
+  </style>
+</head>
+<body>
+  <!--
+    เตือนตอนเปิดผิดวิธี: ไฟล์นี้ใช้ ES module (import) ซึ่งเบราว์เซอร์บล็อกเมื่อเปิดแบบ file://
+    ดับเบิลคลิกไฟล์ตรงๆ = จอดำ ไม่มี error ให้เห็น ต้องเสิร์ฟผ่าน http เท่านั้น
+  -->
+  <div id="file-protocol-warning" style="display:none; color:#e2e8f0; font-family:system-ui,sans-serif;
+       max-width:640px; margin:15vh auto; padding:28px; background:#1e293b; border-radius:12px; line-height:1.7;">
+    <h2 style="margin:0 0 12px; color:#f87171;">เปิดไฟล์ตรงๆ ไม่ได้</h2>
+    <p style="margin:0 0 16px;">เกมนี้ใช้ ES module เบราว์เซอร์เลยบล็อกเมื่อเปิดแบบ <code>file://</code> ต้องเปิดผ่าน local server</p>
+    <p style="margin:0 0 8px;">เปิด terminal ที่โฟลเดอร์ <code>game</code> แล้วรัน:</p>
+    <pre style="background:#0f172a; padding:14px; border-radius:8px; margin:0 0 6px;">npx serve</pre>
+    <p style="margin:0 0 16px; opacity:.75;">แล้วเปิด http://localhost:3000</p>
+    <p style="margin:0 0 8px;">ไม่มี Node ใช้ Python แทน:</p>
+    <pre style="background:#0f172a; padding:14px; border-radius:8px; margin:0;">python3 -m http.server 8000</pre>
+  </div>
+  <script>
+    if (location.protocol === "file:") {
+      document.getElementById("file-protocol-warning").style.display = "block";
+    }
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
+  <script type="module">
+    import { MainGameScene } from "./src/scenes/MainGameScene.js";
+
+    const config = {
+      type: Phaser.AUTO,
+      // จอ 16:9 มาตรฐาน — กล้องในเกมจะซูมให้ "ความสูงแมพ" พอดีจอเสมอ (ดู _setupCamera)
+      // แมพกว้างกว่าจอ ส่วนที่เกินใช้การแพนซ้ายขวาตามผู้เล่นแทน จึงไม่ต้องแก้ตรงนี้เวลาเปลี่ยนแมพ
+      width: 1280,
+      height: 720,
+      backgroundColor: "#0f172a",
+      scale: {
+        // FIT = ขยาย/ย่อ canvas ให้พอดีกับขนาดหน้าต่างเบราว์เซอร์ (คงสัดส่วน 900:600 ไว้)
+        // แก้ปัญหา "ภาพขยาย full screen ไม่ได้" — เดิม fix ขนาดตายตัว 900x600 เท่านั้น
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+        width: 1280,
+        height: 720,
+      },
+      physics: {
+        default: "arcade",
+        arcade: { gravity: { y: 0 }, debug: false },
+      },
+      scene: [MainGameScene],
+    };
+
+    new Phaser.Game(config);
+  </script>
+</body>
+</html>

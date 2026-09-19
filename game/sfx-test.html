@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>SFX Test — จูนเสียงโดยไม่ต้องเปิดเกม</title>
+  <style>
+    body { margin:0; min-height:100vh; background:#0f172a; color:#e2e8f0;
+           font-family:system-ui,sans-serif; display:flex; align-items:center; justify-content:center; }
+    .wrap { max-width:560px; padding:32px; }
+    h1 { font-size:20px; margin:0 0 6px; }
+    p  { opacity:.7; line-height:1.7; margin:0 0 20px; font-size:14px; }
+    button { display:block; width:100%; margin:8px 0; padding:14px 18px; font-size:15px;
+             background:#1e293b; color:#e2e8f0; border:1px solid #334155; border-radius:10px;
+             cursor:pointer; text-align:left; }
+    button:hover { background:#293548; }
+    code { background:#1e293b; padding:2px 6px; border-radius:5px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>SFX Test</h1>
+    <p>
+      ฟังเสียงทีละตัวเพื่อจูนค่าใน <code>src/config/audio.config.js</code> โดยไม่ต้องเปิดเกมจริง
+      แก้ค่าแล้วรีเฟรชหน้านี้ได้เลย · ต้องเสิร์ฟผ่าน <code>npx serve</code> เหมือนตัวเกม
+    </p>
+    <div id="buttons"></div>
+  </div>
+
+  <script type="module">
+    import { AudioSystem } from "./src/systems/AudioSystem.js";
+
+    // scene ปลอม — AudioSystem ต้องการแค่ 3 อย่างนี้จาก scene จริง
+    const fakeScene = {
+      sound: {},
+      input: { keyboard: { on() {} }, on() {} },
+      events: { once() {} },
+    };
+    const audio = new AudioSystem(fakeScene);
+
+    const actions = [
+      ["ตบโดน (คอมโบไต่ pitch — กดรัว ๆ ดู)", () => audio.playHit(false)],
+      ["ตบโดน — หมัดปิดชุดไม้ตาย", () => audio.playHit(true)],
+      ["เหวี่ยงมือ (swing)", () => audio.play("swing")],
+      ["เหวี่ยงมือ — ไม้ตาย", () => audio.play("swing", { pitch: 0.8, volume: 1.4 })],
+      ["กระโดด", () => audio.playJump(0)],
+      ["Double jump", () => audio.playJump(1)],
+      ["ลงพื้น", () => audio.play("land")],
+      ["KO (HP หมด 1 stock)", () => audio.play("ko")],
+      ["ชุดไม้ตายเต็มรูปแบบ 9 ฮิต", () => {
+        for (let i = 0; i < 9; i++) {
+          setTimeout(() => audio.playHit(i === 8), 110 + i * 55); // ตรงกับ FINISHER.hitInterval
+        }
+        audio.play("swing", { pitch: 0.8, volume: 1.4 });
+      }],
+    ];
+
+    const host = document.getElementById("buttons");
+    for (const [label, fn] of actions) {
+      const b = document.createElement("button");
+      b.textContent = label;
+      b.onclick = fn;
+      host.appendChild(b);
+    }
+  </script>
+</body>
+</html>
