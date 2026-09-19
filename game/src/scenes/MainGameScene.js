@@ -268,6 +268,23 @@ export class MainGameScene extends Phaser.Scene {
   /** guest ทับค่าตำแหน่ง/แอนิเมชัน/HUD ของ player ตัวหนึ่งด้วย state ล่าสุดจาก host ตรงๆ (ไม่มี prediction — MVP) */
   _applyNetPlayerState(p, s) {
     if (!s) return; // แพ็คเก็ตแรกยังมาไม่ถึง — อย่า throw แค่ปล่อยตัวละครอยู่ตำแหน่ง spawn เฉยๆ
+
+    // แปลงร่าง/กลับร่างฝั่ง host — guest ไม่เคยรัน Player state machine เอง (_swapToAlt/revertForm ไม่ถูกเรียก)
+    // เลยไม่มีใครไปปรับสเกล/ฮิตบ็อกซ์ให้ตรงร่างใหม่ ถ้าปล่อยผ่าน ตัวจะค้างสเกลร่างเดิมทับพิกัดร่างใหม่
+    // (เห็นเป็นตัวลอยผิดขนาด/หลุดไลน์ต่อสู้) — ต้องเรียก applySpriteScale เองตรงนี้ทุกครั้งที่ form เปลี่ยน
+    if (s.form && s.form !== p.form) {
+      if (s.form === "alt" && p.constructor.FORM_ALT) {
+        const A = p.constructor.FORM_ALT;
+        p.setTexture(A.textureKey, A.firstFrame);
+        p.applySpriteScale(A.standingHeightInFrame, A.worldHeight, A.bottomMargin);
+      } else if (s.form === "base" && p._netBaseScaleArgs) {
+        if (p._netBaseTexture) p.setTexture(p._netBaseTexture, p._netBaseFrame ?? undefined);
+        const b = p._netBaseScaleArgs;
+        p.applySpriteScale(b.standingHeightInFrame, b.targetWorldHeight, b.bottomMargin);
+      }
+      p.form = s.form;
+    }
+
     p.setPosition(s.x, s.y);
     p.body.setVelocity(s.vx ?? 0, s.vy ?? 0);
     p.facing = s.facing ?? p.facing;
@@ -276,7 +293,6 @@ export class MainGameScene extends Phaser.Scene {
     if (s.anim && p.anims?.currentAnim?.key !== s.anim) p.play(s.anim, true);
     p.setAlpha(s.alpha ?? 1);
     p.guard = s.guard ?? p.guard;
-    p.form = s.form ?? p.form;
     p.formHp = s.formHp ?? p.formHp;
     p.formMaxHp = s.formMaxHp ?? p.formMaxHp;
     p.formTimeLeft = s.formTimeLeft ?? p.formTimeLeft;
@@ -409,6 +425,13 @@ export class MainGameScene extends Phaser.Scene {
 
     this.p1 = new CharP1(this, spawn1.x, spawn1.y, 0);
     this.p2 = new CharP2(this, spawn2.x, spawn2.y, 1);
+    // เก็บสเกล/เท็กซ์เจอร์ร่างพื้นฐานไว้ตั้งแต่ตอนสร้าง — guest ต้องใช้ค่านี้ตอนกลับร่างจากไททัน
+    // (guest ไม่เคยรัน stateMachine ของ player เลย จึงไม่มี p._baseForm ที่ revertForm ปกติตั้งให้)
+    for (const p of [this.p1, this.p2]) {
+      p._netBaseScaleArgs = p._scaleArgs ? { ...p._scaleArgs } : null;
+      p._netBaseTexture = p.texture?.key ?? null;
+      p._netBaseFrame = p.frame?.name ?? null;
+    }
     // วางตัวละครโดยอ้างอิงตำแหน่งเท้า ไม่ใช่จุดกึ่งกลาง sprite
     // (spawnPoints.y เป็นค่าที่ตั้งไว้สมัย placeholder ตัวเล็ก ใช้ตรงๆ กับ sprite จริงไม่ได้)
     this._placeAtSpawn(this.p1, 0);
