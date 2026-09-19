@@ -260,7 +260,6 @@ export class MainGameScene extends Phaser.Scene {
     this.combat = new CombatSystem(this, (victim, attacker, damage, blocked, spec) =>
       this._applyDamage(victim, damage, blocked, { trueDamage: !!spec?.trueDamage })
     );
-    this.combat.extraTargets = () => this.balloons.hurtTargets(); // ตีตัวตลกหัวล้านได้
     for (const player of this.players) {
       player.combat = this.combat; // ให้ตัวละครยิง hitbox ผ่านระบบเดียวกัน
     }

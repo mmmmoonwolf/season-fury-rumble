@@ -77,7 +77,7 @@ export class CombatSystem {
         if (box.remaining <= 0) this.active.splice(i, 1);
         continue;
       }
-      // v34 เป้าที่ไม่ใช่ผู้เล่น (ตัวตลกหัวล้าน) — มีกรอบ hurtRect() + takeHit() · เจ้าของตีไม่โดน
+      // เป้าที่ไม่ใช่ผู้เล่น (ระบบอื่นเสียบผ่าน scene.combat.extraTargets) — มีกรอบ hurtRect() + takeHit()
       for (const t of this.extraTargets?.() ?? []) {
         if (t.owner === box.attacker || t.done || box.alreadyHit.has(t)) continue;
         const r = t.hurtRect();

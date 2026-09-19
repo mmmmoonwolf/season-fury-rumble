@@ -1,13 +1,14 @@
 import { DEARV2_BALLOON as B, BALLOON_ATLAS, DV2FX_ATLAS, DV2FX_WORLD_PER_PX, DV2FX_META } from "../config/dearv2.config.js";
+import { resolveAttack } from "../config/combat.config.js";
+import { CombatSystem } from "./CombatSystem.js";
 
 /**
  * v34 ลูกโป่งของ Dear V.2 (สกิล 1-2)
  *
  * throwBalloon(owner) — S1 พวงลูกโป่งลอยไปข้างหน้า ชนคนแรก -> confetti + มึนงง (root + silence + blind)
  * placeTrap(owner)    — S2 ลูกโป่งบนพื้น ระเบิดเมื่อศัตรูแตะ/ครบฟิวส์ · ผลตาม owner.trapMode:
- *                        0 ควันพิษ (AOE ค้าง ติ๊กดาเมจ) · 1 กล่องไขลาน (ดาเมจ + ตีลอย) · 2 ตัวตลกหัวล้าน (เดินป่วน ทำให้ช้า มีเลือด วาร์ปหาได้)
- * canWarp / warp      — S2 กดซ้ำตอนมีตัวตลกหัวล้านอยู่
- * hurtTargets()       — ให้ CombatSystem ตีตัวตลกหัวล้านได้
+ *                        0 ควันพิษ (AOE ค้าง ติ๊กดาเมจ) · 1 กล่องไขลาน (ดาเมจ + ตีลอย) · 2 ตัวตลกตัวเล็ก 3 ตัว
+ *                        (ไล่หาเป้าที่ใกล้ที่สุด ~chaseMs วิ แล้วรุมแทง · ไม่เจอเป้า/เป้าหนีทัน = จางหาย · ไม่โดนตี)
  *
  * scene เรียก update(dt, players, isAlive) ทุกเฟรม — หยุดพร้อม hitstop เหมือนระบบอื่น
  * ภาพสร้างด้วย scene.add.sprite ทั้งหมด (ไม่มี physics body — ชนเองด้วยระยะ)
@@ -34,7 +35,7 @@ export function registerBalloonAnims(scene, fxMeta = DV2FX_META) {
   mk("poison", "poison", n("poison", 19), B.trap.poison.fps);
   mk("confetti", "confetti", n("confetti", 20), B.throw.confettiFps);
   mk("jackbox", "jackbox", n("jackbox", 23), B.trap.jackbox.fps);
-  mk("bald_walk", "bald_walk", 17, B.trap.bald.fps, -1, BALLOON_ATLAS.key); // ตัวตลกอยู่ใน atlas ท่าของ Dear (ผืน 640)
+  mk("bald_walk", "bald_walk", 17, B.trap.swarm.fps, -1, BALLOON_ATLAS.key); // ตัวตลกอยู่ใน atlas ท่าของ Dear (ผืน 640)
 }
 
 export class BalloonSystem {
@@ -171,7 +172,11 @@ export class BalloonSystem {
       this.scene.audio?.playSample?.("dv2_jackbox");
       this.effects.push({ kind: "jackbox", owner: tr.owner, sp, x: tr.x, y: tr.y, t: 0, life: J.popAtMs + J.holdMs, popped: false });
     } else {
-      this.clowns.push(new BaldClown(this, tr.owner, tr.x, tr.y));
+      const C = P.swarm;
+      for (let i = 0; i < C.count; i++) {
+        const x = tr.x + (tr.owner.facing || 1) * (i * C.spawnGap);
+        this.clowns.push(new SwarmClown(this, tr.owner, x, tr.y, i * C.delayMs));
+      }
       this.scene.audio?.playSample?.("dv2_bald_laugh");
       this._spawnConfetti(tr.x, tr.y - 40, 0.35); // ป๊อปเล็ก ๆ ตอนโผล่
     }
@@ -205,35 +210,6 @@ export class BalloonSystem {
       if (e.t >= e.life) e.done = true;
     }
     this._sweep(this.effects, (e) => e.sp.destroy?.());
-  }
-
-  // ---------- ตัวตลกหัวล้าน ----------
-
-  clownOf(owner) {
-    return this.clowns.find((c) => c.owner === owner && !c.done);
-  }
-
-  canWarp(owner) {
-    const c = this.clownOf(owner);
-    return !!c && !(B.trap.bald.warpOnce && c.warped);
-  }
-
-  warp(owner) {
-    const c = this.clownOf(owner);
-    if (!c) return false;
-    c.warped = true;
-    this._spawnConfetti(owner.x, owner.y, 0.35);
-    owner.x = c.x;
-    if (owner.body?.position) owner.body.position.x = c.x - (owner.body.width ?? 0) / 2;
-    owner.body?.setVelocity?.(0, 0);
-    this._spawnConfetti(c.x, c.y - 60, 0.35);
-    this.scene.audio?.playSample?.("dv2_balloon_squeak");
-    return true;
-  }
-
-  /** CombatSystem ใช้: ตีตัวตลกได้ (เจ้าของตีไม่โดน) */
-  hurtTargets() {
-    return this.clowns.filter((c) => !c.done);
   }
 
   // ---------- วนหลัก ----------
@@ -291,99 +267,117 @@ export class BalloonSystem {
   }
 }
 
-/** ตัวตลกหัวล้าน — เดินสุ่มไปมา ไม่ทำดาเมจ ใครเข้าวงถูกทำให้ช้า · มีเลือด โดนตีได้ */
-class BaldClown {
-  constructor(sys, owner, x, y) {
-    const C = B.trap.bald;
+/**
+ * ตัวตลกตัวเล็ก — ไล่หาเป้าที่ใกล้ที่สุด (เล็งใหม่ทุกเฟรม) ภายใน chaseMs
+ * เข้าใกล้ระยะแทงเมื่อไหร่ = "จับได้" (เลิกนับเวลาไล่) แล้วหยุดแทงเป็นจังหวะจนครบโควตา
+ * ไม่เจอเป้า/เป้าหนีทันภายใน chaseMs = จางหาย · ไม่โดนตี ไม่ทำร้ายเจ้าของ
+ * (ใช้ท่าเดินของตัวตลกหัวล้านเดิม — ไม่มีท่าแทงแยก จึงกะพริบสีขาวแทนตอนแทง)
+ */
+class SwarmClown {
+  constructor(sys, owner, x, y, delayMs) {
+    const C = B.trap.swarm;
     this.sys = sys;
     this.scene = sys.scene;
     this.owner = owner;
     this.x = x;
-    this.y = y;
-    this.hp = C.hp;
-    this.maxHp = C.hp;
-    this.t = 0;
-    this.dir = Math.random() < 0.5 ? -1 : 1;
-    this.turnIn = this._nextTurn();
-    this.warped = false;
+    this.floorY = y;
+    this.delay = delayMs;
+    this.life = C.chaseMs;
+    this.caught = false;
+    this.stabT = 0;
+    this.stabs = 0;
+    this.fading = false;
     this.done = false;
+    this.facing = owner.facing;
     // ผืนภาพเดียวกับ Dear: สเกล = ความสูงโลก Dear / ตัวยืนในผืน × ขนาดตัวตลก
     const dearScale = (owner.constructor.WORLD_HEIGHT ?? 185) / 393;
     this.sp = this.scene.add.sprite(x, y, BALLOON_ATLAS.key, "bald_walk_1.png");
     this.sp.setOrigin?.(0.5, 431 / 470);
     this.sp.setScale?.(dearScale * C.scale);
     this.sp.setDepth?.(-0.2);
+    this.sp.setAlpha?.(0);
     this.sp.play?.("dv2fx/bald_walk");
-    this.hpBar = this.scene.add.graphics?.();
-    this.hpBar?.setDepth?.(4);
-    this.halfW = 18;
-    this.height = 185 * C.scale * 0.9;
+    this.shadow = this.scene.add.ellipse?.(x, y, (dearScale * 393 * C.scale) * 0.5, 10, 0x000000, 0.22)?.setDepth(-0.3);
   }
 
-  _nextTurn() {
-    const C = B.trap.bald;
-    return C.turnMinMs + Math.random() * (C.turnMaxMs - C.turnMinMs);
-  }
-
-  /** CombatSystem อ่านกรอบนี้ */
-  hurtRect() {
-    return { x: this.x - this.halfW, y: this.y - this.height, w: this.halfW * 2, h: this.height };
-  }
-
-  takeHit(damage) {
-    if (this.done) return;
-    this.hp -= damage;
-    this.sp.setTintFill?.(0xffffff);
-    this._flash = 80;
-    if (this.hp <= 0) {
-      this.done = true;
-      this.sys._spawnConfetti(this.x, this.y - 60, 0.4);
+  /** เป้าที่ใกล้ที่สุดที่ยังไม่ตาย (ไม่เอาเจ้าของ) */
+  _target(players, isAlive) {
+    let best = null;
+    for (const t of players ?? []) {
+      if (t === this.owner || !isAlive?.(t)) continue;
+      const d = Math.abs(t.x - this.x);
+      if (!best || d < best.d) best = { t, d };
     }
+    return best;
   }
 
   update(dt, players, isAlive) {
-    const C = B.trap.bald;
+    const C = B.trap.swarm;
     if (this.done) return;
-    this.t += dt;
-    if (this.t >= C.lifeMs) {
-      this.done = true;
-      this.sys._spawnConfetti(this.x, this.y - 60, 0.35);
+    if (this.delay > 0) {
+      this.delay -= dt;
       return;
     }
-    this.turnIn -= dt;
-    if (this.turnIn <= 0) {
-      this.dir = -this.dir;
-      this.turnIn = this._nextTurn();
+    if (!this._shown) {
+      this._shown = true;
+      this.scene.tweens?.add({ targets: this.sp, alpha: 1, duration: 220 });
     }
-    const view = this.scene.cameras?.main?.worldView;
-    const minX = (this.scene.physics?.world?.bounds?.x ?? view?.x ?? 0) + 30;
-    const maxX = minX - 60 + (this.scene.physics?.world?.bounds?.width ?? view?.width ?? 1280);
-    this.x += (this.dir * C.speed * dt) / 1000;
-    if (this.x < minX || this.x > maxX) {
-      this.dir = -this.dir;
-      this.x = Math.max(minX, Math.min(maxX, this.x));
+    if (!this.caught && !this.fading) {
+      this.life -= dt;
+      if (this.life <= 0) this.fading = true;
     }
-    this.sp.setPosition?.(this.x, this.y);
-    this.sp.setFlipX?.(this.dir < 0);
+    if (this.fading) {
+      // จางเองทีละเฟรม (ไม่ใช้ tween เพราะ tween หยุดตอน hitstop แล้วตัวจะค้าง)
+      this.fadeT = (this.fadeT ?? 0) + dt;
+      const k = Math.max(0, 1 - this.fadeT / C.fadeMs);
+      this.sp?.setAlpha?.(k);
+      this.shadow?.setFillStyle?.(0x000000, 0.22 * k);
+      if (this.fadeT >= C.fadeMs) this.done = true;
+      return;
+    }
     if (this._flash > 0 && (this._flash -= dt) <= 0) this.sp.clearTint?.();
-    if (this.t > C.lifeMs - 600) this.sp.setAlpha?.(Math.max(0.2, (C.lifeMs - this.t) / 600));
-    // วงหนืด: ใครอยู่ในวง (ยกเว้นเจ้าของ) ช้าลง — ต่ออายุทุกเฟรม ออกจากวงไม่นานก็หาย
-    for (const v of players) {
-      if (v === this.owner || !isAlive(v)) continue;
-      if (this.sys._near(v, this.x, this.y - 60, C.auraRadius)) v.applyStatus?.("slow", 250, C.slowMul);
+    const hit = this._target(players, isAlive);
+    if (!hit) return; // ไม่เจอเป้า -> life เดินต่อจนหมดแล้วจางหาย
+    const dx = hit.t.x - this.x;
+    const inRange = Math.abs(dx) <= C.stabRange;
+    this.facing = Math.sign(dx) || this.facing;
+    if (!inRange) {
+      this.x += Math.sign(dx) * C.speed * (dt / 1000);
+    } else {
+      this.caught = true; // จับได้แล้ว -> เลิกนับเวลาไล่
+      this.stabT += dt;
+      if (this.stabT >= C.stabIntervalMs) {
+        this.stabT = 0;
+        this._stab(hit.t);
+      }
     }
-    // หลอดเลือดเล็กเหนือหัว
-    const g = this.hpBar;
-    if (g) {
-      g.clear?.();
-      const w = 40, h = 4, x = this.x - w / 2, y = this.y - this.height - 12;
-      g.fillStyle(0x0f172a, 0.8).fillRect?.(x - 1, y - 1, w + 2, h + 2);
-      g.fillStyle(0xf472b6, 1).fillRect?.(x, y, (w * Math.max(0, this.hp)) / this.maxHp, h);
-    }
+    this.sp?.setFlipX?.(this.facing > 0);
+    this.sp?.setPosition?.(this.x, this.floorY);
+    this.shadow?.setPosition?.(this.x, this.floorY);
+  }
+
+  _stab(victim) {
+    const C = B.trap.swarm;
+    const sc = this.scene;
+    if (victim.isInvulnerable?.()) return;
+    const spec = resolveAttack(
+      { name: "dv2_swarm", damage: C.damage, knockbackX: C.knockbackX, knockbackY: C.knockbackY, hitstun: C.hitstun },
+      this.owner.characterKey,
+    );
+    const blocked = victim.isBlocking?.() && Math.sign(victim.facing) !== Math.sign(this.facing);
+    victim.applyHit?.({ ...spec, knockbackX: this.facing * spec.knockbackX }, this.owner);
+    sc._applyDamage?.(victim, blocked ? Math.round(spec.damage * 0.25) : spec.damage, blocked);
+    CombatSystem.flashVictim?.(sc, victim);
+    this.sp?.setTintFill?.(0xffffff);
+    this._flash = 80;
+    this.stabs++;
+    if (this.stabs >= C.maxStabs) this.fading = true; // แทงครบโควตาแล้วหายไป
+    if (this.stabs % C.laughEvery === 1) sc.audio?.playSample?.("dv2_clown_laugh", { rate: 0.95 + Math.random() * 0.2 });
+    else sc.audio?.play?.("hit", { pitch: 1.4, volume: 0.6 });
   }
 
   destroy() {
-    this.sp.destroy?.();
-    this.hpBar?.destroy?.();
+    this.sp?.destroy?.();
+    this.shadow?.destroy?.();
   }
 }

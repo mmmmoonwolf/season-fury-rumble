@@ -185,15 +185,27 @@ export const DEARV2_BALLOON = {
     modes: [
       { key: "poison", label: "POISON", icon: "☠", color: "#4ade80" },
       { key: "jackbox", label: "JACK-BOX", icon: "🎁", color: "#fbbf24" },
-      { key: "bald", label: "BALD CLOWN", icon: "🤡", color: "#f472b6" },
+      { key: "swarm", label: "CLOWN SWARM", icon: "🤡", color: "#f472b6" },
     ],
     poison: { burstDamage: 6, tickDamage: 4, tickMs: 500, durationMs: 2500, radius: 130, scale: 1.0, fps: 18 },
     jackbox: { damage: 14, radius: 115, knockbackX: 140, knockbackY: -820, hitstun: 750, popAtMs: 170, holdMs: 1300, scale: 0.7, fps: 24 },
-    bald: {
-      hp: 30, lifeMs: 8000, speed: 70, turnMinMs: 900, turnMaxMs: 1900,
-      auraRadius: 95, slowMul: 0.5, scale: 0.8, fps: 14,
-      /** กด S2 อีกครั้งระหว่างตัวตลกยังอยู่ = วาร์ปไปหา (ครั้งเดียวต่อตัว) ไม่ติดคูลดาวน์ */
-      warpOnce: true,
+    /** ตัวตลกตัวเล็ก 3 ตัว — ไล่หาเป้าที่ใกล้ที่สุดแล้วรุมแทง · ไล่ไม่ทันภายใน chaseMs (ไม่เจอเป้า/เป้าหนีทัน) = จางหาย */
+    swarm: {
+      count: 3,
+      spawnGap: 40,        // ระยะห่างระหว่างตัวตอนโผล่ (px โลก)
+      delayMs: 140,        // ดีเลย์การโผล่ทีละตัว
+      scale: 0.8, fps: 14, // ใช้ท่าเดินของตัวตลกหัวล้านเดิม (ไม่มีท่าแทงแยก)
+      speed: 230,          // px/วิ ตอนไล่
+      chaseMs: 5000,       // ไล่ไม่ทันภายในนี้ (ไม่เจอเป้า/เป้าหนีทัน) -> จางหาย
+      stabRange: 60,       // เข้าใกล้เป้าเท่านี้แล้วหยุดแทง (นับว่า "จับได้" ไม่ติดเวลาไล่อีก)
+      stabIntervalMs: 650,
+      maxStabs: 4,         // แทงได้กี่ทีต่อตัวแล้วหายไป (กันดาเมจรวมบานปลาย: 3 ตัว x 4 ที)
+      fadeMs: 400,
+      damage: 4,
+      knockbackX: 70,
+      knockbackY: -80,
+      hitstun: 160,
+      laughEvery: 2,       // เสียงหัวเราะเด็กทุกกี่ที (สลับกับเสียงโดนตีปกติ)
     },
   },
 };

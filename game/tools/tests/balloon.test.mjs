@@ -130,40 +130,44 @@ function setup() {
   ok(scene.hp.get(B) === 200 - BB.trap.jackbox.damage && scene.log.includes("sample:dv2_jackbox"), `ดาเมจ ${BB.trap.jackbox.damage} + เสียงกล่อง`);
 }
 
-// ── S2 ตัวตลกหัวล้าน: วงหนืด / มีเลือด / วาร์ป ──
+// ── S2 ตัวตลกตัวเล็ก 3 ตัว: ไล่เป้าใกล้สุด -> รุมแทง / ไม่เจอเป้า-เป้าหนีทันหายไป ──
 {
   const { scene, A, B, step } = setup();
-  A.trapMode = 2; B.x = 900;
+  A.trapMode = 2; B.x = 5000; // ไกลเกินไล่ทันใน chaseMs
   scene.balloons.placeTrap(A);
   step(BB.trap.fuseMs + 50);
-  const c = scene.balloons.clowns[0];
-  ok(c && scene.log.includes("sample:dv2_bald_laugh"), "แตกเป็นตัวตลกหัวล้าน + เสียงหัวเราะ");
-  ok(A.skillLabelSuffix(2) === "↯" && scene.balloons.canWarp(A), "ปุ่ม S2 เปลี่ยนเป็นวาร์ป");
-  B.x = c.x + 30;
-  step(32);
-  ok(Math.abs(B.slowMul() - BB.trap.bald.slowMul) < 1e-9, `เข้าวงตัวตลก -> ช้าลงเหลือ ${BB.trap.bald.slowMul * 100}%`);
+  ok(
+    scene.balloons.clowns.length === BB.trap.swarm.count && scene.log.includes("sample:dv2_bald_laugh"),
+    `แตกเป็นตัวตลกตัวเล็ก ${BB.trap.swarm.count} ตัว + เสียงหัวเราะ`,
+  );
+  ok(scene.balloons.clowns.every((c) => !c.caught), "ยังไล่ไม่ทัน (เป้าไกลเกิน)");
+  step(BB.trap.swarm.chaseMs + BB.trap.swarm.count * BB.trap.swarm.delayMs + BB.trap.swarm.fadeMs + 50);
+  ok(scene.balloons.clowns.length === 0, `ไล่ไม่ทันภายใน ${BB.trap.swarm.chaseMs / 1000} วิ (เป้าหนีทัน) -> หายไปหมด`);
   const hpB = scene.hp.get(B);
-  step(300);
-  ok(scene.hp.get(B) === hpB, "ตัวตลกไม่ทำดาเมจ");
-  A.x = 50;
-  A.handleMovement({ ...idle, skillPressed: 2 }, 16);
-  ok(Math.abs(A.x - c.x) < 1 && !scene.balloons.canWarp(A), "กด S2 อีกที -> วาร์ปไปหาตัวตลก (ครั้งเดียว)");
-  ok(A.skillLabelSuffix(2) !== "↯", "วาร์ปแล้ว ปุ่มกลับเป็นไอคอนกับดัก");
-  // ตีตัวตลกให้ตาย (B หันหาแล้วต่อย)
-  B.x = c.x - 50; B.facing = 1; B.setFlipX(false);
-  let swings = 0;
-  while (!c.done && swings < 12) { B.handleMovement({ ...idle, attackPressed: true }, 16); step(400); swings++; }
-  ok(c.done && swings >= 2, `ตีตัวตลก ${swings} หมัดตาย (เลือด ${BB.trap.bald.hp})`);
-  step(32);
-  ok(scene.balloons.clowns.length === 0, "ตัวตลกหายไป");
-  // เจ้าของตีตัวตลกตัวเองไม่โดน
-  scene.balloons.placeTrap(A); step(BB.trap.fuseMs + 50);
-  const c2 = scene.balloons.clowns[0];
-  A.x = c2.x - 50; A.facing = 1;
-  A.handleMovement({ ...idle, attackPressed: true }, 16); step(400);
-  ok(c2.hp === BB.trap.bald.hp, "เจ้าของตีตัวตลกตัวเองไม่โดน");
-  step(BB.trap.bald.lifeMs);
-  ok(scene.balloons.clowns.length === 0, `ครบ ${BB.trap.bald.lifeMs / 1000} วิ ตัวตลกหายเอง`);
+  ok(hpB === 200, "ตัวตลกไล่ไม่ทัน ไม่ได้ทำดาเมจเลย");
+}
+{
+  const { scene, A, B, step } = setup();
+  A.trapMode = 2; B.x = A.x + BB.trap.offsetX + 10; // อยู่ใกล้ ให้ไล่ทัน
+  scene.balloons.placeTrap(A);
+  step(BB.trap.fuseMs + 50);
+  const clowns = scene.balloons.clowns;
+  ok(clowns.length === BB.trap.swarm.count, `แตกเป็นตัวตลกตัวเล็ก ${BB.trap.swarm.count} ตัว`);
+  const hpB = scene.hp.get(B);
+  let t = 0;
+  while (!clowns.every((c) => c.caught) && t < BB.trap.swarm.chaseMs) { step(16); t += 16; }
+  ok(clowns.every((c) => c.caught), `ไล่ทันทั้ง ${BB.trap.swarm.count} ตัว (~${t}ms)`);
+  step(BB.trap.swarm.stabIntervalMs + 32);
+  ok(scene.hp.get(B) < hpB, "จับได้แล้ว -> เริ่มรุมแทง มีดาเมจ");
+  // ตัวตลกไม่โดนตี (ไม่ hittable) และไม่ทำร้ายเจ้าของ
+  ok(!clowns[0].hurtRect, "ตัวตลกตัวเล็กโดนตีไม่ได้");
+  const hpA = scene.hp.get(A);
+  step(2000);
+  ok(scene.hp.get(A) === hpA, "ตัวตลกไม่ทำร้ายเจ้าของ");
+  // แทงครบโควตาแล้วจางหายเอง
+  let guard = 0;
+  while (clowns.length && guard < 400) { step(16); guard++; }
+  ok(scene.balloons.clowns.length === 0, `แทงครบ ${BB.trap.swarm.maxStabs} ทีต่อตัวแล้วจางหายเอง`);
 }
 
 // ── วางลูกใหม่ = ลูกเก่าฝ่อ · ตาย = เก็บกวาด ──

@@ -108,7 +108,7 @@ export class DearV2 extends Player {
       startSound: false,
       events: [{ atMs: frameMs(DEARV2_BALLOON.throw.releaseIndex, DEARV2_BALLOON.throw.fps), fn: (p) => p.scene.balloons?.throwBalloon(p) }],
     },
-    // v34 S2 วางลูกโป่งกับดัก (ผลตาม trapMode ที่เลือกด้วย numpad 8) · กดซ้ำตอนมีตัวตลกหัวล้าน = วาร์ป (ดู trySkill)
+    // v34 S2 วางลูกโป่งกับดัก (ผลตาม trapMode ที่เลือกด้วย numpad 8)
     2: {
       anim: "balloon_place",
       durationMs: frameMs(DEARV2_BALLOON.trap.frames, DEARV2_BALLOON.trap.fps),
@@ -160,19 +160,9 @@ export class DearV2 extends Player {
     return true;
   }
 
-  /** S2 กดซ้ำตอนตัวตลกหัวล้านของตัวเองยังอยู่ = วาร์ปไปหา (ไม่ติดคูลดาวน์) */
-  trySkill(n) {
-    if (n === 2 && this.scene.balloons?.canWarp(this)) {
-      if (this.isStunned() || this.isAttacking() || this.isBlocking()) return false;
-      return this.scene.balloons.warp(this);
-    }
-    return super.trySkill(n);
-  }
-
-  /** ต่อท้ายชื่อปุ่มสกิลบน HUD — S2 บอกผลกับดักที่เลือกไว้ / เครื่องหมายวาร์ป */
+  /** ต่อท้ายชื่อปุ่มสกิลบน HUD — S2 บอกผลกับดักที่เลือกไว้ */
   skillLabelSuffix(n) {
     if (n !== 2) return "";
-    if (this.scene.balloons?.canWarp(this)) return "↯";
     return DEARV2_BALLOON.trap.modes[this.trapMode].icon;
   }
 
