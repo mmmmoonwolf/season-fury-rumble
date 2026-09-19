@@ -109,11 +109,13 @@ export class DearV2 extends Player {
       events: [{ atMs: frameMs(DEARV2_BALLOON.throw.releaseIndex, DEARV2_BALLOON.throw.fps), fn: (p) => p.scene.balloons?.throwBalloon(p) }],
     },
     // v34 S2 วางลูกโป่งกับดัก (ผลตาม trapMode ที่เลือกด้วย numpad 8)
+    // แก้ไข: super armor ทั้งท่า — โดนตีเลือดลดตามปกติ แต่ไม่สะดุด/หลุดท่า (ก้มวางของอยู่ ไม่ควรโดนขัดง่าย)
     2: {
       anim: "balloon_place",
       durationMs: frameMs(DEARV2_BALLOON.trap.frames, DEARV2_BALLOON.trap.fps),
       cooldownMs: DEARV2_BALLOON.trap.cooldownMs,
       startSound: false,
+      armor: true,
       events: [{ atMs: frameMs(DEARV2_BALLOON.trap.placeIndex, DEARV2_BALLOON.trap.fps), fn: (p) => p.scene.balloons?.placeTrap(p) }],
     },
     3: {

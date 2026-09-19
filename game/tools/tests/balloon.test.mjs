@@ -23,7 +23,6 @@ function setup() {
   const combat = new CombatSystem(scene, (v, a, d, b, spec) => scene._applyDamage(v, d, b, { trueDamage: !!spec?.trueDamage }));
   scene.combat = combat;
   scene.balloons = new BalloonSystem(scene);
-  combat.extraTargets = () => scene.balloons.hurtTargets();
   const A = new DearV2(scene, 0, 0, 0); A.combat = combat; A.facing = 1;
   const B = new ROSTER.marchv2(scene, 200, 0, 1); B.combat = combat; B.facing = -1;
   scene.players = [A, B];
@@ -91,6 +90,22 @@ function setup() {
   A.applyStatus("silence", 500);
   A.handleMovement({ ...idle, transformPressed: true }, 16);
   ok(A.trapMode === 0, "ติดใบ้อยู่เปลี่ยนผลไม่ได้");
+}
+
+// ── S2 super armor: โดนตีระหว่างวางลูกโป่งไม่หลุดท่า (แก้ไข: เร่งเฟรม 24->32 + armor) ──
+{
+  const { scene, A, B, step } = setup();
+  B.x = A.x + 50; B.facing = -1; // ใกล้พอให้หมัดโดน (ระยะกับดักไม่เกี่ยว เพิ่งเริ่มท่า ยังไม่มีลูกโป่ง)
+  A.handleMovement({ ...idle, skillPressed: 2 }, 16);
+  ok(A.isUsingSkill() && A.lastAnim === "dearv2/balloon_place", "เริ่มท่าวางลูกโป่ง");
+  const hpA = scene.hp.get(A);
+  B.handleMovement({ ...idle, attackPressed: true }, 16);
+  const placeMs = Math.round((BB.trap.placeIndex / BB.trap.fps) * 1000);
+  step(placeMs - 16); // เกือบถึงเฟรมวางลูกโป่ง แต่ยังไม่ถึง
+  ok(scene.hp.get(A) < hpA, "โดนตีระหว่างวาง: เลือดลดตามปกติ");
+  ok(A.isUsingSkill() && !A.stateMachine.is("hitstun"), "แต่ไม่สะดุด/หลุดท่า (super armor)");
+  step(32); // ข้ามเฟรมวางลูกโป่งไปแค่ผ่านๆ (ยังไม่ครบ armMs ถึงจะระเบิดแม้ตัวยืนใกล้)
+  ok(scene.balloons.traps.length === 1, "ท่าไม่หลุด -> วางกับดักได้ตามกำหนด");
 }
 
 // ── S2 ควันพิษ: ครบฟิวส์ระเบิดเอง ──
