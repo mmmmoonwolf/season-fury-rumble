@@ -96,10 +96,11 @@ const idle = { left: false, right: false, jumpPressed: false, upHeld: false, dow
   );
 }
 
-// ── โครงสร้างแมพ Sakura Heights (โหมด platform, blockout) — sanity check ──
+// ── โครงสร้างแมพ Sakura Heights (โหมด platform, v2 — มีอาร์ตจริงแล้ว 1264x848) — sanity check ──
 {
   const L = SAKURA_HEIGHTS;
-  ok(L.worldWidth === 2200 && L.worldHeight === 950, "ขนาด world ตรงกับ diagram ที่ให้ผู้ใช้ไปแล้ว (2200x950)");
+  ok(L.worldWidth === 1264 && L.worldHeight === 848, "ขนาด world ตรงกับภาพจริงที่ผู้ใช้ส่งมา (1264x848)");
+  ok(L.backgroundImage === "sakura_heights" && L.backgroundExt === "jpg", "ใช้อาร์ตจริงแล้ว (ไม่ใช่ blockout สีเรียบ)");
   ok(L.pits.length === 0, "fall-free ตามไอเดียต้นฉบับ — ไม่มี pit เลย");
   ok(L.platforms.length === 3 && L.ladders.length === 3, "3 ชั้น 3 บันได");
   ok(L.platforms[0].width === L.worldWidth && L.platforms[1].width === L.worldWidth, "ชั้นล่าง+กลางเต็มความกว้างจอ (เดินสุดขอบไม่ตก)");
