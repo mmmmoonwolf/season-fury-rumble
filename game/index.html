@@ -8,11 +8,35 @@
   <title>Season Fury Rumble</title>
   <style>
     html, body {
-      margin: 0; height: 100%; background: #0f172a; overflow: hidden;
+      margin: 0; background: #0f172a; overflow: hidden;
+      /* 100% บนมือถือนับรวมพื้นที่ที่อยู่ "ใต้แถบเบราว์เซอร์" ด้วย canvas เลยยาวเกินจอจริง
+         ส่วนล่างที่มีปุ่มเดิน/ตี จึงโดนแถบที่อยู่ล่างจอบังไปเลย
+         dvh = ความสูงที่มองเห็นจริงตอนนั้น หดขยายตามแถบเบราว์เซอร์ให้เอง (100% เป็นตัวสำรองของเบราว์เซอร์เก่า) */
+      height: 100%;
+      height: 100dvh;
       /* มือถือ: กันลากนิ้วแล้วหน้าเว็บเลื่อน/เด้ง และกันลากลงมาแล้วรีเฟรชหน้าทิ้งกลางเกม */
       overscroll-behavior: none;
       -webkit-user-select: none; user-select: none;
     }
+
+    /* ---------- ปุ่มเต็มจอ + คำเตือนให้หมุนจอ (เฉพาะเครื่องที่ใช้นิ้ว) ---------- */
+    #fs-btn {
+      position: fixed; z-index: 20; top: 8px; right: 8px; display: none;
+      width: 44px; height: 44px; border-radius: 10px;
+      border: 1px solid #475569; background: rgba(15,23,42,.62); color: #e2e8f0;
+      font: 20px/1 system-ui, sans-serif; cursor: pointer;
+      /* เว้นให้พ้นรอยบาก/มุมโค้งของจอ ไม่งั้นบนมือถือบางรุ่นปุ่มจะไปอยู่ใต้ขอบจอ กดไม่ได้ */
+      top: calc(8px + env(safe-area-inset-top));
+      right: calc(8px + env(safe-area-inset-right));
+    }
+    #rotate-hint {
+      position: fixed; inset: 0; z-index: 30; display: none;
+      align-items: center; justify-content: center; text-align: center;
+      background: #0f172a; color: #e2e8f0;
+      font: 20px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; padding: 24px;
+    }
+    body.touch #fs-btn { display: block; }
+    body.touch.portrait #rotate-hint { display: flex; }
     /* touch-action: none สำคัญมากบนมือถือ — ไม่มีบรรทัดนี้ เบราว์เซอร์จะกินการแตะไปใช้เลื่อน/ซูมเอง
        ปุ่มบนจอจะกดไม่ติดบ้างติดบ้าง และกดค้างเดินไม่ได้เลย */
     canvas { image-rendering: pixelated; touch-action: none; }
@@ -121,6 +145,9 @@
     </div>
   </div>
 
+  <button id="fs-btn" title="เต็มจอ" aria-label="เต็มจอ">&#9974;</button>
+  <div id="rotate-hint"><div>หมุนจอเป็นแนวนอน<br><span style="font-size:15px;color:#94a3b8">เกมนี้เล่นแนวนอนอย่างเดียว</span></div></div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
   <script type="module">
@@ -150,6 +177,39 @@
       // LobbyScene เริ่มก่อนเสมอ (เลือกโหมดปกติ/platform) แล้วค่อย start ไป MainGameScene
       scene: [LobbyScene, MainGameScene],
     };
+
+    // ---------- เต็มจอ / หมุนจอ (มือถือ) ----------
+    // แยกออกมาจาก Phaser ตั้งใจ: ปุ่มนี้เป็น DOM ทับบน canvas จึงใช้ได้ทุกฉากโดยไม่ต้องไปแตะ scene ไหนเลย
+    const isTouch = window.matchMedia?.("(pointer: coarse)")?.matches ?? false;
+    if (isTouch) document.body.classList.add("touch");
+
+    function syncOrientation() {
+      // แนวตั้ง = เกมเล็กจนเล่นไม่ได้ (แมพเป็นแนวนอน 16:9) โชว์คำเตือนทับไปเลยดีกว่าปล่อยให้งง
+      document.body.classList.toggle("portrait", isTouch && window.innerHeight > window.innerWidth);
+    }
+    syncOrientation();
+    window.addEventListener("resize", syncOrientation);
+    window.addEventListener("orientationchange", syncOrientation);
+
+    const fsBtn = document.getElementById("fs-btn");
+    fsBtn.addEventListener("click", async () => {
+      // ต้องเรียกจากการกดของผู้ใช้เท่านั้น เบราว์เซอร์ถึงยอมให้เข้าเต็มจอ เรียกเองไม่ได้
+      try {
+        if (document.fullscreenElement) {
+          await document.exitFullscreen();
+        } else {
+          const el = document.documentElement;
+          await (el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.()); // Safari ยังใช้ชื่อเก่า
+          // ล็อกแนวนอนได้เฉพาะตอนเต็มจอ และ iOS ไม่รองรับเลย — ล้มเหลวก็ไม่เป็นไร ปล่อยผ่าน
+          await screen.orientation?.lock?.("landscape").catch(() => {});
+        }
+      } catch {
+        /* เบราว์เซอร์ไม่ให้ (iOS Safari บนไอโฟนไม่รองรับ fullscreen API) — ยังเล่นได้ตามปกติ แค่มีแถบเบราว์เซอร์อยู่ */
+      }
+    });
+    const syncFsIcon = () => (fsBtn.textContent = document.fullscreenElement ? "\u2715" : "\u26F6");
+    document.addEventListener("fullscreenchange", () => { syncFsIcon(); syncOrientation(); });
+    syncFsIcon();
 
     /** ซ่อนล็อบบี้แล้วเริ่มเกมจริง — เรียกได้จากทั้ง 3 เส้นทาง (solo / host ต่อสำเร็จ / guest ต่อสำเร็จ) */
     function startGame() {

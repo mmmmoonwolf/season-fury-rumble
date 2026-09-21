@@ -18,6 +18,9 @@
 
 const HELD_KEYS = ["left", "right", "up", "down", "attack", "block"];
 
+/** ระยะขั้นต่ำจากขอบล่างของจอ (พิกัดผืนเกม 1280x720) — กันแถบ gesture ของมือถือทับปุ่ม */
+export const BOTTOM_SAFE = 88;
+
 export class TouchControls {
   /**
    * เปิดปุ่มสัมผัสไหม — ดูจาก "ชนิดอุปกรณ์ชี้ตำแหน่งหลัก" ไม่ใช่แค่ว่ารองรับ touch ไหม
@@ -48,13 +51,16 @@ export class TouchControls {
     const H = scene.sys.game.config.height;
 
     // แถวปุ่มเดิม (ยั่ว/สกิล/แปลงร่าง) อยู่ล่างสุดที่ x 16-76 และ 540-826 — เลี่ยงโซนนั้น
+    //
+    // ปุ่มล่างสุดต้องห่างขอบจออย่างน้อย BOTTOM_SAFE: มือถือมีแถบ gesture / ขีดโฮม ทับอยู่ล่างจอ
+    // ซึ่งกินการแตะไปก่อนเสมอ ปุ่มที่ชิดขอบเกินไปจะกดไม่ติดหรือเผลอปัดออกจากแอป
     this.buttons = [
-      { key: "left",   x: 150,     y: H - 120, r: 54, label: "◀",    color: 0x38bdf8 },
-      { key: "right",  x: 292,     y: H - 120, r: 54, label: "▶",    color: 0x38bdf8 },
-      { key: "down",   x: 221,     y: H - 232, r: 40, label: "▼",    color: 0x64748b },
-      { key: "up",     x: W - 150, y: H - 242, r: 52, label: "▲",    color: 0x4ade80 },
-      { key: "attack", x: W - 272, y: H - 128, r: 58, label: "ตี",   color: 0xf87171 },
-      { key: "block",  x: W - 122, y: H - 108, r: 46, label: "กัน",  color: 0xfacc15 },
+      { key: "left",   x: 150,     y: H - 152, r: 54, label: "◀",    color: 0x38bdf8 },
+      { key: "right",  x: 292,     y: H - 152, r: 54, label: "▶",    color: 0x38bdf8 },
+      { key: "down",   x: 221,     y: H - 264, r: 40, label: "▼",    color: 0x64748b },
+      { key: "up",     x: W - 150, y: H - 272, r: 52, label: "▲",    color: 0x4ade80 },
+      { key: "attack", x: W - 272, y: H - 160, r: 58, label: "ตี",   color: 0xf87171 },
+      { key: "block",  x: W - 122, y: H - 140, r: 46, label: "กัน",  color: 0xfacc15 },
     ];
 
     for (const b of this.buttons) {

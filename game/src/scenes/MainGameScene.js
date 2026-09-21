@@ -17,7 +17,7 @@ import {
 import { SAKURA_HEIGHTS } from "../levels/sakura-heights.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
-import { TouchControls } from "../systems/TouchControls.js";
+import { TouchControls, BOTTOM_SAFE } from "../systems/TouchControls.js";
 import { GunEffects } from "../effects/GunEffects.js";
 import { CrazyTitanSystem } from "../systems/CrazyTitanSystem.js";
 import { MiniClownSystem } from "../systems/MiniClownSystem.js";
@@ -98,6 +98,15 @@ const MAX_HP = 200;
  */
 const NET_STATE_SEND_HZ = 30;
 const NET_STATE_INTERVAL_MS = 1000 / NET_STATE_SEND_HZ;
+
+/**
+ * ระยะจากขอบล่างจอถึงกึ่งกลางแถวปุ่ม HUD (ยั่ว / สกิล / แปลงร่าง)
+ *
+ * เดิมเป็น 46 ซึ่งทำให้ขอบล่างของปุ่มห่างจอแค่ราว 16 px — บนมือถือโดนแถบ gesture / ขีดโฮม
+ * ที่ทับอยู่ล่างจอกินการแตะไปก่อน กดไม่ติด หรือเผลอปัดออกจากแอปกลางเกม
+ * 118 = BOTTOM_SAFE (88) + รัศมีปุ่มใหญ่สุดในแถว (30) พอดี
+ */
+const HUD_ROW_BOTTOM_OFFSET = BOTTOM_SAFE + 30;
 
 export class MainGameScene extends Phaser.Scene {
   constructor() {
@@ -1034,10 +1043,11 @@ export class MainGameScene extends Phaser.Scene {
    */
   _createTauntButtons(canvasWidth, hudDepth) {
     const canvasHeight = this.scale.height;
+    const rowY = canvasHeight - HUD_ROW_BOTTOM_OFFSET;
     const R = 26;
     const mk = (x, color, onTap) => {
       const btn = this.add
-        .circle(x, canvasHeight - 46, R, color, 0.28)
+        .circle(x, rowY, R, color, 0.28)
         .setStrokeStyle(2, color, 0.9)
         .setScrollFactor(0)
         .setDepth(hudDepth)
@@ -1046,7 +1056,7 @@ export class MainGameScene extends Phaser.Scene {
         .setInteractive(new Phaser.Geom.Circle(R, R, R), Phaser.Geom.Circle.Contains);
       btn.input.cursor = "pointer";
       this.add
-        .text(x, canvasHeight - 46, "T", { fontFamily: "monospace", fontSize: "20px", color: "#ffffff" })
+        .text(x, rowY, "T", { fontFamily: "monospace", fontSize: "20px", color: "#ffffff" })
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(hudDepth + 1);
@@ -1070,9 +1080,10 @@ export class MainGameScene extends Phaser.Scene {
    */
   _createTransformButton(canvasWidth, hudDepth) {
     const canvasHeight = this.scale.height;
+    const rowY = canvasHeight - HUD_ROW_BOTTOM_OFFSET;
     const R = 30;
     const x = canvasWidth / 2 + 2 * (28 * 2 + 16) + 12; // ถัดจากปุ่ม S3
-    const y = canvasHeight - 46;
+    const y = rowY;
     const btn = this.add
       .circle(x, y, R, 0xf97316, 0.3)
       .setStrokeStyle(3, 0xf97316, 0.95)
@@ -1145,6 +1156,7 @@ export class MainGameScene extends Phaser.Scene {
    */
   _createSkillButtons(canvasWidth, hudDepth) {
     const canvasHeight = this.scale.height;
+    const rowY = canvasHeight - HUD_ROW_BOTTOM_OFFSET;
     const R = 28;
     const gap = 16;
     const startX = canvasWidth / 2 - (R * 2 + gap);
@@ -1153,12 +1165,12 @@ export class MainGameScene extends Phaser.Scene {
     for (const n of [1, 2, 3]) {
       const x = startX + (n - 1) * (R * 2 + gap);
       const btn = this.add
-        .circle(x, canvasHeight - 46, R, 0x64748b, 0.14)
+        .circle(x, rowY, R, 0x64748b, 0.14)
         .setScrollFactor(0)
         .setDepth(hudDepth)
         .setInteractive(new Phaser.Geom.Circle(R, R, R), Phaser.Geom.Circle.Contains);
       const label = this.add
-        .text(x, canvasHeight - 46, `S${n}`, { fontFamily: "monospace", fontSize: "17px", color: "#94a3b8" })
+        .text(x, rowY, `S${n}`, { fontFamily: "monospace", fontSize: "17px", color: "#94a3b8" })
         .setOrigin(0.5)
         .setScrollFactor(0)
         .setDepth(hudDepth + 1);

@@ -9,7 +9,7 @@ const G = new URL("../../src", import.meta.url).href;
 // TouchControls อ่าน window.matchMedia/location ตอน import ไม่ได้ ต้องมีของปลอมไว้ก่อน
 globalThis.window = { matchMedia: () => ({ matches: false }) };
 globalThis.location = { search: "" };
-const { TouchControls } = await import(G + "/systems/TouchControls.js");
+const { TouchControls, BOTTOM_SAFE } = await import(G + "/systems/TouchControls.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
@@ -133,6 +133,14 @@ function setup() {
   ok(clash.length === 0, `ไม่ทับปุ่มยั่ว/สกิล/แปลงร่างที่มีอยู่แล้ว (ทับ ${clash.map((b) => b.key)})`);
   const out = tc.buttons.filter((b) => b.x - b.r < 0 || b.x + b.r > 1280 || b.y - b.r < 0 || b.y + b.r > 720);
   ok(out.length === 0, `ทุกปุ่มอยู่ในจอ 1280x720 ไม่หลุดขอบ (หลุด ${out.map((b) => b.key)})`);
+
+  // มือถือมีแถบ gesture / ขีดโฮม ทับอยู่ล่างจอ ซึ่งกินการแตะไปก่อนเสมอ
+  // ปุ่มที่ชิดขอบเกินไปจะกดไม่ติด หรือเผลอปัดออกจากแอปกลางเกม
+  const tooLow = tc.buttons.filter((b) => 720 - (b.y + b.r) < BOTTOM_SAFE);
+  ok(
+    tooLow.length === 0,
+    `ทุกปุ่มห่างขอบล่างอย่างน้อย ${BOTTOM_SAFE}px กันแถบ gesture ทับ (ชิดเกิน: ${tooLow.map((b) => `${b.key} ${720 - (b.y + b.r)}px`)})`
+  );
 }
 
 // ── ปุ่มไม่เลื่อนหายไปกับฉากตอนกล้องแพน ──
