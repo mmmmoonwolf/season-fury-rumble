@@ -5,14 +5,18 @@ import { Player } from "./Player.js";
  * คอนเซปต์: ความเร็ว/คอมโบเป็นจุดขาย (แนวเดียวกับ Murad RoV / Benedetta Mobile Legends)
  * ลุค: ผมดำมัดหาง ชุดคลุมสีเข้มขาดวิ่น พันขาด้วยผ้าพันแผล มีดสองเล่ม
  *
- * ✅ อาร์ต 93 เฟรม ตัดจาก 8 คลิป (ดู tools/build_b1989.py):
- *   058B74CA (49f)        -> ยืนตั้งการ์ด (idle)
- *   A5FC4CE4 (264f)       -> วิ่ง
- *   5866B821 (264f)       -> กระโดดหน้า/หมุนกลับหลัง/ก้มหลบ
- *   308C9A96 (264f)       -> ท่าตั้งการ์ด/โดนโจมตี
- *   8A71DFAB (264f)       -> ปีนบันได (หันหลัง — ตัวแรกในเกมที่มีท่าปีนเฉพาะ ไม่ต้องยืมท่าวิ่ง)
- *   82DB8E79 + 6A23CC64   -> คอมโบพื้นฐาน 5 จังหวะ (สแตบมีด สลับ 2 คลิป)
- *   D684E3F6 (164f)       -> คอมโบ 2: ดาชพุ่งตี (ปลดล็อกถ้าตีติดครบ 5 แล้วกดตีต่อภายใน 2 วิ)
+ * ✅ อาร์ต 165 เฟรม ตัดจากคลิปชุดที่ 2 ที่ gen ใหม่หมด (ไม่มีเงาติดพื้นแล้ว — ดู tools/build_b1989.py):
+ *   EB79F06C (240f)  -> ยืนตั้งการ์ด (idle)  ลูป f45 คาบ 21 เฟรม
+ *   51F232CC (240f)  -> วิ่ง                  ลูป f147 คาบ 20 เฟรม
+ *   053D2512 (240f)  -> กระโดดหน้า/หมุนกลับหลัง/ย่อตัว
+ *   D63CC847 (240f)  -> ท่าตั้งการ์ด/โดนโจมตี
+ *   F133C380 (408f)  -> ปีนบันได (หันหลัง — ตัวแรกในเกมที่มีท่าปีนเฉพาะ ไม่ต้องยืมท่าวิ่ง) ลูป f74 คาบ 36
+ *   EDE25E85 (240f)  -> คอมโบพื้นฐาน 5 จังหวะ (สแตบมีด เลือก 5 จังหวะ "สุดแขน" ที่ต่างมุมกัน)
+ *   9CCA9616 (164f)  -> คอมโบ 2: ดาชพุ่งตี (ปลดล็อกถ้าตีติดครบ 5 แล้วกดตีต่อภายใน 2 วิ)
+ *   AD5802D7 (196f)  -> ท่าเสกอาวุธ (พิษเขียว/ไฟแดง) — ยังไม่ได้ใช้ ไม่มี state ไหนเรียก
+ *
+ * เวอร์ชันแรกมี 93 เฟรมและมีเงาติดพื้นทุกเฟรม (ทำให้ระดับเท้าเพี้ยน ท่ากระโดดดูไม่ลอย)
+ * รอบนี้ gen คลิปใหม่หมดจนเงาหาย แล้วเพิ่มเฟรมเกือบเท่าตัวให้ขยับลื่นขึ้น
  *
  * ── กลไกเฉพาะตัว: คอมโบพื้นฐาน 5 จังหวะ + ดาชพุ่งตี ──
  * ใช้ระบบ hitsLanded/finisherReady/finisherTimer ที่มีอยู่แล้วในเอนจิ้น (เดิมออกแบบไว้ให้ปุ่มสกิล
@@ -34,26 +38,52 @@ export const B1989_ATLAS = {
   key: "b1989",
   texturePath: "assets/characters/b1989_atlas.png",
   dataPath: "assets/characters/b1989_atlas.json",
-  // ผืนภาพ 480x470 ระดับเท้า y=431 ตัวยืนสูง 393 (ธรรมเนียมเดียวกับตัวละครอื่น)
-  standingHeightInFrame: 393,
-  bottomMargin: 39, // 470 - 431
+  // ผืนภาพ 342x335 ระดับเท้า y=307 ตัวยืนสูง 280
+  // ตัวละครอื่นเก็บที่ 480x470 / ยืน 393 แต่ Nyx เก็บเล็กกว่า 0.7125 เท่า — ขนาดในเกมเท่ากันเป๊ะ
+  // เพราะ applySpriteScale() ย่อ/ขยายจาก standingHeightInFrame ไปเป็น WORLD_HEIGHT อยู่แล้ว
+  // เหตุผล: ที่จอ 720p ตัวละครถูกวาดจริงสูงสุดราว 204 px เก็บไว้ 393 จึงเกินจำเป็นเกือบ 2 เท่า
+  // ลดลงแล้วได้พื้นที่ atlas คืนมาเกือบครึ่ง เอาไปใส่เฟรมเพิ่มให้ขยับลื่นขึ้นแทน (93 -> 165 เฟรม)
+  // ตัวเลขทั้งสองต้องตรงกับ CANVAS/FEET_Y/STANDING ใน tools/build_b1989.py เสมอ
+  standingHeightInFrame: 280,
+  bottomMargin: 28, // 335 - 307
 };
 
 const FRAME = {
-  idle: seq("idle", 9),
-  run: seq("run", 11),
-  jumpForward: seq("jumpForward", 6),
-  jumpSpinBack: seq("jumpSpinBack", 6),
-  dodge: seq("dodge", 6),
-  block: seq("guard", 6), // ท่าตั้งการ์ด — ชื่อ anim ต้อง "block" (state ปุ่มกันของเอนจิ้นเรียกชื่อนี้ตรงๆ)
-  hurt: seq("hurt", 6),
-  climb: seq("climb", 9),
-  attack1: seq("attack1", 4),
-  attack2: seq("attack2", 4),
-  attack3: seq("attack3", 4),
-  attack4: seq("attack4", 4),
-  attack5: seq("attack5", 4),
-  dashFinisher: seq("dashFinisher", 14),
+  idle: seq("idle", 21),
+  run: seq("run", 20),
+  jumpForward: seq("jumpForward", 10),
+  jumpSpinBack: seq("jumpSpinBack", 12),
+  dodge: seq("dodge", 8),
+  block: seq("guard", 8), // ท่าตั้งการ์ด — ชื่อ anim ต้อง "block" (state ปุ่มกันของเอนจิ้นเรียกชื่อนี้ตรงๆ)
+  hurt: seq("hurt", 10),
+  climb: seq("climb", 18),
+  attack1: seq("attack1", 8),
+  attack2: seq("attack2", 8),
+  attack3: seq("attack3", 8),
+  attack4: seq("attack4", 8),
+  attack5: seq("attack5", 8),
+  dashFinisher: seq("dashFinisher", 18),
+};
+
+/**
+ * ความยาวของแต่ละท่า (มิลลิวินาที) — ไม่ใช่ frameRate
+ *
+ * ตั้งเป็นเวลาแทน fps เพราะจำนวนเฟรมของ Nyx เปลี่ยนได้ตลอดเวลาที่ปรับความลื่น (ดู span() ใน
+ * tools/build_b1989.py) ถ้าตั้งเป็น fps ตายตัว พอเพิ่มเฟรมท่าจะยืดช้าลงตามจำนวนเฟรมทันที
+ * ทั้งที่ตั้งใจให้ "ลื่นขึ้น" ไม่ใช่ "ช้าลง" — ผูกกับเวลาแล้วเพิ่มเฟรมได้อิสระ จังหวะเกมไม่ขยับ
+ *
+ * ท่าโจมตีไม่ต้องอยู่ในนี้ เพราะดึงเวลาจาก startup+active+recovery ของสเปคท่านั้น ๆ อยู่แล้ว
+ */
+const DURATION_MS = {
+  idle: 1125,
+  run: 800, // = จังหวะก้าวจริงของคลิป (รอบก้าว 20 เฟรมที่ 24fps)
+  jump: 500,
+  jumpForward: 500,
+  jumpSpinBack: 375,
+  dodge: 600,
+  block: 430,
+  hurt: 600,
+  climb: 900,
 };
 
 /**
@@ -124,19 +154,21 @@ export class B1989 extends Player {
     const toFrame = (f) => ({ key, frame: f });
     const make = (name, frames, fps, repeat = 0) =>
       scene.anims.create({ key: a(name), frames: frames.map(toFrame), frameRate: fps, repeat });
+    /** เล่นชุดเฟรมนี้ให้จบพอดีใน ms ที่กำหนด — fps คิดจากจำนวนเฟรมให้อัตโนมัติ (ดู DURATION_MS) */
+    const makeTimed = (name, frames, repeat = 0) =>
+      make(name, frames, (frames.length / DURATION_MS[name]) * 1000, repeat);
 
-    make("idle", FRAME.idle, 8, -1);
-    // วิ่ง — สอดแทรกเฟรม "ยื่นหน้าพรวด" (run_7/run_8 ในลำดับ) เข้ากลางลูป เล่นไวเป็นพิเศษให้ดูกระตุก/หลอน
-    make("run", FRAME.run, 16, -1);
-    make("jump", FRAME.jumpForward, 12); // กระโดดเฉย ๆ (ไม่ถือ A/S) ยืมท่า jumpForward ไปก่อน
-    make("jumpForward", FRAME.jumpForward, 12);
-    make("jumpSpinBack", FRAME.jumpSpinBack, 16); // หมุนตัวต้องไวกว่าอ่านทัน
+    makeTimed("idle", FRAME.idle, -1);
+    makeTimed("run", FRAME.run, -1);
+    makeTimed("jump", FRAME.jumpForward); // กระโดดเฉย ๆ (ไม่ถือ A/S) ยืมท่า jumpForward ไปก่อน
+    makeTimed("jumpForward", FRAME.jumpForward);
+    makeTimed("jumpSpinBack", FRAME.jumpSpinBack);
     make("fall", [FRAME.jumpSpinBack[FRAME.jumpSpinBack.length - 1]], 1);
     make("land", [FRAME.dodge[0]], 1); // ลงพื้น = ย่อรับแรงกระแทกสั้น ๆ ยืมท่าก้มหลบเฟรมแรก
-    make("dodge", FRAME.dodge, 10, -1);
-    make("block", FRAME.block, 14, 0);
-    make("hurt", FRAME.hurt, 10, 0);
-    make("climb", FRAME.climb, 10, -1);
+    makeTimed("dodge", FRAME.dodge, -1);
+    makeTimed("block", FRAME.block);
+    makeTimed("hurt", FRAME.hurt);
+    makeTimed("climb", FRAME.climb, -1);
 
     make("attack_1", FRAME.attack1, (FRAME.attack1.length / (NYX_COMBO[0].startup + NYX_COMBO[0].active + NYX_COMBO[0].recovery)) * 1000);
     make("attack_2", FRAME.attack2, (FRAME.attack2.length / (NYX_COMBO[1].startup + NYX_COMBO[1].active + NYX_COMBO[1].recovery)) * 1000);

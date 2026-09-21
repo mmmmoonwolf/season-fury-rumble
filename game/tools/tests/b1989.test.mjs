@@ -114,4 +114,54 @@ function setup(CharClass = B1989) {
   ok(A.lastAnim === "kunjae/run", `ตัวละครอื่นยังยืมท่าวิ่งเหมือนเดิม ไม่ถูกกระทบ (ได้ ${A.lastAnim})`);
 }
 
+// ── อาร์ต: metadata ต้องตรงกับ atlas ที่ build ออกมาจริง ──
+// Nyx เก็บเฟรมเล็กกว่าตัวละครอื่น (ยืน 280 px ไม่ใช่ 393) เพื่อแลกพื้นที่ atlas มาใส่เฟรมเพิ่ม
+// ถ้า standingHeightInFrame/bottomMargin ไม่ตรงกับผืนภาพจริง ตัวละครจะขนาดผิดหรือเท้าจมพื้น
+// แบบเงียบ ๆ ไม่มี error ให้เห็น — เห็นก็ต่อเมื่อเปิดเกมดูเท่านั้น
+{
+  const fs = await import("fs");
+  const { B1989_ATLAS } = await import(G + "/entities/B1989.js");
+  const atlas = JSON.parse(fs.readFileSync(new URL("../../assets/characters/b1989_atlas.json", import.meta.url)));
+  const sizes = Object.values(atlas.frames).map((f) => f.sourceSize);
+  const H = sizes[0].h;
+
+  ok(sizes.every((s) => s.h === H), `ทุกเฟรมมีผืนภาพสูงเท่ากัน (${H} px)`);
+  ok(
+    B1989_ATLAS.standingHeightInFrame + B1989_ATLAS.bottomMargin <= H,
+    `ยืน ${B1989_ATLAS.standingHeightInFrame} + ขอบล่าง ${B1989_ATLAS.bottomMargin} ไม่เกินความสูงผืนภาพ ${H}`
+  );
+  ok(B1989_ATLAS.bottomMargin > 0 && B1989_ATLAS.bottomMargin < H, "ขอบล่างเป็นค่าบวกและน้อยกว่าความสูงผืนภาพ");
+
+  const px = atlas.meta.size.w * atlas.meta.size.h;
+  ok(
+    atlas.meta.size.w <= 4096 && atlas.meta.size.h <= 4096,
+    `atlas ไม่เกินลิมิตเท็กซ์เจอร์ GPU 4096 (${atlas.meta.size.w}x${atlas.meta.size.h}) — เกินแล้วจะเรนเดอร์เป็นสีดำล้วนบนการ์ดจอหลายรุ่น`
+  );
+  ok(Object.keys(atlas.frames).length === 165, `atlas มี 165 เฟรม (ได้ ${Object.keys(atlas.frames).length})`);
+  ok(px / 1e6 < 14.4, `กิน VRAM น้อยกว่าเวอร์ชัน 93 เฟรมเดิม (${(px / 1e6).toFixed(1)} Mpx เทียบ 14.4)`);
+}
+
+// ── เพิ่มเฟรมแล้วท่าต้อง "ลื่นขึ้น" ไม่ใช่ "ช้าลง" ──
+// ผูก frameRate กับเวลา (DURATION_MS) ไม่ใช่ fps ตายตัว — เทสต์นี้กันการเผลอกลับไปใส่ fps ตรง ๆ
+{
+  const scene = makeScene();
+  const defs = {};
+  scene.anims = { _k: new Set(), exists(k) { return this._k.has(k); }, create(d) { this._k.add(d.key); defs[d.key] = d; return d; } };
+  B1989.registerAnimations(scene);
+
+  const dur = (k) => (defs[k].frames.length / defs[k].frameRate) * 1000;
+  ok(Math.abs(dur("b1989/idle") - 1125) < 1, `ท่ายืนยาว 1125ms ตามที่ตั้งไว้ (ได้ ${dur("b1989/idle").toFixed(0)}ms)`);
+  ok(Math.abs(dur("b1989/run") - 800) < 1, `ท่าวิ่งยาว 800ms = จังหวะก้าวจริงของคลิป (ได้ ${dur("b1989/run").toFixed(0)}ms)`);
+  ok(defs["b1989/run"].frames.length === 20, "ท่าวิ่งใช้ครบทั้งรอบก้าว 20 เฟรม");
+  ok(defs["b1989/idle"].repeat === -1 && defs["b1989/run"].repeat === -1, "ท่ายืน/วิ่งเล่นวนไม่รู้จบ");
+
+  // ท่าโจมตีดึงเวลาจากสเปคท่า (startup+active+recovery) ไม่ใช่ DURATION_MS — ต้องยังตรงกันอยู่
+  const spec = B1989.BASIC_COMBO[0];
+  ok(
+    Math.abs(dur("b1989/attack_1") - (spec.startup + spec.active + spec.recovery)) < 1,
+    "ท่าโจมตีเล่นจบพอดีกับเวลาของสเปคท่า (startup+active+recovery) ไม่เหลื่อมกับ hitbox"
+  );
+}
+
 console.log("\nB1989/Nyx: 5-hit combo + dash finisher, standard W/A/S/D (no special jump/dodge keys), own climb anim");
+console.log("Art: 165 frames @ 280px standing (was 93 @ 393px) — smoother and lighter, all facing right");
