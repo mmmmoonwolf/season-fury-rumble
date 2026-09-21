@@ -34,6 +34,8 @@ export function makeScene(){
     time:{ paused:false, now:0, delayedCall(ms,fn){ } },
     cameras:{ main:{ shake(){ log.push('shake') }, flash(){ log.push('flash') }, setBackgroundColor(){}, worldView:{x:0,y:0,width:1280,height:720} } },
     sys:{ game:{ config:{ width:1280, height:720 } } },
+    children:{ removeAll(){ log.push('children.removeAll') } },
+    load:{ atlas(k){ log.push('load.atlas:'+k) }, image(){}, audio(){} },
     input:{ _added:0, manager:{ pointers:[], pointersTotal:2 },
             addPointer(n){ this._added+=n; this.manager.pointersTotal+=n; log.push('addPointer:'+n) },
             keyboard:{ addKey(){ return { isDown:false, on(){} } } }, on(){} },

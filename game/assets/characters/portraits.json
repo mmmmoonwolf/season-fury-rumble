@@ -1,0 +1,112 @@
+{
+ "frames": {
+  "kunjae.png": {
+   "frame": {
+    "x": 2,
+    "y": 2,
+    "w": 220,
+    "h": 260
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 220,
+    "h": 260
+   },
+   "sourceSize": {
+    "w": 220,
+    "h": 260
+   }
+  },
+  "dearv2.png": {
+   "frame": {
+    "x": 224,
+    "y": 2,
+    "w": 220,
+    "h": 260
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 220,
+    "h": 260
+   },
+   "sourceSize": {
+    "w": 220,
+    "h": 260
+   }
+  },
+  "marchv2.png": {
+   "frame": {
+    "x": 446,
+    "y": 2,
+    "w": 220,
+    "h": 260
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 220,
+    "h": 260
+   },
+   "sourceSize": {
+    "w": 220,
+    "h": 260
+   }
+  },
+  "oat.png": {
+   "frame": {
+    "x": 668,
+    "y": 2,
+    "w": 220,
+    "h": 260
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 220,
+    "h": 260
+   },
+   "sourceSize": {
+    "w": 220,
+    "h": 260
+   }
+  },
+  "b1989.png": {
+   "frame": {
+    "x": 890,
+    "y": 2,
+    "w": 220,
+    "h": 260
+   },
+   "rotated": false,
+   "trimmed": false,
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 220,
+    "h": 260
+   },
+   "sourceSize": {
+    "w": 220,
+    "h": 260
+   }
+  }
+ },
+ "meta": {
+  "image": "portraits.png",
+  "size": {
+   "w": 1112,
+   "h": 264
+  },
+  "scale": "1"
+ }
+}
