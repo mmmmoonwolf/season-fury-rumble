@@ -14,7 +14,6 @@ import {
   CITY_NIGHT, CITY_DUSK, RIVER_SUNSET, WAT_PHRA_KAEW, BANGKOK_RIVER, TOKYO_STREET,
   HERO_PLAZA, GORILLA_TEMPLE, PETERSON_BANGKOK, PETERSON_STAGE, PETERSON_FLAGSHIP,
 } from "../levels/flat-arenas.js";
-import { NEON_UNDERLINE_BANGKOK } from "../levels/neon-underline-bangkok.js";
 import { SAKURA_HEIGHTS } from "../levels/sakura-heights.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
@@ -60,7 +59,6 @@ const LEVELS = {
   peterson_bangkok: PETERSON_BANGKOK,
   peterson_stage: PETERSON_STAGE,
   peterson_flagship: PETERSON_FLAGSHIP,
-  neon_underline_bangkok: NEON_UNDERLINE_BANGKOK,
   sakura_heights: SAKURA_HEIGHTS,
   sakura: SAKURA_TERRACE,
 };
@@ -69,8 +67,9 @@ const LEVELS = {
  * ลำดับการสลับด้วยปุ่ม M แยกตามโหมดที่เลือกจากล็อบบี้ (ดู LobbyScene.js / config/mode.config.js)
  * ไม่มี sakura (ของเดิม) อยู่ในลิสต์ไหนเลย = ปิดใช้งาน · ตัวแรกของลิสต์ = แมพเริ่มต้นของโหมดนั้น
  *
- * neon_underline_bangkok ย้ายมาอยู่โหมด platform (เป็นแมพหลายชั้น+บันไดเหมือนกัน) ตามที่ขอ
- * sakura_heights = แมพใหม่ธีมศาลาซากุระ ยังเป็น blockout รอภาพจริงความละเอียดสูงกว่า
+ * neon_underline_bangkok ลบออกจากเกมทั้งหมดแล้วตามที่ผู้ใช้ขอ (ไม่ชอบแมพ + ไม่อยากให้เกมมีจุดตก/เหวอีกต่อไป
+ * — เป็นแมพเดียวที่เคยใช้ level.pits) ไฟล์แมพ/อาร์ตถูกลบทิ้งจริง ไม่ใช่แค่เอาออกจากลิสต์นี้
+ * sakura_heights = แมพใหม่ธีมศาลาซากุระ fall-free ไม่มี pits ตั้งแต่ต้น
  */
 const LEVEL_ORDER_BY_MODE = {
   normal: [
@@ -78,7 +77,7 @@ const LEVEL_ORDER_BY_MODE = {
     "city_night", "city_dusk", "river_sunset",
     "hero_plaza", "gorilla_temple", "peterson_bangkok", "peterson_stage", "peterson_flagship",
   ],
-  platform: ["sakura_heights", "neon_underline_bangkok"],
+  platform: ["sakura_heights"],
 };
 
 const STARTING_STOCKS = 3; // จำนวนชีวิตต่อผู้เล่น — ตกครบแล้วตกรอบ ไม่ respawn อีก

@@ -5,7 +5,6 @@ const G = new URL("../../src", import.meta.url).href;
 const { ROSTER } = await import(G + "/entities/roster.js");
 const { MainGameScene } = await import(G + "/scenes/MainGameScene.js");
 const { PHYSICS } = await import(G + "/config/physics.config.js");
-const { NEON_UNDERLINE_BANGKOK } = await import(G + "/levels/neon-underline-bangkok.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const idle = { left: false, right: false, jumpPressed: false, upHeld: false, downHeld: false, attackPressed: false, blockHeld: false, skillPressed: 0 };
@@ -53,6 +52,20 @@ function setup(level) {
   A.placeFeetAt(zone.x, zone.bottomY); // ไต่ถึงปลายล่างแล้ว
   A.handleMovement({ ...idle, downHeld: true }, 16);
   ok(!A.isClimbing(), "ถึงปลายล่างแล้วออกจากโหมดปีนเอง");
+}
+
+// ── บั๊กที่เจอจริง (ผู้ใช้เทส): ยืนอยู่ "พอดี" ขอบบนของบันไดแล้วกดลง -> ต้องปีนลงได้จริง ไม่ใช่โดนเด้งกลับที่เดิมทันที
+// (ต้นเหตุเดิม: เช็คเงื่อนไข exit ทั้งขึ้น-ลงพร้อมกันทุกเฟรมไม่สนทิศที่กด — จุดเข้าบันไดทุกครั้งอยู่พอดีขอบใดขอบหนึ่ง
+// อยู่แล้ว (เพิ่งยืนอยู่ตรงนั้น) เช็คแบบไม่สนอินพุตเลยโดนเงื่อนไข "ถึงปลายบนแล้ว" ดักตั้งแต่เฟรมแรกที่ยังไม่ทันขยับ)
+{
+  const zone = { x: 300, width: 70, topY: 400, bottomY: 600 };
+  const { scene, A } = setup({ ladders: [zone], pits: [] });
+  A.placeFeetAt(zone.x, zone.topY); // ยืนพอดีขอบบนสุดของบันได (เพิ่งเดินมาจากชั้นบน)
+  scene._checkLadderEntry(A, { ...idle, downHeld: true });
+  ok(A.isClimbing(), "ยืนขอบบนพอดี กดลง -> เข้าโหมดปีน");
+  A.handleMovement({ ...idle, downHeld: true }, 16); // เฟรมแรกหลังเข้าโหมดปีน (ตำแหน่งยังไม่ทันขยับ)
+  ok(A.isClimbing(), "เฟรมแรกยังต้องปีนต่อได้ ไม่ใช่โดนเด้งกลับขอบบนทันที (นี่คือบั๊กที่แก้)");
+  ok(A.body.velocity.y > 0, "ความเร็วเป็นขาลงจริง (กำลังไต่ลง ไม่ใช่หยุดนิ่ง)");
 }
 
 // ── หลุดบันไดกลางทาง: กดกระโดดออกจากบันได ──
@@ -140,18 +153,6 @@ function setup(level) {
   A.placeFeetAt(pit.x + pit.width / 2, pit.y - 100); // ยังลอยอยู่เหนือปากเหว
   scene._checkPitHazard(A, 16);
   ok(scene.hp.get(A) === 200, "เท้ายังไม่ถึงปากเหว ไม่โดนดาเมจ");
-}
-
-// ── โครงสร้างแมพ Neon Underline Bangkok จริง (v2 — มีอาร์ตจริงแล้ว) — sanity check ──
-{
-  const L = NEON_UNDERLINE_BANGKOK;
-  ok(L.platforms.length === 6 && L.ladders.length === 4 && L.pits.length === 1, "6 พื้น 4 บันได 1 เหว");
-  ok(L.backgroundImage === "neon_underline_bangkok" && L.backgroundExt === "jpg", "ใช้อาร์ตจริงแล้ว (ไม่ใช่ blockout สีเรียบ)");
-  ok(L.spawnPoints[0].floorY != null && L.spawnPoints[3].floorY != null, "spawn P1/P2 (index 0,3) ระบุ floorY ตรง (ไม่ต้องเดาจาก platform เพราะ x ซ้อนกันหลายชั้น)");
-  // ทุกบันไดต้องเชื่อม topY < bottomY จริง (ไม่ใช่ทุกช่วงต้องกระโดดเดียวไหว — ดีไซน์นี้ขึ้น-ลงผ่านบันไดเท่านั้น
-  // ไม่ใช่กระโดด ต่างระดับกลาง->ล่าง 235px ถึงเกิน single-jump ก็ใช้ได้ปกติเพราะปีนบันไดไม่สนระยะกระโดด)
-  ok(L.ladders.every((l) => l.bottomY > l.topY), "ทุกบันไดมีทิศขึ้น-ลงถูกต้อง (bottomY > topY)");
-  ok(Math.round(720 / L.worldHeight * 100) / 100 >= 0.9, `zoom ${Math.round(720 / L.worldHeight * 100) / 100} ยังไม่ทำให้ตัวละครเล็กลงเกิน 10%`);
 }
 
 console.log(`\nCLIMB_SPEED=${PHYSICS.CLIMB_SPEED}px/s`);

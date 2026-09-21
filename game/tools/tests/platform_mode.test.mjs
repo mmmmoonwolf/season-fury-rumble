@@ -8,7 +8,6 @@ const { Oat } = await import(G + "/entities/Oat.js");
 const { GAME_MODES, DEFAULT_GAME_MODE, getGameMode } = await import(G + "/config/mode.config.js");
 const { applySeasonModifiers, BASE_PHYSICS, PHYSICS } = await import(G + "/config/physics.config.js");
 const { SAKURA_HEIGHTS } = await import(G + "/levels/sakura-heights.js");
-const { NEON_UNDERLINE_BANGKOK } = await import(G + "/levels/neon-underline-bangkok.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const idle = { left: false, right: false, jumpPressed: false, upHeld: false, downHeld: false, attackPressed: false, blockHeld: false, skillPressed: 0 };
@@ -108,11 +107,6 @@ const idle = { left: false, right: false, jumpPressed: false, upHeld: false, dow
   ok(top.width < L.worldWidth && top.x > 0 && top.x + top.width < L.worldWidth, "ชั้นบนลอยกลางจอเท่านั้น ซ้าย-ขวาเปิดโล่ง");
   ok(L.ladders.every((l) => l.bottomY > l.topY), "ทุกบันไดมีทิศขึ้น-ลงถูกต้อง");
   ok(L.spawnPoints[0].floorY != null && L.spawnPoints[3].floorY != null, "spawn P1/P2 ระบุ floorY ตรง");
-}
-
-// ── Neon Underline Bangkok ยังใช้ได้ปกติ แค่ย้ายไปอยู่โหมด platform (ไม่ได้แก้โครงสร้างแมพ) ──
-{
-  ok(NEON_UNDERLINE_BANGKOK.ladders.length === 4 && NEON_UNDERLINE_BANGKOK.pits.length === 1, "โครงสร้างเดิมยังอยู่ครบ ไม่ถูกแก้ตอนย้ายโหมด");
 }
 
 console.log("\nPlatform mode: normal=100%/dash-on, platform=60%/no-dash/speed-78%/doublejump-82%");

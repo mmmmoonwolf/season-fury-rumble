@@ -17,8 +17,11 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   create() {
-    const w = this.scale.width;
-    const h = this.scale.height;
+    // ใช้ this.sys.game.config.width/height (ค่าคงที่ 1280x720 จาก index.html) แทน this.scale.width/height
+    // เพราะ this.scale.* บางเบราว์เซอร์/เครื่องคืนค่าตามขนาดหน้าต่างจริงก่อน Scale Manager ปรับ FIT เสร็จ
+    // ทำให้เลย์เอาต์เพี้ยนไปคนละขนาดจอ (การ์ดโหมด/ตัวหนังสือหลุดขอบจอ) — MainGameScene._setupHud ก็ใช้วิธีนี้อยู่แล้ว
+    const w = this.sys.game.config.width;
+    const h = this.sys.game.config.height;
 
     this.cameras.main.setBackgroundColor("#0f172a");
 

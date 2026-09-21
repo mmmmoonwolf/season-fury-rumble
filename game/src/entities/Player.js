@@ -1210,10 +1210,13 @@ export class Player extends Phaser.GameObjects.Sprite {
     else if (input.downHeld) this.body.setVelocityY(speed);
     else this.body.setVelocityY(0);
     // ถึงปลายบน/ล่างของบันได = ก้าวออกไปยืนบนชั้นนั้นเลย (เหมือนเพิ่งลงจอด)
-    if (this.body.bottom <= z.topY) {
+    // เช็คเฉพาะทิศที่กำลังกดอยู่ — จุดเข้าบันไดทุกครั้งอยู่ "พอดี" ขอบใดขอบหนึ่งอยู่แล้ว (เพิ่งยืนอยู่ตรงนั้น)
+    // ถ้าเช็คทั้งสองทิศแบบไม่สนอินพุต จะโดนเงื่อนไขฝั่งตรงข้ามของจุดเข้าดักไว้ทันทีตั้งแต่เฟรมแรก
+    // (ทำให้ปีนลงจากชั้นบนไม่ได้เลย — ก้าวเข้ามาปุ๊บโดนเด้งกลับออกที่เดิมปั๊บ เพราะ topY ตรงกับจุดยืนพอดี)
+    if (input.upHeld && this.body.bottom <= z.topY) {
       this.placeFeetAt(z.x, z.topY);
       this.stateMachine.setState("land", true);
-    } else if (this.body.bottom >= z.bottomY) {
+    } else if (input.downHeld && this.body.bottom >= z.bottomY) {
       this.placeFeetAt(z.x, z.bottomY);
       this.stateMachine.setState("land", true);
     }
