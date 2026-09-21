@@ -27,6 +27,7 @@ import { GUARD } from "../config/combat.config.js";
 import { AudioSystem } from "../systems/AudioSystem.js";
 import { ShadowSystem } from "../systems/ShadowSystem.js";
 import { BossSystem } from "../systems/BossSystem.js";
+import { getSession, sendNetPacket } from "../net/session.js";
 
 /**
  * Scene หลักตอนนี้: โหลด level config (ROOFTOP_ARENA) แทนที่จะ hardcode ตำแหน่ง
@@ -87,6 +88,15 @@ const STARTING_STOCKS = 3; // จำนวนชีวิตต่อผู้�
  * หมัดปกติ 6 → ~34 หมัดต่อ stock · สกิล 1 เต็มชุด (53) → ~4 ครั้งต่อ stock · หมัดไททัน 12
  */
 const MAX_HP = 200;
+
+/**
+ * v34 netplay (host-authoritative, thin-client guest — ดู game/src/net/session.js)
+ * อัตราส่ง state ของ host ไปหา guest — 30Hz พอสำหรับเกมต่อสู้ 2D จังหวะนี้ (หมัดสั้นสุด startup ~80-120ms
+ * ก็ยังมีหลายแพ็คเก็ตต่อหมัด) ปรับจูนได้ที่ค่าเดียวนี้โดยไม่ต้องแตะโค้ดจุดอื่น
+ * ฝั่ง guest->host (input) ไม่ throttle — payload เล็กมาก (ไม่กี่ boolean) ส่งได้ทุกเฟรมโดยไม่มีปัญหา
+ */
+const NET_STATE_SEND_HZ = 30;
+const NET_STATE_INTERVAL_MS = 1000 / NET_STATE_SEND_HZ;
 
 export class MainGameScene extends Phaser.Scene {
   constructor() {
@@ -153,10 +163,16 @@ export class MainGameScene extends Phaser.Scene {
     this.anims.resumeAll();
     this.events.once("shutdown", () => this.anims.resumeAll());
 
+    // v34 netplay: isOnline/isNetHost/isNetGuest false ทั้งหมด = พฤติกรรมเดิมทุกอย่าง ไม่เปลี่ยนอะไรเลย
+    // ต้องตั้งก่อนส่วนอื่นของ create() เพราะ _spawnPlayer()/levelKey ด้านล่างอ่านค่านี้เพื่อบังคับให้
+    // host กับ guest ได้ตัวละคร/แมพชุดเดียวกันเสมอ (ห้ามอิง registry ที่อาจไม่ตรงกันคนละเครื่อง)
+    this._initNetFlags();
+
     this.physics.world.gravity.y = 0; // gravity คุมเองใน Player.js ต่อ body
 
     // แมพปัจจุบัน — เก็บใน registry เพื่อให้รอด scene.restart() (ปุ่ม R / ปุ่มสลับแมพ)
-    this.levelKey = this.registry.get("levelKey") ?? this.levelOrder[0];
+    // ออนไลน์: บังคับแมพแรกของโหมดเสมอ (ปุ่ม M ถูกปิดตอนออนไลน์ — ดู _setupInput) กันแมพไม่ตรงกันระหว่าง host/guest
+    this.levelKey = this.isOnline ? this.levelOrder[0] : this.registry.get("levelKey") ?? this.levelOrder[0];
     if (!this.levelOrder.includes(this.levelKey)) this.levelKey = this.levelOrder[0];
     this.level = LEVELS[this.levelKey];
     this.currentSeason = "spring";
@@ -171,6 +187,7 @@ export class MainGameScene extends Phaser.Scene {
     this._buildPlatforms();
     this._buildHazards();
     this._spawnPlayer();
+    this._setupNetTransport(); // หลัง _spawnPlayer (ต้องมี this.players) — no-op ถ้า offline
     this._setupCamera(); // หลัง _spawnPlayer เพราะกล้องเล็งจากตำแหน่งผู้เล่น
     this._setupInput();
     this._setupDebugText();
@@ -180,6 +197,208 @@ export class MainGameScene extends Phaser.Scene {
     this.seasonEffects.setSeason(this.currentSeason);
 
     this.gameOver = false;
+  }
+
+  // ---------- v34 Netplay (host-authoritative, thin-client guest) ----------
+  // ดูรายละเอียดสถาปัตยกรรมเต็มๆ ใน game/src/net/session.js และ PR description
+  // ตั้งใจแยก hook เหล่านี้ออกมาต่างหากทั้งหมด ไม่แทรกลอจิกเน็ตเข้าไปกลาง method เดิม
+  // เพื่อให้ diff เล็กที่สุดและ merge กับ branch อื่นที่แก้ MainGameScene.js พร้อมกันได้ง่าย
+
+  /** อ่านโหมดจาก session module (ตั้งไว้ตอนอยู่หน้าล็อบบี้ ก่อน Phaser.Game ถูกสร้างด้วยซ้ำ) */
+  _initNetFlags() {
+    const mode = getSession().mode;
+    this.isOnline = mode === "host" || mode === "guest";
+    this.isNetHost = mode === "host";
+    this.isNetGuest = mode === "guest";
+  }
+
+  /**
+   * ต่อ callback ของ data channel เข้ากับ scene นี้ + เตรียมสถานะเน็ตเวิร์ก
+   * guest เท่านั้นที่ปิด physics การขยับเอง (moves=false) เพราะตำแหน่งของ guest ทั้งคู่ (p1 และ p2)
+   * มาจาก state packet ของ host ล้วนๆ ไม่ได้คำนวณจาก input ในเครื่องตัวเอง (ดู _updateGuest)
+   */
+  _setupNetTransport() {
+    if (!this.isOnline) return;
+
+    this._netState = null; // guest: แพ็คเก็ต state ล่าสุดจาก host
+    this._netP2Input = null; // host: แพ็คเก็ต input ล่าสุดจาก guest (คุม p2)
+    this._netDisconnected = false;
+    this._netSendAccum = 0;
+    this._netSeq = 0;
+
+    if (this.isNetGuest) {
+      for (const p of this.players) {
+        p.body.setAllowGravity(false);
+        p.body.moves = false; // ตำแหน่งกำหนดจาก state packet ล้วนๆ ไม่ให้ physics engine ดันเอง (กันชนกับค่าที่ตั้งมาจาก host)
+      }
+    }
+
+    const session = getSession();
+    session.onData = (packet) => this._onNetPacket(packet);
+    session.onClose = () => this._onNetDisconnected();
+    session.onError = () => this._onNetDisconnected();
+  }
+
+  _onNetPacket(packet) {
+    if (!packet || typeof packet !== "object") return;
+    if (this.isNetHost && packet.t === "input") {
+      this._netP2Input = packet.input ?? null;
+    } else if (this.isNetGuest && packet.t === "state") {
+      // DataConnection ของ PeerJS ปกติเรียงลำดับให้อยู่แล้ว (reliable+ordered) แต่กันไว้เผื่อแพ็คเก็ตเก่ามาช้า
+      if (this._netState && packet.seq != null && this._netState.seq != null && packet.seq < this._netState.seq) return;
+      this._netState = packet;
+    }
+  }
+
+  _onNetDisconnected() {
+    this._netDisconnected = true; // update() / _updateGuest() เช็คธงนี้แล้วหยุดเกม+โชว์ข้อความ (ดูด้านล่าง)
+  }
+
+  /** input กลางๆ ให้ p2 ฝั่ง host ใช้ตอนยังไม่เคยได้แพ็คเก็ตจาก guest เลย (เพิ่งต่อ/แพ็คเก็ตแรกยังมาไม่ถึง) — ต้องไม่ throw */
+  _neutralNetInput() {
+    return {
+      left: false, right: false, jumpPressed: false,
+      attackPressed: false, summonPressed: false, tauntPressed: false,
+      transformPressed: false, blockHeld: false, skillPressed: 0,
+    };
+  }
+
+  /** ตัวละครที่ "จอนี้" ควบคุมอยู่จริง — offline/host = p1 (คีย์บอร์ดเครื่องนี้คุม p1 เสมอ) · guest = p2 (ควบคุมทางไกลผ่าน input packet) */
+  _localPlayer() {
+    return this.isNetGuest ? this.p2 : this.p1;
+  }
+
+  /** host ส่ง state ให้ guest ทุก ๆ NET_STATE_INTERVAL_MS (throttle ตาม NET_STATE_SEND_HZ) */
+  _sendNetStateThrottled(delta) {
+    this._netSendAccum += delta;
+    if (this._netSendAccum < NET_STATE_INTERVAL_MS) return;
+    this._netSendAccum = 0;
+    this._netSeq += 1;
+    sendNetPacket({
+      t: "state",
+      seq: this._netSeq,
+      p1: this._packPlayerState(this.p1),
+      p2: this._packPlayerState(this.p2),
+      gameOver: this.gameOver,
+      winLabel: this.gameOver ? this._netWinLabel() : null,
+    });
+  }
+
+  /** รวมฟิลด์ที่ guest ต้องใช้ "วาดจอ + HUD" ให้ถูก — ไม่ใช่ full physics state (ไม่ต้องเป๊ะ แค่พอสมูทพอ) */
+  _packPlayerState(p) {
+    return {
+      x: p.x,
+      y: p.y,
+      vx: p.body.velocity.x,
+      vy: p.body.velocity.y,
+      facing: p.facing,
+      flipX: p.flipX,
+      texture: p.texture?.key ?? null,
+      anim: p.anims?.currentAnim?.key ?? null,
+      frame: p.anims?.currentFrame?.index ?? null,
+      alpha: p.alpha,
+      hp: this.hp.get(p) ?? 0,
+      stocks: this.stocks.get(p) ?? 0,
+      alive: !!this.playerAlive.get(p),
+      guard: p.guard,
+      form: p.form,
+      formHp: p.formHp,
+      formMaxHp: p.formMaxHp,
+      formTimeLeft: p.formTimeLeft,
+    };
+  }
+
+  _netWinLabel() {
+    const alive = this.players.filter((p) => this.playerAlive.get(p));
+    return alive.length === 1 ? this.playerLabels.get(alive[0]) : null;
+  }
+
+  /** guest ทับค่าตำแหน่ง/แอนิเมชัน/HUD ของ player ตัวหนึ่งด้วย state ล่าสุดจาก host ตรงๆ (ไม่มี prediction — MVP) */
+  _applyNetPlayerState(p, s) {
+    if (!s) return; // แพ็คเก็ตแรกยังมาไม่ถึง — อย่า throw แค่ปล่อยตัวละครอยู่ตำแหน่ง spawn เฉยๆ
+
+    // แปลงร่าง/กลับร่างฝั่ง host — guest ไม่เคยรัน Player state machine เอง (_swapToAlt/revertForm ไม่ถูกเรียก)
+    // เลยไม่มีใครไปปรับสเกล/ฮิตบ็อกซ์ให้ตรงร่างใหม่ ถ้าปล่อยผ่าน ตัวจะค้างสเกลร่างเดิมทับพิกัดร่างใหม่
+    // (เห็นเป็นตัวลอยผิดขนาด/หลุดไลน์ต่อสู้) — ต้องเรียก applySpriteScale เองตรงนี้ทุกครั้งที่ form เปลี่ยน
+    if (s.form && s.form !== p.form) {
+      if (s.form === "alt" && p.constructor.FORM_ALT) {
+        const A = p.constructor.FORM_ALT;
+        p.setTexture(A.textureKey, A.firstFrame);
+        p.applySpriteScale(A.standingHeightInFrame, A.worldHeight, A.bottomMargin);
+      } else if (s.form === "base" && p._netBaseScaleArgs) {
+        if (p._netBaseTexture) p.setTexture(p._netBaseTexture, p._netBaseFrame ?? undefined);
+        const b = p._netBaseScaleArgs;
+        p.applySpriteScale(b.standingHeightInFrame, b.targetWorldHeight, b.bottomMargin);
+      }
+      p.form = s.form;
+    }
+
+    p.setPosition(s.x, s.y);
+    p.body.setVelocity(s.vx ?? 0, s.vy ?? 0);
+    p.facing = s.facing ?? p.facing;
+    p.setFlipX(!!s.flipX);
+    if (s.texture && p.texture?.key !== s.texture) p.setTexture(s.texture);
+    if (s.anim && p.anims?.currentAnim?.key !== s.anim) p.play(s.anim, true);
+    p.setAlpha(s.alpha ?? 1);
+    p.guard = s.guard ?? p.guard;
+    p.formHp = s.formHp ?? p.formHp;
+    p.formMaxHp = s.formMaxHp ?? p.formMaxHp;
+    p.formTimeLeft = s.formTimeLeft ?? p.formTimeLeft;
+    this.hp.set(p, s.hp ?? this.hp.get(p));
+    this.stocks.set(p, s.stocks ?? this.stocks.get(p));
+    this.playerAlive.set(p, s.alive !== false);
+    p.setVisible(s.alive !== false);
+  }
+
+  /** guest ทุกเฟรม: ส่ง input ตัวเอง (คุม p2 ฝั่ง host) + วาดจอจาก state ล่าสุดที่ host ส่งมา — ไม่รัน physics/combat เองเลย */
+  _updateGuest(delta) {
+    if (this._netDisconnected) {
+      this._updateNetDisconnected(delta);
+      return;
+    }
+
+    this._netSeq += 1;
+    sendNetPacket({ t: "input", seq: this._netSeq, input: this._readP1Input() });
+
+    // เคลียร์ธงปุ่มบนจอเหมือนเส้นทางปกติ (justDown แบบเดียวกัน — ไม่งั้นกดค้างกลายเป็นกดรัว)
+    this._tauntClickP1 = false;
+    this._transformClick = false;
+    this._skillClick = { 1: false, 2: false, 3: false };
+
+    this._applyNetPlayerState(this.p1, this._netState?.p1);
+    this._applyNetPlayerState(this.p2, this._netState?.p2);
+
+    this.gameOver = !!this._netState?.gameOver;
+    if (this.gameOver && !this.winText) {
+      const label = this._netState?.winLabel;
+      this._showWinText(label ? `${label} ชนะ!` : "เสมอ (ตกพร้อมกัน)");
+    }
+
+    this.shadows.update();
+    this._drawGuardBars();
+    this._updateCamera();
+    this._updateHud();
+  }
+
+  /** ทั้ง host และ guest เรียกอันนี้เมื่อ data channel หลุด — หยุดเกม โชว์ข้อความ ไม่ throw/crash */
+  _updateNetDisconnected(delta) {
+    this._tickHitstop(delta); // เผื่อหลุดพอดีตอนภาพกำลังค้าง (hitstop) — ปล่อยให้จบ transition ปกติ ไม่ค้างจอดำ
+    if (this._netDisconnectText) return;
+    const cx = this.sys.game.config.width / 2;
+    const cy = this.sys.game.config.height / 2;
+    this._netDisconnectText = this.add
+      .text(cx, cy, "คู่ต่อสู้หลุดการเชื่อมต่อ\n\nคลิก/แตะที่นี่เพื่อกลับไปที่ล็อบบี้", {
+        font: "26px monospace",
+        color: "#f87171",
+        align: "center",
+        stroke: "#0f172a",
+        strokeThickness: 5,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(200)
+      .setInteractive({ useHandCursor: true });
+    this._netDisconnectText.on("pointerdown", () => window.location.reload());
   }
 
   /**
@@ -328,8 +547,10 @@ export class MainGameScene extends Phaser.Scene {
     const spawn2 = this.level.spawnPoints[3];
 
     // ตัวละครที่เลือกไว้ — เก็บใน registry เพื่อให้รอด scene.restart() (ปุ่ม R / ปุ่มสลับตัวละคร)
-    this.charKeyP1 = this.registry.get("charP1") ?? DEFAULT_P1_CHARACTER;
-    this.charKeyP2 = this.registry.get("charP2") ?? DEFAULT_P2_CHARACTER;
+    // ออนไลน์: บังคับตัวละครเริ่มต้นเสมอ (ปุ่ม V/C ถูกปิดตอนออนไลน์ — ดู _setupInput) กันเลือกไม่ตรงกันระหว่าง
+    // host/guest คนละเครื่อง คนละ registry — MVP รอบนี้ยังไม่มีระบบ sync ตัวละครที่เลือก (ดู PR: known limitation)
+    this.charKeyP1 = this.isOnline ? DEFAULT_P1_CHARACTER : this.registry.get("charP1") ?? DEFAULT_P1_CHARACTER;
+    this.charKeyP2 = this.isOnline ? DEFAULT_P2_CHARACTER : this.registry.get("charP2") ?? DEFAULT_P2_CHARACTER;
     const CharP1 = getCharacterClass(this.charKeyP1);
     const CharP2 = getCharacterClass(this.charKeyP2);
 
@@ -344,6 +565,14 @@ export class MainGameScene extends Phaser.Scene {
     const scaleMul = this.modeConfig.characterScaleMul ?? 1;
     this.p1 = new CharP1(this, spawn1.x, spawn1.y, 0, CharP1.WORLD_HEIGHT * scaleMul);
     this.p2 = new CharP2(this, spawn2.x, spawn2.y, 1, CharP2.WORLD_HEIGHT * scaleMul);
+    // เก็บสเกล/เท็กซ์เจอร์ร่างพื้นฐานไว้ตั้งแต่ตอนสร้าง — guest ต้องใช้ค่านี้ตอนกลับร่างจากไททัน
+    // (guest ไม่เคยรัน stateMachine ของ player เลย จึงไม่มี p._baseForm ที่ revertForm ปกติตั้งให้)
+    // เก็บหลังย่อสเกลตามโหมดแล้ว จึงกลับร่างมาได้ขนาดเท่าโหมดปัจจุบัน ไม่ใช่ขนาดเต็มเสมอ
+    for (const p of [this.p1, this.p2]) {
+      p._netBaseScaleArgs = p._scaleArgs ? { ...p._scaleArgs } : null;
+      p._netBaseTexture = p.texture?.key ?? null;
+      p._netBaseFrame = p.frame?.name ?? null;
+    }
     // วางตัวละครโดยอ้างอิงตำแหน่งเท้า ไม่ใช่จุดกึ่งกลาง sprite
     // (spawnPoints.y เป็นค่าที่ตั้งไว้สมัย placeholder ตัวเล็ก ใช้ตรงๆ กับ sprite จริงไม่ได้)
     this._placeAtSpawn(this.p1, 0);
@@ -633,16 +862,24 @@ export class MainGameScene extends Phaser.Scene {
       this.gameOver = true;
       const label = alive.length === 1 ? this.playerLabels.get(alive[0]) : "ไม่มีใคร";
       const message = alive.length === 1 ? `${label} ชนะ!` : "เสมอ (ตกพร้อมกัน)";
-      this.winText = this.add
-        .text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, `${message}\n\nกด R เริ่มใหม่`, {
-          font: "28px monospace",
-          color: "#facc15",
-          align: "center",
-        })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(100);
+      this._showWinText(message);
     }
+  }
+
+  /** ข้อความจบเกมกลางจอ — แยกเป็น method เดียวเพราะ guest ก็ต้องโชว์อันเดียวกัน (จาก winLabel ที่ host ส่งมา ไม่ได้ตัดสินเอง) */
+  _showWinText(message) {
+    if (this.winText) return;
+    // ออนไลน์ไม่มีปุ่ม R (ปิดไว้ — ดู _setupInput) รีแมตช์รอบนี้ยังไม่ทำ ต้องกลับล็อบบี้เอง
+    const hint = this.isOnline ? "" : "\n\nกด R เริ่มใหม่";
+    this.winText = this.add
+      .text(this.sys.game.config.width / 2, this.sys.game.config.height / 2, `${message}${hint}`, {
+        font: "28px monospace",
+        color: "#facc15",
+        align: "center",
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(100);
   }
 
   _setupInput() {
@@ -673,12 +910,16 @@ export class MainGameScene extends Phaser.Scene {
     this._prevUpDown = false;
     this._prevAttackP1Down = false;
 
+    // R/M/V/C ทั้งหมด restart scene กลางเกม — ปิดตอนออนไลน์เสมอ (host กับ guest เป็นคนละ browser tab
+    // คนละ scene instance กัน กด scene.restart() ฝั่งเดียวจะหลุด sync ทันที ไม่มีทางทำให้ทั้งคู่ restart พร้อมกันในรอบนี้)
     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R).on("down", () => {
+      if (this.isOnline) return;
       this.scene.restart();
     });
 
     // M = สลับแมพภายในโหมดเดิม แล้วเริ่มรอบใหม่ (เลือกโหมดใหม่ต้องกลับไปที่ล็อบบี้ — reload หน้าเว็บ)
     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on("down", () => {
+      if (this.isOnline) return;
       const order = this.levelOrder;
       const next = order[(order.indexOf(this.levelKey) + 1) % order.length];
       this.registry.set("levelKey", next);
@@ -693,6 +934,7 @@ export class MainGameScene extends Phaser.Scene {
     ];
     for (const [keyName, registryKey, fallback] of characterKeys) {
       this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[keyName]).on("down", () => {
+        if (this.isOnline) return;
         const current = this.registry.get(registryKey) ?? fallback;
         this.registry.set(registryKey, nextCharacterKey(current));
         this.scene.restart();
@@ -715,9 +957,11 @@ export class MainGameScene extends Phaser.Scene {
     });
 
     // เลข 1-5 สลับฤดู — ไว้เทส physics modifier ระหว่างเล่นจริง ไม่ต้อง restart scene
+    // ปิดตอนออนไลน์: ไม่ sync ฤดูข้ามเครื่อง (MVP รอบนี้) กดแล้วสองฝั่งจะเห็นพื้นหลัง/physics modifier ไม่ตรงกัน
     const seasonKeys = { ONE: "spring", TWO: "summer", THREE: "autumn", FOUR: "winter", FIVE: "rain" };
     for (const [keyName, seasonName] of Object.entries(seasonKeys)) {
       this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[keyName]).on("down", () => {
+        if (this.isOnline) return;
         this.currentSeason = seasonName;
         applySeasonModifiers(seasonName, this.modeConfig.physics);
         this.seasonEffects.setSeason(seasonName);
@@ -852,7 +1096,7 @@ export class MainGameScene extends Phaser.Scene {
   _updateTransformButton() {
     const tb = this.transformBtn;
     if (!tb) return;
-    const p = this.p1;
+    const p = this._localPlayer(); // ปุ่มนี้แทนคีย์ numpad 8 ของ "ตัวเอง" — guest คุม p2 ทางไกล ต้องอ้าง p2 ไม่ใช่ p1
     const alive = !!this.playerAlive.get(p);
     const weapons = alive && !!p.hasWeapons?.() && !p.hasTransform?.();
     const show = alive && (!!p.hasTransform?.() || weapons);
@@ -921,7 +1165,7 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   _updateSkillButtons() {
-    const p = this.p1;
+    const p = this._localPlayer(); // ปุ่มนี้แทนคีย์ numpad 4/5/6 ของ "ตัวเอง" — guest คุม p2 ทางไกล ต้องอ้าง p2 ไม่ใช่ p1
     for (const n of [1, 2, 3]) {
       const b = this.skillBtns?.[n];
       if (!b) continue;
@@ -1058,7 +1302,9 @@ export class MainGameScene extends Phaser.Scene {
     for (const p of this.players) {
       if (!this.playerAlive.get(p) || !p.ignoresHitstop?.()) continue;
       any = true;
-      const input = p === this.p1 ? this._readP1Input() : this._npcInput(delta);
+      // v34: p2 ออนไลน์ (host) คุมด้วยแพ็คเก็ตจาก guest แทน NPC (ดู update() เส้นทางปกติ — จุดนี้ทำเหมือนกันแค่ยังอยู่ใต้ hitstop)
+      const input =
+        p === this.p1 ? this._readP1Input() : this.isNetHost ? this._netP2Input ?? this._neutralNetInput() : this._npcInput(delta);
       p.handleMovement(input, delta);
       p.stepWhileFrozen(delta);
     }
@@ -1073,6 +1319,18 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    // v34 netplay: guest ไม่รัน physics/combat simulation เองเลย (thin client) — แยกเส้นทางทั้งหมดตั้งแต่ต้นเฟรม
+    if (this.isNetGuest) {
+      this._updateGuest(delta);
+      return;
+    }
+
+    // host/offline: คู่ต่อสู้ทางเน็ตหลุด — หยุดเกม โชว์ข้อความ (ปล่อยผ่าน hitstop ปกติด้านล่างเพื่อไม่ให้ภาพค้าง)
+    if (this._netDisconnected) {
+      this._updateNetDisconnected(delta);
+      return;
+    }
+
     // ภาพหยุดอยู่ (hitstop) — ข้ามทั้งเฟรม ธงปุ่มบนจอยังค้างไว้ใช้ตอนภาพขยับต่อ
     // นับก่อนเช็ค gameOver เพื่อให้หมัดปิดเกมยังปลดล็อกภาพได้
     if (this._tickHitstop(delta)) {
@@ -1081,7 +1339,7 @@ export class MainGameScene extends Phaser.Scene {
     }
 
     if (this.gameOver) {
-      return; // หยุดรับ input/update ผู้เล่นตอนจบเกม รอกด R
+      return; // หยุดรับ input/update ผู้เล่นตอนจบเกม รอกด R (offline) — ออนไลน์ไม่ต้องทำอะไรต่อ ปล่อยจอผลลัพธ์ค้าง
     }
 
     if (this.playerAlive.get(this.p1)) {
@@ -1091,10 +1349,11 @@ export class MainGameScene extends Phaser.Scene {
     }
 
     if (this.playerAlive.get(this.p2)) {
-      // ฝั่งตรงข้ามเป็น NPC แล้ว (ไม่ได้บังคับด้วยคีย์บอร์ด) — ดู _npcInput()
-      const inputP2 = this._npcInput(delta);
-      this._checkLadderEntry(this.p2, inputP2);
-      this.p2.handleMovement(inputP2, delta);
+      // offline: ฝั่งตรงข้ามเป็น NPC (ดู _npcInput()) · host ออนไลน์: p2 คือ guest จริง คุมด้วยแพ็คเก็ต input ล่าสุดที่ส่งมา
+      // (ยังไม่เคยได้แพ็คเก็ตเลย เช่น เพิ่งต่อสำเร็จเฟรมแรกๆ — ใช้ input กลางๆ แทน ไม่ throw)
+      const p2Input = this.isNetHost ? this._netP2Input ?? this._neutralNetInput() : this._npcInput(delta);
+      this._checkLadderEntry(this.p2, p2Input);
+      this.p2.handleMovement(p2Input, delta);
     }
 
 
@@ -1131,6 +1390,9 @@ export class MainGameScene extends Phaser.Scene {
     this._updateHud();
     this._updateTransformButton();
     this._updateSkillButtons();
+
+    // ส่ง state ให้ guest ท้ายเฟรมเสมอ — หลังจากทุกระบบ (combat/hp/hud) อัปเดตของเฟรมนี้เสร็จแล้ว
+    if (this.isNetHost) this._sendNetStateThrottled(delta);
   }
 
   /**

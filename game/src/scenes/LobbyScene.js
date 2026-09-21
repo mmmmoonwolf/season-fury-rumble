@@ -1,4 +1,5 @@
 import { GAME_MODES, DEFAULT_GAME_MODE } from "../config/mode.config.js";
+import { getSession } from "../net/session.js";
 
 /**
  * ล็อบบี้เลือกโหมดเกม — หน้าจอแรกก่อนเข้า MainGameScene (ดู index.html: scene: [LobbyScene, MainGameScene])
@@ -17,6 +18,15 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   create() {
+    // เล่นออนไลน์: ข้ามหน้าเลือกโหมดไปเลย บังคับโหมดปกติทั้งสองฝั่ง
+    // การเลือกโหมดเกิดที่เครื่องใครเครื่องมัน (registry ไม่ได้ซิงก์ข้ามเน็ต) ถ้าปล่อยให้เลือกได้
+    // host กับ guest อาจได้คนละโหมด = คนละขนาดตัวละคร คนละ physics คนละลิสต์แมพ ภาพจะหลุดกันทันที
+    // เป็นเหตุผลเดียวกับที่ MainGameScene บังคับ levelOrder[0] ตอนออนไลน์ (ดู create())
+    if (this._isOnline()) {
+      this._selectMode(DEFAULT_GAME_MODE);
+      return;
+    }
+
     // ใช้ this.sys.game.config.width/height (ค่าคงที่ 1280x720 จาก index.html) แทน this.scale.width/height
     // เพราะ this.scale.* บางเบราว์เซอร์/เครื่องคืนค่าตามขนาดหน้าต่างจริงก่อน Scale Manager ปรับ FIT เสร็จ
     // ทำให้เลย์เอาต์เพี้ยนไปคนละขนาดจอ (การ์ดโหมด/ตัวหนังสือหลุดขอบจอ) — MainGameScene._setupHud ก็ใช้วิธีนี้อยู่แล้ว
@@ -111,6 +121,12 @@ export class LobbyScene extends Phaser.Scene {
     card.on("pointerover", () => card.setFillStyle(0x334155, 0.95));
     card.on("pointerout", () => card.setFillStyle(0x1e293b, 0.9));
     card.on("pointerdown", () => this._selectMode(mode.id));
+  }
+
+  /** แยกเป็นเมธอดเพื่อให้เทสต์ stub ทับได้ (getSession() อ่าน state ของโมดูล net ตรงๆ) */
+  _isOnline() {
+    const mode = getSession().mode;
+    return mode === "host" || mode === "guest";
   }
 
   _selectMode(modeKey) {
