@@ -608,11 +608,16 @@ export class MainGameScene extends Phaser.Scene {
     // ท่าเรียกร่าง = Enter (ระบบยังอยู่ แต่ตอนนี้ไม่มีตัวละครไหนเปิด CAN_SUMMON)
     this.summonKeyP1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     // ── ปุ่มผู้เล่น (ชุดใหม่) ──
-    // A/D เดิน (ดับเบิลแท็ป = วิ่ง), W กระโดด, S กัน, Space ตี, numpad 4/5/6 สกิล
+    // A/D เดิน (ดับเบิลแท็ป = วิ่ง), W กระโดด, B กัน, Space ตี, numpad 4/5/6 สกิล
+    // กันย้ายจาก S -> B (v35): ตัวละครใหม่ (B1989/Nyx) ใช้ "ถือ S ค้างแล้วกระโดด" เป็นท่าพิเศษ
+    // (jump spin backward) เลยต้องปลด S ออกจากท่ากันก่อน ไม่งั้นชนกัน — ตัวละครอื่นไม่กระทบ
+    // เพราะไม่มีใครผูกอะไรไว้กับ S เดิมนอกจากกัน
     this.moveLeftKey  = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     this.moveRightKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.jumpKey      = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
-    this.blockKeyP1   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
+    this.blockKeyP1   = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.B);
+    // ปุ่มเสริมท่าพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx ใช้) — ตัวละครอื่นไม่อ่านค่านี้เลย
+    this.altActionKeyP1 = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S);
     this.skillKeys = {
       1: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_FOUR),
       2: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.NUMPAD_FIVE),
@@ -985,11 +990,16 @@ export class MainGameScene extends Phaser.Scene {
       (this.tauntKeyP1.isDown && !this._prevTauntP1Down) || this._tauntClickP1;
     this._prevTauntP1Down = this.tauntKeyP1.isDown;
 
+    // ขอบขาขึ้นของปุ่ม D — เผื่อท่าพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx ท่าก้มหลบ) ที่ต้อง
+    // "แตะ" ครั้งเดียวต่อการกด 1 ที ไม่ใช่ค้างไว้แล้วเข้าท่าซ้ำทุกเฟรม (ดู dKeyDown ด้านล่างสำหรับค้างกด)
+    const dKeyJustDown = this.moveRightKey.isDown && !this._prevDKeyDown;
+    this._prevDKeyDown = this.moveRightKey.isDown;
+
     return {
       left: this.moveLeftKey.isDown || this.cursors.left.isDown,
       right: this.moveRightKey.isDown || this.cursors.right.isDown,
       jumpPressed: upJustDown,
-      // ปีนบันได (ค้างกด ไม่ใช่ edge แบบ jumpPressed): W/ลูกศรขึ้น = ขึ้น, ลูกศรลง = ลง (S เป็นปุ่มกันอยู่แล้ว ไม่ชนกัน)
+      // ปีนบันได (ค้างกด ไม่ใช่ edge แบบ jumpPressed): W/ลูกศรขึ้น = ขึ้น, ลูกศรลง = ลง (B เป็นปุ่มกันอยู่แล้ว ไม่ชนกัน)
       upHeld: jumpDown,
       downHeld: this.cursors.down.isDown,
       attackPressed: attackP1JustDown,
@@ -998,6 +1008,12 @@ export class MainGameScene extends Phaser.Scene {
       transformPressed: transformP1JustDown,
       blockHeld: this.blockKeyP1.isDown,
       skillPressed,
+      // คีย์ดิบ A/D/S (ไม่รวมลูกศร) — เผื่อท่าพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx)
+      // ที่ต้องแยกให้ออกว่ากดคีย์ตัวอักษรจริง ๆ ไม่ใช่แค่ "มีทิศ" ทั่วไปแบบ left/right ด้านบน
+      aKeyDown: this.moveLeftKey.isDown,
+      dKeyDown: this.moveRightKey.isDown,
+      dKeyPressed: dKeyJustDown,
+      sKeyDown: this.altActionKeyP1.isDown,
     };
   }
 

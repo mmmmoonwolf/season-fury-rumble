@@ -233,6 +233,43 @@ export class Player extends Phaser.GameObjects.Sprite {
           }
         },
       })
+      // ── ท่ากระโดดพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx — ดู _pickSpecialJumpState()) ──
+      // ฟิสิกส์เหมือน "jump" ทุกอย่าง ต่างแค่ท่าทาง/ชื่อ animation ตัวละครที่ไม่ได้ผูกไว้จะไม่มีทางเข้า state นี้เลย
+      .addState("jumpForward", {
+        onEnter: (p) => p.play?.("jumpForward", true),
+        onUpdate: (p) => {
+          if (p.body.velocity.y > PHYSICS.FALL_VELOCITY_THRESHOLD) {
+            p.stateMachine.setState("fall");
+          } else if (p.body.blocked.down || p.body.touching.down) {
+            p.stateMachine.setState("land");
+          }
+        },
+      })
+      .addState("jumpSpinBack", {
+        onEnter: (p) => p.play?.("jumpSpinBack", true),
+        onUpdate: (p) => {
+          if (p.body.velocity.y > PHYSICS.FALL_VELOCITY_THRESHOLD) {
+            p.stateMachine.setState("fall");
+          } else if (p.body.blocked.down || p.body.touching.down) {
+            p.stateMachine.setState("land");
+          }
+        },
+      })
+      // ── ท่าก้มหลบเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx — ดู _tryGroundSpecial()) ──
+      // จับเวลาแล้วคืนกลับ idle/run เองแบบเดียวกับ "land" — ไม่ต้องอ่าน input ทุกเฟรม
+      // (state onUpdate ของเอนจิ้นนี้ไม่ได้รับ input พารามิเตอร์ ตั้งใจให้เป็นท่าสั้น ๆ ผ่านไปเอง)
+      .addState("dodge", {
+        onEnter: (p) => {
+          p.play?.("dodge", true);
+          p._dodgeTimer = p.constructor.DODGE_MS ?? 350;
+        },
+        onUpdate: (p, dt) => {
+          p._dodgeTimer -= dt;
+          if (p._dodgeTimer <= 0) {
+            p.stateMachine.setState(Math.abs(p.body.velocity.x) > 5 ? (p.isWalking ? "walk" : "run") : "idle");
+          }
+        },
+      })
       .addState("fall", {
         onEnter: (p) => p.play?.("fall", true),
         onUpdate: (p) => {
@@ -262,7 +299,9 @@ export class Player extends Phaser.GameObjects.Sprite {
         onEnter: (p) => {
           p.body.setAllowGravity(false);
           p.body.setVelocity(0, 0);
-          p.play?.("run", true); // ยืมท่าวิ่งไปก่อน ยังไม่มีท่าปีนเฉพาะ
+          // ตัวละครทั่วไปยังไม่มีท่าปีนเฉพาะ ยืมท่าวิ่งไปก่อน — ตัวที่มีจริง (B1989/Nyx) ประกาศ
+          // static HAS_CLIMB_ANIM = true แล้วเล่นท่า "climb" ของตัวเองแทน
+          p.play?.(p.constructor.HAS_CLIMB_ANIM ? "climb" : "run", true);
         },
         onExit: (p) => {
           p.body.setAllowGravity(true);
@@ -280,10 +319,17 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.stateMachine
       .addState("attack", {
         onEnter: (p) => {
-          const spec = resolveAttack(BASIC_COMBO[p.comboStep], p.characterKey);
+          // ตัวละครทั่วไปใช้ BASIC_COMBO ส่วนกลาง (3 จังหวะ) — ตัวที่มีคอมโบเฉพาะตัว (เช่น B1989/Nyx
+          // 5 จังหวะ + ดาชพุ่งตี) ประกาศ static BASIC_COMBO ทับได้เลย ไม่กระทบตัวละครอื่น
+          // _forcedAttackSpec/_forcedAttackAnim: ท่าที่ไม่ได้อยู่ในลำดับคอมโบปกติ (เช่น ดาชพุ่งตีของ
+          // Nyx ที่ปลดล็อกจากการตีติดครบ 5 แล้วกดตีต่อ ไม่ใช่ comboStep ถัดไปในลำดับ) ตัวละครทั่วไปไม่ตั้งค่านี้
+          const combo = p.constructor.BASIC_COMBO ?? BASIC_COMBO;
+          const spec = resolveAttack(p._forcedAttackSpec ?? combo[p.comboStep], p.characterKey);
           p.currentAttack = spec;
           p._atk = { phase: "startup", t: spec.startup, spawned: false };
-          p.play?.(`attack_${p.comboStep + 1}`, true);
+          p.play?.(p._forcedAttackAnim ?? `attack_${p.comboStep + 1}`, true);
+          p._forcedAttackSpec = null;
+          p._forcedAttackAnim = null;
           p._lunge(spec.lungeX);
           p.scene.audio?.play("swing"); // เสียงลมตอนเหวี่ยง — ออกทุกครั้งแม้ตบไม่โดน
         },
@@ -617,11 +663,13 @@ export class Player extends Phaser.GameObjects.Sprite {
     this.comboStep += 1;
     this.comboTimer = COMBO_WINDOW;
 
-    if (this.comboStep >= BASIC_COMBO.length) {
-      // ครบ 3 จังหวะแล้ว — จะได้ไม้ตายต่อก็ต่อเมื่อ "เข้าครบ 3" จริงเท่านั้น
-      if (this.hitsLanded >= BASIC_COMBO.length) {
+    // ตัวละครทั่วไปใช้ BASIC_COMBO/FINISHER_WINDOW ส่วนกลาง — ตัวที่มีคอมโบเฉพาะตัวประกาศ static ทับได้
+    const comboLength = (this.constructor.BASIC_COMBO ?? BASIC_COMBO).length;
+    if (this.comboStep >= comboLength) {
+      // ครบทุกจังหวะแล้ว — จะได้ไม้ตายต่อก็ต่อเมื่อ "เข้าครบ" จริงเท่านั้น
+      if (this.hitsLanded >= comboLength) {
         this.finisherReady = true;
-        this.finisherTimer = FINISHER_WINDOW;
+        this.finisherTimer = this.constructor.FINISHER_WINDOW ?? FINISHER_WINDOW;
       }
       this.comboStep = 0;
       if (!this.finisherReady) this.hitsLanded = 0;
@@ -1187,6 +1235,29 @@ export class Player extends Phaser.GameObjects.Sprite {
     return this.stateMachine.is("climb");
   }
 
+  isDodging() {
+    return this.stateMachine.is("dodge");
+  }
+
+  /**
+   * ท่ากระโดดพิเศษ — ตัวละครทั่วไปคืน null (= ใช้ "jump" ปกติ) คลาสลูกที่มีท่าเฉพาะ override เมธอดนี้
+   * (ตอนนี้มีแค่ B1989/Nyx: ถือ A = "jumpForward", ถือ S = "jumpSpinBack" — ดู B1989.js)
+   * เรียกเฉพาะตอนกระโดดครั้งแรก (ไม่ใช่ double jump) จาก handleMovement()
+   * @returns {string|null} ชื่อ state ที่จะเข้าแทน "jump" ปกติ
+   */
+  _pickSpecialJumpState(input) {
+    return null;
+  }
+
+  /**
+   * ท่าพิเศษตอนติดพื้น (ไม่เกี่ยวกับกระโดด) — ตัวละครทั่วไปคืน false (ไม่มีอะไรพิเศษ ให้เดิน/วิ่งตามปกติ)
+   * คลาสลูกที่มีท่าเฉพาะ override เมธอดนี้ คืน true = "กินอินพุตเฟรมนี้ไปแล้ว" (handleMovement return ทันที
+   * ไม่ไปเดิน/วิ่งต่อ) (ตอนนี้มีแค่ B1989/Nyx: กด D ค้าง = ท่าก้มหลบ แทนการเดินขวา — ดู B1989.js)
+   */
+  _tryGroundSpecial(input) {
+    return false;
+  }
+
   /** เรียกจาก handleMovement ทุกเฟรมที่ isClimbing() — ใช้ input.upHeld/downHeld (ค้างกด ไม่ใช่ edge แบบ jumpPressed) */
   _handleClimbing(input, dt) {
     const z = this._climbZone;
@@ -1479,6 +1550,13 @@ export class Player extends Phaser.GameObjects.Sprite {
       return;
     }
 
+    // ท่าก้มหลบพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx) — จับเวลาแล้วคืนกลับเองใน state "dodge"
+    // (ดู _tryGroundSpecial()) ไม่ต้องอ่าน input ซ้ำระหว่างท่านี้ ปล่อยให้จบเองเหมือน "land"
+    if (this.isDodging()) {
+      this.stateMachine.update(dt);
+      return;
+    }
+
     // กำลังแปลงร่าง / ใช้สกิลยาว = คุมตัวไม่ได้ จนกว่าท่าจะจบ
     if (this.isTransforming() || this.isUsingSkill()) {
       this.stateMachine.update(dt);
@@ -1582,6 +1660,13 @@ export class Player extends Phaser.GameObjects.Sprite {
       this.slowMul();
     const control = onGround ? 1 : PHYSICS.AIR_CONTROL_FACTOR;
 
+    // ท่าพิเศษตอนติดพื้น (ตอนนี้มีแค่ B1989/Nyx: D = ก้มหลบ) — เช็คก่อนเดิน/วิ่งเสมอ เพราะปุ่มเดียวกับ
+    // "เดินขวา" ปกติ (moveRightKey) คืน true = กินอินพุตเฟรมนี้ไปแล้ว ไม่เดิน/วิ่งต่อ
+    if (onGround && this._tryGroundSpecial(input)) {
+      this.stateMachine.update(dt);
+      return;
+    }
+
     if (input.left && !input.right) {
       this.body.setVelocityX(-speed * control);
       this.facing = -1;
@@ -1598,8 +1683,10 @@ export class Player extends Phaser.GameObjects.Sprite {
       const vy = this.jumpsUsed === 0 ? PHYSICS.JUMP_VELOCITY : PHYSICS.DOUBLE_JUMP_VELOCITY;
       this.body.setVelocityY(vy);
       this.scene.audio?.playJump(this.jumpsUsed); // นับก่อนบวก: 0 = กระโดดแรก, 1 = double jump
+      // ท่ากระโดดพิเศษ (ตอนนี้มีแค่ B1989/Nyx) เช็คเฉพาะกระโดดครั้งแรก ไม่ใช่ double jump
+      const specialState = this.jumpsUsed === 0 ? this._pickSpecialJumpState(input) : null;
       this.jumpsUsed += 1;
-      this.stateMachine.setState("jump", true); // force เผื่อกด double jump ตอนอยู่ state jump อยู่แล้ว
+      this.stateMachine.setState(specialState ?? "jump", true); // force เผื่อกด double jump ตอนอยู่ state jump อยู่แล้ว
     }
 
     this.stateMachine.update(dt);

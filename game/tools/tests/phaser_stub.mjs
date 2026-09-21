@@ -31,7 +31,7 @@ export function makeScene(){
     time:{ paused:false, now:0, delayedCall(ms,fn){ } },
     cameras:{ main:{ shake(){ log.push('shake') }, flash(){ log.push('flash') }, worldView:{x:0,y:0,width:1280,height:720} } },
     transformFx:{ erupt(){ log.push('fx.erupt') }, shatterCrystals(){ log.push('fx.shatter') }, revertPuff(){ log.push('fx.revertPuff') }, end(){} },
-    audio:{ play(n,o){ log.push('sfx:'+n+':'+(o?.pitch??1)) }, playHit(){ log.push('sfx:hit') } },
+    audio:{ play(n,o){ log.push('sfx:'+n+':'+(o?.pitch??1)) }, playHit(){ log.push('sfx:hit') }, playJump(n){ log.push('sfx:jump:'+n) } },
   };
   return scene;
 }

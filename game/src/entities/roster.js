@@ -2,6 +2,7 @@ import { KunJae } from "./KunJae.js";
 import { DearV2 } from "./DearV2.js";
 import { MarchV2 } from "./MarchV2.js";
 import { Oat } from "./Oat.js";
+import { B1989 } from "./B1989.js";
 
 /**
  * ทะเบียนตัวละครทั้งหมดในเกม
@@ -19,13 +20,14 @@ export const ROSTER = {
   dearv2: DearV2,
   marchv2: MarchV2,
   oat: Oat,
+  b1989: B1989,
 };
 
 /**
  * ตัวที่เลือกเล่นได้จริง — ปุ่มสลับตัวละครวนเฉพาะในลิสต์นี้
  * (Dear / Bomb / March เวอร์ชันเก่า และ TeeMee ถูกลบออกจากโปรเจกต์แล้วใน v26)
  */
-export const PLAYABLE = ["kunjae", "dearv2", "marchv2", "oat"];
+export const PLAYABLE = ["kunjae", "dearv2", "marchv2", "oat", "b1989"];
 
 /** ลำดับสำหรับปุ่มสลับตัวละคร (V = ผู้เล่น, C = ฝั่ง NPC) */
 export const ROSTER_ORDER = PLAYABLE;
