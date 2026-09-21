@@ -17,6 +17,7 @@ import {
 import { SAKURA_HEIGHTS } from "../levels/sakura-heights.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
+import { TouchControls } from "../systems/TouchControls.js";
 import { GunEffects } from "../effects/GunEffects.js";
 import { CrazyTitanSystem } from "../systems/CrazyTitanSystem.js";
 import { MiniClownSystem } from "../systems/MiniClownSystem.js";
@@ -1022,6 +1023,9 @@ export class MainGameScene extends Phaser.Scene {
       .setDepth(HUD_DEPTH);
 
     this._createTauntButtons(canvasWidth, HUD_DEPTH);
+
+    // ปุ่มสัมผัส — โผล่เฉพาะเครื่องที่ใช้นิ้วเป็นหลัก ไม่บังจอคนเล่นคีย์บอร์ด (ดู TouchControls.shouldEnable)
+    if (TouchControls.shouldEnable()) this.touch = new TouchControls(this, HUD_DEPTH);
   }
 
   /**
@@ -1246,7 +1250,7 @@ export class MainGameScene extends Phaser.Scene {
    */
   _readP1Input() {
     // กระโดด = W (ลูกศรขึ้นยังใช้ได้ด้วยเผื่อความเคยชิน)
-    const jumpDown = this.jumpKey.isDown || this.cursors.up.isDown;
+    const jumpDown = this.jumpKey.isDown || this.cursors.up.isDown || !!this.touch?.held.up;
     const upJustDown = jumpDown && !this._prevUpDown;
     this._prevUpDown = jumpDown;
 
@@ -1259,8 +1263,9 @@ export class MainGameScene extends Phaser.Scene {
       if (just) skillPressed = n;
     }
 
-    const attackP1JustDown = this.attackKeyP1.isDown && !this._prevAttackP1Down;
-    this._prevAttackP1Down = this.attackKeyP1.isDown;
+    const attackDown = this.attackKeyP1.isDown || !!this.touch?.held.attack;
+    const attackP1JustDown = attackDown && !this._prevAttackP1Down;
+    this._prevAttackP1Down = attackDown;
 
     const summonP1JustDown = this.summonKeyP1.isDown && !this._prevSummonP1Down;
     this._prevSummonP1Down = this.summonKeyP1.isDown;
@@ -1275,17 +1280,17 @@ export class MainGameScene extends Phaser.Scene {
     this._prevTauntP1Down = this.tauntKeyP1.isDown;
 
     return {
-      left: this.moveLeftKey.isDown || this.cursors.left.isDown,
-      right: this.moveRightKey.isDown || this.cursors.right.isDown,
+      left: this.moveLeftKey.isDown || this.cursors.left.isDown || !!this.touch?.held.left,
+      right: this.moveRightKey.isDown || this.cursors.right.isDown || !!this.touch?.held.right,
       jumpPressed: upJustDown,
       // ปีนบันได (ค้างกด ไม่ใช่ edge แบบ jumpPressed): W/ลูกศรขึ้น = ขึ้น, ลูกศรลง = ลง (S เป็นปุ่มกันอยู่แล้ว ไม่ชนกัน)
       upHeld: jumpDown,
-      downHeld: this.cursors.down.isDown,
+      downHeld: this.cursors.down.isDown || !!this.touch?.held.down,
       attackPressed: attackP1JustDown,
       summonPressed: summonP1JustDown,
       tauntPressed: tauntP1JustDown,
       transformPressed: transformP1JustDown,
-      blockHeld: this.blockKeyP1.isDown,
+      blockHeld: this.blockKeyP1.isDown || !!this.touch?.held.block,
       skillPressed,
     };
   }
@@ -1319,6 +1324,9 @@ export class MainGameScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    // ต้องอยู่ก่อนทางแยกทุกเส้น เพราะทั้ง guest / ภาพหยุด / ปกติ ต่างก็อ่าน input ของตัวเอง
+    this.touch?.update();
+
     // v34 netplay: guest ไม่รัน physics/combat simulation เองเลย (thin client) — แยกเส้นทางทั้งหมดตั้งแต่ต้นเฟรม
     if (this.isNetGuest) {
       this._updateGuest(delta);

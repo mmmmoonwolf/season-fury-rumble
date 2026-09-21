@@ -7,8 +7,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
   <title>Season Fury Rumble</title>
   <style>
-    html, body { margin: 0; height: 100%; background: #0f172a; overflow: hidden; }
-    canvas { image-rendering: pixelated; }
+    html, body {
+      margin: 0; height: 100%; background: #0f172a; overflow: hidden;
+      /* มือถือ: กันลากนิ้วแล้วหน้าเว็บเลื่อน/เด้ง และกันลากลงมาแล้วรีเฟรชหน้าทิ้งกลางเกม */
+      overscroll-behavior: none;
+      -webkit-user-select: none; user-select: none;
+    }
+    /* touch-action: none สำคัญมากบนมือถือ — ไม่มีบรรทัดนี้ เบราว์เซอร์จะกินการแตะไปใช้เลื่อน/ซูมเอง
+       ปุ่มบนจอจะกดไม่ติดบ้างติดบ้าง และกดค้างเดินไม่ได้เลย */
+    canvas { image-rendering: pixelated; touch-action: none; }
 
     /* ---------- ล็อบบี้ออนไลน์ (DOM ล้วน ทับบน canvas — ไม่ใช่ Phaser scene ตั้งใจแยกกันเด็ดขาด) ---------- */
     #lobby {
