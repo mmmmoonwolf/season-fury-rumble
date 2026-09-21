@@ -1,0 +1,5 @@
+# เฟรมดิบจากคลิปวิดีโอ + cache ระหว่างตัด atlas ตัวละคร — ไฟล์ทำงานชั่วคราวเท่านั้น
+# (ผลลัพธ์สุดท้ายที่ commit จริงคือ assets/characters/*_atlas.png + .json)
+tools/raw/
+__pycache__/
+*.pyc
