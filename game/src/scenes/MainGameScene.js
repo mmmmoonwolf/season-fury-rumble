@@ -109,6 +109,14 @@ export class MainGameScene extends Phaser.Scene {
     for (const key of this.levelOrder) {
       const level = LEVELS[key];
       const ext = level.backgroundExt ?? "jpg";
+      // parallaxLayers = พื้นหลังหลายชั้น เลื่อนคนละความเร็วตอนกล้องแพน (ดู _buildParallax()) —
+      // เช็คก่อน backgroundImage เพราะเป็นทางเลือกแทนกันเลย ไม่ใช้ทั้งคู่พร้อมกันในแมพเดียว
+      if (level.parallaxLayers) {
+        for (const layer of level.parallaxLayers) {
+          this.load.image(layer.key, `assets/backgrounds/${layer.key}.${layer.ext ?? ext}`);
+        }
+        continue;
+      }
       // backgroundImage = ภาพเดียวทุกฤดู วางเต็ม world ตรงๆ ไม่สเกล (แมพหลายชั้นที่ world = ขนาดภาพเป๊ะอยู่แล้ว)
       if (level.backgroundImage) {
         this.load.image(level.backgroundImage, `assets/backgrounds/${level.backgroundImage}.${ext}`);
@@ -179,6 +187,12 @@ export class MainGameScene extends Phaser.Scene {
    * แล้วเลื่อนแนวตั้งให้ "เส้นพื้นในภาพ" (artReference.roofY) ตรงกับพื้น collision ของแมพ
    */
   _buildBackground() {
+    // พื้นหลังหลายชั้น (parallax) — ดู _buildParallax() ทำงานแทนที่ backgroundImage/useSolidBackground ทั้งคู่
+    if (this.level.parallaxLayers) {
+      this._buildParallax();
+      return;
+    }
+
     // ยังไม่มีอาร์ตจริง — วาดท้องฟ้าสีเรียบเต็ม world แทน (ดู src/levels/unused/blockout-arena.js ต้นแบบ)
     // ฤดูไม่เปลี่ยนสีพื้นหลัง (ไม่มี backgrounds ให้สลับ) — ปุ่ม 1-5 ยังเปลี่ยน particle/physics ได้ตามปกติ
     if (this.level.useSolidBackground) {
@@ -214,8 +228,37 @@ export class MainGameScene extends Phaser.Scene {
       .setScrollFactor(1);
   }
 
+  /**
+   * พื้นหลังหลายชั้น (parallax) — กล้องแมพนี้แพนซ้ายขวาเท่านั้น (ไม่ scroll แนวตั้ง ดู _setupCamera)
+   * แต่ละชั้นเลื่อนคนละความเร็วตาม scrollFactor (0 = นิ่งติดจอเหมือน HUD, 1 = เคลื่อนที่พร้อมโลกปกติ
+   * เหมือน platform/ตัวละคร, >1 = เคลื่อนไวกว่าโลก ใช้กับชั้นหน้าสุดให้ความรู้สึก "ใกล้กล้องมาก")
+   * ชั้นที่ scrollFactor < 1 ต้องกว้างกว่า world เผื่อไว้ ไม่งั้นจะเห็นขอบภาพโล่งตอนกล้องแพนสุดทาง
+   * (เผื่อ margin ทั้งสองข้างตามสัดส่วนที่โลกเคลื่อนหนีชั้นนั้นไปได้ไกลสุด คูณ 1.2 กันชนพอดีเป๊ะ)
+   *
+   * level.parallaxLayers = [{ key, ext?, scrollFactor, y?, displayHeight?, depth? }, ...] เรียงหลังสุด->หน้าสุด
+   * ไม่ระบุ depth = auto ไล่จากหลังสุด (-20) มาหน้าสุดตามลำดับอาเรย์ (ยังอยู่หลัง platform ทั้งหมด
+   * เพราะ platform/hazard ใช้ depth -5 ถึง 0 — อยากได้ชั้นหน้าสุด "บังตัวละคร" ต้องระบุ depth เอง ค่า > ตัวละคร)
+   */
+  _buildParallax() {
+    const worldW = this.level.worldWidth;
+    const worldH = this.level.worldHeight;
+    this.parallaxImages = [];
+    this.level.parallaxLayers.forEach((layer, i) => {
+      const scrollFactor = layer.scrollFactor ?? 1;
+      const slack = worldW * Math.abs(1 - scrollFactor) * 1.2;
+      const dispW = worldW + slack * 2;
+      const img = this.add
+        .image(worldW / 2, layer.y ?? worldH / 2, layer.key)
+        .setDisplaySize(dispW, layer.displayHeight ?? worldH)
+        .setScrollFactor(scrollFactor)
+        .setDepth(layer.depth ?? -20 + i)
+        .setOrigin(0.5, 0.5);
+      this.parallaxImages.push(img);
+    });
+  }
+
   _setBackgroundSeason(seasonKey) {
-    if (this.level.useSolidBackground || this.level.backgroundImage) return; // ภาพ/สีเดียวทุกฤดู
+    if (this.level.parallaxLayers || this.level.useSolidBackground || this.level.backgroundImage) return; // ภาพ/สีเดียวทุกฤดู
     const bgKey = this.level.backgrounds[seasonKey];
     if (bgKey) {
       this.bgImage.setTexture(bgKey);
@@ -232,8 +275,8 @@ export class MainGameScene extends Phaser.Scene {
       const tile = this.platformsGroup.create(centerX, centerY, "roof_tile");
       tile.setDisplaySize(plat.width, plat.height);
       tile.refreshBody();
-      // มีอาร์ตจริงวาดพื้นไว้ให้แล้ว (level.backgroundImage) — ซ่อน collision debug ทั้งหมด ไม่วาดทับภาพ
-      if (this.level.backgroundImage) tile.setVisible(false);
+      // มีอาร์ตจริงวาดพื้นไว้ให้แล้ว (backgroundImage/parallaxLayers) — ซ่อน collision debug ทั้งหมด ไม่วาดทับภาพ
+      if (this.level.backgroundImage || this.level.parallaxLayers) tile.setVisible(false);
       // plat.color = สีเจาะจงต่อก้อน (เช่น แมพหลายโซนสี) ชนะสีตาม kind เสมอ
       else if (plat.color != null) tile.setTint(plat.color);
       // แยกสีให้ดูออกว่าอันไหนตึก อันไหนแพลตฟอร์มลอย (แมพ blockout ยังไม่มีอาร์ต)
@@ -244,7 +287,7 @@ export class MainGameScene extends Phaser.Scene {
 
       // ก้อนทึบใต้พื้นเดินได้ — แค่ภาพประกอบให้ดูเป็นโซน/ตึก ไม่มี collision (เดินทะลุใต้พื้นได้ปกติ)
       // ข้ามถ้ามีอาร์ตจริงแล้ว (ภาพวาดชั้น/เสาไว้ให้แล้ว ไม่ต้องวาดกล่องสีทับ)
-      if (plat.fillDepth && !this.level.backgroundImage) {
+      if (plat.fillDepth && !this.level.backgroundImage && !this.level.parallaxLayers) {
         this.add
           .rectangle(centerX, plat.y + plat.height, plat.width, plat.fillDepth, plat.fillColor ?? plat.color ?? 0x334155)
           .setOrigin(0.5, 0)
