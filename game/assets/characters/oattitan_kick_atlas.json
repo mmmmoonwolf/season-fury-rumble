@@ -4,16 +4,16 @@
    "frame": {
     "x": 2,
     "y": 2,
-    "w": 295,
-    "h": 379
+    "w": 301,
+    "h": 385
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 162,
-    "y": 55,
-    "w": 295,
-    "h": 379
+    "x": 159,
+    "y": 52,
+    "w": 301,
+    "h": 385
    },
    "sourceSize": {
     "w": 640,
@@ -22,18 +22,18 @@
   },
   "kick_2.png": {
    "frame": {
-    "x": 299,
+    "x": 305,
     "y": 2,
-    "w": 305,
-    "h": 387
+    "w": 311,
+    "h": 393
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 161,
-    "y": 47,
-    "w": 305,
-    "h": 387
+    "x": 158,
+    "y": 44,
+    "w": 311,
+    "h": 393
    },
    "sourceSize": {
     "w": 640,
@@ -42,18 +42,18 @@
   },
   "kick_3.png": {
    "frame": {
-    "x": 606,
+    "x": 618,
     "y": 2,
-    "w": 320,
-    "h": 390
+    "w": 326,
+    "h": 396
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 148,
-    "y": 44,
-    "w": 320,
-    "h": 390
+    "x": 145,
+    "y": 41,
+    "w": 326,
+    "h": 396
    },
    "sourceSize": {
     "w": 640,
@@ -62,18 +62,18 @@
   },
   "kick_4.png": {
    "frame": {
-    "x": 928,
+    "x": 946,
     "y": 2,
-    "w": 326,
-    "h": 394
+    "w": 332,
+    "h": 400
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 120,
-    "y": 39,
-    "w": 326,
-    "h": 394
+    "x": 117,
+    "y": 36,
+    "w": 332,
+    "h": 400
    },
    "sourceSize": {
     "w": 640,
@@ -82,18 +82,18 @@
   },
   "kick_5.png": {
    "frame": {
-    "x": 1256,
+    "x": 1280,
     "y": 2,
-    "w": 301,
-    "h": 396
+    "w": 307,
+    "h": 402
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 101,
-    "y": 38,
-    "w": 301,
-    "h": 396
+    "x": 98,
+    "y": 35,
+    "w": 307,
+    "h": 402
    },
    "sourceSize": {
     "w": 640,
@@ -102,18 +102,18 @@
   },
   "kick_6.png": {
    "frame": {
-    "x": 1559,
+    "x": 1589,
     "y": 2,
-    "w": 307,
-    "h": 394
+    "w": 313,
+    "h": 400
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 94,
-    "y": 39,
-    "w": 307,
-    "h": 394
+    "x": 91,
+    "y": 36,
+    "w": 313,
+    "h": 400
    },
    "sourceSize": {
     "w": 640,
@@ -122,18 +122,18 @@
   },
   "kick_7.png": {
    "frame": {
-    "x": 2,
-    "y": 400,
-    "w": 321,
-    "h": 394
+    "x": 1904,
+    "y": 2,
+    "w": 327,
+    "h": 400
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 94,
-    "y": 39,
-    "w": 321,
-    "h": 394
+    "x": 91,
+    "y": 36,
+    "w": 327,
+    "h": 400
    },
    "sourceSize": {
     "w": 640,
@@ -142,18 +142,18 @@
   },
   "kick_8.png": {
    "frame": {
-    "x": 325,
-    "y": 400,
-    "w": 348,
-    "h": 393
+    "x": 2233,
+    "y": 2,
+    "w": 354,
+    "h": 399
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 91,
-    "y": 41,
-    "w": 348,
-    "h": 393
+    "x": 88,
+    "y": 38,
+    "w": 354,
+    "h": 399
    },
    "sourceSize": {
     "w": 640,
@@ -162,18 +162,18 @@
   },
   "kick_9.png": {
    "frame": {
-    "x": 675,
-    "y": 400,
-    "w": 366,
-    "h": 392
+    "x": 2589,
+    "y": 2,
+    "w": 372,
+    "h": 398
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 92,
-    "y": 41,
-    "w": 366,
-    "h": 392
+    "x": 89,
+    "y": 38,
+    "w": 372,
+    "h": 398
    },
    "sourceSize": {
     "w": 640,
@@ -182,18 +182,18 @@
   },
   "kick_10.png": {
    "frame": {
-    "x": 1043,
-    "y": 400,
-    "w": 375,
-    "h": 391
+    "x": 2963,
+    "y": 2,
+    "w": 381,
+    "h": 397
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 94,
-    "y": 42,
-    "w": 375,
-    "h": 391
+    "x": 91,
+    "y": 39,
+    "w": 381,
+    "h": 397
    },
    "sourceSize": {
     "w": 640,
@@ -202,18 +202,18 @@
   },
   "kick_11.png": {
    "frame": {
-    "x": 1420,
-    "y": 400,
-    "w": 376,
-    "h": 390
+    "x": 3346,
+    "y": 2,
+    "w": 382,
+    "h": 396
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 95,
-    "y": 43,
-    "w": 376,
-    "h": 390
+    "x": 92,
+    "y": 40,
+    "w": 382,
+    "h": 396
    },
    "sourceSize": {
     "w": 640,
@@ -223,17 +223,17 @@
   "kick_12.png": {
    "frame": {
     "x": 2,
-    "y": 796,
-    "w": 368,
-    "h": 387
+    "y": 406,
+    "w": 374,
+    "h": 393
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 97,
-    "y": 46,
-    "w": 368,
-    "h": 387
+    "x": 94,
+    "y": 43,
+    "w": 374,
+    "h": 393
    },
    "sourceSize": {
     "w": 640,
@@ -242,18 +242,18 @@
   },
   "kick_13.png": {
    "frame": {
-    "x": 372,
-    "y": 796,
-    "w": 351,
-    "h": 383
+    "x": 378,
+    "y": 406,
+    "w": 357,
+    "h": 389
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 108,
-    "y": 50,
-    "w": 351,
-    "h": 383
+    "x": 105,
+    "y": 47,
+    "w": 357,
+    "h": 389
    },
    "sourceSize": {
     "w": 640,
@@ -262,18 +262,18 @@
   },
   "kick_14.png": {
    "frame": {
-    "x": 725,
-    "y": 796,
-    "w": 320,
-    "h": 380
+    "x": 737,
+    "y": 406,
+    "w": 326,
+    "h": 386
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 146,
-    "y": 53,
-    "w": 320,
-    "h": 380
+    "x": 143,
+    "y": 50,
+    "w": 326,
+    "h": 386
    },
    "sourceSize": {
     "w": 640,
@@ -282,18 +282,18 @@
   },
   "kick_15.png": {
    "frame": {
-    "x": 1047,
-    "y": 796,
-    "w": 322,
-    "h": 381
+    "x": 1065,
+    "y": 406,
+    "w": 328,
+    "h": 387
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 148,
-    "y": 52,
-    "w": 322,
-    "h": 381
+    "x": 145,
+    "y": 49,
+    "w": 328,
+    "h": 387
    },
    "sourceSize": {
     "w": 640,
@@ -302,18 +302,18 @@
   },
   "kick_16.png": {
    "frame": {
-    "x": 1371,
-    "y": 796,
-    "w": 328,
-    "h": 380
+    "x": 1395,
+    "y": 406,
+    "w": 334,
+    "h": 386
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 147,
-    "y": 53,
-    "w": 328,
-    "h": 380
+    "x": 144,
+    "y": 50,
+    "w": 334,
+    "h": 386
    },
    "sourceSize": {
     "w": 640,
@@ -322,18 +322,18 @@
   },
   "kick_17.png": {
    "frame": {
-    "x": 2,
-    "y": 1185,
-    "w": 350,
-    "h": 379
+    "x": 1731,
+    "y": 406,
+    "w": 356,
+    "h": 385
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 142,
-    "y": 54,
-    "w": 350,
-    "h": 379
+    "x": 139,
+    "y": 51,
+    "w": 356,
+    "h": 385
    },
    "sourceSize": {
     "w": 640,
@@ -342,18 +342,18 @@
   },
   "kick_18.png": {
    "frame": {
-    "x": 354,
-    "y": 1185,
-    "w": 354,
-    "h": 378
+    "x": 2089,
+    "y": 406,
+    "w": 360,
+    "h": 384
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 141,
-    "y": 55,
-    "w": 354,
-    "h": 378
+    "x": 138,
+    "y": 52,
+    "w": 360,
+    "h": 384
    },
    "sourceSize": {
     "w": 640,
@@ -362,18 +362,18 @@
   },
   "kick_19.png": {
    "frame": {
-    "x": 710,
-    "y": 1185,
-    "w": 405,
-    "h": 383
+    "x": 2451,
+    "y": 406,
+    "w": 411,
+    "h": 389
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 128,
-    "y": 50,
-    "w": 405,
-    "h": 383
+    "x": 125,
+    "y": 47,
+    "w": 411,
+    "h": 389
    },
    "sourceSize": {
     "w": 640,
@@ -382,18 +382,18 @@
   },
   "kick_20.png": {
    "frame": {
-    "x": 1117,
-    "y": 1185,
-    "w": 405,
-    "h": 384
+    "x": 2864,
+    "y": 406,
+    "w": 411,
+    "h": 390
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 127,
-    "y": 49,
-    "w": 405,
-    "h": 384
+    "x": 124,
+    "y": 46,
+    "w": 411,
+    "h": 390
    },
    "sourceSize": {
     "w": 640,
@@ -402,18 +402,18 @@
   },
   "kick_21.png": {
    "frame": {
-    "x": 1524,
-    "y": 1185,
-    "w": 409,
-    "h": 385
+    "x": 3277,
+    "y": 406,
+    "w": 415,
+    "h": 391
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 126,
-    "y": 49,
-    "w": 409,
-    "h": 385
+    "x": 123,
+    "y": 46,
+    "w": 415,
+    "h": 391
    },
    "sourceSize": {
     "w": 640,
@@ -423,17 +423,17 @@
   "kick_22.png": {
    "frame": {
     "x": 2,
-    "y": 1572,
-    "w": 416,
-    "h": 386
+    "y": 801,
+    "w": 422,
+    "h": 392
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 123,
-    "y": 48,
-    "w": 416,
-    "h": 386
+    "x": 120,
+    "y": 45,
+    "w": 422,
+    "h": 392
    },
    "sourceSize": {
     "w": 640,
@@ -442,18 +442,18 @@
   },
   "kick_23.png": {
    "frame": {
-    "x": 420,
-    "y": 1572,
-    "w": 420,
-    "h": 385
+    "x": 426,
+    "y": 801,
+    "w": 426,
+    "h": 391
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 122,
-    "y": 49,
-    "w": 420,
-    "h": 385
+    "x": 119,
+    "y": 46,
+    "w": 426,
+    "h": 391
    },
    "sourceSize": {
     "w": 640,
@@ -462,18 +462,18 @@
   },
   "kick_24.png": {
    "frame": {
-    "x": 842,
-    "y": 1572,
-    "w": 408,
-    "h": 382
+    "x": 854,
+    "y": 801,
+    "w": 414,
+    "h": 388
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 126,
-    "y": 52,
-    "w": 408,
-    "h": 382
+    "x": 123,
+    "y": 49,
+    "w": 414,
+    "h": 388
    },
    "sourceSize": {
     "w": 640,
@@ -482,18 +482,18 @@
   },
   "kick_25.png": {
    "frame": {
-    "x": 1252,
-    "y": 1572,
-    "w": 392,
-    "h": 381
+    "x": 1270,
+    "y": 801,
+    "w": 398,
+    "h": 387
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 136,
-    "y": 53,
-    "w": 392,
-    "h": 381
+    "x": 133,
+    "y": 50,
+    "w": 398,
+    "h": 387
    },
    "sourceSize": {
     "w": 640,
@@ -502,18 +502,18 @@
   },
   "kick_26.png": {
    "frame": {
-    "x": 1646,
-    "y": 1572,
-    "w": 379,
-    "h": 382
+    "x": 1670,
+    "y": 801,
+    "w": 385,
+    "h": 388
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 148,
-    "y": 52,
-    "w": 379,
-    "h": 382
+    "x": 145,
+    "y": 49,
+    "w": 385,
+    "h": 388
    },
    "sourceSize": {
     "w": 640,
@@ -522,18 +522,18 @@
   },
   "kick_27.png": {
    "frame": {
-    "x": 2,
-    "y": 1960,
-    "w": 373,
-    "h": 382
+    "x": 2057,
+    "y": 801,
+    "w": 379,
+    "h": 388
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 160,
-    "y": 52,
-    "w": 373,
-    "h": 382
+    "x": 157,
+    "y": 49,
+    "w": 379,
+    "h": 388
    },
    "sourceSize": {
     "w": 640,
@@ -542,18 +542,18 @@
   },
   "kick_28.png": {
    "frame": {
-    "x": 377,
-    "y": 1960,
-    "w": 366,
-    "h": 384
+    "x": 2438,
+    "y": 801,
+    "w": 372,
+    "h": 390
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 175,
-    "y": 50,
-    "w": 366,
-    "h": 384
+    "x": 172,
+    "y": 47,
+    "w": 372,
+    "h": 390
    },
    "sourceSize": {
     "w": 640,
@@ -562,18 +562,18 @@
   },
   "kick_29.png": {
    "frame": {
-    "x": 745,
-    "y": 1960,
-    "w": 353,
-    "h": 386
+    "x": 2812,
+    "y": 801,
+    "w": 359,
+    "h": 392
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 191,
-    "y": 48,
-    "w": 353,
-    "h": 386
+    "x": 188,
+    "y": 45,
+    "w": 359,
+    "h": 392
    },
    "sourceSize": {
     "w": 640,
@@ -584,8 +584,8 @@
  "meta": {
   "image": "oattitan_kick_atlas.png",
   "size": {
-   "w": 2027,
-   "h": 2348
+   "w": 3730,
+   "h": 1195
   },
   "scale": "1",
   "kick": {

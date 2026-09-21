@@ -18,7 +18,7 @@ OUT = "out"; os.makedirs(OUT, exist_ok=True)
 # ที่ 280 ยังละเอียดกว่าที่วาดจริงบน 720p และพอดีราว 1:1 ที่ 1080p
 CANVAS = (342, 335); ANCHOR_X = 171; FEET_Y = 307; STANDING = 280
 HEAD_TOP = FEET_Y - STANDING
-OUTLINE_PX = 4  # 6 px วัดจากสเกล 393 — ที่สเกล 280 ต้องบางลงตามส่วน (6 x 0.7125 ~ 4)
+OUTLINE_PX = 2  # เทียบเท่า 3 px ของตัวละครอื่นที่เก็บสเกล 393 (3 x 0.7125 ~ 2) — ความหนาบนจอเท่ากัน
 G, A = "ground", "air"
 
 # เอนจิ้นถือว่า "อาร์ตหันขวา" เป็นค่าตั้งต้น แล้ว setFlipX(true) ตอนหันซ้าย (ดู Player.js: facing=1 -> setFlipX(false))
