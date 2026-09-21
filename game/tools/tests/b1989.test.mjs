@@ -1,5 +1,6 @@
-// ทดสอบ B1989/Nyx — คอมโบ 5 จังหวะ + ดาชพุ่งตี (ปลดล็อกตีติดครบ 5 ภายใน 2 วิ), ท่ากระโดดพิเศษ
-// (ถือ A/S), ท่าก้มหลบ (D), ท่าปีนบันไดของตัวเอง (ไม่ยืมท่าวิ่งเหมือนตัวละครอื่น)
+// ทดสอบ B1989/Nyx — คอมโบ 5 จังหวะ + ดาชพุ่งตี (ปลดล็อกตีติดครบ 5 ภายใน 2 วิ), ท่าปีนบันไดของตัวเอง
+// (ไม่ยืมท่าวิ่งเหมือนตัวละครอื่น), และยืนยันว่า W/A/S/D เดิน/กระโดด/กัน เหมือนตัวละครอื่นทุกตัว
+// (v35: เคยมีท่าพิเศษผูกกับ A/S ค้าง+กระโดด และ D=ก้มหลบ แต่เอาออกแล้วตามที่ขอ)
 // รัน: node tools/tests/b1989.test.mjs   (จากโฟลเดอร์ game) — ต้องขึ้น PASS ทุกบรรทัด
 import { makeScene } from "./phaser_stub.mjs";
 const G = new URL("../../src", import.meta.url).href;
@@ -71,44 +72,34 @@ function setup(CharClass = B1989) {
   ok(A.currentAttack?.name === "nyx_stab1", "กดตีหลังหมดเวลา -> กลับไปสแตบ 1 ตามปกติ ไม่ใช่ดาชพุ่งตี");
 }
 
-// ── ท่ากระโดดพิเศษ: ถือ A = jumpForward, ถือ S = jumpSpinBack, ไม่ถืออะไร = jump ปกติ ──
-// เช็ค _pickSpecialJumpState() ตรง ๆ (ไม่ผ่าน handleMovement เต็ม) เพราะ stub นี้ body.blocked.down
-// เป็น true ตายตัว ทำให้ state "jump"/"jumpForward" ข้ามไป "land" ทันทีในเฟรมเดียวกันเสมอ (ดู
-// climb_pit.test.mjs ที่เจอปัญหาเดียวกันมาก่อน) เช็ค method ตรง ๆ แม่นกว่าและไม่ติดข้อจำกัดของ stub
+// ── W/A/S/D เหมือนตัวละครอื่นทุกตัว: ไม่มีท่าพิเศษผูกกับปุ่มทิศแล้ว (v35 เอาออกตามที่ขอ) ──
 {
   const { A } = setup();
-  ok(A._pickSpecialJumpState({ aKeyDown: true }) === "jumpForward", "ถือ A ค้าง + กระโดด -> jumpForward");
-  ok(A._pickSpecialJumpState({ sKeyDown: true }) === "jumpSpinBack", "ถือ S ค้าง + กระโดด -> jumpSpinBack (S ว่างเพราะกันย้ายไป B แล้ว)");
-  ok(A._pickSpecialJumpState({}) === null, "ไม่ถือปุ่มพิเศษ -> คืน null (ใช้ jump ปกติเหมือนตัวละครอื่น)");
-  const { A: K } = setup(KunJae);
-  ok(K._pickSpecialJumpState({ aKeyDown: true }) === null, "ตัวละครอื่น (KunJae) ไม่มีท่ากระโดดพิเศษ -> คืน null เสมอ");
+  ok(A._pickSpecialJumpState({ aKeyDown: true }) === null, "Nyx ไม่มีท่ากระโดดพิเศษอีกต่อไป (ถือ A ก็คืน null เหมือนตัวละครอื่น)");
+  ok(A._pickSpecialJumpState({ sKeyDown: true }) === null, "ถือ S ก็คืน null เหมือนกัน (S กลับไปเป็นปุ่มกันของทุกตัวละคร)");
+  ok(A._tryGroundSpecial({ dKeyDown: true, dKeyPressed: true }) === false, "Nyx ไม่มีท่าก้มหลบพิเศษอีกต่อไป (กด D ก็คืน false เหมือนตัวละครอื่น)");
 }
 {
-  // double jump (จั๊มพ์ที่ 2) ไม่เข้าท่าพิเศษแม้ถือ A/S ค้างอยู่ — handleMovement เช็คเฉพาะกระโดดครั้งแรก
-  // (jumpsUsed === 0) เท่านั้นก่อนเรียก _pickSpecialJumpState ดู Player.js บรรทัดที่เรียกใช้
+  // D เดินขวาได้ปกติเหมือนตัวละครอื่นทุกตัว ไม่ใช่ท่าก้มหลบอีกต่อไป
   const { A } = setup();
-  A.jumpsUsed = 1; // จำลองว่าใช้จั๊มพ์แรกไปแล้ว (ครั้งนี้คือ double jump)
-  // หมายเหตุ: ไม่เช็ค jumpsUsed หลังจากนี้ เพราะ stub body.blocked.down เป็น true ตายตัว ทำให้ทันที
-  // ที่กระโดด สถานะจะไหลต่อไปถึง "land" ในเฟรมเดียวกัน ซึ่ง onEnter ของ "land" รีเซ็ต jumpsUsed=0 เอง
-  // (พฤติกรรมจริงในเกมไม่เป็นแบบนี้ เพราะ physics จริงใช้เวลาก่อนจะแตะพื้นอีกครั้ง)
-  A.handleMovement({ ...idle, jumpPressed: true, aKeyDown: true }, 16);
-  ok(A.lastAnim !== "b1989/jumpForward", `ดับเบิ้ลจั๊มพ์ไม่เข้าท่าพิเศษแม้ถือ A ค้างอยู่ (ได้ ${A.lastAnim})`);
+  A.handleMovement({ ...idle, right: true }, 16);
+  ok(!A.isDodging() && A.body.velocity.x > 0, "กด D (right) -> เดินขวาได้ปกติเหมือนตัวละครอื่น ไม่เข้าท่าก้มหลบ");
+}
+{
+  // กระโดดปกติ ไม่มีท่าพิเศษไม่ว่าจะถือ A/S ระหว่างกระโดดหรือไม่ก็ตาม
+  // (ไม่เช็ค lastAnim === "b1989/jump" ตรง ๆ เพราะ stub นี้ body.blocked.down เป็น true ตายตัว ทำให้
+  // ไหลต่อไปถึง "land" ในเฟรมเดียวกันเสมอ ดู climb_pit.test.mjs ที่เจอปัญหาเดียวกันมาก่อน — เช็คแค่ว่า
+  // ไม่ใช่ jumpForward/jumpSpinBack ก็พอยืนยันว่าไม่มีท่าพิเศษถูกเลือกแล้ว)
+  const { A } = setup();
+  A.handleMovement({ ...idle, jumpPressed: true, left: true }, 16);
+  ok(A.lastAnim !== "b1989/jumpForward" && A.lastAnim !== "b1989/jumpSpinBack", `ถือ A (left) + กระโดด -> ไม่มีท่าพิเศษถูกเลือก (ได้ ${A.lastAnim})`);
 }
 
-// ── ท่าก้มหลบ (กด D) — จับเวลาแล้วคืนกลับเอง ไม่กินอินพุตค้างถ้าไม่ใช่ D ──
+// ── S กลับไปเป็นปุ่มกันของทุกตัวละครเหมือนเดิม (ไม่ใช่ปุ่มเสริมของ Nyx อีกต่อไป) ──
 {
   const { A } = setup();
-  A.handleMovement({ ...idle, dKeyDown: true, dKeyPressed: true, right: true }, 16);
-  ok(A.stateMachine.is("dodge"), "กด D -> เข้าท่าก้มหลบทันที");
-  ok(Math.abs(A.body.velocity.x) < 1, "ไม่เดินขวาไปด้วยทั้งที่ D ก็คือ moveRightKey (กินอินพุตเฟรมนี้แล้ว)");
-
-  A.handleMovement({ ...idle }, 500); // เวลาผ่านไปเกิน DODGE_MS (400) แล้ว
-  ok(!A.isDodging(), "ผ่านไปเกิน 400ms แล้ว -> คืนกลับ idle/run เอง");
-}
-{
-  const { A } = setup();
-  A.handleMovement({ ...idle, right: true }, 16); // ไม่ใช่ D (จำลองลูกศรขวา) -> เดินขวาได้ปกติ
-  ok(!A.isDodging() && A.body.velocity.x > 0, "ไม่ได้กด D (แค่ right เฉย ๆ) -> เดินขวาได้ปกติ ไม่เข้าท่าก้มหลบ");
+  A.handleMovement({ ...idle, blockHeld: true }, 16);
+  ok(A.isBlocking(), "Nyx กันด้วย blockHeld เหมือนตัวละครอื่นทุกตัว (คีย์ S ผูกกับ blockHeld ใน MainGameScene ไม่ใช่ B1989.js)");
 }
 
 // ── ปีนบันไดของตัวเอง — มีท่าเฉพาะ ไม่ยืมท่าวิ่งเหมือนตัวละครอื่น ──
@@ -123,4 +114,4 @@ function setup(CharClass = B1989) {
   ok(A.lastAnim === "kunjae/run", `ตัวละครอื่นยังยืมท่าวิ่งเหมือนเดิม ไม่ถูกกระทบ (ได้ ${A.lastAnim})`);
 }
 
-console.log("\nB1989/Nyx: 5-hit combo + dash finisher, jumpForward/jumpSpinBack, dodge(D), own climb anim");
+console.log("\nB1989/Nyx: 5-hit combo + dash finisher, standard W/A/S/D (no special jump/dodge keys), own climb anim");

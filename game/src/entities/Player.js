@@ -233,8 +233,10 @@ export class Player extends Phaser.GameObjects.Sprite {
           }
         },
       })
-      // ── ท่ากระโดดพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx — ดู _pickSpecialJumpState()) ──
-      // ฟิสิกส์เหมือน "jump" ทุกอย่าง ต่างแค่ท่าทาง/ชื่อ animation ตัวละครที่ไม่ได้ผูกไว้จะไม่มีทางเข้า state นี้เลย
+      // ── ท่ากระโดดพิเศษเฉพาะตัวละคร (โครงสร้างทั่วไป — ยังไม่มีตัวละครไหนใช้จริงตอนนี้ ดู
+      // _pickSpecialJumpState() ด้านล่าง เดิม B1989/Nyx เคยใช้ผ่านปุ่ม A/S ค้าง+กระโดด แต่เอาออกแล้ว
+      // ตามที่ขอให้ใช้ W/A/S/D เหมือนตัวละครอื่น) ฟิสิกส์เหมือน "jump" ทุกอย่าง ต่างแค่ท่าทาง/ชื่อ
+      // animation ตัวละครที่ไม่ได้ override _pickSpecialJumpState() จะไม่มีทางเข้า state นี้เลย
       .addState("jumpForward", {
         onEnter: (p) => p.play?.("jumpForward", true),
         onUpdate: (p) => {
@@ -255,9 +257,10 @@ export class Player extends Phaser.GameObjects.Sprite {
           }
         },
       })
-      // ── ท่าก้มหลบเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx — ดู _tryGroundSpecial()) ──
-      // จับเวลาแล้วคืนกลับ idle/run เองแบบเดียวกับ "land" — ไม่ต้องอ่าน input ทุกเฟรม
-      // (state onUpdate ของเอนจิ้นนี้ไม่ได้รับ input พารามิเตอร์ ตั้งใจให้เป็นท่าสั้น ๆ ผ่านไปเอง)
+      // ── ท่าก้มหลบเฉพาะตัวละคร (โครงสร้างทั่วไป — ยังไม่มีตัวละครไหนใช้จริงตอนนี้ ดู
+      // _tryGroundSpecial() ด้านล่าง เดิม B1989/Nyx เคยใช้ผ่านปุ่ม D แต่เอาออกแล้วตามที่ขอ) จับเวลา
+      // แล้วคืนกลับ idle/run เองแบบเดียวกับ "land" — ไม่ต้องอ่าน input ทุกเฟรม (state onUpdate ของ
+      // เอนจิ้นนี้ไม่ได้รับ input พารามิเตอร์ ตั้งใจให้เป็นท่าสั้น ๆ ผ่านไปเอง)
       .addState("dodge", {
         onEnter: (p) => {
           p.play?.("dodge", true);
@@ -1241,7 +1244,8 @@ export class Player extends Phaser.GameObjects.Sprite {
 
   /**
    * ท่ากระโดดพิเศษ — ตัวละครทั่วไปคืน null (= ใช้ "jump" ปกติ) คลาสลูกที่มีท่าเฉพาะ override เมธอดนี้
-   * (ตอนนี้มีแค่ B1989/Nyx: ถือ A = "jumpForward", ถือ S = "jumpSpinBack" — ดู B1989.js)
+   * (ยังไม่มีตัวละครไหนใช้จริงตอนนี้ — B1989/Nyx เคย override ผ่านปุ่ม A/S ค้าง+กระโดด แต่เอาออกแล้ว
+   * ตามที่ขอให้ใช้ W/A/S/D เหมือนตัวละครอื่น เก็บ hook นี้ไว้เผื่อตัวละครในอนาคตอยากใช้)
    * เรียกเฉพาะตอนกระโดดครั้งแรก (ไม่ใช่ double jump) จาก handleMovement()
    * @returns {string|null} ชื่อ state ที่จะเข้าแทน "jump" ปกติ
    */
@@ -1252,7 +1256,7 @@ export class Player extends Phaser.GameObjects.Sprite {
   /**
    * ท่าพิเศษตอนติดพื้น (ไม่เกี่ยวกับกระโดด) — ตัวละครทั่วไปคืน false (ไม่มีอะไรพิเศษ ให้เดิน/วิ่งตามปกติ)
    * คลาสลูกที่มีท่าเฉพาะ override เมธอดนี้ คืน true = "กินอินพุตเฟรมนี้ไปแล้ว" (handleMovement return ทันที
-   * ไม่ไปเดิน/วิ่งต่อ) (ตอนนี้มีแค่ B1989/Nyx: กด D ค้าง = ท่าก้มหลบ แทนการเดินขวา — ดู B1989.js)
+   * ไม่ไปเดิน/วิ่งต่อ) (ยังไม่มีตัวละครไหนใช้จริงตอนนี้ — B1989/Nyx เคย override ผ่านปุ่ม D แต่เอาออกแล้ว)
    */
   _tryGroundSpecial(input) {
     return false;
@@ -1550,8 +1554,8 @@ export class Player extends Phaser.GameObjects.Sprite {
       return;
     }
 
-    // ท่าก้มหลบพิเศษเฉพาะตัวละคร (ตอนนี้มีแค่ B1989/Nyx) — จับเวลาแล้วคืนกลับเองใน state "dodge"
-    // (ดู _tryGroundSpecial()) ไม่ต้องอ่าน input ซ้ำระหว่างท่านี้ ปล่อยให้จบเองเหมือน "land"
+    // ท่าก้มหลบพิเศษเฉพาะตัวละคร (ยังไม่มีตัวละครไหนใช้จริงตอนนี้ ดู _tryGroundSpecial()) — จับเวลา
+    // แล้วคืนกลับเองใน state "dodge" ไม่ต้องอ่าน input ซ้ำระหว่างท่านี้ ปล่อยให้จบเองเหมือน "land"
     if (this.isDodging()) {
       this.stateMachine.update(dt);
       return;
@@ -1660,8 +1664,8 @@ export class Player extends Phaser.GameObjects.Sprite {
       this.slowMul();
     const control = onGround ? 1 : PHYSICS.AIR_CONTROL_FACTOR;
 
-    // ท่าพิเศษตอนติดพื้น (ตอนนี้มีแค่ B1989/Nyx: D = ก้มหลบ) — เช็คก่อนเดิน/วิ่งเสมอ เพราะปุ่มเดียวกับ
-    // "เดินขวา" ปกติ (moveRightKey) คืน true = กินอินพุตเฟรมนี้ไปแล้ว ไม่เดิน/วิ่งต่อ
+    // ท่าพิเศษตอนติดพื้น (ยังไม่มีตัวละครไหนใช้จริงตอนนี้ ดู _tryGroundSpecial()) — เช็คก่อนเดิน/วิ่งเสมอ
+    // คืน true = กินอินพุตเฟรมนี้ไปแล้ว ไม่เดิน/วิ่งต่อ
     if (onGround && this._tryGroundSpecial(input)) {
       this.stateMachine.update(dt);
       return;
@@ -1683,7 +1687,7 @@ export class Player extends Phaser.GameObjects.Sprite {
       const vy = this.jumpsUsed === 0 ? PHYSICS.JUMP_VELOCITY : PHYSICS.DOUBLE_JUMP_VELOCITY;
       this.body.setVelocityY(vy);
       this.scene.audio?.playJump(this.jumpsUsed); // นับก่อนบวก: 0 = กระโดดแรก, 1 = double jump
-      // ท่ากระโดดพิเศษ (ตอนนี้มีแค่ B1989/Nyx) เช็คเฉพาะกระโดดครั้งแรก ไม่ใช่ double jump
+      // ท่ากระโดดพิเศษ (ยังไม่มีตัวละครไหนใช้จริงตอนนี้ ดู _pickSpecialJumpState()) เช็คเฉพาะกระโดดครั้งแรก ไม่ใช่ double jump
       const specialState = this.jumpsUsed === 0 ? this._pickSpecialJumpState(input) : null;
       this.jumpsUsed += 1;
       this.stateMachine.setState(specialState ?? "jump", true); // force เผื่อกด double jump ตอนอยู่ state jump อยู่แล้ว

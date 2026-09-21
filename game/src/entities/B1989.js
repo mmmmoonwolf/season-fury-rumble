@@ -22,10 +22,10 @@ import { Player } from "./Player.js";
  * ที่เพิ่มใน Player._registerCombatStates ให้เล่นท่า/ดาเมจนอกลำดับคอมโบปกติได้) ดาเมจแรงกว่า ~2.5 เท่า
  * knockback/hitstun นานกว่าปกติ ~40-90% (ตัวเลขเริ่มต้น ยังไม่ผ่านเทสเล่นจริง ปรับได้ที่ NYX_DASH_FINISHER)
  *
- * ── กลไกเฉพาะตัว: ปุ่มพิเศษ (ดู Player._pickSpecialJumpState / _tryGroundSpecial) ──
- *  - ถือ A ค้าง + กระโดด = jumpForward (ลอยพุ่งไปข้างหน้า)
- *  - ถือ S ค้าง + กระโดด = jumpSpinBack (หมุนตัวกลับหลังกลางอากาศ — S ว่างเพราะกันย้ายไป B แล้ว)
- *  - กด D = ท่าก้มหลบ (dodge, ท่าจับเวลา ~400ms แล้วคืนกลับเอง) แทนการเดินขวา — ใช้ลูกศรขวาแทนถ้าจะเดินขวา
+ * ปุ่ม W/A/S/D เหมือนตัวละครอื่นทุกตัว — ไม่มีท่าพิเศษผูกกับปุ่มทิศ (v35 เอาออกแล้วตามที่ขอ เดิม
+ * เคยให้ถือ A/S ค้าง+กระโดด = jumpForward/jumpSpinBack และกด D = ท่าก้มหลบ) กระโดดใช้ animation
+ * "jump" เดียว (ยืมท่า jumpForward มาเป็นท่ากระโดดปกติ) เดิน/กระโดดเหมือนตัวละครอื่นทุกจุด
+ * เฟรม jumpSpinBack/dodge ที่ตัดมาแล้วยังอยู่ในอาร์ต แต่ไม่มี state ไหนเรียกใช้แล้ว (เผื่ออนาคตอยากเอากลับมาใช้)
  */
 
 const seq = (base, n) => Array.from({ length: n }, (_, i) => `${base}_${i + 1}.png`);
@@ -106,9 +106,6 @@ export class B1989 extends Player {
   /** มีท่าปีนบันไดของตัวเองจริง (หันหลัง) ไม่ต้องยืมท่าวิ่ง */
   static HAS_CLIMB_ANIM = true;
 
-  /** ท่าก้มหลบ (state "dodge") ค้างกี่ ms ก่อนคืนกลับเดิน/วิ่ง/ยืนเอง */
-  static DODGE_MS = 400;
-
   constructor(scene, x, y, playerIndex = 0, targetWorldHeight = B1989.WORLD_HEIGHT) {
     super(scene, x, y, B1989_ATLAS.key, playerIndex, B1989.ANIM_PREFIX);
     this.setFrame(FRAME.idle[0]);
@@ -147,21 +144,6 @@ export class B1989 extends Player {
     make("attack_4", FRAME.attack4, (FRAME.attack4.length / (NYX_COMBO[3].startup + NYX_COMBO[3].active + NYX_COMBO[3].recovery)) * 1000);
     make("attack_5", FRAME.attack5, (FRAME.attack5.length / (NYX_COMBO[4].startup + NYX_COMBO[4].active + NYX_COMBO[4].recovery)) * 1000);
     make("dash_finisher", FRAME.dashFinisher, (FRAME.dashFinisher.length / (NYX_DASH_FINISHER.startup + NYX_DASH_FINISHER.active + NYX_DASH_FINISHER.recovery)) * 1000);
-  }
-
-  // ---------- ท่าพิเศษ (ดู Player._pickSpecialJumpState / _tryGroundSpecial) ----------
-  _pickSpecialJumpState(input) {
-    if (input.aKeyDown) return "jumpForward";
-    if (input.sKeyDown) return "jumpSpinBack";
-    return null;
-  }
-
-  _tryGroundSpecial(input) {
-    if (input.dKeyPressed && !this.isAttacking() && !this.isBlocking() && !this.isDodging()) {
-      this.stateMachine.setState("dodge", true);
-      return true;
-    }
-    return false;
   }
 
   // ---------- คอมโบ 5 จังหวะ + ดาชพุ่งตี ----------
