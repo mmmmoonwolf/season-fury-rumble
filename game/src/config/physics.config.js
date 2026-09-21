@@ -77,14 +77,17 @@ export const SEASON_MODIFIERS = {
 
 /**
  * รีเซ็ต PHYSICS กลับไปที่ BASE_PHYSICS แล้วคูณด้วย modifier ของฤดูที่เลือก
- * เรียกตอนโหลด scene หรือตอนสลับฤดู — Player.js ไม่ต้องรู้เรื่องฤดูเลย
+ * และตัวคูณของ "โหมดเกม" (modeModifiers — มาจาก GAME_MODES[x].physics ใน mode.config.js เช่น
+ * โหมด platform ลดสปีดวิ่ง/ระยะดับเบิ้ลจั๊มพ์) — สองชุดคูณร่วมกันอิสระต่อกัน ไม่ต้องรู้จักกัน
+ * เรียกตอนโหลด scene หรือตอนสลับฤดู — Player.js ไม่ต้องรู้เรื่องฤดู/โหมดเลย
  * เพราะมันอ่านค่าจาก PHYSICS object เดิมเสมอ
  */
-export function applySeasonModifiers(seasonKey) {
+export function applySeasonModifiers(seasonKey, modeModifiers = {}) {
   const modifiers = SEASON_MODIFIERS[seasonKey] ?? {};
   for (const key of Object.keys(BASE_PHYSICS)) {
-    const multiplier = modifiers[key] ?? 1;
-    PHYSICS[key] = BASE_PHYSICS[key] * multiplier;
+    const seasonMul = modifiers[key] ?? 1;
+    const modeMul = modeModifiers[key] ?? 1;
+    PHYSICS[key] = BASE_PHYSICS[key] * seasonMul * modeMul;
   }
   return PHYSICS;
 }

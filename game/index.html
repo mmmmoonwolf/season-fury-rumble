@@ -31,6 +31,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
   <script type="module">
+    import { LobbyScene } from "./src/scenes/LobbyScene.js";
     import { MainGameScene } from "./src/scenes/MainGameScene.js";
 
     const config = {
@@ -52,7 +53,8 @@
         default: "arcade",
         arcade: { gravity: { y: 0 }, debug: false },
       },
-      scene: [MainGameScene],
+      // LobbyScene เริ่มก่อนเสมอ (เลือกโหมดปกติ/platform) แล้วค่อย start ไป MainGameScene
+      scene: [LobbyScene, MainGameScene],
     };
 
     new Phaser.Game(config);

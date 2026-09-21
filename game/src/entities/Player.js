@@ -639,8 +639,15 @@ export class Player extends Phaser.GameObjects.Sprite {
    * ตรวจดับเบิลแท็ป A/D -> วิ่งเร็วขึ้น
    * เก็บเวลาที่ "เพิ่งกด" ทิศนั้นครั้งล่าสุด ถ้ากดซ้ำทิศเดิมภายใน DASH_TAP_MS ถือว่าดับเบิลแท็ป
    * ดาชค้างไว้จนกว่าจะปล่อยปุ่มทิศนั้น หรือเปลี่ยนทิศ
+   *
+   * โหมด platform ปิดกลไกนี้ทั้งหมด (GAME_MODES.platform.allowDash = false ใน mode.config.js)
+   * — ดับเบิลแท็ปยังกดได้ปกติแต่ไม่เร่งสปีด เพราะแมพหลายชั้น+ตัวละครเล็กลง 60% ไม่ต้องการวิ่งเร็วพิเศษ
    */
   _updateDash(input, dt) {
+    if (this.scene.modeConfig?.allowDash === false) {
+      this._dashing = false;
+      return;
+    }
     this._tapClock = (this._tapClock ?? 0) + dt;
     const dir = input.left && !input.right ? -1 : input.right && !input.left ? 1 : 0;
     const prevDir = this._prevDir ?? 0;
@@ -940,7 +947,10 @@ export class Player extends Phaser.GameObjects.Sprite {
       characterKey: this.characterKey,
       ...this._scaleArgs,
     };
-    this._applyForm({ ...A, targetWorldHeight: A.worldHeight });
+    // A.worldHeight คำนวณไว้ตายตัวตอน class ถูกประกาศ (อิง static WORLD_HEIGHT เต็มไซส์) —
+    // ถ้าร่างเดิมถูกย่อสเกล (เช่นโหมด platform 60%) ต้องคูณอัตราส่วนเดียวกันตาม ไม่งั้นแปลงร่างแล้วตัวจะพุ่งกลับไปไซส์เต็ม
+    const scaleMul = (this._scaleArgs?.targetWorldHeight ?? this.constructor.WORLD_HEIGHT) / this.constructor.WORLD_HEIGHT;
+    this._applyForm({ ...A, targetWorldHeight: A.worldHeight * scaleMul });
     this.form = "alt";
     this.formMaxHp = A.maxHp ?? TRANSFORM.titanHp;
     this.formHp = this.formMaxHp;

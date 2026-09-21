@@ -8,12 +8,14 @@ import {
   nextCharacterKey,
 } from "../entities/roster.js";
 import { applySeasonModifiers, PHYSICS } from "../config/physics.config.js";
+import { GAME_MODES, DEFAULT_GAME_MODE } from "../config/mode.config.js";
 import { SAKURA_TERRACE } from "../levels/sakura-terrace.js";
 import {
   CITY_NIGHT, CITY_DUSK, RIVER_SUNSET, WAT_PHRA_KAEW, BANGKOK_RIVER, TOKYO_STREET,
   HERO_PLAZA, GORILLA_TEMPLE, PETERSON_BANGKOK, PETERSON_STAGE, PETERSON_FLAGSHIP,
 } from "../levels/flat-arenas.js";
 import { NEON_UNDERLINE_BANGKOK } from "../levels/neon-underline-bangkok.js";
+import { SAKURA_HEIGHTS } from "../levels/sakura-heights.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
 import { GunEffects } from "../effects/GunEffects.js";
@@ -41,10 +43,10 @@ import { BossSystem } from "../systems/BossSystem.js";
  *  - R: เริ่มรอบใหม่ (เทสง่าย ไม่ต้อง reload หน้า)
  */
 /**
- * แมพที่ใช้ได้ — กด M สลับระหว่างเล่น (เริ่มที่ตัวแรกใน LEVEL_ORDER)
+ * แมพที่ใช้ได้ — กด M สลับระหว่างเล่น (เริ่มที่ตัวแรกในลิสต์ของโหมดปัจจุบัน — ดู LEVEL_ORDER_BY_MODE)
  *
  * แมพชุดใหม่ทั้ง 3 เป็นแนวระนาบแบบเกมต่อสู้: พื้นเรียบยาว ไม่มีที่ให้ตก ใช้ภาพความละเอียดต้นฉบับ 1:1
- * sakura = แมพเดิม ปิดไว้ก่อน (ยังอยู่ในโค้ด เอากลับมาได้โดยใส่กลับเข้า LEVEL_ORDER)
+ * sakura = แมพเดิม ปิดไว้ก่อน (ยังอยู่ในโค้ด เอากลับมาได้โดยใส่กลับเข้า LEVEL_ORDER_BY_MODE.normal)
  */
 const LEVELS = {
   city_night: CITY_NIGHT,
@@ -59,16 +61,25 @@ const LEVELS = {
   peterson_stage: PETERSON_STAGE,
   peterson_flagship: PETERSON_FLAGSHIP,
   neon_underline_bangkok: NEON_UNDERLINE_BANGKOK,
+  sakura_heights: SAKURA_HEIGHTS,
   sakura: SAKURA_TERRACE,
 };
 
-/** ลำดับการสลับด้วยปุ่ม M — ไม่มี sakura อยู่ในลิสต์ = ปิดใช้งาน · ตัวแรก = แมพเริ่มต้น */
-const LEVEL_ORDER = [
-  "neon_underline_bangkok",
-  "wat_phra_kaew", "bangkok_river", "tokyo_street",
-  "city_night", "city_dusk", "river_sunset",
-  "hero_plaza", "gorilla_temple", "peterson_bangkok", "peterson_stage", "peterson_flagship",
-];
+/**
+ * ลำดับการสลับด้วยปุ่ม M แยกตามโหมดที่เลือกจากล็อบบี้ (ดู LobbyScene.js / config/mode.config.js)
+ * ไม่มี sakura (ของเดิม) อยู่ในลิสต์ไหนเลย = ปิดใช้งาน · ตัวแรกของลิสต์ = แมพเริ่มต้นของโหมดนั้น
+ *
+ * neon_underline_bangkok ย้ายมาอยู่โหมด platform (เป็นแมพหลายชั้น+บันไดเหมือนกัน) ตามที่ขอ
+ * sakura_heights = แมพใหม่ธีมศาลาซากุระ ยังเป็น blockout รอภาพจริงความละเอียดสูงกว่า
+ */
+const LEVEL_ORDER_BY_MODE = {
+  normal: [
+    "wat_phra_kaew", "bangkok_river", "tokyo_street",
+    "city_night", "city_dusk", "river_sunset",
+    "hero_plaza", "gorilla_temple", "peterson_bangkok", "peterson_stage", "peterson_flagship",
+  ],
+  platform: ["sakura_heights", "neon_underline_bangkok"],
+};
 
 const STARTING_STOCKS = 3; // จำนวนชีวิตต่อผู้เล่น — ตกครบแล้วตกรอบ ไม่ respawn อีก
 
@@ -83,10 +94,20 @@ export class MainGameScene extends Phaser.Scene {
     super("MainGameScene");
   }
 
+  /**
+   * เรียกก่อน preload()/create() เสมอ (Phaser lifecycle) — ต้อง resolve โหมดตรงนี้เพราะ preload()
+   * ต้องรู้ก่อนว่าจะโหลดภาพพื้นหลังของแมพชุดไหน (LobbyScene เซฟ registry.gameMode ไว้ก่อนมาถึง scene นี้)
+   */
+  init() {
+    this.gameMode = GAME_MODES[this.registry.get("gameMode")] ? this.registry.get("gameMode") : DEFAULT_GAME_MODE;
+    this.modeConfig = GAME_MODES[this.gameMode];
+    this.levelOrder = LEVEL_ORDER_BY_MODE[this.gameMode] ?? LEVEL_ORDER_BY_MODE[DEFAULT_GAME_MODE];
+  }
+
   preload() {
-    // โหลดภาพพื้นหลังของทุกแมพในลิสต์ ตอน preload รอบเดียว — สลับแมพกลางเกมจะได้ไม่ต้องรอโหลด
+    // โหลดภาพพื้นหลังของทุกแมพในลิสต์ (เฉพาะโหมดปัจจุบัน) ตอน preload รอบเดียว — สลับแมพกลางเกมจะได้ไม่ต้องรอโหลด
     // useSolidBackground = ยังไม่มีอาร์ต วาดท้องฟ้าสีเรียบแทน (ดู _buildBackground) — ไม่มีภาพให้โหลด
-    for (const key of LEVEL_ORDER) {
+    for (const key of this.levelOrder) {
       const level = LEVELS[key];
       const ext = level.backgroundExt ?? "jpg";
       // backgroundImage = ภาพเดียวทุกฤดู วางเต็ม world ตรงๆ ไม่สเกล (แมพหลายชั้นที่ world = ขนาดภาพเป๊ะอยู่แล้ว)
@@ -128,11 +149,11 @@ export class MainGameScene extends Phaser.Scene {
     this.physics.world.gravity.y = 0; // gravity คุมเองใน Player.js ต่อ body
 
     // แมพปัจจุบัน — เก็บใน registry เพื่อให้รอด scene.restart() (ปุ่ม R / ปุ่มสลับแมพ)
-    this.levelKey = this.registry.get("levelKey") ?? LEVEL_ORDER[0];
-    if (!LEVEL_ORDER.includes(this.levelKey)) this.levelKey = LEVEL_ORDER[0];
+    this.levelKey = this.registry.get("levelKey") ?? this.levelOrder[0];
+    if (!this.levelOrder.includes(this.levelKey)) this.levelKey = this.levelOrder[0];
     this.level = LEVELS[this.levelKey];
     this.currentSeason = "spring";
-    applySeasonModifiers(this.currentSeason); // ตั้งค่า PHYSICS ตอนเริ่มเกม
+    applySeasonModifiers(this.currentSeason, this.modeConfig.physics); // ตั้งค่า PHYSICS ตอนเริ่มเกม (ฤดู x โหมด)
 
     this.physics.world.setBounds(0, 0, this.level.worldWidth, this.level.worldHeight);
 
@@ -276,8 +297,11 @@ export class MainGameScene extends Phaser.Scene {
       CharacterClass.registerAnimations(this);
     }
 
-    this.p1 = new CharP1(this, spawn1.x, spawn1.y, 0);
-    this.p2 = new CharP2(this, spawn2.x, spawn2.y, 1);
+    // โหมด platform ย่อตัวละครลง (GAME_MODES.platform.characterScaleMul = 0.6) ให้พอดีช่องว่างระหว่างชั้น
+    // — ปกติ (characterScaleMul = 1) ผลลัพธ์เท่าค่าเริ่มต้นเดิมทุกอย่าง (WORLD_HEIGHT ของแต่ละตัวละคร)
+    const scaleMul = this.modeConfig.characterScaleMul ?? 1;
+    this.p1 = new CharP1(this, spawn1.x, spawn1.y, 0, CharP1.WORLD_HEIGHT * scaleMul);
+    this.p2 = new CharP2(this, spawn2.x, spawn2.y, 1, CharP2.WORLD_HEIGHT * scaleMul);
     // วางตัวละครโดยอ้างอิงตำแหน่งเท้า ไม่ใช่จุดกึ่งกลาง sprite
     // (spawnPoints.y เป็นค่าที่ตั้งไว้สมัย placeholder ตัวเล็ก ใช้ตรงๆ กับ sprite จริงไม่ได้)
     this._placeAtSpawn(this.p1, 0);
@@ -609,9 +633,10 @@ export class MainGameScene extends Phaser.Scene {
       this.scene.restart();
     });
 
-    // M = สลับแมพ แล้วเริ่มรอบใหม่
+    // M = สลับแมพภายในโหมดเดิม แล้วเริ่มรอบใหม่ (เลือกโหมดใหม่ต้องกลับไปที่ล็อบบี้ — reload หน้าเว็บ)
     this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M).on("down", () => {
-      const next = LEVEL_ORDER[(LEVEL_ORDER.indexOf(this.levelKey) + 1) % LEVEL_ORDER.length];
+      const order = this.levelOrder;
+      const next = order[(order.indexOf(this.levelKey) + 1) % order.length];
       this.registry.set("levelKey", next);
       this.scene.restart();
     });
@@ -650,7 +675,7 @@ export class MainGameScene extends Phaser.Scene {
     for (const [keyName, seasonName] of Object.entries(seasonKeys)) {
       this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[keyName]).on("down", () => {
         this.currentSeason = seasonName;
-        applySeasonModifiers(seasonName);
+        applySeasonModifiers(seasonName, this.modeConfig.physics);
         this.seasonEffects.setSeason(seasonName);
         this._setBackgroundSeason(seasonName);
       });
