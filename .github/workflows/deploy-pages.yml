@@ -1,0 +1,37 @@
+name: Deploy game to GitHub Pages
+
+# Publishes the game/ folder as a static site every time this branch is pushed.
+# One-time manual step required (can't be done from a workflow file):
+#   repo Settings -> Pages -> "Build and deployment" -> Source -> "GitHub Actions"
+# After that, the game is live at https://<owner>.github.io/<repo>/ and updates
+# automatically on every push to this branch — open that URL in any browser,
+# no local server / Node / Python needed (fixes running the game from a public
+# PC like an internet cafe where you can't run `npx serve`).
+on:
+  push:
+    branches: [claude/work-status-update-w3do9d]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: game
+      - id: deployment
+        uses: actions/deploy-pages@v4
