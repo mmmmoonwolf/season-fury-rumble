@@ -1,16 +1,22 @@
 name: Deploy game to GitHub Pages
 
-# Publishes the game/ folder as a static site every time this branch is pushed.
-# One-time manual step required (the default GITHUB_TOKEN can't grant itself
+# Publishes the game/ folder as a static site on every push to master.
+# The game is live at https://<owner>.github.io/<repo>/ — open that URL in any
+# browser, no local server / Node / Python needed (so the game is playable from a
+# public PC like an internet cafe, where you can't run `npx serve`).
+#
+# Must stay on master: GitHub auto-creates the `github-pages` environment with a
+# deployment branch policy allowing the default branch only. Deploying from a
+# feature branch fails in ~2s with no steps and no logs (the job is rejected
+# before a runner is ever assigned), which looks exactly like a broken workflow
+# but isn't. Feature work therefore has to land on master to go live.
+#
+# One-time manual step, already done (the default GITHUB_TOKEN can't grant itself
 # repo-admin rights, so this genuinely can't be automated from the workflow):
 #   repo Settings -> Pages -> "Build and deployment" -> Source -> "GitHub Actions"
-# After that, the game is live at https://<owner>.github.io/<repo>/ and updates
-# automatically on every push to this branch — open that URL in any browser,
-# no local server / Node / Python needed (fixes running the game from a public
-# PC like an internet cafe where you can't run `npx serve`).
 on:
   push:
-    branches: [claude/work-status-update-w3do9d]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
