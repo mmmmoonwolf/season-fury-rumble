@@ -14,7 +14,6 @@ import {
   CITY_NIGHT, CITY_DUSK, RIVER_SUNSET, WAT_PHRA_KAEW, BANGKOK_RIVER, TOKYO_STREET,
   HERO_PLAZA, GORILLA_TEMPLE, PETERSON_BANGKOK, PETERSON_STAGE, PETERSON_FLAGSHIP,
 } from "../levels/flat-arenas.js";
-import { SAKURA_HEIGHTS } from "../levels/sakura-heights.js";
 import { SeasonEffects } from "../effects/SeasonEffects.js";
 import { TransformEffect } from "../effects/TransformEffect.js";
 import { TouchControls, BOTTOM_SAFE } from "../systems/TouchControls.js";
@@ -61,7 +60,6 @@ const LEVELS = {
   peterson_bangkok: PETERSON_BANGKOK,
   peterson_stage: PETERSON_STAGE,
   peterson_flagship: PETERSON_FLAGSHIP,
-  sakura_heights: SAKURA_HEIGHTS,
   sakura: SAKURA_TERRACE,
 };
 
@@ -69,9 +67,8 @@ const LEVELS = {
  * ลำดับการสลับด้วยปุ่ม M แยกตามโหมดที่เลือกจากล็อบบี้ (ดู LobbyScene.js / config/mode.config.js)
  * ไม่มี sakura (ของเดิม) อยู่ในลิสต์ไหนเลย = ปิดใช้งาน · ตัวแรกของลิสต์ = แมพเริ่มต้นของโหมดนั้น
  *
- * neon_underline_bangkok ลบออกจากเกมทั้งหมดแล้วตามที่ผู้ใช้ขอ (ไม่ชอบแมพ + ไม่อยากให้เกมมีจุดตก/เหวอีกต่อไป
- * — เป็นแมพเดียวที่เคยใช้ level.pits) ไฟล์แมพ/อาร์ตถูกลบทิ้งจริง ไม่ใช่แค่เอาออกจากลิสต์นี้
- * sakura_heights = แมพใหม่ธีมศาลาซากุระ fall-free ไม่มี pits ตั้งแต่ต้น
+ * neon_underline_bangkok และ sakura_heights ถูกลบออกจากเกมทั้งหมดแล้ว (ไฟล์แมพ/อาร์ตหายไปจริง
+ * ไม่ใช่แค่เอาออกจากลิสต์) พร้อมกับระบบบันไดและเหว ซึ่งสองแมพนั้นเป็นผู้ใช้รายเดียว
  */
 const LEVEL_ORDER_BY_MODE = {
   normal: [
@@ -79,7 +76,6 @@ const LEVEL_ORDER_BY_MODE = {
     "city_night", "city_dusk", "river_sunset",
     "hero_plaza", "gorilla_temple", "peterson_bangkok", "peterson_stage", "peterson_flagship",
   ],
-  platform: ["sakura_heights"],
 };
 
 const STARTING_STOCKS = 3; // จำนวนชีวิตต่อผู้เล่น — ตกครบแล้วตกรอบ ไม่ respawn อีก
@@ -195,7 +191,6 @@ export class MainGameScene extends Phaser.Scene {
 
     this._buildBackground();
     this._buildPlatforms();
-    this._buildHazards();
     this._spawnPlayer();
     this._setupNetTransport(); // หลัง _spawnPlayer (ต้องมี this.players) — no-op ถ้า offline
     this._setupCamera(); // หลัง _spawnPlayer เพราะกล้องเล็งจากตำแหน่งผู้เล่น
@@ -531,25 +526,6 @@ export class MainGameScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * วาด level.ladders (โซนปีน — ยังไม่มีท่าปีนเฉพาะ ใช้แถบสีเหลืองแทนบันไดจริงไปก่อน)
-   * และ level.pits (เหวอันตราย) เป็นรูปสี่เหลี่ยม ไม่มี collision ทั้งคู่ — ชนด้วยระยะใน
-   * _checkLadderEntry/_checkPitHazard ไม่ใช่ physics body
-   */
-  _buildHazards() {
-    for (const L of this.level.ladders ?? []) {
-      this.add
-        .rectangle(L.x, (L.topY + L.bottomY) / 2, L.width, L.bottomY - L.topY, 0xfacc15, 0.35)
-        .setStrokeStyle(2, 0xfde047, 0.8)
-        .setDepth(-4);
-    }
-    for (const pit of this.level.pits ?? []) {
-      this.add
-        .rectangle(pit.x + pit.width / 2, pit.y + (this.level.worldHeight - pit.y) / 2, pit.width, this.level.worldHeight - pit.y, 0x7f1d1d, 0.5)
-        .setDepth(-4);
-    }
-  }
-
   _spawnPlayer() {
     // เทส local multiplayer เบื้องต้น — 2 ผู้เล่น ใช้ spawn point ที่ห่างกันที่สุดในลิสต์
     // (index 0 กับ 3 = ตึกซ้ายสุด กับ ตึกขวาสุด) เพื่อเช็คว่ากล้อง/ความแฟร์ทำงานตอนคนกระจายตัวสุดขั้ว
@@ -674,47 +650,6 @@ export class MainGameScene extends Phaser.Scene {
     if (player.isStunned?.()) player.stateMachine.setState("idle"); // ตายตอนการ์ดแตก/โดนตี ไม่ให้ค้างไปชีวิตใหม่
     player.guard = GUARD.max;
     this._placeAtSpawn(player, spawnIndex);
-  }
-
-  // ---------- บันได/ทางลาด (level.ladders) ----------
-  /**
-   * เช็คทุกเฟรมก่อน handleMovement — ยืนอยู่ในโซนบันได + กดขึ้น/ลงค้าง = เริ่มปีน (Player.startClimb)
-   * ปีนอยู่แล้วไม่ต้องทำอะไร (Player._handleClimbing คุมเอง) · คุมตัวไม่ได้ (สตัน/ท่ายาว) ก็ปีนไม่ได้
-   */
-  _checkLadderEntry(player, input) {
-    const ladders = this.level.ladders;
-    if (!ladders || player.isClimbing() || (!input.upHeld && !input.downHeld)) return;
-    if (player.isStunned?.() || player.isAttacking?.() || player.isUsingSkill?.() || player.isTransforming?.()) return;
-    for (const L of ladders) {
-      if (Math.abs(player.x - L.x) > L.width / 2) continue;
-      // ต้องอยู่ในช่วงความสูงของบันได (เผื่อขอบเล็กน้อยกันจับไม่ติดตอนเพิ่งลงจอด/เพิ่งก้าวออก)
-      if (player.body.bottom < L.topY - 4 || player.body.bottom > L.bottomY + 4) continue;
-      player.startClimb(L);
-      return;
-    }
-  }
-
-  // ---------- เหวกลาง (level.pits) ----------
-  /**
-   * ตกลงไปในเหว = เสีย HP ตามสัดส่วน (trueDamage ไม่สนการกัน) + เด้งกลับขึ้นตรงจุดที่ตกทันที
-   * คนละแบบกับตกขอบล่างของ world (เสีย 1 stock) — ต้องเช็คก่อนตัวจะร่วงลึกไปโดนกฎนั้นด้วย
-   */
-  _checkPitHazard(player, dt) {
-    if (player._pitGrace > 0) player._pitGrace -= dt;
-    const pits = this.level.pits;
-    if (!pits || player.isInvulnerable?.()) return;
-    if (player._pitGrace > 0) return; // เพิ่งเด้งไป กันโดนซ้ำระหว่างลอยขึ้นผ่านโซนเดิม
-    for (const pit of pits) {
-      if (player.x < pit.x || player.x > pit.x + pit.width) continue;
-      if (player.body.bottom < pit.y) continue; // เท้ายังไม่ถึงระดับปากเหว (ยืนบนพื้นข้างๆ อยู่)
-      const dmg = Math.round((pit.damagePercent ?? 0.2) * MAX_HP);
-      this._applyDamage(player, dmg, false, { trueDamage: true });
-      player.body.setVelocity(0, pit.bounceVelocityY ?? PHYSICS.JUMP_VELOCITY);
-      player.jumpsUsed = 0;
-      player._pitGrace = 600; // ms — พอให้ลอยพ้นปากเหวก่อนเช็คซ้ำ
-      this.showFloatLabel?.(player, "-" + dmg, "#f87171");
-      return;
-    }
   }
 
   // ---------- Hitstop ----------
@@ -1364,7 +1299,6 @@ export class MainGameScene extends Phaser.Scene {
 
     if (this.playerAlive.get(this.p1)) {
       const inputP1 = this._readP1Input();
-      this._checkLadderEntry(this.p1, inputP1);
       this.p1.handleMovement(inputP1, delta);
     }
 
@@ -1372,7 +1306,6 @@ export class MainGameScene extends Phaser.Scene {
       // offline: ฝั่งตรงข้ามเป็น NPC (ดู _npcInput()) · host ออนไลน์: p2 คือ guest จริง คุมด้วยแพ็คเก็ต input ล่าสุดที่ส่งมา
       // (ยังไม่เคยได้แพ็คเก็ตเลย เช่น เพิ่งต่อสำเร็จเฟรมแรกๆ — ใช้ input กลางๆ แทน ไม่ throw)
       const p2Input = this.isNetHost ? this._netP2Input ?? this._neutralNetInput() : this._npcInput(delta);
-      this._checkLadderEntry(this.p2, p2Input);
       this.p2.handleMovement(p2Input, delta);
     }
 
@@ -1390,11 +1323,6 @@ export class MainGameScene extends Phaser.Scene {
       if (this.playerAlive.get(player) && player.y > this.level.worldHeight + 50) {
         this._handlePlayerDeath(player);
       }
-    }
-
-    // เหวกลาง (level.pits) — ตกแล้วเสีย HP + เด้งกลับขึ้นตรงจุดที่ตก คนละแบบกับตกขอบแมพด้านบน (ไม่เสีย stock)
-    for (const player of this.players) {
-      if (this.playerAlive.get(player)) this._checkPitHazard(player, delta);
     }
 
     // เคลียร์ธงปุ่มบนจอ ให้ทำงานครั้งเดียวต่อการกด 1 ครั้ง เหมือน justDown

@@ -42,8 +42,6 @@ export const BASE_PHYSICS = {
   // ความเร็วแนวตกที่เริ่มนับว่าเป็น state "fall" (แยกจาก jump ขาขึ้น)
   FALL_VELOCITY_THRESHOLD: 40,
 
-  // ปีนบันได/ทางลาด (ดู Player._handleClimbing) — ช้ากว่าเดินนิดหน่อยให้รู้สึกว่ากำลังปีนจริง
-  CLIMB_SPEED: 170,
 };
 
 /**

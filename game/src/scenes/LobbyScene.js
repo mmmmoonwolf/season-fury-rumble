@@ -77,7 +77,7 @@ export class LobbyScene extends Phaser.Scene {
     });
 
     this.add
-      .text(w / 2, h * 0.92, "คลิกการ์ดเพื่อเริ่มเล่น — ระหว่างเล่นกด M สลับแมพภายในโหมดเดิมได้ตามปกติ", {
+      .text(w / 2, h * 0.92, "คลิกการ์ดเพื่อเริ่มเล่น — ระหว่างเล่น (โหมดปกติ) กด M สลับแมพ V/C เปลี่ยนตัวละคร", {
         font: "14px monospace",
         color: "#64748b",
       })
@@ -85,8 +85,7 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   _buildModeCard(x, y, w, h, mode) {
-    const isPlatform = mode.id === "platform";
-    const accent = { platform: 0x38bdf8, scramble: 0xf87171 }[mode.id] ?? 0xfacc15;
+    const accent = { scramble: 0xf87171 }[mode.id] ?? 0xfacc15;
 
     const card = this.add
       .rectangle(x, y, w, h, 0x1e293b, 0.9)
@@ -105,36 +104,23 @@ export class LobbyScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // สรุปตัวปรับแต่งของโหมดนี้ให้ดูก่อนเข้าเล่น (เฉพาะโหมด platform ที่มีของพิเศษ)
-    if (isPlatform) {
-      const lines = [
-        `ขนาดตัวละคร ${Math.round(mode.characterScaleMul * 100)}%`,
-        `สปีดวิ่ง ${Math.round((mode.physics.RUN_SPEED ?? 1) * 100)}%`,
-        "ไม่มีดับเบิลแท็ปวิ่งเร็ว",
-        `ดับเบิ้ลจั๊มพ์ ${Math.round((mode.physics.DOUBLE_JUMP_VELOCITY ?? 1) * 100)}%`,
-      ];
-      this.add
-        .text(x, y + h / 2 - 60, lines.join("\n"), {
+    // SCRAMBLE ใช้ปุ่มคนละชุดกับโหมดปกติ ต้องบอกไว้ตั้งแต่หน้าเลือก ไม่งั้นเข้าไปแล้วกดไม่ถูก
+    const isScramble = mode.id === "scramble";
+    this.add
+      .text(
+        x,
+        y + h / 2 - (isScramble ? 56 : 40),
+        isScramble
+          ? "A/D เดิน · J ตี · L กัน\nSpace กระโดด · Shift วิ่ง\n(ระบบต่อสู้คนละชุดกับโหมดปกติ)"
+          : "ควบคุม/ฟิสิกส์เดิมทุกอย่าง",
+        {
           font: "13px monospace",
-          color: "#7dd3fc",
+          color: isScramble ? "#fecaca" : "#fde68a",
           align: "center",
           lineSpacing: 4,
-        })
-        .setOrigin(0.5, 0.5);
-    } else {
-      const note =
-        mode.id === "scramble"
-          ? "A/D เดิน · J ตี · L กัน\nSpace กระโดด · Shift วิ่ง\n(ระบบต่อสู้คนละชุดกับโหมดอื่น)"
-          : "ควบคุม/ฟิสิกส์เดิมทุกอย่าง";
-      this.add
-        .text(x, y + h / 2 - (mode.id === "scramble" ? 56 : 40), note, {
-          font: "13px monospace",
-          color: mode.id === "scramble" ? "#fecaca" : "#fde68a",
-          align: "center",
-          lineSpacing: 4,
-        })
-        .setOrigin(0.5);
-    }
+        }
+      )
+      .setOrigin(0.5);
 
     card.on("pointerover", () => card.setFillStyle(0x334155, 0.95));
     card.on("pointerout", () => card.setFillStyle(0x1e293b, 0.9));

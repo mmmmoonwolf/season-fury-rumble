@@ -31,7 +31,7 @@ function makeLobby(online) {
 // ── ออนไลน์: ข้ามหน้าเลือกโหมด บังคับโหมดปกติทั้งสองฝั่ง ──
 {
   const lobby = makeLobby(true);
-  lobby.registry.set("gameMode", "platform"); // ค้างจากรอบเล่นออฟไลน์ก่อนหน้า — ต้องถูกทับ
+  lobby.registry.set("gameMode", "scramble"); // ค้างจากรอบเล่นออฟไลน์ก่อนหน้า — ต้องถูกทับ
   lobby.create();
   ok(lobby.scene.started === "MainGameScene", "ออนไลน์: เข้า MainGameScene ทันที ไม่ผ่านหน้าเลือกโหมด");
   ok(
@@ -55,7 +55,7 @@ function makeLobby(online) {
 // ── ออฟไลน์: คลิกการ์ดแล้วเซฟโหมดลง registry + ล้าง levelKey เดิม ──
 {
   const lobby = makeLobby(false);
-  lobby.registry.set("levelKey", "sakura_heights"); // ค้างจากโหมด platform รอบก่อน
+  lobby.registry.set("levelKey", "tokyo_street"); // ค้างจากรอบก่อน
   lobby._selectMode("normal");
   ok(lobby.scene.started === null, "เลือกโหมดแล้วยังไม่เข้าเกม ไปหน้าเลือกตัวละครก่อน");
   ok(lobby.portraitCells.length === ROSTER_ORDER.length * 2, `หน้าเลือกตัวมีสองแถว ตัวเรา+คู่ต่อสู้ (${lobby.portraitCells.length} ช่อง)`);
@@ -91,13 +91,13 @@ function makeLobby(online) {
 // ── เลือกตัวเดิมซ้ำ เลือกได้ทุกตัวในโรสเตอร์ ──
 {
   const lobby = makeLobby(false);
-  lobby._selectMode("platform");
+  lobby._selectMode("normal");
   for (const key of ROSTER_ORDER) {
     lobby.portraitCells.find((c) => c.side === "charP1" && c.key === key).frame.emit("pointerdown");
     if (lobby.picked.charP1 !== key) { ok(false, `เลือก ${key} ไม่ได้`); break; }
   }
   ok(lobby.picked.charP1 === ROSTER_ORDER[ROSTER_ORDER.length - 1], `เลือกได้ครบทุกตัวใน ROSTER_ORDER (${ROSTER_ORDER.length} ตัว)`);
-  ok(lobby.pendingMode === "platform", "โหมดที่เลือกไว้ยังค้างอยู่ระหว่างเลือกตัวละคร ไม่หายไป");
+  ok(lobby.pendingMode === "normal", "โหมดที่เลือกไว้ยังค้างอยู่ระหว่างเลือกตัวละคร ไม่หายไป");
 }
 
 // ── รูปย่อต้องมีจริงและโหลดในล็อบบี้ ไม่ใช่ atlas ตัวละครจริง (ไฟล์ละ ~9 MB) ──
@@ -138,7 +138,7 @@ function makeLobby(online) {
 
 // ── โหมดที่ไม่ระบุ scene ยังไป MainGameScene เหมือนเดิม ──
 {
-  for (const key of ["normal", "platform"]) {
+  for (const key of ["normal"]) {
     const lobby = makeLobby(false);
     lobby._selectMode(key);
     if (!GAME_MODES[key].skipCharacterSelect) lobby._startGame(key);

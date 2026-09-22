@@ -296,21 +296,7 @@ export class Player extends Phaser.GameObjects.Sprite {
           }
         },
       })
-      // ปีนบันได/ทางลาด — scene สั่งเข้าออกผ่าน startClimb()/_handleClimbing() (ดูหัวข้อ "ปีนบันได" ด้านล่าง)
-      // ตัดออกจาก state อื่นอัตโนมัติ: applyHit เปลี่ยนไป "hitstun" ซึ่งเรียก onExit ที่นี่ให้เอง (คืนแรงโน้มถ่วง)
-      .addState("climb", {
-        onEnter: (p) => {
-          p.body.setAllowGravity(false);
-          p.body.setVelocity(0, 0);
-          // ตัวละครทั่วไปยังไม่มีท่าปีนเฉพาะ ยืมท่าวิ่งไปก่อน — ตัวที่มีจริง (B1989/Nyx) ประกาศ
-          // static HAS_CLIMB_ANIM = true แล้วเล่นท่า "climb" ของตัวเองแทน
-          p.play?.(p.constructor.HAS_CLIMB_ANIM ? "climb" : "run", true);
-        },
-        onExit: (p) => {
-          p.body.setAllowGravity(true);
-          p._climbZone = null;
-        },
-      });
+;
   }
 
   // ---------- Attack / hitstun states ----------
@@ -1222,21 +1208,8 @@ export class Player extends Phaser.GameObjects.Sprite {
     }
   }
 
-  // ---------- ปีนบันได/ทางลาด ----------
-  // scene (MainGameScene._checkLadderEntry) ตรวจโซน + กดขึ้น/ลงเอง แล้วเรียก startClimb(zone) ให้
-  // zone = { x, topY, bottomY } — x = เส้นกลางบันได, topY/bottomY = floorY ของชั้นบน/ล่างที่เชื่อมกัน
-  // ปีนขึ้นบันไดแทนการเดิน/กระโดดทะลุพื้น ทุก platform ในเอนจิ้นนี้ยังทึบทุกด้านเหมือนเดิม
 
-  /** เข้าสู่โหมดปีน — ล็อกแนวนอนไว้กลางบันไดทันที (เท้าอยู่ที่เดิม เปลี่ยนแค่ x) */
-  startClimb(zone) {
-    this._climbZone = zone;
-    this.placeFeetAt(zone.x, this.body.bottom);
-    this.stateMachine.setState("climb", true);
-  }
 
-  isClimbing() {
-    return this.stateMachine.is("climb");
-  }
 
   isDodging() {
     return this.stateMachine.is("dodge");
@@ -1262,40 +1235,6 @@ export class Player extends Phaser.GameObjects.Sprite {
     return false;
   }
 
-  /** เรียกจาก handleMovement ทุกเฟรมที่ isClimbing() — ใช้ input.upHeld/downHeld (ค้างกด ไม่ใช่ edge แบบ jumpPressed) */
-  _handleClimbing(input, dt) {
-    const z = this._climbZone;
-    if (!z) {
-      this.stateMachine.setState("fall", true);
-      return;
-    }
-    // หลุดบันไดกลางทาง: กดทิศซ้าย/ขวา = ก้าวออก · กดกระโดด = โดดหลบออกจากบันได
-    if (input.left || input.right || input.jumpPressed) {
-      if (input.jumpPressed) {
-        this.body.setVelocityY(PHYSICS.JUMP_VELOCITY);
-        this.jumpsUsed = 1; // นับเหมือนใช้จั๊มพ์แรกไปแล้ว เหลือแค่ double jump ต่อได้
-        this.stateMachine.setState("jump", true);
-      } else {
-        this.stateMachine.setState("fall", true);
-      }
-      return;
-    }
-    const speed = PHYSICS.CLIMB_SPEED;
-    if (input.upHeld) this.body.setVelocityY(-speed);
-    else if (input.downHeld) this.body.setVelocityY(speed);
-    else this.body.setVelocityY(0);
-    // ถึงปลายบน/ล่างของบันได = ก้าวออกไปยืนบนชั้นนั้นเลย (เหมือนเพิ่งลงจอด)
-    // เช็คเฉพาะทิศที่กำลังกดอยู่ — จุดเข้าบันไดทุกครั้งอยู่ "พอดี" ขอบใดขอบหนึ่งอยู่แล้ว (เพิ่งยืนอยู่ตรงนั้น)
-    // ถ้าเช็คทั้งสองทิศแบบไม่สนอินพุต จะโดนเงื่อนไขฝั่งตรงข้ามของจุดเข้าดักไว้ทันทีตั้งแต่เฟรมแรก
-    // (ทำให้ปีนลงจากชั้นบนไม่ได้เลย — ก้าวเข้ามาปุ๊บโดนเด้งกลับออกที่เดิมปั๊บ เพราะ topY ตรงกับจุดยืนพอดี)
-    if (input.upHeld && this.body.bottom <= z.topY) {
-      this.placeFeetAt(z.x, z.topY);
-      this.stateMachine.setState("land", true);
-    } else if (input.downHeld && this.body.bottom >= z.bottomY) {
-      this.placeFeetAt(z.x, z.bottomY);
-      this.stateMachine.setState("land", true);
-    }
-  }
 
   /** หันตามปุ่มทิศที่กดอยู่ตอนเริ่มแทงใหม่ (รัวแทงไปพลางหันกลับได้) */
   _faceFromInput(input) {
@@ -1545,14 +1484,6 @@ export class Player extends Phaser.GameObjects.Sprite {
     this._tickComboTimers(dt);
     this._tickStatus(dt);
     input = this._filterInputByStatus(input);
-
-    // ปีนบันได/ทางลาดอยู่ — คุมแนวตั้งเอง ไม่ผ่าน logic เดิน/กระโดด/ต่อสู้ด้านล่างเลย
-    // (โดนตีระหว่างปีน: applyHit เปลี่ยนไป "hitstun" ซึ่งออกจาก state นี้ให้เองผ่าน onExit)
-    if (this.isClimbing()) {
-      this._handleClimbing(input, dt);
-      this.stateMachine.update(dt);
-      return;
-    }
 
     // ท่าก้มหลบพิเศษเฉพาะตัวละคร (ยังไม่มีตัวละครไหนใช้จริงตอนนี้ ดู _tryGroundSpecial()) — จับเวลา
     // แล้วคืนกลับเองใน state "dodge" ไม่ต้องอ่าน input ซ้ำระหว่างท่านี้ ปล่อยให้จบเองเหมือน "land"

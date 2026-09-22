@@ -10,10 +10,10 @@ import { Player } from "./Player.js";
  *   51F232CC (240f)  -> วิ่ง                  ลูป f147 คาบ 20 เฟรม
  *   053D2512 (240f)  -> กระโดดหน้า/หมุนกลับหลัง/ย่อตัว
  *   D63CC847 (240f)  -> ท่าตั้งการ์ด/โดนโจมตี
- *   F133C380 (408f)  -> ปีนบันได (หันหลัง — ตัวแรกในเกมที่มีท่าปีนเฉพาะ ไม่ต้องยืมท่าวิ่ง) ลูป f74 คาบ 36
  *   EDE25E85 (240f)  -> คอมโบพื้นฐาน 5 จังหวะ (สแตบมีด เลือก 5 จังหวะ "สุดแขน" ที่ต่างมุมกัน)
  *   9CCA9616 (164f)  -> คอมโบ 2: ดาชพุ่งตี (ปลดล็อกถ้าตีติดครบ 5 แล้วกดตีต่อภายใน 2 วิ)
  *   AD5802D7 (196f)  -> ท่าเสกอาวุธ (พิษเขียว/ไฟแดง) — ยังไม่ได้ใช้ ไม่มี state ไหนเรียก
+ *   F133C380 (408f)  -> ปีนบันได — เฟรมยังอยู่ใน atlas แต่ระบบบันไดถูกลบไปพร้อมโหมด platform แล้ว
  *
  * เวอร์ชันแรกมี 93 เฟรมและมีเงาติดพื้นทุกเฟรม (ทำให้ระดับเท้าเพี้ยน ท่ากระโดดดูไม่ลอย)
  * รอบนี้ gen คลิปใหม่หมดจนเงาหาย แล้วเพิ่มเฟรมเกือบเท่าตัวให้ขยับลื่นขึ้น
@@ -56,7 +56,6 @@ const FRAME = {
   dodge: seq("dodge", 8),
   block: seq("guard", 8), // ท่าตั้งการ์ด — ชื่อ anim ต้อง "block" (state ปุ่มกันของเอนจิ้นเรียกชื่อนี้ตรงๆ)
   hurt: seq("hurt", 10),
-  climb: seq("climb", 18),
   attack1: seq("attack1", 8),
   attack2: seq("attack2", 8),
   attack3: seq("attack3", 8),
@@ -83,7 +82,6 @@ const DURATION_MS = {
   dodge: 600,
   block: 430,
   hurt: 600,
-  climb: 900,
 };
 
 /**
@@ -125,16 +123,13 @@ export class B1989 extends Player {
 
   static WORLD_HEIGHT = 190;
 
-  /** มีอาร์ต idle 9 เฟรมจริงแล้ว ปิดการเขย่งด้วยโค้ด */
+  /** มีอาร์ต idle 21 เฟรมจริงแล้ว ปิดการเขย่งด้วยโค้ด */
   static IDLE_BOB_PX = 0;
 
   /** คอมโบเฉพาะตัว 5 จังหวะ (ดู Player._registerCombatStates / _finishAttack) */
   static BASIC_COMBO = NYX_COMBO;
   /** หน้าต่างเวลาหลังตีครบคอมโบก่อนโอกาสดาชพุ่งตีหมดไป — 2 วิ ตามที่ขอ (ส่วนกลางคือ 700ms) */
   static FINISHER_WINDOW = 2000;
-
-  /** มีท่าปีนบันไดของตัวเองจริง (หันหลัง) ไม่ต้องยืมท่าวิ่ง */
-  static HAS_CLIMB_ANIM = true;
 
   constructor(scene, x, y, playerIndex = 0, targetWorldHeight = B1989.WORLD_HEIGHT) {
     super(scene, x, y, B1989_ATLAS.key, playerIndex, B1989.ANIM_PREFIX);
@@ -168,7 +163,6 @@ export class B1989 extends Player {
     makeTimed("dodge", FRAME.dodge, -1);
     makeTimed("block", FRAME.block);
     makeTimed("hurt", FRAME.hurt);
-    makeTimed("climb", FRAME.climb, -1);
 
     make("attack_1", FRAME.attack1, (FRAME.attack1.length / (NYX_COMBO[0].startup + NYX_COMBO[0].active + NYX_COMBO[0].recovery)) * 1000);
     make("attack_2", FRAME.attack2, (FRAME.attack2.length / (NYX_COMBO[1].startup + NYX_COMBO[1].active + NYX_COMBO[1].recovery)) * 1000);

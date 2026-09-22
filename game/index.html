@@ -154,28 +154,31 @@
     import { LobbyScene } from "./src/scenes/LobbyScene.js";
     import { MainGameScene } from "./src/scenes/MainGameScene.js";
     import { ScrambleScene } from "./src/modes/scramble/ScrambleScene.js";
+    import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
     import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
+
+    // ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
+    const GAME_W = gameWidthFor(window.innerWidth, window.innerHeight);
+    const GAME_H = GAME_HEIGHT;
 
     const config = {
       type: Phaser.AUTO,
-      // จอ 16:9 มาตรฐาน — กล้องในเกมจะซูมให้ "ความสูงแมพ" พอดีจอเสมอ (ดู _setupCamera)
-      // แมพกว้างกว่าจอ ส่วนที่เกินใช้การแพนซ้ายขวาตามผู้เล่นแทน จึงไม่ต้องแก้ตรงนี้เวลาเปลี่ยนแมพ
-      width: 1280,
-      height: 720,
+      width: GAME_W,
+      height: GAME_H,
       backgroundColor: "#0f172a",
       scale: {
-        // FIT = ขยาย/ย่อ canvas ให้พอดีกับขนาดหน้าต่างเบราว์เซอร์ (คงสัดส่วน 900:600 ไว้)
-        // แก้ปัญหา "ภาพขยาย full screen ไม่ได้" — เดิม fix ขนาดตายตัว 900x600 เท่านั้น
+        // FIT = ขยาย/ย่อ canvas ให้พอดีหน้าต่าง โดยคงสัดส่วนผืนเกมไว้
+        // ผืนเกมถูกตั้งให้ตรงสัดส่วนจอตั้งแต่แรกแล้ว จึงไม่เหลือแถบดำบนมือถือ
         mode: Phaser.Scale.FIT,
         autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: 1280,
-        height: 720,
+        width: GAME_W,
+        height: GAME_H,
       },
       physics: {
         default: "arcade",
         arcade: { gravity: { y: 0 }, debug: false },
       },
-      // LobbyScene เริ่มก่อนเสมอ (เลือกโหมดปกติ/platform) แล้วค่อย start ไป MainGameScene
+      // LobbyScene เริ่มก่อนเสมอ (เลือกโหมด) แล้วค่อย start ไปฉากของโหมดนั้น
       scene: [LobbyScene, MainGameScene, ScrambleScene],
     };
 

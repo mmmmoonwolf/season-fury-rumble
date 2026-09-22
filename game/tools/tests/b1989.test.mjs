@@ -1,5 +1,5 @@
-// ทดสอบ B1989/Nyx — คอมโบ 5 จังหวะ + ดาชพุ่งตี (ปลดล็อกตีติดครบ 5 ภายใน 2 วิ), ท่าปีนบันไดของตัวเอง
-// (ไม่ยืมท่าวิ่งเหมือนตัวละครอื่น), และยืนยันว่า W/A/S/D เดิน/กระโดด/กัน เหมือนตัวละครอื่นทุกตัว
+// ทดสอบ B1989/Nyx — คอมโบ 5 จังหวะ + ดาชพุ่งตี (ปลดล็อกตีติดครบ 5 ภายใน 2 วิ)
+// และยืนยันว่า W/A/S/D เดิน/กระโดด/กัน เหมือนตัวละครอื่นทุกตัว
 // (v35: เคยมีท่าพิเศษผูกกับ A/S ค้าง+กระโดด และ D=ก้มหลบ แต่เอาออกแล้วตามที่ขอ)
 // รัน: node tools/tests/b1989.test.mjs   (จากโฟลเดอร์ game) — ต้องขึ้น PASS ทุกบรรทัด
 import { makeScene } from "./phaser_stub.mjs";
@@ -102,16 +102,13 @@ function setup(CharClass = B1989) {
   ok(A.isBlocking(), "Nyx กันด้วย blockHeld เหมือนตัวละครอื่นทุกตัว (คีย์ S ผูกกับ blockHeld ใน MainGameScene ไม่ใช่ B1989.js)");
 }
 
-// ── ปีนบันไดของตัวเอง — มีท่าเฉพาะ ไม่ยืมท่าวิ่งเหมือนตัวละครอื่น ──
+// ── ระบบบันไดถูกลบไปพร้อมโหมด platform แล้ว ──
+// เฟรมท่าปีนยังอยู่ใน atlas แต่ไม่มีโค้ดไหนเรียกใช้ เทสต์นี้กันการเผลอเอากลับมาครึ่ง ๆ กลาง ๆ
 {
   const { A } = setup();
-  A.startClimb({ x: A.x, topY: 0, bottomY: 200 });
-  ok(A.lastAnim === "b1989/climb", `Nyx เล่นท่าปีนของตัวเอง (ได้ ${A.lastAnim})`);
-}
-{
-  const { A } = setup(KunJae);
-  A.startClimb({ x: A.x, topY: 0, bottomY: 200 });
-  ok(A.lastAnim === "kunjae/run", `ตัวละครอื่นยังยืมท่าวิ่งเหมือนเดิม ไม่ถูกกระทบ (ได้ ${A.lastAnim})`);
+  ok(typeof A.startClimb !== "function", "ไม่มี startClimb แล้ว (ลบไปพร้อมโหมด platform)");
+  ok(typeof A.isClimbing !== "function", "ไม่มี isClimbing แล้ว");
+  ok(!A.stateMachine.states?.climb, "ไม่มี state 'climb' ใน state machine แล้ว");
 }
 
 // ── อาร์ต: metadata ต้องตรงกับ atlas ที่ build ออกมาจริง ──
@@ -163,5 +160,5 @@ function setup(CharClass = B1989) {
   );
 }
 
-console.log("\nB1989/Nyx: 5-hit combo + dash finisher, standard W/A/S/D (no special jump/dodge keys), own climb anim");
+console.log("\nB1989/Nyx: 5-hit combo + dash finisher, standard W/A/S/D (no special jump/dodge keys),");
 console.log("Art: 165 frames @ 280px standing (was 93 @ 393px) — smoother and lighter, all facing right");

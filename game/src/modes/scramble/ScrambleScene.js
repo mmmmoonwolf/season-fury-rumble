@@ -66,13 +66,19 @@ const TECH_LABEL = { off: 'Off', place: 'In place', random: 'Random' };
 
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 
-function drawBackground(g) {
+/**
+ * @param padX ระยะที่ต้องวาดเลยขอบเวทีออกไปข้างละเท่าไร
+ *   เวที SCRAMBLE กว้างตายตัว 1280 (กำแพง/ฟิสิกส์ผูกกับตัวเลขนี้ ปรับไม่ได้โดยไม่เปลี่ยน game feel)
+ *   แต่ผืนเกมกว้างตามสัดส่วนจอ (ดู index.html) บนมือถือจึงกว้างกว่าเวที
+ *   วาดพื้นหลังเลยออกไปให้เต็มจอ แล้วเลื่อนกล้องให้เวทีอยู่กลาง (ดู create())
+ */
+function drawBackground(g, padX = 0) {
   g.fillGradientStyle(C.skyTop, C.skyTop, C.skyBot, C.skyBot, 1);
-  g.fillRect(0, 0, 1280, STAGE.groundY);
+  g.fillRect(-padX, 0, 1280 + padX * 2, STAGE.groundY);
   const r = rng(7);
   for (const [color, base, minH, maxH, winA] of [[C.far, 520, 160, 330, 0.18], [C.near, 600, 120, 260, 0.32]]) {
-    let x = -20;
-    while (x < 1300) {
+    let x = -20 - padX;
+    while (x < 1300 + padX) {
       const w = 60 + r() * 110, h = minH + r() * (maxH - minH);
       g.fillStyle(color, 1); g.fillRect(x, base - h, w, h + 40);
       g.fillStyle(C.window, winA);
@@ -81,12 +87,12 @@ function drawBackground(g) {
     }
   }
   // ground + scramble crossing stripes
-  g.fillStyle(C.asphalt, 1); g.fillRect(0, STAGE.groundY, 1280, 100);
+  g.fillStyle(C.asphalt, 1); g.fillRect(-padX, STAGE.groundY, 1280 + padX * 2, 100);
   g.fillStyle(C.stripe, 0.22);
   for (let x = 60; x < 1240; x += 46) g.fillRect(x, STAGE.groundY + 18, 24, 70);
-  g.fillStyle(C.stripe, 0.5); g.fillRect(0, STAGE.groundY, 1280, 3);
+  g.fillStyle(C.stripe, 0.5); g.fillRect(-padX, STAGE.groundY, 1280 + padX * 2, 3);
   // walls
-  g.fillStyle(0x0c111c, 0.55); g.fillRect(0, 0, STAGE.wallL, 720); g.fillRect(STAGE.wallR, 0, 1280 - STAGE.wallR, 720);
+  g.fillStyle(0x0c111c, 0.55); g.fillRect(-padX, 0, STAGE.wallL + padX, 720); g.fillRect(STAGE.wallR, 0, 1280 - STAGE.wallR + padX, 720);
   g.fillStyle(C.nyxScarf, 0.5); g.fillRect(STAGE.wallL - 2, 0, 2, STAGE.groundY); g.fillRect(STAGE.wallR, 0, 2, STAGE.groundY);
   // platforms (one-way)
   for (const p of STAGE.platforms) {
@@ -187,7 +193,11 @@ class ScrambleScene extends Phaser.Scene {
     this.sim = new Game();
     this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
     this.sparks = []; this.popups = []; this.comboFade = 0;
-    drawBackground(this.add.graphics());
+    // เวทีกว้างตายตัว 1280 แต่ผืนเกมกว้างตามจอ — เลื่อนกล้องให้เวทีอยู่กลาง
+    // แล้ววาดพื้นหลังเลยออกไปข้างละ padX เพื่อไม่ให้เห็นขอบว่างสองข้างบนจอมือถือ
+    const padX = Math.max(0, (this.sys.game.config.width - STAGE.w) / 2);
+    this.cameras.main.setScroll(-padX, 0);
+    drawBackground(this.add.graphics(), padX);
     this.world = this.add.graphics();
     this.fx = this.add.graphics();
     this.hud = this.add.graphics();
