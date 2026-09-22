@@ -352,7 +352,14 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   const declared = Object.fromEntries(
     [...animsLine.matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])])
   );
-  ok(Object.keys(declared).length === 3, `อ่านจำนวนเฟรมจากฉากได้ครบ 3 ท่า (${JSON.stringify(declared)})`);
+  ok(Object.keys(declared).length >= 3, `อ่านจำนวนเฟรมจากฉากได้ (${JSON.stringify(declared)})`);
+
+  // ทุกท่าที่ฉากแม็พจาก state ของเอนจิ้น ต้องมีอยู่ใน nyxAnims จริง
+  // แม็พไปหาท่าที่ไม่มี = เรียก play() ด้วยคีย์ที่ไม่ได้ลงทะเบียน Phaser จะเตือนแล้วไม่วาดอะไรเลย
+  const mapped = [...scene.matchAll(/\{\s*run:\s*'run',[^}]*\}/g)][0]?.[0] ?? "";
+  for (const [, anim] of mapped.matchAll(/:\s*'(\w+)'/g)) {
+    ok(anim in declared, `state ที่แม็พไปท่า '${anim}' มีท่านั้นอยู่จริงใน nyxAnims`);
+  }
   for (const [name, n] of Object.entries(declared)) {
     const have = Object.keys(atlas.frames).filter((f) => f.startsWith(name + "_")).length;
     ok(have === n, `ท่า ${name}: ฉากประกาศ ${n} เฟรม และ atlas มี ${have} เฟรม`);

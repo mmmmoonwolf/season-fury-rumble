@@ -28,8 +28,20 @@ SEQ = {
     "idle": ("idle",  range(14, 22)),   # คาบ 8 เฟรม
     "walk": ("walkB", range(1, 25)),    # ใช้ทั้งคลิป — ตัดเหลือ 8 เฟรมแล้วขาแทบไม่ขยับ
     "run":  ("run",   range(49, 70)),   # คาบ 21 เฟรม
+    # โดนตี: f21-36 สะบัดรับแรง, f41-56 เซถอย — เล่นครั้งเดียวไม่วน ค้างเฟรมสุดท้ายถ้า hitstun ยาวกว่า
+    "hurt": ("hitstun", range(21, 59, 4)),
 }
 
+# เฟรมอ้างอิงสเกล — "ต่อคลิป" ไม่ใช่ตัวเดียวทั้ง build
+# คลิปแต่ละชุดถ่ายมาคนละระยะ: ชุดยืน/เดิน/วิ่ง ตัวสูง ~627 px (86% ของเฟรม)
+# ส่วนชุดโดนตี ตัวสูง ~295 px (43%) ถ้าใช้สเกลเดียวกันหมด ตัวจะเล็กลงครึ่งหนึ่งตอนโดนตี
+# เฟรมที่เลือกต้องเป็น "ท่ายืนตั้งการ์ด" เหมือนกันทุกคลิป ไม่งั้นเทียบความสูงกันไม่ได้
+CLIP_REF = {
+    "idle": "idle/f_014.png",
+    "walkB": "idle/f_014.png",   # คลิปเดินถ่ายระยะเดียวกับคลิปยืน
+    "run": "idle/f_014.png",
+    "hitstun": "hitstun/f_001.png",  # f1-16 เป็นท่ายืนก่อนโดนตี ใช้เทียบได้
+}
 
 def frame_data(path):
     """คืน (ภาพที่ตัดพื้นแล้ว, กรอบตัว, จุดกึ่งกลางหัว, จุดศูนย์กลางมวล)"""
@@ -44,12 +56,12 @@ def frame_data(path):
     return im, box, float(xs.mean()), float(xs.mean())
 
 
-# สเกลอ้างอิงจากท่ายืนเฟรมแรกของลูป idle
-_, ref_box, _, _ = frame_data(f"{RAW}/idle/f_014.png")
-SCALE = STANDING / (ref_box[3] - ref_box[1])
-print(f"scale={SCALE:.4f}  (ท่ายืนสูง {ref_box[3] - ref_box[1]} px -> {STANDING})")
-
-
+# สเกลของแต่ละคลิป = ทำให้ "ท่ายืน" ของคลิปนั้นสูงเท่ากับ STANDING เสมอ
+SCALE = {}
+for clip, ref in CLIP_REF.items():
+    _, rb, _, _ = frame_data(f"{RAW}/{ref}")
+    SCALE[clip] = STANDING / (rb[3] - rb[1])
+    print(f"  {clip:8s} ท่ายืนสูง {rb[3]-rb[1]:4d} px -> สเกล {SCALE[clip]:.4f}  (อ้างอิง {ref})")
 
 # รอบแรก: เก็บภาพที่จัดตำแหน่งแล้วทั้งหมด เพื่อหาขนาด canvas ที่พอดีจริง
 staged = {}
@@ -57,11 +69,11 @@ for name, (clip, nums) in SEQ.items():
     for i, n in enumerate(nums, 1):
         p = f"{RAW}/{clip}/f_{n:03d}.png"
         im, box, head_cx, _ = frame_data(p)
-        w, h = round(im.width * SCALE), round(im.height * SCALE)
-        im = im.resize((w, h), Image.LANCZOS)
+        sc = SCALE[clip]
+        im = im.resize((round(im.width * sc), round(im.height * sc)), Image.LANCZOS)
         # dx/dy = ระยะที่ต้องเลื่อนให้ "กึ่งกลางหัวอยู่ที่ 0" และ "เท้าอยู่ที่ 0"
-        staged[f"{name}_{i}"] = (im, head_cx * SCALE, box[3] * SCALE, (box[0] * SCALE, box[2] * SCALE, box[1] * SCALE))
-    print(f"{name:6s} {len(list(nums)):3d} เฟรม  [{clip}]")
+        staged[f"{name}_{i}"] = (im, head_cx * sc, box[3] * sc, (box[0] * sc, box[2] * sc, box[1] * sc))
+    print(f"{name:8s} {len(list(nums)):3d} เฟรม  [{clip}]")
 
 # canvas: กว้างพอให้เฟรมที่แขนยื่นสุดไม่โดนตัด สูงพอให้เฟรมที่ยกมีดสูงสุดไม่โดนตัด
 left = max(hx - x0 for _, hx, _, (x0, _, _) in staged.values())

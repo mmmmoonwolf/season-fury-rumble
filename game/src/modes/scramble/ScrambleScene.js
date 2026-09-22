@@ -325,15 +325,17 @@ class ScrambleScene extends Phaser.Scene {
       anchorX: meta.anchorX ?? 192, feetY: meta.feetY ?? 315, standing: meta.standing ?? 300,
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
-    this.nyxAnims = { idle: 8, walk: 24, run: 21 };
+    this.nyxAnims = { idle: 8, walk: 24, run: 21, hurt: 10 };
     for (const [name, n] of Object.entries(this.nyxAnims)) {
       if (this.anims.exists('scnyx/' + name)) continue;
       this.anims.create({
         key: 'scnyx/' + name,
         frames: Array.from({ length: n }, (_, i) => ({ key: 'scnyx', frame: `${name}_${i + 1}.png` })),
         // ความเร็วตั้งเป็น "เวลาต่อรอบ" ไม่ใช่ fps ตายตัว เพิ่ม/ลดเฟรมแล้วจังหวะไม่เปลี่ยน
-        frameRate: n / ({ idle: 0.8, walk: 0.7, run: 0.5 }[name]),
-        repeat: -1,
+        frameRate: n / ({ idle: 0.8, walk: 0.7, run: 0.5, hurt: 0.5 }[name]),
+        // ท่าโดนตีเล่นรอบเดียวแล้วค้างเฟรมสุดท้าย — hitstun ในเอนจิ้นยาวไม่เท่ากัน (17-38 เฟรม)
+        // ถ้าวนซ้ำ ตัวจะสะบัดรับแรงซ้ำ ๆ ทั้งที่โดนตีครั้งเดียว
+        repeat: name === "hurt" ? 0 : -1,
       });
     }
     this.nyx = this.add.sprite(0, 0, 'scnyx', 'idle_1.png').setVisible(false).setDepth(5);
@@ -341,7 +343,8 @@ class ScrambleScene extends Phaser.Scene {
 
   /** วาด Nyx ด้วยสไปรท์ถ้า state นั้นมีอาร์ตแล้ว — คืน true ถ้าวาดให้แล้ว */
   _drawNyxSprite(f) {
-    const key = f.state === 'run' ? 'run' : f.state === 'walk' ? 'walk' : f.state === 'idle' ? 'idle' : null;
+    // state ของเอนจิ้น -> ชื่อท่าที่มีอาร์ต (ที่ไม่อยู่ในตารางนี้ยังวาดเป็นกล่อง)
+    const key = { run: 'run', walk: 'walk', idle: 'idle', hitstun: 'hurt' }[f.state] ?? null;
     if (!key) { this.nyx.setVisible(false); return false; }
 
     const m = this.nyxMeta;
@@ -352,7 +355,9 @@ class ScrambleScene extends Phaser.Scene {
     this.nyx.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
     this.nyx.setPosition(f.x, f.y);
     const anim = 'scnyx/' + key;
-    if (this.nyx.anims.currentAnim?.key !== anim) this.nyx.play(anim);
+    // เล่นใหม่เมื่อ "เปลี่ยน state" ไม่ใช่เมื่อเปลี่ยนชื่อท่า — โดนตีซ้ำตอนยังอยู่ใน hitstun
+    // เอนจิ้นไม่รีเซ็ต stateF ให้ (setState เช็คว่าซ้ำเดิมไหม) ท่าจึงควรเล่นต่อไม่กระตุกกลับไปเฟรมแรก
+    if (this._nyxState !== f.state) { this._nyxState = f.state; this.nyx.play(anim); }
     this.nyx.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
     return true;
   }
