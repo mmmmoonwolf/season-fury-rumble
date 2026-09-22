@@ -115,6 +115,13 @@ const OVERLAY_CSS = `
 #sc-tune .row { display:flex; gap:6px; margin-top:10px; }
 #sc-tune .row button { flex:1; font:600 12px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; background:rgba(233,227,214,.14); border:1px solid rgba(233,227,214,.28); border-radius:8px; padding:6px; }
 #sc-touch { display:none; position:absolute; inset:auto 0 0 0; justify-content:space-between; align-items:flex-end; padding:0 calc(14px + env(safe-area-inset-right,0px)) 14px calc(14px + env(safe-area-inset-left,0px)); pointer-events:none; z-index:15; }
+/* ปุ่มล่างสุดต้องห่างขอบจอ ไม่งั้นแถบ gesture / ขีดโฮม ของมือถือกินการแตะไปก่อน = กดไม่ติด
+   (เหตุผลเดียวกับ BOTTOM_SAFE ในโหมดปกติ ซึ่งพอร์ต SCRAMBLE เข้ามาทีหลังเลยยังไม่ได้ของนี้)
+   โหมดปกติเว้นไว้ 94 หน่วยเกมจาก 720 = 13% ของความสูงจอ วัดบนมือถือแนวนอนได้ราว 56 px
+   ที่นี่ DOM ไม่ได้ย่อตาม canvas จึงต้องคิดจากความสูงจอตรง ๆ ให้ได้ระยะเท่ากัน
+   env() เป็นพื้นล่างเผื่อจอเตี้ยมาก ๆ · บรรทัด vh ไว้ให้เบราว์เซอร์เก่าที่ยังไม่รู้จัก dvh */
+#sc-touch { padding-bottom: max(13vh, calc(14px + env(safe-area-inset-bottom,0px))); }
+#sc-touch { padding-bottom: max(13dvh, calc(14px + env(safe-area-inset-bottom,0px))); }
 body.sc-touch #sc-touch { display:flex; }
 #sc-touch .pad { display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(3,48px); gap:4px; pointer-events:auto; }
 #sc-touch .acts { display:grid; grid-template-columns:repeat(2,68px); gap:8px; pointer-events:auto; }

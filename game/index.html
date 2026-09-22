@@ -49,8 +49,19 @@
       font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
       color: #e2e8f0;
     }
+    /* [hidden] ของเบราว์เซอร์อยู่ใน UA stylesheet ซึ่งแพ้ author stylesheet เสมอ ไม่ว่า specificity จะเท่าไหร่
+       .lobby-panel { display:flex } จึงทับมันทิ้ง = el.hidden = true ไม่มีผลอะไรเลย
+       ผลคือพาเนลทั้งสามอัน (เมนู/สร้างห้อง/เข้าร่วมห้อง) โผล่ซ้อนกันหมดตลอดเวลา
+       การ์ดสูง 768px แทนที่จะเป็น ~290px แล้วบนจอมือถือแนวนอน (สูง ~390-430px)
+       ปุ่ม "เล่นคนเดียว" ซึ่งอยู่บนสุดถูกดันขึ้นไปอยู่นอกจอ (วัดได้ y = -87) กดไม่ได้เลย */
+    [hidden] { display: none !important; }
+
     .lobby-card {
       width: min(420px, 90vw);
+      /* จอเตี้ย (มือถือแนวนอน) การ์ดต้องไม่ล้นออกนอกจอ ไม่งั้นปุ่มบน/ล่างหายไปเงียบ ๆ
+         เพราะ body ตั้ง overflow:hidden ไว้ จึงเลื่อนหน้าไปหาไม่ได้ด้วย */
+      max-height: calc(100dvh - 24px);
+      overflow-y: auto;
       background: #1e293b;
       border: 1px solid #334155;
       border-radius: 16px;
@@ -187,30 +198,42 @@
     import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
     import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
 
-    // ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
-    const GAME_W = gameWidthFor(window.innerWidth, window.innerHeight);
-    const GAME_H = GAME_HEIGHT;
-
-    const config = {
-      type: Phaser.AUTO,
-      width: GAME_W,
-      height: GAME_H,
-      backgroundColor: "#0f172a",
-      scale: {
-        // FIT = ขยาย/ย่อ canvas ให้พอดีหน้าต่าง โดยคงสัดส่วนผืนเกมไว้
-        // ผืนเกมถูกตั้งให้ตรงสัดส่วนจอตั้งแต่แรกแล้ว จึงไม่เหลือแถบดำบนมือถือ
-        mode: Phaser.Scale.FIT,
-        autoCenter: Phaser.Scale.CENTER_BOTH,
-        width: GAME_W,
-        height: GAME_H,
-      },
-      physics: {
-        default: "arcade",
-        arcade: { gravity: { y: 0 }, debug: false },
-      },
-      // LobbyScene เริ่มก่อนเสมอ (เลือกโหมด) แล้วค่อย start ไปฉากของโหมดนั้น
-      scene: [LobbyScene, MainGameScene, ScrambleScene],
-    };
+    /**
+     * ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
+     *
+     * ต้องคิด "ตอนกดเริ่มเล่น" ไม่ใช่ตอนโหลดหน้า: คนเล่นมือถือเปิดลิงก์มาด้วยการถือแนวตั้งเกือบทุกครั้ง
+     * แล้วค่อยหมุนจอตามที่ #rotate-hint บอก ถ้าคิดตอนโหลดหน้าจะได้สัดส่วนของ "แนวตั้ง"
+     * ซึ่งโดน MIN_GAME_WIDTH บีบเหลือ 1280x720 (16:9) แล้วพอหมุนมาเล่นแนวนอนจริง (21.6:9)
+     * Scale.FIT จะคงสัดส่วน 16:9 นั้นไว้ = แถบดำกลับมาข้างละ 75px (18% ของจอ) เหมือนก่อนแก้
+     * ซ้ำร้ายกว่าเดิมตรงที่ DOM ที่ทับบน canvas (ปุ่มของ SCRAMBLE) กว้างเต็มจอ ไม่ได้ย่อตาม canvas
+     * ปุ่มจึงไปลอยอยู่บนแถบดำ เยื้องจากภาพเกมที่อยู่ข้างใน
+     *
+     * คิดตอนกดเริ่มเล่นแล้วครอบคลุมครบ เพราะ #rotate-hint (z-index 30) ปิดทับล็อบบี้ (z-index 10)
+     * ทั้งจอเมื่อถือแนวตั้ง = กดปุ่มเริ่มเล่นตอนแนวตั้งไม่ได้อยู่แล้ว เกมจึงเริ่มได้เฉพาะตอนแนวนอน
+     */
+    function makeConfig() {
+      const w = gameWidthFor(window.innerWidth, window.innerHeight);
+      return {
+        type: Phaser.AUTO,
+        width: w,
+        height: GAME_HEIGHT,
+        backgroundColor: "#0f172a",
+        scale: {
+          // FIT = ขยาย/ย่อ canvas ให้พอดีหน้าต่าง โดยคงสัดส่วนผืนเกมไว้
+          // ผืนเกมถูกตั้งให้ตรงสัดส่วนจอตั้งแต่แรกแล้ว จึงไม่เหลือแถบดำบนมือถือ
+          mode: Phaser.Scale.FIT,
+          autoCenter: Phaser.Scale.CENTER_BOTH,
+          width: w,
+          height: GAME_HEIGHT,
+        },
+        physics: {
+          default: "arcade",
+          arcade: { gravity: { y: 0 }, debug: false },
+        },
+        // LobbyScene เริ่มก่อนเสมอ (เลือกโหมด) แล้วค่อย start ไปฉากของโหมดนั้น
+        scene: [LobbyScene, MainGameScene, ScrambleScene],
+      };
+    }
 
     // ---------- เต็มจอ / หมุนจอ (มือถือ) ----------
     // แยกออกมาจาก Phaser ตั้งใจ: ปุ่มนี้เป็น DOM ทับบน canvas จึงใช้ได้ทุกฉากโดยไม่ต้องไปแตะ scene ไหนเลย
@@ -248,7 +271,7 @@
     /** ซ่อนล็อบบี้แล้วเริ่มเกมจริง — เรียกได้จากทั้ง 3 เส้นทาง (solo / host ต่อสำเร็จ / guest ต่อสำเร็จ) */
     function startGame() {
       document.getElementById("lobby").style.display = "none";
-      window.__sfrGame = new Phaser.Game(config);
+      window.__sfrGame = new Phaser.Game(makeConfig());
     }
 
     // ---------- ปุ่ม/พาเนลล็อบบี้ ----------
