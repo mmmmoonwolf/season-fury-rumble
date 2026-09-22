@@ -25,37 +25,45 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   ok(g.p1.x < g.p2.x, "ผู้เล่นอยู่ซ้าย หุ่นอยู่ขวา");
 }
 
-// ── เดิน / วิ่ง ──
+// ── เคลื่อนที่บนพื้น: วิ่งอย่างเดียว ไม่มีท่าเดินแล้ว ──
+// เปลี่ยนตามที่ผู้เล่นสั่ง ("ไม่ต้องมีปุ่มเดินละ เอาเป็นวิ่งอย่างเดียว") — เดิมต้องกด Shift หรือ
+// ดับเบิลแท็ปถึงจะวิ่ง ซึ่งบนมือถือแปลว่าต้องกดสองปุ่มพร้อมกันตลอดเวลาที่อยากขยับเร็ว
 {
   const g = new Game();
   run(g, 40, { right: 1 });
-  ok(Math.abs(g.p1.vx - PHYS.walk) < 0.01, `เดินขวาแล้วความเร็วชนเพดาน walk = ${PHYS.walk} (ได้ ${g.p1.vx.toFixed(2)})`);
-  ok(g.p1.state === "walk" && g.p1.facing === 1, "อยู่ในสถานะ walk และหันขวา");
+  ok(Math.abs(g.p1.vx - PHYS.run) < 0.01, `กดขวาเฉย ๆ ก็วิ่งเต็มความเร็ว run = ${PHYS.run} (ได้ ${g.p1.vx.toFixed(2)})`);
+  ok(g.p1.state === "run" && g.p1.facing === 1, "อยู่ในสถานะ run และหันขวา (ไม่มีสถานะ walk อีกแล้ว)");
 
+  // กด/ไม่กดปุ่มวิ่ง ต้องได้เท่ากัน — ปุ่มวิ่งถูกถอดออกจากหน้าจอแล้ว ต้องไม่มีผลอะไรหลงเหลือ
   const g2 = new Game();
   run(g2, 40, { right: 1, run: 1 });
-  ok(Math.abs(g2.p1.vx - PHYS.run) < 0.01, `กด Shift แล้วชนเพดาน run = ${PHYS.run} (ได้ ${g2.p1.vx.toFixed(2)})`);
-  ok(g2.p1.x > g.p1.x, "วิ่งไปได้ไกลกว่าเดินในเวลาเท่ากัน");
+  ok(Math.abs(g2.p1.vx - g.p1.vx) < 0.01, "กดปุ่มวิ่งค้างไว้ด้วยก็ไม่เร็วขึ้น (ปุ่มวิ่งไม่มีผลแล้ว)");
+  ok(Math.abs(g2.p1.x - g.p1.x) < 0.01, "ระยะที่ไปได้เท่ากันเป๊ะ");
 
   run(g, 30, {}); // ปล่อยปุ่ม
   ok(g.p1.vx === 0 && g.p1.state === "idle", "ปล่อยปุ่มแล้วหยุดสนิทและกลับไป idle");
 }
 
-// ── ดับเบิลแท็ปวิ่ง ──
+// ── ความเร็วต้องช้าลงกว่าของเดิม แต่ยังเร็วกว่าท่าเดินเก่า ──
+// ผู้เล่นขอ "ปรับสปีดให้ช้าลง ไว้ค่อยทำปุ่ม dash ทีหลัง" — ค่านี้จึงต้องอยู่ระหว่างเดินเก่า (4.3)
+// กับวิ่งเก่า (6.8) เพื่อเหลือช่วงให้ dash เป็นตัวเร่งในอนาคต
+{
+  ok(PHYS.run < 6.8, `ความเร็วเคลื่อนที่ช้าลงกว่าวิ่งเดิม 6.8 (ตอนนี้ ${PHYS.run})`);
+  ok(PHYS.run > PHYS.walk, `ยังเร็วกว่าท่าเดินเดิม ${PHYS.walk} (ตอนนี้ ${PHYS.run})`);
+}
+
+// ── ดับเบิลแท็ป: กลไกยังอยู่เผื่อ dash ในอนาคต แต่ตอนนี้ต้องไม่ทำให้เร็วขึ้น ──
 {
   const g = new Game();
   g.step(inp({ right: 1, p: { right: 1 } }));
   g.step(inp({}));
   g.step(inp({ right: 1, p: { right: 1 } })); // แท็ปที่สองภายใน dashWindow
   run(g, 40, { right: 1 });
-  ok(Math.abs(g.p1.vx - PHYS.run) < 0.01, "ดับเบิลแท็ปทิศเดียวกันเร็ว ๆ = วิ่ง โดยไม่ต้องกด Shift");
+  ok(Math.abs(g.p1.vx - PHYS.run) < 0.01, "ดับเบิลแท็ปแล้วความเร็วเท่าเดิม (ยังไม่มี dash)");
 
   const g2 = new Game();
-  g2.step(inp({ right: 1, p: { right: 1 } }));
-  run(g2, PHYS.dashWindow + 5, {}); // ปล่อยนานเกินหน้าต่าง
-  g2.step(inp({ right: 1, p: { right: 1 } }));
   run(g2, 40, { right: 1 });
-  ok(Math.abs(g2.p1.vx - PHYS.walk) < 0.01, `แท็ปห่างเกิน ${PHYS.dashWindow} เฟรมแล้วไม่นับเป็นวิ่ง`);
+  ok(Math.abs(g2.p1.vx - g.p1.vx) < 0.01, "แท็ปรัว ๆ กับกดค้างเฉย ๆ ได้ความเร็วเท่ากัน");
 }
 
 // ── กระโดด: ความสูง, ดับเบิลจัมพ์, ปล่อยปุ่มแล้วเตี้ยลง ──
@@ -346,7 +354,7 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
 
   // จำนวนเฟรมต้องตรงกับ nyxAnims ในฉาก — อ่านจากไฟล์ฉากจริง ไม่ hard-code ซ้ำ
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
-  // เจาะจงบรรทัด nyxAnims เท่านั้น — ในไฟล์มี { idle: 0.8, walk: 0.7, run: 0.5 } (ตารางเวลาต่อรอบ)
+  // เจาะจงบรรทัด nyxAnims เท่านั้น — ในไฟล์มีตารางเวลาต่อรอบ { idle: 0.8, hurt: 0.5, ... }
   // อยู่ด้วย ถ้าจับกว้าง ๆ จะไปได้เลขจากตารางนั้นแทนแล้วเทสต์เพี้ยนโดยไม่รู้ตัว
   const animsLine = scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1];
   const declared = Object.fromEntries(
@@ -394,3 +402,70 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
 }
 
 console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite locks the playtested feel");
+
+// ── เวทีกว้างเท่าผืนเกม (กันอาการ "เล่นแล้วไม่เต็มจอ") ──
+// เดิมเวทีกว้างตายตัว 1280 ส่วนผืนเกมกว้างตามสัดส่วนจอ (1280-1920) ส่วนเกินถูกทาเป็นแถบมืด
+// สองข้าง บนมือถือแนวนอนกว้างข้างละ ~180 px ซึ่งผู้เล่นเห็นเป็น "เกมไม่เต็มจอ"
+{
+  const { setStageWidth, STAGE_BASE_W } = await import(G + "/core.js");
+
+  for (const w of [1280, 1558, 1920]) {
+    const st = setStageWidth(w);
+    ok(st.w === w, `ผืนเกมกว้าง ${w} -> เวทีกว้างตาม (ได้ ${st.w})`);
+    ok(st.wallL === 40 && st.wallR === w - 40, `กำแพงอยู่ขอบจอทั้งสองข้าง (${st.wallL} / ${st.wallR})`);
+    const dead = st.w - (st.wallR - st.wallL) - st.wallL * 2;
+    ok(dead === 0, `ไม่เหลือแถบมืดนอกเวที (${dead}px)`);
+  }
+
+  // แพลตฟอร์มต้องเลื่อนตามให้อยู่กลางเวที ระยะระหว่างกันและความสูงห้ามเปลี่ยน
+  // ไม่งั้นระยะกระโดด/คอมโบที่ playtest ไว้แล้วจะเพี้ยนไปเงียบ ๆ
+  const base = setStageWidth(STAGE_BASE_W).platforms.map((p) => ({ ...p }));
+  const wide = setStageWidth(1920).platforms.map((p) => ({ ...p }));
+  const shift = (1920 - STAGE_BASE_W) / 2;
+  let sameShape = true;
+  for (let i = 0; i < base.length; i++) {
+    if (wide[i].y !== base[i].y) sameShape = false;
+    if (wide[i].x2 - wide[i].x1 !== base[i].x2 - base[i].x1) sameShape = false;
+    if (wide[i].x1 - base[i].x1 !== shift) sameShape = false;
+  }
+  ok(sameShape, "แพลตฟอร์มเลื่อนไปกลางเวทีทั้งชุด ขนาด/ความสูง/ระยะห่างเท่าเดิมทุกอัน");
+
+  const mid = setStageWidth(1920);
+  const centre = (mid.platforms[0].x1 + mid.platforms[0].x2) / 2;
+  ok(Math.abs(centre - mid.w / 2) < 1, `แพลตฟอร์มกลางยังอยู่กึ่งกลางเวที (${centre} เทียบ ${mid.w / 2})`);
+
+  ok(setStageWidth(900).w === STAGE_BASE_W, "ผืนเกมแคบกว่าเวทีพื้นฐานก็ไม่ย่อเวทีลง (กำแพงจะทับตัวละคร)");
+  setStageWidth(STAGE_BASE_W); // คืนค่าให้เทสต์อื่นที่รันต่อจากนี้
+}
+
+// ── ฉากต้องไม่เหลือโค้ดชดเชยขอบเวทีแบบเดิม ──
+{
+  const fs = await import("fs");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  ok(!/\bpadX\b/.test(scene), "ฉากไม่ต้องเลื่อนกล้องชดเชยขอบเวทีอีกแล้ว (ไม่มี padX)");
+  ok(/setStageWidth\(this\.sys\.game\.config\.width\)/.test(scene), "ฉากตั้งความกว้างเวทีจากผืนเกมจริง");
+  ok(!/data-code="ShiftLeft"/.test(scene), 'ปุ่ม "Run" ถูกถอดออกจากปุ่มบนจอแล้ว (วิ่งเสมอ)');
+  ok(!/walk:\s*\d+/.test(scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1]), "ไม่ลงทะเบียนท่าเดินใน atlas อีกแล้ว");
+}
+
+// ── ของที่ฉากใช้จาก core.js ต้อง import มาครบ ──
+// เทสต์ที่อ่านไฟล์เป็นข้อความอย่างเดียวจับไม่ได้: โค้ดที่เรียก setStageWidth() มีอยู่จริงในไฟล์
+// แต่ถ้าลืมใส่ในบรรทัด import จะเป็น ReferenceError ตอนรัน ซึ่งในเบราว์เซอร์แปลว่าฉากพังทั้งฉาก
+// (เจอมาแล้วรอบนี้ — ไฟล์ผ่านเทสต์ข้อความหมดแต่เปิดจริงขึ้น "setStageWidth is not defined")
+{
+  const fs = await import("fs");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const core = await import(G + "/core.js");
+  const imported = new Set(
+    (scene.match(/import \{([^}]*)\} from ["']\.\/core\.js["']/)?.[1] ?? "")
+      .split(",").map((x) => x.trim()).filter(Boolean)
+  );
+  const body = scene.replace(/import \{[^}]*\} from ["'][^"']*["'];?/g, "");
+  const missing = Object.keys(core).filter(
+    (name) => !imported.has(name) && new RegExp(`\\b${name}\\s*\\(`).test(body)
+  );
+  ok(missing.length === 0, `ฉากเรียกใช้ของจาก core.js ครบทุกตัวที่ import ไว้ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
+  for (const name of imported) {
+    ok(name in core, `core.js ส่งออก ${name} จริงตามที่ฉาก import`);
+  }
+}

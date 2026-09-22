@@ -22,13 +22,48 @@ const STAGE = {
   ],
 };
 
+const STAGE_BASE_W = STAGE.w;   // ความกว้างที่เลย์เอาต์แพลตฟอร์มด้านบนถูกออกแบบไว้
+
+/**
+ * ขยายเวทีให้กว้างเท่าผืนเกมจริง
+ *
+ * เดิมเวทีกว้างตายตัว 1280 ส่วนผืนเกมกว้างตามสัดส่วนจอ (1280-1920) ฉากจึงต้องเลื่อนกล้อง
+ * ให้เวทีอยู่กลางแล้วเหลือขอบสองข้างที่ไม่ใช่พื้นที่เล่น ซึ่ง drawBackground ทาสีคลุมเป็นแถบมืด
+ * บนมือถือแนวนอน (21.6:9) แถบนั้นกว้างข้างละ ~180 px = เห็นเป็น "เกมไม่เต็มจอ" ชัดเจน
+ *
+ * กำแพงเลื่อนออกไปอยู่ขอบจอแทน ระยะจากกำแพงถึงขอบ (wallL) คงเดิม
+ * แพลตฟอร์มเลื่อนตามให้อยู่กลางเวทีเหมือนเดิม — ระยะห่างระหว่างแพลตฟอร์มกับความสูงไม่เปลี่ยน
+ * จึงไม่กระทบระยะกระโดด/คอมโบที่ playtest ไว้แล้ว ได้แค่พื้นราบสองข้างยาวขึ้น
+ */
+function setStageWidth(w) {
+  const width = Math.max(STAGE_BASE_W, Math.round(w));
+  const shift = (width - STAGE_BASE_W) / 2;
+  STAGE.w = width;
+  STAGE.wallR = width - STAGE.wallL;
+  for (let i = 0; i < STAGE.platforms.length; i++) {
+    const base = BASE_PLATFORMS[i];
+    STAGE.platforms[i].x1 = base.x1 + shift;
+    STAGE.platforms[i].x2 = base.x2 + shift;
+  }
+  return STAGE;
+}
+const BASE_PLATFORMS = STAGE.platforms.map((p) => ({ x1: p.x1, x2: p.x2 }));
+
 const PHYS = {
   gravity: 0.95, fallMax: 15, fastFall: 22,
-  walk: 4.3, run: 6.8, groundAccel: 1.1, runAccelMul: 1.3, stopFric: 0.72,
+  // ไม่มีท่าเดินแล้ว — เคลื่อนที่บนพื้นคือวิ่งอย่างเดียว (ดู running ใน step())
+  // run ลดจาก 6.8 เพราะตอนนี้มันคือความเร็วปกติ ไม่ใช่ความเร็วตอนกดเร่ง
+  // เว้นช่วงไว้ให้ปุ่ม dash ที่จะทำทีหลังเป็นตัวเร่งแทน
+  // walk ไม่ได้ใช้แล้วแต่คงไว้ให้ MOVES/เทสต์เดิมอ้างถึงได้ และเผื่อกลับมาใช้ตอนทำ dash
+  walk: 4.3, run: 5.2, groundAccel: 1.1, runAccelMul: 1.3, stopFric: 0.72,
   airAccel: 0.65, airMax: 6.2, airFric: 0.97,
   jumpV: -20, dJumpV: -18, jumpCut: -7,
   coyote: 6, buffer: 8, dashWindow: 14,
-  width: 44, standH: 118, crouchH: 74,
+  // crouchH ขยับจาก 74 เป็น 88 ให้ตรงกับอาร์ตท่าย่อที่ใช้จริง — คลิปต้นฉบับย่อลึกแบบนั่งยอง (34%)
+  // ซึ่งบนจอดูเหมือน "ตัวหดเล็กลง" มากกว่า "ย่อตัว" ฝั่งอาร์ตจึงคูณขึ้น 1.13 (ดู SEQ_SCALE ใน build)
+  // กรอบต้องขยับตามไม่งั้นสไปรท์โผล่พ้นกรอบ 38% ซึ่งเห็นชัดมากในห้องซ้อมที่เปิดโชว์ hitbox อยู่
+  // ผลต่อการเล่น: ย่อหลบท่าที่ตีสูงได้น้อยลงนิดหน่อย (jab1 ตีช่วง 66-96 เหนือเท้า)
+  width: 44, standH: 118, crouchH: 88,
   techWindow: 10, techLockout: 40, techFrames: 10, techRollFrames: 20, techRollSpeed: 7,
   knockdownFrames: 28,
 };
@@ -98,8 +133,11 @@ function overlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y 
 class Game {
   constructor() {
     this.frame = 0;
-    this.p1 = new Fighter('p1', 'NYX', 420, 1);
-    this.p2 = new Fighter('p2', 'DUMMY', 860, -1);
+    // จุดเกิดเลื่อนตามเวทีที่กว้างขึ้นเหมือนแพลตฟอร์ม ไม่งั้นทั้งคู่ไปกองอยู่ค่อนซ้ายของจอ
+    // ระยะห่างระหว่างสองฝั่ง (440) คงเดิม = ระยะเข้าปะทะที่ playtest ไว้ไม่เปลี่ยน
+    const shift = (STAGE.w - STAGE_BASE_W) / 2;
+    this.p1 = new Fighter('p1', 'NYX', 420 + shift, 1);
+    this.p2 = new Fighter('p2', 'DUMMY', 860 + shift, -1);
     this.dummyMode = 'stand';
     this.dummyTech = 'off';
     this.lastInp = null;
@@ -187,7 +225,9 @@ class Game {
       this.lastTap = { dir: tapDir, f: this.frame };
     }
     if (dir === 0) this.dashLatch = false;
-    const running = inp.run || this.dashLatch;
+    // วิ่งเสมอ — ไม่มีปุ่มเดิน/ปุ่มวิ่งแยกแล้ว ตามที่ผู้เล่นขอ ("เกมนี้ไม่จำเป็นต้องเดิน")
+    // ยังคำนวณ dashLatch ไว้ข้างบนเพราะปุ่ม dash ที่จะทำทีหลังจะมาใช้ต่อ
+    const running = true;
 
     if (!inp.jump) f.jumpHeldSinceTakeoff = false;
 
@@ -419,4 +459,4 @@ class Game {
 // ===================== Input =====================
 const held = new Set(); let pressed = new Set();
 
-export { STAGE, PHYS, MOVES, ACTIONABLE, Fighter, Game, overlap };
+export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, ACTIONABLE, Fighter, Game, overlap };

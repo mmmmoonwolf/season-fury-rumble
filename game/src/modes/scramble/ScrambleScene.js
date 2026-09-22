@@ -1,4 +1,4 @@
-import { STAGE, PHYS, MOVES, Game } from "./core.js";
+import { STAGE, setStageWidth, PHYS, MOVES, Game } from "./core.js";
 
 /**
  * SCRAMBLE — ฉาก Phaser: renderer แบบกล่อง (greybox) + เครื่องมือดีบัก
@@ -41,12 +41,16 @@ function readInput() {
 }
 
 /**
- * ความสูงหัวจรดเท้าของสไปรท์ Nyx บนเวที (พิกเซลของเวที 1280x720)
+ * ความสูงหัวจรดเท้าของสไปรท์ Nyx บนเวที (พิกเซลของเวที สูง 720)
  * hurtbox สูง PHYS.standH = 118 — ตั้งไว้ 130 = สูงกว่ากรอบ 11% ซึ่งเป็นสัดส่วนปกติของเกมต่อสู้
  * (ลองแล้ว 150 ตัวใหญ่เกินกรอบ 28% ดูเหมือนกรอบเล็กกว่าตัวจนโดนตีแล้วงง)
  * ปรับค่านี้ค่าเดียวถ้าเล่นแล้วรู้สึกตัวใหญ่/เล็กไป
  */
 const SPRITE_H = 130;
+
+// ระยะที่เท้าก้าวได้หนึ่งก้าวเมื่อสไปรท์สูง SPRITE_H — วัดจากคลิปต้นฉบับ (ระยะถ่างขาสูงสุด 490 px
+// ตอนตัวสูง 627 px) แล้วเทียบมาตามสัดส่วน ใช้กำหนดเวลาต่อรอบของท่าวิ่งให้เท้าไม่ไถไปกับพื้น
+const RUN_STRIDE = 102;
 
 const isTouch = (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 
@@ -67,18 +71,17 @@ const TECH_LABEL = { off: 'Off', place: 'In place', random: 'Random' };
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
 
 /**
- * @param padX ระยะที่ต้องวาดเลยขอบเวทีออกไปข้างละเท่าไร
- *   เวที SCRAMBLE กว้างตายตัว 1280 (กำแพง/ฟิสิกส์ผูกกับตัวเลขนี้ ปรับไม่ได้โดยไม่เปลี่ยน game feel)
+ *   เวที SCRAMBLE กว้างเท่าผืนเกม (setStageWidth) กำแพงจึงอยู่ขอบจอพอดี
  *   แต่ผืนเกมกว้างตามสัดส่วนจอ (ดู index.html) บนมือถือจึงกว้างกว่าเวที
  *   วาดพื้นหลังเลยออกไปให้เต็มจอ แล้วเลื่อนกล้องให้เวทีอยู่กลาง (ดู create())
  */
-function drawBackground(g, padX = 0) {
+function drawBackground(g) {
   g.fillGradientStyle(C.skyTop, C.skyTop, C.skyBot, C.skyBot, 1);
-  g.fillRect(-padX, 0, 1280 + padX * 2, STAGE.groundY);
+  g.fillRect(0, 0, STAGE.w, STAGE.groundY);
   const r = rng(7);
   for (const [color, base, minH, maxH, winA] of [[C.far, 520, 160, 330, 0.18], [C.near, 600, 120, 260, 0.32]]) {
-    let x = -20 - padX;
-    while (x < 1300 + padX) {
+    let x = -20;
+    while (x < STAGE.w + 20) {
       const w = 60 + r() * 110, h = minH + r() * (maxH - minH);
       g.fillStyle(color, 1); g.fillRect(x, base - h, w, h + 40);
       g.fillStyle(C.window, winA);
@@ -87,12 +90,12 @@ function drawBackground(g, padX = 0) {
     }
   }
   // ground + scramble crossing stripes
-  g.fillStyle(C.asphalt, 1); g.fillRect(-padX, STAGE.groundY, 1280 + padX * 2, 100);
+  g.fillStyle(C.asphalt, 1); g.fillRect(0, STAGE.groundY, STAGE.w, 100);
   g.fillStyle(C.stripe, 0.22);
   for (let x = 60; x < 1240; x += 46) g.fillRect(x, STAGE.groundY + 18, 24, 70);
-  g.fillStyle(C.stripe, 0.5); g.fillRect(-padX, STAGE.groundY, 1280 + padX * 2, 3);
+  g.fillStyle(C.stripe, 0.5); g.fillRect(0, STAGE.groundY, STAGE.w, 3);
   // walls
-  g.fillStyle(0x0c111c, 0.55); g.fillRect(-padX, 0, STAGE.wallL + padX, 720); g.fillRect(STAGE.wallR, 0, 1280 - STAGE.wallR + padX, 720);
+  g.fillStyle(0x0c111c, 0.55); g.fillRect(0, 0, STAGE.wallL, 720); g.fillRect(STAGE.wallR, 0, STAGE.w - STAGE.wallR, 720);
   g.fillStyle(C.nyxScarf, 0.5); g.fillRect(STAGE.wallL - 2, 0, 2, STAGE.groundY); g.fillRect(STAGE.wallR, 0, 2, STAGE.groundY);
   // platforms (one-way)
   for (const p of STAGE.platforms) {
@@ -145,14 +148,13 @@ const OVERLAY_HTML = `
     <button data-code="KeyA">Left</button><button data-code="KeyS">Down</button><button data-code="KeyD">Right</button>
   </div>
   <div class="acts">
-    <button data-code="KeyL">Block</button><button data-code="ShiftLeft">Run</button>
+    <button class="big" data-code="KeyL">Block</button>
     <button class="big" data-code="Space">Jump</button><button class="big" data-code="KeyJ">Attack</button>
   </div>
 </div>`;
 
 const TUNE = [
-  ['walk', 'Walk speed', 2, 8, 0.1],
-  ['run', 'Run speed', 4, 12, 0.1],
+  ['run', 'Move speed', 2.5, 10, 0.1],   // ไม่มีท่าเดินแล้ว เหลือความเร็วเดียว
   ['runAccelMul', 'Run acceleration', 0.6, 3, 0.1],
   ['jumpV', 'Jump strength', -26, -14, 0.5],
   ['dJumpV', 'Double jump strength', -24, -12, 0.5],
@@ -197,29 +199,32 @@ class ScrambleScene extends Phaser.Scene {
     // ถอดทุกอย่างคืนตอนออกจากฉาก ไม่งั้น DOM ค้างทับจอ และปุ่มที่กดในฉากอื่นจะถูกโหมดนี้กินไปด้วย
     this.events.once('shutdown', () => this._unmountOverlay());
     this.events.once('destroy', () => this._unmountOverlay());
+    // เวทีกว้างเท่าผืนเกม กำแพงจึงอยู่ขอบจอพอดี ไม่เหลือแถบมืดสองข้างให้ดูเหมือนเกมไม่เต็มจอ
+    // ต้องตั้งก่อน new Game() เพราะจุดเกิดของทั้งสองฝั่งอ่าน STAGE ตอนสร้าง
+    setStageWidth(this.sys.game.config.width);
     this.sim = new Game();
     this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
     this.sparks = []; this.popups = []; this.comboFade = 0;
-    // เวทีกว้างตายตัว 1280 แต่ผืนเกมกว้างตามจอ — เลื่อนกล้องให้เวทีอยู่กลาง
-    // แล้ววาดพื้นหลังเลยออกไปข้างละ padX เพื่อไม่ให้เห็นขอบว่างสองข้างบนจอมือถือ
-    const padX = Math.max(0, (this.sys.game.config.width - STAGE.w) / 2);
-    this.cameras.main.setScroll(-padX, 0);
-    drawBackground(this.add.graphics(), padX);
+    drawBackground(this.add.graphics());
     this.world = this.add.graphics();
     this.fx = this.add.graphics();
     this.hud = this.add.graphics();
+    const W = STAGE.w;   // ข้อความ HUD เกาะขอบเวทีจริง ไม่ใช่เลข 1280 ตายตัว
+    // บนมือถือมีปุ่มเต็มจอ (DOM) ทับมุมขวาบนอยู่ หลบให้พ้นไม่งั้นชื่อฝั่งขวาอ่านไม่ออก
+    // 56 px บนจอ แปลงเป็นพิกัดเวที = 56 * (720 / ความสูงจอจริง) ซึ่งประมาณ 100 บนมือถือแนวนอน
+    const RPAD = 60 + (isTouch ? 100 : 0);
     const T = (x, y, s, size, color, origin = 0) => this.add.text(x, y, s, { fontFamily: FONT, fontSize: size + 'px', color, fontStyle: '600' }).setOrigin(origin, 0);
-    this.tTitle = T(640, 14, 'SCRAMBLE', 26, C.ink, 0.5).setFontStyle('700');
-    this.tSub = T(640, 44, 'Training', 14, C.dim, 0.5);
+    this.tTitle = T(W / 2, 14, 'SCRAMBLE', 26, C.ink, 0.5).setFontStyle('700');
+    this.tSub = T(W / 2, 44, 'Training', 14, C.dim, 0.5);
     this.tP1 = T(60, 14, 'NYX', 20, C.ink);
-    this.tP2 = T(1220, 14, 'Training dummy', 20, C.ink, 1);
-    this.tMode = T(1220, 66, '', 13, C.dim, 1);
+    this.tP2 = T(W - RPAD, 14, 'Training dummy', 20, C.ink, 1);
+    this.tMode = T(W - RPAD, 66, '', 13, C.dim, 1);
     this.tCombo = T(1210, 150, '', 44, '#ffffff', 1).setFontStyle('700');
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
-    this.tHelp = T(1220, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Run Shift or double-tap', 12, C.dim, 1);
-    this.tHelp2 = T(1220, 703, isTouch ? '' : 'T tune   H hitboxes   1 2 3 dummy   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
-    this.tStatus = T(640, 90, '', 16, '#ffffff', 0.5);
+    this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L', 12, C.dim, 1);
+    this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   1 2 3 dummy   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
+    this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     this._initNyxSprite();
     this.syncTools();
   }
@@ -342,7 +347,7 @@ class ScrambleScene extends Phaser.Scene {
       anchorX: meta.anchorX ?? 192, feetY: meta.feetY ?? 315, standing: meta.standing ?? 300,
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
-    this.nyxAnims = { idle: 8, walk: 24, run: 21, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1 };
+    this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1 };
     // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
     // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
     // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
@@ -355,8 +360,12 @@ class ScrambleScene extends Phaser.Scene {
         // ความเร็วตั้งเป็น "เวลาต่อรอบ" ไม่ใช่ fps ตายตัว เพิ่ม/ลดเฟรมแล้วจังหวะไม่เปลี่ยน
         // เวลาต่อรอบ (วินาที) — ท่าที่ผูกกับ state ที่เอนจิ้นจับเวลาไว้ ตั้งให้พอดีกับเวลานั้น
         // (PHYS: knockdownFrames 28 = 0.47 วิ, techRollFrames 20 = 0.33 วิ ที่ 60 เฟรม/วินาที)
+        // ท่าวิ่งคิดเวลาจากความเร็วจริง ไม่ใช่ตัวเลขตายตัว: หนึ่งรอบ = หนึ่งก้าว = เท้าเคลื่อน RUN_STRIDE
+        // ตั้งตายตัวแล้วเท้าจะไถไปกับพื้นทันทีที่ปรับความเร็ว (ซึ่งปรับได้จากพาเนล Tune)
         frameRate:
-          n / ({ idle: 0.8, walk: 0.7, run: 0.5, hurt: 0.5, crouch: 1.2, jump: 0.6, knockdown: 0.25, techroll: 0.22, tech: 0.17 }[name]),
+          n / (name === 'run'
+            ? RUN_STRIDE / (PHYS.run * 60)
+            : { idle: 0.8, hurt: 0.5, crouch: 1.2, jump: 0.6, knockdown: 0.25, techroll: 0.22, tech: 0.17 }[name]),
         // ท่าโดนตีเล่นรอบเดียวแล้วค้างเฟรมสุดท้าย — hitstun ในเอนจิ้นยาวไม่เท่ากัน (17-38 เฟรม)
         // ถ้าวนซ้ำ ตัวจะสะบัดรับแรงซ้ำ ๆ ทั้งที่โดนตีครั้งเดียว
         // ท่าที่ "เล่นจบแล้วค้าง" = ท่าที่เอนจิ้นถือไว้ยาวไม่เท่ากันทุกครั้ง
@@ -396,7 +405,7 @@ class ScrambleScene extends Phaser.Scene {
 
     // state ของเอนจิ้น -> ชื่อท่าที่มีอาร์ต (ที่ไม่อยู่ในตารางนี้ยังวาดเป็นกล่อง)
     const key = {
-      run: 'run', walk: 'walk', idle: 'idle', crouch: 'crouch',
+      run: 'run', walk: 'run', idle: 'idle', crouch: 'crouch',
       air: 'jump', landing: 'jump',
       hitstun: 'hurt', knockdown: 'knockdown', techroll: 'techroll', tech: 'tech',
     }[f.state] ?? null;
@@ -513,7 +522,7 @@ class ScrambleScene extends Phaser.Scene {
       hud.fillRect(alignRight ? x + w - fw : x, 44, fw, 12);
     };
     bar(60, 380, s.p1.hp, s.p1.maxHp, false);
-    bar(840, 380, s.p2.hp, s.p2.maxHp, true);
+    bar(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.p2.hp, s.p2.maxHp, true);
     this.tMode.setText('Dummy: ' + MODE_LABEL[s.dummyMode] + '    Tech: ' + TECH_LABEL[s.dummyTech]);
 
     // combo counter
