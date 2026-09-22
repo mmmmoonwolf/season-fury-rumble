@@ -6,6 +6,11 @@
  *            วิ่งช้าลง + ยกเลิกดับเบิลแท็ปวิ่งเร็ว (ดับเบิลแท็ปยังกดได้แต่ไม่เร่งสปีด) + ดับเบิ้ลจั๊มพ์สั้นลง
  *            (ไอเดียต้นฉบับ: ลดขนาดลง 60%, ลดสปีดวิ่ง, ยกเลิกปุ่ม sprint กดวิ่ง 2 ที, ลดระยะดับเบิ้ลจั๊มพ์)
  *
+ * scramble = โหมดใหม่ทั้งระบบ ไม่ใช้เอนจิ้นเดิมเลย (ดู src/modes/scramble/) — ฉากของตัวเอง
+ *            ฟิสิกส์ของตัวเอง เฟรมเดต้าของตัวเอง เดินที่ 60 เฟรม/วินาทีคงที่
+ *            จึงไม่มี characterScaleMul/physics เพราะไม่ได้ไปแตะ BASE_PHYSICS ของเกมเดิม
+ *            scene ระบุว่าให้ล็อบบี้ยิงไปฉากไหน ไม่ระบุ = MainGameScene ตามเดิม
+ *
  * physics = ตัวคูณทับ BASE_PHYSICS (ดู applySeasonModifiers ใน physics.config.js) — คูณร่วมกับตัวคูณฤดูด้วย
  * ไม่ระบุคีย์ไหน = ไม่ปรับ (multiplier 1.0) เหมือนกลไก SEASON_MODIFIERS เดิม
  */
@@ -28,6 +33,17 @@ export const GAME_MODES = {
       RUN_SPEED: 0.78,
       DOUBLE_JUMP_VELOCITY: 0.82,
     },
+  },
+  scramble: {
+    id: "scramble",
+    label: "SCRAMBLE",
+    subLabel: "Platform fighter — enclosed stage, no ring-outs (training)",
+    scene: "ScrambleScene",
+    // ไม่มีหน้าเลือกตัวละคร: รอบนี้เป็นห้องซ้อม Nyx ปะทะหุ่น ตามที่ระบุไว้ใน SCRAMBLE_HANDOFF.md
+    skipCharacterSelect: true,
+    characterScaleMul: 1,
+    allowDash: true,
+    physics: {},
   },
 };
 

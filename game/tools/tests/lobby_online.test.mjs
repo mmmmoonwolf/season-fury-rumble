@@ -115,6 +115,37 @@ function makeLobby(online) {
   ok(png < 1.5e6, `ไฟล์รูปย่อเล็กพอสำหรับเน็ตมือถือ (${(png / 1e6).toFixed(2)} MB)`);
 }
 
+// ── โหมดที่มีฉากของตัวเอง (SCRAMBLE) ต้องยิงไปฉากนั้น และข้ามหน้าเลือกตัวละคร ──
+{
+  const lobby = makeLobby(false);
+  lobby._selectMode("scramble");
+  ok(lobby.scene.started === "ScrambleScene", `เลือก SCRAMBLE แล้วเข้าฉากของมันเอง (ได้ ${lobby.scene.started})`);
+  ok(lobby.portraitCells == null, "SCRAMBLE ข้ามหน้าเลือกตัวละคร (เป็นห้องซ้อม Nyx ปะทะหุ่น)");
+  ok(lobby.registry.get("gameMode") === "scramble", "เซฟโหมดลง registry ตามปกติ");
+}
+
+// ── ทุกโหมดที่ระบุ scene ไว้ ต้องมีฉากที่ประกาศคีย์ตรงกันจริง ──
+// คีย์ไม่ตรง = scene.start() หาไม่เจอ จอค้างดำโดยไม่มี error ให้เห็น หาสาเหตุยากมาก
+{
+  const fs = await import("fs");
+  for (const [key, mode] of Object.entries(GAME_MODES)) {
+    if (!mode.scene) continue;
+    const src = fs.readFileSync(new URL(`../../src/modes/scramble/${mode.scene}.js`, import.meta.url), "utf8");
+    const declared = src.match(/super\('([^']+)'\)/)?.[1];
+    ok(declared === mode.scene, `โหมด ${key}: ฉาก ${mode.scene} ประกาศคีย์ตรงกัน (ได้ ${declared})`);
+  }
+}
+
+// ── โหมดที่ไม่ระบุ scene ยังไป MainGameScene เหมือนเดิม ──
+{
+  for (const key of ["normal", "platform"]) {
+    const lobby = makeLobby(false);
+    lobby._selectMode(key);
+    if (!GAME_MODES[key].skipCharacterSelect) lobby._startGame(key);
+    ok(lobby.scene.started === "MainGameScene", `โหมด ${key} ยังเข้า MainGameScene ตามเดิม`);
+  }
+}
+
 // ── โหมดที่เลือกได้ต้องมีอยู่จริงใน GAME_MODES (กันพิมพ์ชื่อผิดแล้วตกไป default เงียบๆ) ──
 {
   ok(GAME_MODES[DEFAULT_GAME_MODE] != null, `DEFAULT_GAME_MODE ("${DEFAULT_GAME_MODE}") มีอยู่จริงใน GAME_MODES`);

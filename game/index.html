@@ -153,6 +153,7 @@
   <script type="module">
     import { LobbyScene } from "./src/scenes/LobbyScene.js";
     import { MainGameScene } from "./src/scenes/MainGameScene.js";
+    import { ScrambleScene } from "./src/modes/scramble/ScrambleScene.js";
     import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
 
     const config = {
@@ -175,7 +176,7 @@
         arcade: { gravity: { y: 0 }, debug: false },
       },
       // LobbyScene เริ่มก่อนเสมอ (เลือกโหมดปกติ/platform) แล้วค่อย start ไป MainGameScene
-      scene: [LobbyScene, MainGameScene],
+      scene: [LobbyScene, MainGameScene, ScrambleScene],
     };
 
     // ---------- เต็มจอ / หมุนจอ (มือถือ) ----------

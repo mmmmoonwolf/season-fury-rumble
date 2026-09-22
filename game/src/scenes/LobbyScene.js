@@ -63,9 +63,11 @@ export class LobbyScene extends Phaser.Scene {
       .setOrigin(0.5);
 
     const modeKeys = Object.keys(GAME_MODES);
-    const cardW = 380;
+    // ความกว้างการ์ดคิดจากจำนวนโหมด ไม่ fix ไว้ — เพิ่มโหมดใหม่แล้วการ์ดไม่ล้นขอบจอเอง
+    const gap = 40;
+    const margin = 60;
+    const cardW = Math.min(380, (w - margin * 2 - gap * (modeKeys.length - 1)) / modeKeys.length);
     const cardH = 220;
-    const gap = 48;
     const totalW = cardW * modeKeys.length + gap * (modeKeys.length - 1);
     const startX = w / 2 - totalW / 2 + cardW / 2;
     const cardY = h * 0.56;
@@ -84,7 +86,7 @@ export class LobbyScene extends Phaser.Scene {
 
   _buildModeCard(x, y, w, h, mode) {
     const isPlatform = mode.id === "platform";
-    const accent = isPlatform ? 0x38bdf8 : 0xfacc15;
+    const accent = { platform: 0x38bdf8, scramble: 0xf87171 }[mode.id] ?? 0xfacc15;
 
     const card = this.add
       .rectangle(x, y, w, h, 0x1e293b, 0.9)
@@ -120,11 +122,16 @@ export class LobbyScene extends Phaser.Scene {
         })
         .setOrigin(0.5, 0.5);
     } else {
+      const note =
+        mode.id === "scramble"
+          ? "A/D เดิน · J ตี · L กัน\nSpace กระโดด · Shift วิ่ง\n(ระบบต่อสู้คนละชุดกับโหมดอื่น)"
+          : "ควบคุม/ฟิสิกส์เดิมทุกอย่าง";
       this.add
-        .text(x, y + h / 2 - 40, "ควบคุม/ฟิสิกส์เดิมทุกอย่าง", {
+        .text(x, y + h / 2 - (mode.id === "scramble" ? 56 : 40), note, {
           font: "13px monospace",
-          color: "#fde68a",
+          color: mode.id === "scramble" ? "#fecaca" : "#fde68a",
           align: "center",
+          lineSpacing: 4,
         })
         .setOrigin(0.5);
     }
@@ -142,6 +149,11 @@ export class LobbyScene extends Phaser.Scene {
 
   _selectMode(modeKey) {
     this.pendingMode = modeKey;
+    // บางโหมดไม่มีตัวละครให้เลือก (เช่น SCRAMBLE ที่เป็นห้องซ้อม Nyx ปะทะหุ่น) — เข้าเกมเลย
+    if (GAME_MODES[modeKey]?.skipCharacterSelect) {
+      this._startGame(modeKey);
+      return;
+    }
     this._buildCharacterSelect();
   }
 
@@ -240,7 +252,8 @@ export class LobbyScene extends Phaser.Scene {
     }
     // เลือกโหมดใหม่ = ล้าง levelKey เดิม (โหมดก่อนหน้าอาจสลับแมพค้างไว้ที่ไม่มีในลิสต์ของโหมดใหม่)
     this.registry.remove("levelKey");
-    this.scene.start("MainGameScene");
+    // โหมดที่มีฉากของตัวเอง (SCRAMBLE) ยิงไปฉากนั้นตรง ๆ ไม่ผ่าน MainGameScene
+    this.scene.start(GAME_MODES[modeKey]?.scene ?? "MainGameScene");
   }
 }
 
