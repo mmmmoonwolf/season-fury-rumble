@@ -336,6 +336,10 @@ class ScrambleScene extends Phaser.Scene {
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
     this.nyxAnims = { idle: 8, walk: 24, run: 21, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1 };
+    // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
+    // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
+    // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
+    this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side"]);
     for (const [name, n] of Object.entries(this.nyxAnims)) {
       if (this.anims.exists('scnyx/' + name)) continue;
       this.anims.create({
@@ -357,8 +361,32 @@ class ScrambleScene extends Phaser.Scene {
     this.nyx = this.add.sprite(0, 0, 'scnyx', 'idle_1.png').setVisible(false).setDepth(5);
   }
 
+  /** วาง/ย่อ/พลิกสไปรท์ให้ตรงกับตัวละคร — ใช้ร่วมกันทั้งท่าปกติและท่าโจมตี */
+  _applyNyxTransform(f) {
+    const m = this.nyxMeta;
+    // สไปรท์สูง SPRITE_H px บนเวที เทียบกับ hurtbox ที่สูง PHYS.standH (118)
+    // เก็บมา 300 px จึงย่อลงด้วยอัตราส่วนนี้ แล้วเลื่อนให้ "เท้าในภาพ" ไปอยู่ที่เท้าของตัวละครพอดี
+    const scale = SPRITE_H / m.standing;
+    this.nyx.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
+    this.nyx.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
+    this.nyx.setPosition(f.x, f.y);
+    this.nyx.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
+  }
+
   /** วาด Nyx ด้วยสไปรท์ถ้า state นั้นมีอาร์ตแล้ว — คืน true ถ้าวาดให้แล้ว */
   _drawNyxSprite(f) {
+    // ท่าโจมตี: เลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ ไม่ผ่าน animation ที่เล่นตามเวลา
+    // เพราะ animation ต้องกะ fps ให้จบพอดีกับ startup+active+recovery ซึ่งคลาดเคลื่อนได้เสมอ
+    // อ่านจาก phase() แทน = เฟรม "ฟันสุดแขน" โผล่ตรงกับช่วงที่ hitbox มีผลจริงเป๊ะทุกครั้ง
+    if (f.state === 'attack' && this.nyxAttacks.has(f.moveId)) {
+      const i = { startup: 1, active: 2, recovery: 3 }[f.phase()] ?? 1;
+      this._applyNyxTransform(f);
+      this.nyx.anims.stop();
+      this.nyx.setFrame(`${f.moveId}_${i}.png`);
+      this._nyxState = 'attack:' + f.moveId + i;
+      return true;
+    }
+
     // state ของเอนจิ้น -> ชื่อท่าที่มีอาร์ต (ที่ไม่อยู่ในตารางนี้ยังวาดเป็นกล่อง)
     const key = {
       run: 'run', walk: 'walk', idle: 'idle', crouch: 'crouch',
@@ -367,16 +395,8 @@ class ScrambleScene extends Phaser.Scene {
     }[f.state] ?? null;
     if (!key) { this.nyx.setVisible(false); return false; }
 
-    const m = this.nyxMeta;
-    // สไปรท์สูง SPRITE_H px บนเวที เทียบกับ hurtbox ที่สูง PHYS.standH (118)
-    // เก็บมา 300 px จึงย่อลงด้วยอัตราส่วนนี้ แล้วเลื่อนให้ "เท้าในภาพ" ไปอยู่ที่เท้าของตัวละครพอดี
-    const scale = SPRITE_H / m.standing;
-    this.nyx.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
-    this.nyx.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
-    this.nyx.setPosition(f.x, f.y);
+    this._applyNyxTransform(f);
     const anim = 'scnyx/' + key;
-    // เล่นใหม่เมื่อ "เปลี่ยน state" ไม่ใช่เมื่อเปลี่ยนชื่อท่า — โดนตีซ้ำตอนยังอยู่ใน hitstun
-    // เอนจิ้นไม่รีเซ็ต stateF ให้ (setState เช็คว่าซ้ำเดิมไหม) ท่าจึงควรเล่นต่อไม่กระตุกกลับไปเฟรมแรก
     // เล่นใหม่เมื่อเปลี่ยน state — โดนตีซ้ำตอนยังอยู่ใน hitstun เอนจิ้นไม่รีเซ็ต stateF ให้
     // (setState เช็คว่าซ้ำเดิมไหม) ท่าจึงควรเล่นต่อไม่กระตุกกลับเฟรมแรก
     // ยกเว้นดับเบิลจัมพ์: ยังอยู่ state 'air' เหมือนเดิมแต่ควรตีลังกาใหม่ — ดูจาก jumpsLeft ที่ลดลง
@@ -388,7 +408,6 @@ class ScrambleScene extends Phaser.Scene {
       if (f.state === 'landing') this.nyx.anims.stop(), this.nyx.setFrame(`jump_${this.nyxAnims.jump}.png`);
       else this.nyx.play(anim);
     }
-    this.nyx.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
     return true;
   }
 

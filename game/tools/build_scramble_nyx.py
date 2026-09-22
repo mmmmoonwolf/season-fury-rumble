@@ -14,13 +14,16 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 from cut import cutout, estimate_bg
+from repack_atlas import repack
 
 RAW = os.environ.get("SCRAMBLE_RAW", "/tmp/sc")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "characters")
 
-# เก็บที่ 300 px จากเท้าถึงยอดกรอบตัวในท่ายืน — บนจอตัวละครสูงราว 120-150 px (standH = 118)
-# เก็บใหญ่กว่าราวสองเท่าจึงคมทั้งบนจอ 720p และจอใหญ่ที่ canvas ถูกขยายขึ้นไป
-STANDING = 300
+# เก็บที่ 240 px จากเท้าถึงยอดกรอบตัวในท่ายืน — บนจอตัวละครสูง 130 px (ดู SPRITE_H)
+# เก็บใหญ่กว่า 1.85 เท่าจึงยังคมตอน canvas ถูกขยายขึ้นบนจอใหญ่กว่า 720p
+# เคยใช้ 300 แต่พอเพิ่มท่าครบจนถึงท่าตี ไฟล์โตเป็น 8.4 MB ซึ่งหนักไปสำหรับโหลดบนเน็ตมือถือ
+# ความละเอียดคือตัวกินขนาดหลัก (ลดลง 20% = ไฟล์เล็กลง 40%) ส่วนการลดสีช่วยได้อีกนิดหน่อย
+STANDING = 240
 PAD = 6
 
 # วิธียึดตำแหน่งแนวตั้งของเฟรม
@@ -48,6 +51,15 @@ SEQ = {
     "knockdown": ("@down_sheet", range(1, 3)),   # ล้มหงาย -> นอนราบ แล้วค้าง
     "techroll":  ("@down_sheet", range(3, 5)),   # ขดตัว -> กลิ้ง วนระหว่างกลิ้ง
     "tech":      ("@down_sheet", range(5, 6)),   # ลุกตั้งการ์ดทันที (tech อยู่กับที่)
+
+    # ---- ท่าโจมตี: 3 เฟรมต่อท่า = เงื้อ / ฟันสุดแขน / ชักกลับ ----
+    # ไม่ใช่ animation ที่เล่นตามเวลา แต่ฉากเลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ (startup/active/recovery)
+    # จึงตรงกับเฟรมเดต้าเป๊ะโดยไม่ต้องกะ fps ให้พอดีเอง — ดู _drawNyxSprite ใน ScrambleScene.js
+    # เลี่ยงเฟรมที่มีเส้นฟัน (f65 ของคลิป jab) ตามกติกาใน HANDOFF: VFX วาดในเอนจิ้น ไม่เอาติดมากับอาร์ต
+    "jab1": ("jab",   [38, 46, 58]),
+    "jab2": ("jab",   [120, 127, 134]),
+    "jab3": ("jab",   [146, 154, 162]),
+    "side": ("lunge", [88, 100, 186]),
 }
 
 # เฟรมอ้างอิงสเกล — "ต่อแหล่ง" ไม่ใช่ตัวเดียวทั้ง build
@@ -62,6 +74,8 @@ CLIP_REF = {
     "crouch": "crouch/f_010.png",     # f1-140 เป็นท่ายืนก่อนย่อ
     "@jump_sheet": 5,                 # ภาพรวมท่า: ใช้ "ท่าที่ N" เป็นตัวอ้างอิง (ท่า 5 = ยืดตัวรับพื้น)
     "@down_sheet": 5,                 # ท่า 5 = ลุกยืนตั้งการ์ด
+    "jab": "jab/f_030.png",           # f30 = ท่ายืนก่อนออกหมัด
+    "lunge": "lunge/f_070.png",       # f70 = ท่ายืนก่อนพุ่ง
 }
 
 def sheet_poses(path, min_area=3000):
@@ -180,12 +194,27 @@ for name, (bb, im) in tr.items():
     }
     x += cr.width + 2
 
-sheet.save(os.path.join(OUT, "scramble_nyx.png"))
+# ลดจำนวนสีก่อนเซฟ — อาร์ตเป็นเซลเชดสีไม่เยอะ ที่เหลือเป็น noise จากวิดีโอที่ทำให้ไฟล์โตเปล่า ๆ
+# วัดแล้วต่างจากต้นฉบับเฉลี่ย 3/255 (มองไม่ออก) แต่ไฟล์เล็กลงราว 20%
+_a = np.asarray(sheet)
+_q = np.asarray(Image.fromarray(_a[..., :3], "RGB").quantize(colors=64, dither=Image.NONE).convert("RGB"))
+sheet = Image.fromarray(np.dstack([_q, _a[..., 3]]), "RGBA")
+sheet.save(os.path.join(OUT, "scramble_nyx.png"), optimize=True)
+json_path = os.path.join(OUT, "scramble_nyx.json")
 json.dump(
     {"frames": frames,
      "meta": {"image": "scramble_nyx.png", "size": {"w": W, "h": H}, "scale": "1",
-              # ฉากต้องใช้สามค่านี้วางสไปรท์ให้ตรงกับ hurtbox — อย่าเดาเอง
+              # ฉากต้องใช้ค่าพวกนี้วางสไปรท์ให้ตรงกับ hurtbox — อย่าเดาเอง
               "anchorX": ANCHOR_X, "feetY": FEET_Y, "standing": STANDING,
               "canvasW": CW, "canvasH": CH}},
-    open(os.path.join(OUT, "scramble_nyx.json"), "w"), indent=1)
-print(f"\npacked {W}x{H}  {len(frames)} เฟรม")
+    open(json_path, "w"), indent=1)
+print(f"\npacked {W}x{H}  {len(frames)} เฟรม (แถวเดียว)")
+
+# จัดเป็นตารางให้ไม่เกินลิมิตเท็กซ์เจอร์ GPU — ทำในนี้เลย ไม่ต้องสั่งเองทีหลัง
+# เกิน 4096 ด้านใดด้านหนึ่ง = การ์ดจอหลายรุ่นเรนเดอร์เป็นสีดำล้วน และไม่มี error ให้เห็น
+GPU_LIMIT = 4096
+repack(json_path, max_w=GPU_LIMIT)
+final = json.load(open(json_path))["meta"]["size"]
+if max(final["w"], final["h"]) > GPU_LIMIT:
+    raise SystemExit(f"!! atlas {final['w']}x{final['h']} ยังเกินลิมิต {GPU_LIMIT} — ต้องลดจำนวนเฟรมหรือ STANDING")
+print(f"VRAM {final['w'] * final['h'] * 4 / 1e6:.1f} MB")

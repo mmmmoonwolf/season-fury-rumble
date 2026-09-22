@@ -368,6 +368,22 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   }
 
   ok(meta.size.w <= 4096 && meta.size.h <= 4096, `atlas ไม่เกินลิมิต GPU (${meta.size.w}x${meta.size.h})`);
+
+  // ── ท่าโจมตี: ฉากเลือกเฟรมจาก phase() ของเอนจิ้น จึงต้องมีครบ 3 เฟรมต่อท่า ──
+  // เฟรมหาย = setFrame() ด้วยชื่อที่ไม่มี Phaser จะเตือนแล้วค้างเฟรมเดิม ดูเหมือนท่าไม่ขยับ
+  const attacks = [...scene.matchAll(/nyxAttacks = new Set\(\[([^\]]*)\]/g)][0][1]
+    .split(",").map((x) => x.trim().replace(/["']/g, "")).filter(Boolean);
+  ok(attacks.length > 0, `ฉากประกาศท่าโจมตีที่มีอาร์ต (${attacks})`);
+  for (const id of attacks) {
+    ok(MOVES[id] != null, `ท่าโจมตี '${id}' มีอยู่จริงใน MOVES ของเอนจิ้น`);
+    const missing = [1, 2, 3].map((i) => `${id}_${i}.png`).filter((f) => !atlas.frames[f]);
+    ok(missing.length === 0, `ท่า '${id}' มีครบ 3 เฟรม เงื้อ/ฟัน/ชัก (ขาด ${missing})`);
+  }
+  // phase() คืนได้แค่สามค่านี้ — ถ้าเอนจิ้นเพิ่มเฟสใหม่ ต้องมีเฟรมรองรับด้วย
+  ok(
+    /startup: 1, active: 2, recovery: 3/.test(scene),
+    "ฉากแม็พ startup/active/recovery ไปเฟรม 1/2/3 ครบทุกเฟส"
+  );
   const png = fs.statSync(new URL("scramble_nyx.png", A)).size;
   ok(png < 8e6, `ไฟล์ไม่ใหญ่เกินไปสำหรับโหลดผ่านเว็บ (${(png / 1e6).toFixed(1)} MB)`);
 
