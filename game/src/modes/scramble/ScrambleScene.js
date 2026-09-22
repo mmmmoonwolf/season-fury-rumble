@@ -40,6 +40,14 @@ function readInput() {
   };
 }
 
+/**
+ * ความสูงหัวจรดเท้าของสไปรท์ Nyx บนเวที (พิกเซลของเวที 1280x720)
+ * hurtbox สูง PHYS.standH = 118 — ตั้งไว้ 130 = สูงกว่ากรอบ 11% ซึ่งเป็นสัดส่วนปกติของเกมต่อสู้
+ * (ลองแล้ว 150 ตัวใหญ่เกินกรอบ 28% ดูเหมือนกรอบเล็กกว่าตัวจนโดนตีแล้วงง)
+ * ปรับค่านี้ค่าเดียวถ้าเล่นแล้วรู้สึกตัวใหญ่/เล็กไป
+ */
+const SPRITE_H = 130;
+
 const isTouch = (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 
 // ---------- หน้าตา (ยกจาก prototype) ----------
@@ -163,6 +171,10 @@ class ScrambleScene extends Phaser.Scene {
   // คีย์ต้องตรงกับที่ mode.config.js ระบุไว้ (scene: "ScrambleScene") และที่ index.html ลงทะเบียน
   // ไม่งั้น scene.start() จะหาไม่เจอแล้วจอค้างดำโดยไม่มี error ให้เห็น
   constructor() { super('ScrambleScene'); }
+
+  preload() {
+    this.load.atlas('scnyx', 'assets/characters/scramble_nyx.png', 'assets/characters/scramble_nyx.json');
+  }
   create() {
     activeScene = this;
     this._mountOverlay();
@@ -191,6 +203,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tHelp = T(1220, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Run Shift or double-tap', 12, C.dim, 1);
     this.tHelp2 = T(1220, 703, isTouch ? '' : 'T tune   H hitboxes   1 2 3 dummy   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(640, 90, '', 16, '#ffffff', 0.5);
+    this._initNyxSprite();
     this.syncTools();
   }
 
@@ -298,6 +311,52 @@ class ScrambleScene extends Phaser.Scene {
     this.popups.push({ t, life: 40 });
   }
 
+  /**
+   * สไปรท์ Nyx — ตอนนี้มีอาร์ตแค่ยืน/เดิน/วิ่ง (ดู tools/build_scramble_nyx.py)
+   * state อื่น (กระโดด/ตี/โดนตี/ล้ม) ยังวาดเป็นกล่องเหมือนเดิมจนกว่าคลิปจะมาครบ
+   * ทำแบบนี้เพื่อให้เห็นของจริงบางส่วนก่อนโดยไม่ต้องรอครบ และเทียบได้ว่าอันไหนแทนแล้วอันไหนยัง
+   */
+  _initNyxSprite() {
+    const meta = this.textures.get('scnyx')?.customData?.meta ?? {};
+    // จุดยึดมาจากตอน build ไม่เดาเอง — feetY/anchorX คือตำแหน่งเท้าและกึ่งกลางหัวบน canvas ต้นฉบับ
+    // ใช้ขนาด canvas จาก meta ไม่อ่านจาก sprite.width เพราะเฟรมใน atlas ถูก trim ไว้
+    // sprite.width จึงขึ้นกับว่า Phaser ตีความ trimmed frame ยังไง ซึ่งเปราะเกินจะพึ่ง
+    this.nyxMeta = {
+      anchorX: meta.anchorX ?? 192, feetY: meta.feetY ?? 315, standing: meta.standing ?? 300,
+      canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
+    };
+    this.nyxAnims = { idle: 8, walk: 24, run: 21 };
+    for (const [name, n] of Object.entries(this.nyxAnims)) {
+      if (this.anims.exists('scnyx/' + name)) continue;
+      this.anims.create({
+        key: 'scnyx/' + name,
+        frames: Array.from({ length: n }, (_, i) => ({ key: 'scnyx', frame: `${name}_${i + 1}.png` })),
+        // ความเร็วตั้งเป็น "เวลาต่อรอบ" ไม่ใช่ fps ตายตัว เพิ่ม/ลดเฟรมแล้วจังหวะไม่เปลี่ยน
+        frameRate: n / ({ idle: 0.8, walk: 0.7, run: 0.5 }[name]),
+        repeat: -1,
+      });
+    }
+    this.nyx = this.add.sprite(0, 0, 'scnyx', 'idle_1.png').setVisible(false).setDepth(5);
+  }
+
+  /** วาด Nyx ด้วยสไปรท์ถ้า state นั้นมีอาร์ตแล้ว — คืน true ถ้าวาดให้แล้ว */
+  _drawNyxSprite(f) {
+    const key = f.state === 'run' ? 'run' : f.state === 'walk' ? 'walk' : f.state === 'idle' ? 'idle' : null;
+    if (!key) { this.nyx.setVisible(false); return false; }
+
+    const m = this.nyxMeta;
+    // สไปรท์สูง SPRITE_H px บนเวที เทียบกับ hurtbox ที่สูง PHYS.standH (118)
+    // เก็บมา 300 px จึงย่อลงด้วยอัตราส่วนนี้ แล้วเลื่อนให้ "เท้าในภาพ" ไปอยู่ที่เท้าของตัวละครพอดี
+    const scale = SPRITE_H / m.standing;
+    this.nyx.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
+    this.nyx.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
+    this.nyx.setPosition(f.x, f.y);
+    const anim = 'scnyx/' + key;
+    if (this.nyx.anims.currentAnim?.key !== anim) this.nyx.play(anim);
+    this.nyx.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
+    return true;
+  }
+
   drawFighter(g, f, body, accent, isDummy) {
     const hb = f.hurtbox();
     const flash = f.hitstop > 0 && f.state === 'hitstun';
@@ -356,7 +415,13 @@ class ScrambleScene extends Phaser.Scene {
     const s = this.sim, g = this.world, fx = this.fx, hud = this.hud;
     g.clear(); fx.clear(); hud.clear();
     this.drawFighter(g, s.p2, C.dummy, C.dummyMark, true);
-    this.drawFighter(g, s.p1, C.nyx, C.nyxScarf, false);
+    // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง
+    if (this._drawNyxSprite(s.p1)) {
+      g.fillStyle(0x000000, 0.25);
+      g.fillEllipse(s.p1.x, s.p1.onGround ? s.p1.y + 2 : Math.min(STAGE.groundY, s.p1.y + 200) + 2, 50, 10);
+    } else {
+      this.drawFighter(g, s.p1, C.nyx, C.nyxScarf, false);
+    }
 
     for (const f of [s.p1, s.p2]) {
       const box = f.hitbox();

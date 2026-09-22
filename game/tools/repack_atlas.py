@@ -60,8 +60,10 @@ def repack(json_path, max_w=MAX_W):
         y += row_h[ri]
 
     out.save(png_path)
-    json.dump({"frames": meta, "meta": {"image": d["meta"]["image"], "size": {"w": W, "h": H}, "scale": "1"}},
-              open(json_path, "w"), indent=1)
+    # คงคีย์อื่นใน meta ที่ build script ใส่มาไว้ (เช่น anchorX/feetY ของ SCRAMBLE, kick ของไททัน)
+    # เขียนทับทั้งก้อนจะทำให้ค่าพวกนั้นหายเงียบ ๆ แล้วฉากไปวางสไปรท์ผิดตำแหน่งโดยไม่มี error
+    new_meta = {**d["meta"], "image": d["meta"]["image"], "size": {"w": W, "h": H}, "scale": "1"}
+    json.dump({"frames": meta, "meta": new_meta}, open(json_path, "w"), indent=1)
     print(f"{os.path.basename(png_path)}: -> {W} x {H}  ({len(rows)} แถว, {len(meta)} เฟรม)")
 
 if __name__ == "__main__":

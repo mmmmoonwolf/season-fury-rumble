@@ -329,4 +329,45 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   ok(ACTIONABLE.has("idle") && !ACTIONABLE.has("hitstun"), "ตอนโดนตีอยู่สั่งงานไม่ได้ (hitstun ไม่อยู่ใน ACTIONABLE)");
 }
 
+// ── อาร์ต: atlas ต้องตรงกับที่ฉากคาดหวัง ──
+// ฉากอ่าน meta (anchorX/feetY/standing/canvasW/H) ไปวางสไปรท์ให้ตรงกับ hurtbox
+// ถ้าค่าหายหรือจำนวนเฟรมไม่ตรง สไปรท์จะไปโผล่ผิดที่/ขาดเฟรมโดยไม่มี error ให้เห็น
+{
+  const fs = await import("fs");
+  const A = new URL("../../assets/characters/", import.meta.url);
+  const atlas = JSON.parse(fs.readFileSync(new URL("scramble_nyx.json", A)));
+  const meta = atlas.meta;
+
+  for (const k of ["anchorX", "feetY", "standing", "canvasW", "canvasH"]) {
+    ok(typeof meta[k] === "number", `meta.${k} มีอยู่และเป็นตัวเลข (${meta[k]})`);
+  }
+  ok(meta.feetY <= meta.canvasH, "ระดับเท้าอยู่ในแคนวาส ไม่ล้นออกไป");
+  ok(meta.anchorX > 0 && meta.anchorX < meta.canvasW, "จุดยึดแนวนอนอยู่ในแคนวาส");
+
+  // จำนวนเฟรมต้องตรงกับ nyxAnims ในฉาก — อ่านจากไฟล์ฉากจริง ไม่ hard-code ซ้ำ
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  // เจาะจงบรรทัด nyxAnims เท่านั้น — ในไฟล์มี { idle: 0.8, walk: 0.7, run: 0.5 } (ตารางเวลาต่อรอบ)
+  // อยู่ด้วย ถ้าจับกว้าง ๆ จะไปได้เลขจากตารางนั้นแทนแล้วเทสต์เพี้ยนโดยไม่รู้ตัว
+  const animsLine = scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1];
+  const declared = Object.fromEntries(
+    [...animsLine.matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])])
+  );
+  ok(Object.keys(declared).length === 3, `อ่านจำนวนเฟรมจากฉากได้ครบ 3 ท่า (${JSON.stringify(declared)})`);
+  for (const [name, n] of Object.entries(declared)) {
+    const have = Object.keys(atlas.frames).filter((f) => f.startsWith(name + "_")).length;
+    ok(have === n, `ท่า ${name}: ฉากประกาศ ${n} เฟรม และ atlas มี ${have} เฟรม`);
+    const missing = Array.from({ length: n }, (_, i) => `${name}_${i + 1}.png`).filter((f) => !atlas.frames[f]);
+    ok(missing.length === 0, `ท่า ${name}: เฟรมเรียงครบ 1..${n} ไม่มีเลขขาด (ขาด ${missing})`);
+  }
+
+  ok(meta.size.w <= 4096 && meta.size.h <= 4096, `atlas ไม่เกินลิมิต GPU (${meta.size.w}x${meta.size.h})`);
+  const png = fs.statSync(new URL("scramble_nyx.png", A)).size;
+  ok(png < 8e6, `ไฟล์ไม่ใหญ่เกินไปสำหรับโหลดผ่านเว็บ (${(png / 1e6).toFixed(1)} MB)`);
+
+  // ขนาดที่วาดจริงต้องสมส่วนกับ hurtbox — ใหญ่เกินแล้วโดนตีจะงงว่าทำไมไม่โดน
+  const SPRITE_H = Number(scene.match(/const SPRITE_H = (\d+)/)[1]);
+  const ratio = SPRITE_H / PHYS.standH;
+  ok(ratio > 1 && ratio < 1.25, `สไปรท์สูงกว่า hurtbox ${Math.round((ratio - 1) * 100)}% (ควรอยู่ราว 5-25%)`);
+}
+
 console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite locks the playtested feel");
