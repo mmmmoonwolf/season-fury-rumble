@@ -12,7 +12,8 @@ import sys, os, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 from PIL import Image
-from cut import cutout
+from scipy import ndimage
+from cut import cutout, estimate_bg
 
 RAW = os.environ.get("SCRAMBLE_RAW", "/tmp/sc")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "characters")
@@ -22,26 +23,68 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "
 STANDING = 300
 PAD = 6
 
+# วิธียึดตำแหน่งแนวตั้งของเฟรม
+#   GROUND = เท้าแตะพื้นเสมอ (ท่ายืน/เดิน/วิ่ง/ย่อ/โดนตี)
+#   AIR    = กึ่งกลางตัวอยู่ที่เดียวกับกึ่งกลางตัวตอนยืน (ท่าลอย — เท้าไม่ได้อยู่ล่างสุดเสมอไป)
+GROUND, AIR = "ground", "air"
+
 # ช่วงลูปหาด้วยการจับคู่เฟรมที่เหมือนกันที่สุด "หลังจัดกึ่งกลางแล้ว"
 # ต้องจัดกึ่งกลางก่อน ไม่งั้น root motion ในคลิปจะหลอกให้ทุกเฟรมดูต่างกันหมด
+# แหล่งอาร์ตมีสองแบบ: โฟลเดอร์เฟรมจากคลิป กับภาพเดียวที่มีหลายท่าเรียงกัน (ท่ากระโดดส่งมาเป็นภาพ)
+# "@ชื่อ" = แหล่งแบบภาพรวมท่า, ชื่อเปล่า = โฟลเดอร์เฟรม
 SEQ = {
-    "idle": ("idle",  range(14, 22)),   # คาบ 8 เฟรม
-    "walk": ("walkB", range(1, 25)),    # ใช้ทั้งคลิป — ตัดเหลือ 8 เฟรมแล้วขาแทบไม่ขยับ
-    "run":  ("run",   range(49, 70)),   # คาบ 21 เฟรม
+    "idle":   ("idle",   range(14, 22)),   # คาบ 8 เฟรม
+    "walk":   ("walkB",  range(1, 25)),    # ใช้ทั้งคลิป — ตัดเหลือ 8 เฟรมแล้วขาแทบไม่ขยับ
+    "run":    ("run",    range(49, 70)),   # คาบ 21 เฟรม
     # โดนตี: f21-36 สะบัดรับแรง, f41-56 เซถอย — เล่นครั้งเดียวไม่วน ค้างเฟรมสุดท้ายถ้า hitstun ยาวกว่า
-    "hurt": ("hitstun", range(21, 59, 4)),
+    "hurt":   ("hitstun", range(21, 59, 4)),
+    # ย่อตัว: คลิปเป็น ยืน -> ย่อ ช่วง f155+ คือย่อค้างแล้ว เก็บช่วงนั้นเป็นท่าค้าง
+    "crouch": ("crouch",  range(158, 235, 11)),
+    # กระโดด: ออกตัว -> ตีลังกา -> กางตัวลง -> ยืดตัวรับพื้น (ส่งมาเป็นภาพ 5 ท่า ไม่ใช่คลิป)
+    # ยึด "กึ่งกลางตัว" ไม่ใช่เท้า เพราะตอนตีลังกาเท้าอยู่ข้างบน ถ้ายึดเท้าจะเหมือนตัวจมลงไปในพื้น
+    "jump":   ("@jump_sheet", range(1, 6), AIR),
 }
 
-# เฟรมอ้างอิงสเกล — "ต่อคลิป" ไม่ใช่ตัวเดียวทั้ง build
-# คลิปแต่ละชุดถ่ายมาคนละระยะ: ชุดยืน/เดิน/วิ่ง ตัวสูง ~627 px (86% ของเฟรม)
-# ส่วนชุดโดนตี ตัวสูง ~295 px (43%) ถ้าใช้สเกลเดียวกันหมด ตัวจะเล็กลงครึ่งหนึ่งตอนโดนตี
-# เฟรมที่เลือกต้องเป็น "ท่ายืนตั้งการ์ด" เหมือนกันทุกคลิป ไม่งั้นเทียบความสูงกันไม่ได้
+# เฟรมอ้างอิงสเกล — "ต่อแหล่ง" ไม่ใช่ตัวเดียวทั้ง build
+# แต่ละคลิป/ภาพถ่ายมาคนละระยะ: ยืน/เดิน/วิ่ง ตัวสูง 627 px, โดนตี 295, ย่อ 488, ภาพกระโดด 280
+# ถ้าใช้สเกลเดียวกันหมด ตัวจะโตเล็กสลับไปมาระหว่างท่า
+# ค่าที่อ้างอิงต้องเป็น "ท่ายืนตัวตรง" ของแหล่งนั้น ๆ ไม่งั้นเทียบความสูงกันไม่ได้
 CLIP_REF = {
     "idle": "idle/f_014.png",
     "walkB": "idle/f_014.png",   # คลิปเดินถ่ายระยะเดียวกับคลิปยืน
     "run": "idle/f_014.png",
-    "hitstun": "hitstun/f_001.png",  # f1-16 เป็นท่ายืนก่อนโดนตี ใช้เทียบได้
+    "hitstun": "hitstun/f_001.png",   # f1-16 เป็นท่ายืนก่อนโดนตี
+    "crouch": "crouch/f_010.png",     # f1-140 เป็นท่ายืนก่อนย่อ
+    "@jump_sheet": 5,                 # ภาพรวมท่า: ใช้ "ท่าที่ N" เป็นตัวอ้างอิง (ท่า 5 = ยืดตัวรับพื้น)
 }
+
+def sheet_poses(path, min_area=3000):
+    """แยกท่าจากภาพเดียวที่มีหลายท่าเรียงกัน (ไม่ใช่คลิป) — คืนลิสต์ (ภาพ, กรอบ, ศูนย์กลางมวล) เรียงซ้ายไปขวา
+
+    บางท่ามาเป็นภาพนิ่งแทนคลิป (เช่น ท่ากระโดดที่ส่งมาเป็นภาพ 5 ท่า) แยกด้วยการหาชิ้นที่ไม่ติดกัน
+    เพราะแต่ละท่าวางห่างกันบนพื้นขาว ไม่ต้องกะตำแหน่งตัดเอง
+    """
+    rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
+    bg = estimate_bg(rgb)
+    dist = np.abs(rgb - bg).max(axis=2)
+    solid = ndimage.binary_fill_holes(ndimage.binary_closing(dist > 18, np.ones((5, 5))))
+    lab, n = ndimage.label(solid)
+    sizes = ndimage.sum(solid, lab, range(1, n + 1))
+    ids = [i + 1 for i, a in enumerate(sizes) if a >= min_area]
+    ids.sort(key=lambda i: ndimage.center_of_mass(solid, lab, i)[1])
+
+    out = []
+    for i in ids:
+        m = lab == i
+        ys, xs = np.nonzero(m)
+        box = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
+        # alpha ไล่ขอบเหมือน cutout ปกติ แต่จำกัดเฉพาะชิ้นนี้ ไม่ให้ท่าข้าง ๆ ติดมา
+        a = np.clip(dist / 40.0, 0, 1) * ndimage.binary_dilation(m, np.ones((3, 3)), iterations=2)
+        fg = np.clip((rgb - (1 - a[..., None]) * bg) / np.maximum(a[..., None], 1e-3), 0, 255)
+        img = Image.fromarray(np.dstack([fg, a * 255]).astype(np.uint8), "RGBA")
+        out.append((img.crop((0, 0, img.width, img.height)), box, float(xs.mean())))
+    return out
+
 
 def frame_data(path):
     """คืน (ภาพที่ตัดพื้นแล้ว, กรอบตัว, จุดกึ่งกลางหัว, จุดศูนย์กลางมวล)"""
@@ -56,24 +99,49 @@ def frame_data(path):
     return im, box, float(xs.mean()), float(xs.mean())
 
 
-# สเกลของแต่ละคลิป = ทำให้ "ท่ายืน" ของคลิปนั้นสูงเท่ากับ STANDING เสมอ
+# ภาพรวมท่าโหลดครั้งเดียวแล้วใช้ซ้ำ (แยกชิ้นทีละครั้งแพง และต้องได้ลำดับเดิมทุกครั้ง)
+SHEETS = {
+    src: sheet_poses(f"{RAW}/{src[1:]}.jpg")
+    for src in {v[0] for v in SEQ.values() if v[0].startswith("@")}
+}
+
+
+def source_frame(src, n):
+    """คืน (ภาพ, กรอบ, จุดยึดแนวนอน) ของเฟรม/ท่าที่ n จากแหล่งใดก็ได้"""
+    if src.startswith("@"):
+        img, box, cx = SHEETS[src][n - 1]
+        return img, box, cx
+    return frame_data(f"{RAW}/{src}/f_{n:03d}.png")[:3]
+
+
+# สเกลของแต่ละแหล่ง = ทำให้ "ท่ายืน" ของแหล่งนั้นสูงเท่ากับ STANDING เสมอ
 SCALE = {}
-for clip, ref in CLIP_REF.items():
-    _, rb, _, _ = frame_data(f"{RAW}/{ref}")
-    SCALE[clip] = STANDING / (rb[3] - rb[1])
-    print(f"  {clip:8s} ท่ายืนสูง {rb[3]-rb[1]:4d} px -> สเกล {SCALE[clip]:.4f}  (อ้างอิง {ref})")
+for src, ref in CLIP_REF.items():
+    if src.startswith("@"):
+        _, rb, _ = source_frame(src, ref)
+        label = f"{src} ท่าที่ {ref}"
+    else:
+        _, rb, _, _ = frame_data(f"{RAW}/{ref}")
+        label = ref
+    SCALE[src] = STANDING / (rb[3] - rb[1])
+    print(f"  {src:14s} ท่ายืนสูง {rb[3]-rb[1]:4d} px -> สเกล {SCALE[src]:.4f}  (อ้างอิง {label})")
 
 # รอบแรก: เก็บภาพที่จัดตำแหน่งแล้วทั้งหมด เพื่อหาขนาด canvas ที่พอดีจริง
 staged = {}
-for name, (clip, nums) in SEQ.items():
+for name, entry in SEQ.items():
+    src, nums = entry[0], entry[1]
+    kind = entry[2] if len(entry) > 2 else GROUND
     for i, n in enumerate(nums, 1):
-        p = f"{RAW}/{clip}/f_{n:03d}.png"
-        im, box, head_cx, _ = frame_data(p)
-        sc = SCALE[clip]
+        im, box, anchor_cx = source_frame(src, n)
+        sc = SCALE[src]
         im = im.resize((round(im.width * sc), round(im.height * sc)), Image.LANCZOS)
-        # dx/dy = ระยะที่ต้องเลื่อนให้ "กึ่งกลางหัวอยู่ที่ 0" และ "เท้าอยู่ที่ 0"
-        staged[f"{name}_{i}"] = (im, head_cx * sc, box[3] * sc, (box[0] * sc, box[2] * sc, box[1] * sc))
-    print(f"{name:8s} {len(list(nums)):3d} เฟรม  [{clip}]")
+        # dx/dy = ระยะที่ต้องเลื่อนให้ "จุดยึดอยู่ที่ 0" และ "เท้าอยู่ที่ 0"
+        top, bot = box[1] * sc, box[3] * sc
+        # ท่าลอย: เลื่อนให้ "กึ่งกลางตัว" ไปอยู่ที่เดียวกับกึ่งกลางตัวของท่ายืน (สูง STANDING เหนือเท้า)
+        # ท่ายืนตัวตรงจะได้ผลลัพธ์เท่ากับการยึดเท้าพอดี ท่าตีลังกาจึงไม่จมพื้นและไม่ลอยสูงผิดปกติ
+        ref_bot = bot if kind == GROUND else (top + bot) / 2 + STANDING / 2
+        staged[f"{name}_{i}"] = (im, anchor_cx * sc, ref_bot, (box[0] * sc, box[2] * sc, top))
+    print(f"{name:8s} {len(list(nums)):3d} เฟรม  [{src}]")
 
 # canvas: กว้างพอให้เฟรมที่แขนยื่นสุดไม่โดนตัด สูงพอให้เฟรมที่ยกมีดสูงสุดไม่โดนตัด
 left = max(hx - x0 for _, hx, _, (x0, _, _) in staged.values())
