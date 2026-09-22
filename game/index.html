@@ -142,14 +142,44 @@
       </div>
 
       <p class="lobby-error" id="lobby-error" hidden></p>
+      <p class="lobby-error" id="boot-error" hidden></p>
     </div>
   </div>
 
   <button id="fs-btn" title="เต็มจอ" aria-label="เต็มจอ">&#9974;</button>
   <div id="rotate-hint"><div>หมุนจอเป็นแนวนอน<br><span style="font-size:15px;color:#94a3b8">เกมนี้เล่นแนวนอนอย่างเดียว</span></div></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.70.0/phaser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js"></script>
+  <!-- ไลบรารีเก็บไว้ในรีโป ไม่ดึงจาก CDN — ดู vendor/README.md
+       โหลด Phaser ไม่สำเร็จ = <script type="module"> ข้างล่าง throw ตั้งแต่ import แรก
+       แล้วปุ่มล็อบบี้ทุกปุ่มไม่ถูกผูก event เลย กดแล้วเงียบสนิทโดยไม่มีอะไรบอกว่าพัง -->
+  <script src="vendor/phaser-3.70.0.min.js"></script>
+  <script src="vendor/peerjs-1.5.5.min.js"></script>
+
+  <!-- ตัวดักพังแบบเห็นบนจอ ต้องเป็น script ธรรมดา (ไม่ใช่ module) และอยู่ก่อน module
+       เพราะ error ตอนโหลด/รัน module script ไม่ขึ้นที่ไหนเลยนอกจาก devtools ซึ่งบนมือถือเปิดไม่ได้
+       อาการที่ผู้ใช้เห็นคือ "กดปุ่มแล้วไม่มีอะไรเกิดขึ้น" ซึ่งแยกไม่ออกจากปุ่มเสีย -->
+  <script>
+    (function () {
+      var shown = false;
+      function fatal(msg) {
+        if (shown) return;
+        shown = true;
+        var el = document.getElementById("boot-error");
+        if (!el) return;
+        el.textContent = "เกมโหลดไม่สำเร็จ: " + msg + " — ลองรีเฟรชหน้า (กดค้างที่ปุ่มรีเฟรชแล้วเลือกโหลดใหม่ทั้งหมด)";
+        el.hidden = false;
+      }
+      window.addEventListener("error", function (e) {
+        // error ของ <script src> ที่โหลดไม่ได้มาเป็น event ที่ target เป็น element ไม่ใช่ ErrorEvent
+        if (e.target && e.target.tagName === "SCRIPT") fatal("โหลดไฟล์ " + (e.target.src || "").split("/").pop() + " ไม่ได้");
+        else fatal(e.message || String(e.error));
+      }, true);
+      window.addEventListener("unhandledrejection", function (e) { fatal(String(e.reason)); });
+      window.addEventListener("load", function () {
+        if (typeof window.Phaser === "undefined") fatal("ไม่พบ Phaser");
+      });
+    })();
+  </script>
   <script type="module">
     import { LobbyScene } from "./src/scenes/LobbyScene.js";
     import { MainGameScene } from "./src/scenes/MainGameScene.js";
