@@ -1499,13 +1499,113 @@
     "w": 424,
     "h": 362
    }
+  },
+  "knockdown_1.png": {
+   "frame": {
+    "x": 1454,
+    "y": 3236,
+    "w": 284,
+    "h": 279
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 55,
+    "y": 83,
+    "w": 284,
+    "h": 279
+   },
+   "sourceSize": {
+    "w": 424,
+    "h": 362
+   }
+  },
+  "knockdown_2.png": {
+   "frame": {
+    "x": 1740,
+    "y": 3236,
+    "w": 302,
+    "h": 122
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 51,
+    "y": 239,
+    "w": 302,
+    "h": 122
+   },
+   "sourceSize": {
+    "w": 424,
+    "h": 362
+   }
+  },
+  "techroll_1.png": {
+   "frame": {
+    "x": 2,
+    "y": 3547,
+    "w": 220,
+    "h": 206
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 94,
+    "y": 155,
+    "w": 220,
+    "h": 206
+   },
+   "sourceSize": {
+    "w": 424,
+    "h": 362
+   }
+  },
+  "techroll_2.png": {
+   "frame": {
+    "x": 224,
+    "y": 3547,
+    "w": 191,
+    "h": 245
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 82,
+    "y": 116,
+    "w": 191,
+    "h": 245
+   },
+   "sourceSize": {
+    "w": 424,
+    "h": 362
+   }
+  },
+  "tech_1.png": {
+   "frame": {
+    "x": 417,
+    "y": 3547,
+    "w": 277,
+    "h": 309
+   },
+   "rotated": false,
+   "trimmed": true,
+   "spriteSourceSize": {
+    "x": 43,
+    "y": 52,
+    "w": 277,
+    "h": 309
+   },
+   "sourceSize": {
+    "w": 424,
+    "h": 362
+   }
   }
  },
  "meta": {
   "image": "scramble_nyx.png",
   "size": {
-   "w": 2010,
-   "h": 3547
+   "w": 2044,
+   "h": 3858
   },
   "scale": "1",
   "anchorX": 187,
