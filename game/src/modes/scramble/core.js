@@ -166,7 +166,12 @@ const KI_MAX = 100;
 // อัลติวาร์ปได้เฉพาะเมื่อคู่ต่อสู้อยู่ในระยะนี้ ไกลกว่านั้นพุ่งไปข้างหน้าแทน ไม่ใช่วาร์ปข้ามจอ
 const ULT_REACH = 340, ULT_GAP = 56, ULT_DASH = 190;
 // มีดที่ขว้างออกไป: บินไกลสุดเท่านี้แล้วหยุด · มีดกลางค้างเป็น "หมุดวาร์ป" ต่ออีกเท่านี้
-const SHOT_RANGE = 430, SHOT_SPEED = 13, ANCHOR_HOLD = 70;
+//
+// หมุดมีสองแบบ ตามว่าขว้างโดนหรือพลาด:
+//   โดนใคร -> หมายหัวคนนั้น MARK_HOLD เฟรม หมุด "เกาะตัวเขา" ไปด้วย วาร์ปตามไปเจอเสมอแม้เขาวิ่งหนี
+//   พลาด   -> หมุดปักอยู่กับที่ ANCHOR_HOLD เฟรม ใช้เป็นระยะเข้าหา/ถอยหนีแทน
+// ที่ต้องแยกเพราะเวลาเล่นหลายคน หมุดค้างที่เดิมแปลว่าวาร์ปไปโผล่ที่ว่าง หรือแย่กว่านั้นคือกลางวง
+const SHOT_RANGE = 430, SHOT_SPEED = 13, ANCHOR_HOLD = 70, MARK_HOLD = 300;
 
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
@@ -296,6 +301,20 @@ class Game {
 
   foe(f) { return f === this.p1 ? this.p2 : this.p1; }
 
+  /** หาตัวละครจากไอดี — แยกเป็นเมธอดเพื่อให้รองรับเกินสองคนได้ตอนทำโหมดหลายคน */
+  fighterById(id) { return id === 'p1' ? this.p1 : id === 'p2' ? this.p2 : null; }
+
+  /** ขว้างโดนใคร = หมายหัวคนนั้น หมุดย้ายไปเกาะตัวเขาแล้วนับถอยหลัง MARK_HOLD
+   *  เล่มไหนในชุดโดนก็ได้ ไม่จำเป็นต้องเป็นเล่มกลาง — คนเล่นเห็นว่า "มีดโดน" ก็ควรได้หมุด */
+  markTarget(volley, d) {
+    const a = volley.anchor;
+    if (!a || a.dead) return;
+    a.target = d.id;
+    a.stuck = MARK_HOLD;
+    a.x = d.x; a.y = d.y - 70;
+    this.events.push({ type: 'mark', x: a.x, y: a.y });
+  }
+
   faceFoe(f) {
     const o = this.foe(f);
     if (o.x !== f.x) f.facing = Math.sign(o.x - f.x);
@@ -330,14 +349,16 @@ class Game {
    */
   fireShots(f) {
     const m = f.move;
-    const volley = { hit: new Set() };
+    const volley = { hit: new Set(), anchor: null };
     for (const spec of m.shots) {
-      this.shots.push({
+      const sh = {
         owner: f.id, x: f.x + f.facing * 30, y: f.y - 96,
         vx: f.facing * SHOT_SPEED, vy: spec.vy, facing: f.facing,
         dmg: m.shotDmg, stun: m.shotStun, volley,
-        anchor: !!spec.anchor, stuck: 0, travelled: 0, dead: false,
-      });
+        anchor: !!spec.anchor, target: null, stuck: 0, travelled: 0, dead: false,
+      };
+      if (sh.anchor) volley.anchor = sh;
+      this.shots.push(sh);
     }
     this.events.push({ type: 'throw', x: f.x, y: f.y - 96 });
   }
@@ -351,7 +372,15 @@ class Game {
     for (const sh of this.shots) {
       if (sh.dead) continue;
       // มีดที่ปะทะแล้วหยุดนิ่ง นับถอยหลังรอหมดอายุ ไม่บินต่อ
-      if (sh.stuck > 0) { if (--sh.stuck <= 0) sh.dead = true; continue; }
+      // ถ้าเป็นหมุดที่หมายหัวคนไว้ ให้เกาะตัวเขาไปเรื่อย ๆ เขาวิ่งไปไหนหมุดก็ตามไป
+      if (sh.stuck > 0) {
+        if (sh.target) {
+          const t = this.fighterById(sh.target);
+          if (t) { sh.x = t.x; sh.y = t.y - 70; }
+        }
+        if (--sh.stuck <= 0) sh.dead = true;
+        continue;
+      }
       sh.x += sh.vx; sh.y += sh.vy; sh.travelled += Math.abs(sh.vx);
 
       const foe = sh.owner === 'p1' ? this.p2 : this.p1;
@@ -364,10 +393,14 @@ class Game {
       if (hit && foe.invuln <= 0 && !sh.volley.hit.has(foe.id)) {
         sh.volley.hit.add(foe.id);
         this.hitByShot(sh, foe);
+        this.markTarget(sh.volley, foe);
       }
       // มีดกลางค้างไว้เป็นหมุดตรงจุดที่หยุด เล่มอื่นหายไปเลย
-      if (sh.anchor) { sh.stuck = ANCHOR_HOLD; this.events.push({ type: 'anchor', x: sh.x, y: sh.y }); }
-      else sh.dead = true;
+      // ถ้าเพิ่งหมายหัวไปเมื่อกี้ (markTarget ตั้ง target + เวลาไว้แล้ว) ห้ามทับเวลาด้วยค่าหมุดธรรมดา
+      // ไม่งั้นกรณีที่ "เล่มกลางเองเป็นคนโดน" จะได้เวลาสั้นแบบขว้างพลาด ทั้งที่ควรได้ 5 วิ
+      if (sh.anchor) {
+        if (!sh.target) { sh.stuck = ANCHOR_HOLD; this.events.push({ type: 'anchor', x: sh.x, y: sh.y }); }
+      } else sh.dead = true;
       if (wall) sh.x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, sh.x));
     }
     this.shots = this.shots.filter((s) => !s.dead);
@@ -400,8 +433,14 @@ class Game {
     const a = this.anchorOf(f);
     if (!a) return false;
     this.events.push({ type: 'vanish', x: f.x, y: f.y });
+    let dest = a.x;
+    if (a.target) {
+      const t = this.fighterById(a.target);
+      // โผล่ข้างตัวเป้าฝั่งที่วิ่งมา ไม่ใช่ทับตัวเขา (ทับแล้วโดนดันออกทันทีที่หมด invuln)
+      if (t) dest = t.x - (Math.sign(t.x - f.x) || f.facing) * ULT_GAP;
+    }
     const half = PHYS.width / 2;
-    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, a.x));
+    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, dest));
     f.y = STAGE.groundY; f.vx = 0; f.vy = 0; f.onGround = true;
     a.dead = true;
     this.events.push({ type: 'appear', x: f.x, y: f.y });

@@ -347,6 +347,7 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'appear') this.spark(e.x, e.y - 60, 14, 0xb9312f);
       if (e.type === 'throw') this.spark(e.x, e.y, 7, 0xc9a227);
       if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
+      if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); }
       if (e.type === 'ult') {
         this.popup(e.x, e.y, 'Oni Veil', '#e05a57');
         this.cameras.main.shake(180, 0.008);
@@ -547,16 +548,25 @@ class ScrambleScene extends Phaser.Scene {
 
     // มีดที่ขว้างออกไป — หมุดที่ปะทะแล้วค้างอยู่วาดเป็นวงแดงกระพริบให้รู้ว่ากดวาร์ปตามได้
     for (const sh of s.shots) {
-      const ang = sh.stuck > 0 ? 0 : Math.atan2(sh.vy, sh.vx);
-      g.lineStyle(4, 0xc9a227, 1);
-      g.beginPath();
-      g.moveTo(sh.x - Math.cos(ang) * 13, sh.y - Math.sin(ang) * 13);
-      g.lineTo(sh.x + Math.cos(ang) * 13, sh.y + Math.sin(ang) * 13);
-      g.strokePath();
+      if (!sh.target) {
+        const ang = sh.stuck > 0 ? 0 : Math.atan2(sh.vy, sh.vx);
+        g.lineStyle(4, 0xc9a227, 1);
+        g.beginPath();
+        g.moveTo(sh.x - Math.cos(ang) * 13, sh.y - Math.sin(ang) * 13);
+        g.lineTo(sh.x + Math.cos(ang) * 13, sh.y + Math.sin(ang) * 13);
+        g.strokePath();
+      }
       if (sh.anchor && sh.stuck > 0) {
         const pulse = 0.45 + 0.35 * Math.sin(this.sim.frame * 0.35);
         g.lineStyle(2, 0xe05a57, pulse);
-        g.strokeCircle(sh.x, sh.y, 17);
+        if (sh.target) {
+          // หมายหัวคน: วงใหญ่กว่าและเกาะตัวเป้าไป บอกว่า "วาร์ปไปหาคนนี้" ไม่ใช่ "ไปที่จุดนี้"
+          g.strokeCircle(sh.x, sh.y, 30);
+          g.lineStyle(2, 0xe05a57, pulse * 0.6);
+          g.strokeCircle(sh.x, sh.y, 38);
+        } else {
+          g.strokeCircle(sh.x, sh.y, 17);
+        }
       }
     }
 
