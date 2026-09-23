@@ -9,13 +9,57 @@ from PIL import Image
 from scipy import ndimage
 from cut import estimate_bg
 
+
+def flatten_checkerboard(rgb):
+    """แทนพื้นหลัง "ลายตารางโปร่งใส" ที่ถูก flatten เป็นพิกเซลจริง ด้วยพื้นขาวเรียบ
+
+    เครื่องมือหลายตัวเซฟ PNG โปร่งใสเป็น JPG แล้วลายตารางที่เอาไว้แสดงความโปร่งใสกลายเป็น
+    พิกเซลเทาสองระดับจริง ๆ ซึ่ง estimate_bg() ใน cut.py รับไม่ได้ (มันคิดว่าพื้นหลังสีเดียว)
+    ผลคือลายตารางถูกนับเป็นตัวละคร ตัดพื้นออกมาแล้วได้กรอบเทาติดมาเต็มไปหมด
+
+    ตรวจจากสองเงื่อนไขพร้อมกัน ไม่ใช่แค่ "เป็นสีเทา":
+      1) เป็นเทากลางจริง (ช่องสีต่างกันไม่เกิน 12) — ชุดของ Nyx เป็นเทาอมน้ำเงินจึงไม่โดน
+      2) เกาะกลุ่มกับขอบภาพ — กันลายตารางที่บังเอิญมีสีตรงกับบางจุดบนตัวละคร
+    ไม่เข้าเงื่อนไข = คืนภาพเดิมไม่แตะ ภาพพื้นขาวปกติจึงไม่ได้รับผลกระทบ
+    """
+    mx, mn = rgb.max(axis=2), rgb.min(axis=2)
+    neutral = (mx - mn) <= 12
+    if neutral.mean() < 0.4:
+        return rgb                      # พื้นหลังมีสี = ไม่ใช่ลายตาราง
+    level = rgb.mean(axis=2)
+    hist, edges = np.histogram(level[neutral], bins=64, range=(0, 256))
+    order = np.argsort(-hist)
+    tones = [float((edges[i] + edges[i + 1]) / 2) for i in order[:2]]
+    # ลายตารางคือ "เทาสองระดับที่ใกล้กัน และสว่างทั้งคู่" — ต่างกันมากไปหรือมีตัวมืดปน
+    # แปลว่าโทนที่สองคือตัวละคร ไม่ใช่พื้นหลัง (ภาพพื้นขาวจะได้โทน 248 กับ 20 ซึ่งเข้าข่ายนี้)
+    # ไม่มีข้อนี้ ภาพพื้นขาวธรรมดาจะถูกทาทับจนไม่เหลือตัวละครเลย
+    if len(tones) < 2 or not (20 <= abs(tones[0] - tones[1]) <= 80):
+        return rgb
+    if min(tones) < 50:
+        return rgb                      # โทนหนึ่งมืด = เป็นตัวละคร ไม่ใช่ลายตาราง
+    band = np.zeros_like(neutral)
+    for t in tones:
+        band |= np.abs(level - t) <= 22
+    band &= neutral
+    lab, _ = ndimage.label(band)
+    touching = set(np.unique(np.concatenate([lab[0], lab[-1], lab[:, 0], lab[:, -1]]))) - {0}
+    if not touching:
+        return rgb
+    bg = ndimage.binary_closing(np.isin(lab, list(touching)), np.ones((5, 5)))
+    if not 0.3 <= bg.mean() <= 0.97:
+        return rgb                      # เจอนิดเดียว หรือกินทั้งภาพจนไม่เหลือตัวละคร = อ่านผิด
+    out = rgb.copy()
+    out[bg] = 248.0                     # ตรงกับพื้นขาวที่ cut.py คาดไว้
+    return out
+
+
 def sheet_poses(path, min_area=3000):
     """แยกท่าจากภาพเดียวที่มีหลายท่าเรียงกัน (ไม่ใช่คลิป) — คืนลิสต์ (ภาพ, กรอบ, ศูนย์กลางมวล) เรียงซ้ายไปขวา
 
     บางท่ามาเป็นภาพนิ่งแทนคลิป (เช่น ท่ากระโดดที่ส่งมาเป็นภาพ 5 ท่า) แยกด้วยการหาชิ้นที่ไม่ติดกัน
     เพราะแต่ละท่าวางห่างกันบนพื้นขาว ไม่ต้องกะตำแหน่งตัดเอง
     """
-    rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
+    rgb = flatten_checkerboard(np.asarray(Image.open(path).convert("RGB")).astype(np.float32))
     bg = estimate_bg(rgb)
     dist = np.abs(rgb - bg).max(axis=2)
     solid = ndimage.binary_fill_holes(ndimage.binary_closing(dist > 18, np.ones((5, 5))))

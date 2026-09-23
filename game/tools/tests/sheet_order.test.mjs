@@ -34,6 +34,32 @@ def make(rows, cols, path):
     Image.fromarray(a).save(path)
     return n
 
+# พื้นหลัง "ลายตารางโปร่งใส" ที่ถูก flatten เป็นพิกเซลจริง (เครื่องมือเซฟ PNG โปร่งใสเป็น JPG)
+# ต้องแยกท่าได้เหมือนพื้นขาวเป๊ะ ไม่งั้นลายตารางถูกนับเป็นตัวละคร ตัดออกมาได้กรอบเทาติดมา
+def make_checker(rows, cols, path):
+    H, W = 260 * rows + 120, 200 * cols + 120
+    yy, xx = np.mgrid[0:H, 0:W]
+    a = np.where((((yy // 40) + (xx // 40)) % 2)[..., None], 86, 131).astype(np.uint8)
+    a = np.repeat(a, 3, axis=2)
+    n = 0
+    for r in range(rows):
+        for c in range(cols):
+            n += 1
+            y0, x0 = 60 + r * 260, 60 + c * 200
+            a[y0:y0 + 150 + n * 3, x0:x0 + 120] = 20
+    Image.fromarray(a).save(path)
+    return n
+
+with tempfile.TemporaryDirectory() as d:
+    for rows, cols in [(1, 4), (2, 3)]:
+        p = os.path.join(d, "c%d%d.png" % (rows, cols))
+        total = make_checker(rows, cols, p)
+        ps = sheet_poses(p, min_area=1000)
+        heights = [b[3] - b[1] + 1 for _, b, _ in ps]
+        expect = [150 + (i + 1) * 3 for i in range(total)]
+        print("CHECKER|%dx%d|%d|%d" % (rows, cols, len(ps), total))
+        print("CHKORDER|%dx%d|%s|%s" % (rows, cols, heights == expect, heights))
+
 fails = []
 for rows, cols in [(1, 5), (2, 5), (2, 6), (3, 4)]:
     with tempfile.TemporaryDirectory() as d:
@@ -52,6 +78,8 @@ for (const line of out.trim().split("\n")) {
   const [kind, shape, a, b] = line.split("|");
   if (kind === "COUNT") ok(a === b, `ภาพ ${shape} ท่า: แยกได้ครบทุกท่า (${a} จาก ${b})`);
   if (kind === "ORDER") ok(a === "True", `ภาพ ${shape} ท่า: เรียงแบบที่คนอ่าน บนลงล่าง ซ้ายไปขวา`);
+  if (kind === "CHECKER") ok(a === b, `พื้นลายตารางโปร่งใส ${shape}: แยกท่าได้ครบ (${a} จาก ${b})`);
+  if (kind === "CHKORDER") ok(a === "True", `พื้นลายตารางโปร่งใส ${shape}: ได้ลำดับถูกเหมือนพื้นขาว`);
 }
 
 // ภาพแถวเดียวต้องได้ลำดับเดิมเป๊ะ — ของที่ build อยู่แล้ว (jump_sheet/down_sheet) เป็นแถวเดียว
