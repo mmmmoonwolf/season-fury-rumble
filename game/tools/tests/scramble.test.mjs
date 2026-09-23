@@ -375,11 +375,11 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   ok(meta.feetY <= meta.canvasH, "ระดับเท้าอยู่ในแคนวาส ไม่ล้นออกไป");
   ok(meta.anchorX > 0 && meta.anchorX < meta.canvasW, "จุดยึดแนวนอนอยู่ในแคนวาส");
 
-  // จำนวนเฟรมต้องตรงกับ nyxAnims ในฉาก — อ่านจากไฟล์ฉากจริง ไม่ hard-code ซ้ำ
+  // จำนวนเฟรมต้องตรงกับ anims ของ Nyx ในทะเบียน CHAR_ART ของฉาก — อ่านจากไฟล์ฉากจริง
+  // เจาะจงบล็อก anims ของ nyx เท่านั้น — ในไฟล์มี ANIM_SECONDS { idle: 0.8, ... } อยู่ด้วย
+  // ถ้าจับกว้าง ๆ จะไปได้เลขจากตารางนั้นแทนแล้วเทสต์เพี้ยนโดยไม่รู้ตัว
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
-  // เจาะจงบรรทัด nyxAnims เท่านั้น — ในไฟล์มีตารางเวลาต่อรอบ { idle: 0.8, hurt: 0.5, ... }
-  // อยู่ด้วย ถ้าจับกว้าง ๆ จะไปได้เลขจากตารางนั้นแทนแล้วเทสต์เพี้ยนโดยไม่รู้ตัว
-  const animsLine = scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1];
+  const animsLine = scene.match(/anims:\s*\{\s*idle:\s*\d+[^}]*\}/)[0];
   const declared = Object.fromEntries(
     [...animsLine.matchAll(/(\w+):\s*(\d+)/g)].map((m) => [m[1], Number(m[2])])
   );
@@ -389,7 +389,7 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   // แม็พไปหาท่าที่ไม่มี = เรียก play() ด้วยคีย์ที่ไม่ได้ลงทะเบียน Phaser จะเตือนแล้วไม่วาดอะไรเลย
   const mapped = [...scene.matchAll(/\{\s*run:\s*'run',[^}]*\}/g)][0]?.[0] ?? "";
   for (const [, anim] of mapped.matchAll(/:\s*'(\w+)'/g)) {
-    ok(anim in declared, `state ที่แม็พไปท่า '${anim}' มีท่านั้นอยู่จริงใน nyxAnims`);
+    ok(anim in declared, `state ที่แม็พไปท่า '${anim}' มีท่านั้นอยู่จริงในตาราง anims ของตัวละคร`);
   }
   for (const [name, n] of Object.entries(declared)) {
     const have = Object.keys(atlas.frames).filter((f) => f.startsWith(name + "_")).length;
@@ -402,7 +402,7 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
 
   // ── ท่าโจมตี: ฉากเลือกเฟรมจาก phase() ของเอนจิ้น จึงต้องมีครบ 3 เฟรมต่อท่า ──
   // เฟรมหาย = setFrame() ด้วยชื่อที่ไม่มี Phaser จะเตือนแล้วค้างเฟรมเดิม ดูเหมือนท่าไม่ขยับ
-  const attacks = [...scene.matchAll(/nyxAttacks = new Set\(\[([^\]]*)\]/g)][0][1]
+  const attacks = [...scene.matchAll(/attacks:\s*new Set\(\[([^\]]*)\]/g)][0][1]
     .split(",").map((x) => x.trim().replace(/["']/g, "")).filter(Boolean);
   ok(attacks.length > 0, `ฉากประกาศท่าโจมตีที่มีอาร์ต (${attacks})`);
   for (const id of attacks) {
@@ -471,7 +471,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/data-code="Digit1" data-slot="1"/.test(scene), 'มีปุ่มสกิล 1 บนจอ');
   ok(/data-code="Digit2" data-slot="2"/.test(scene), 'มีปุ่มสกิล 2 บนจอ');
   ok(/data-code="Digit3" data-slot="3"/.test(scene), 'มีปุ่มสกิล 3 บนจอ');
-  ok(!/walk:\s*\d+/.test(scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1]), "ไม่ลงทะเบียนท่าเดินใน atlas อีกแล้ว");
+  ok(!/walk:\s*\d+/.test(scene.match(/anims:\s*\{\s*idle:\s*\d+[^}]*\}/)[0]), "ไม่ลงทะเบียนท่าเดินใน atlas อีกแล้ว");
 }
 
 // ── ของที่ฉากใช้จาก core.js ต้อง import มาครบ ──
@@ -753,17 +753,17 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 }
 
 // ── ฉาก: ท่าของสกิลใหม่ต้องลงทะเบียนอาร์ตครบ และมีหลอด ki บนจอ ──
-// ลืมใส่ชื่อท่าใน nyxAttacks = ท่านั้นวาดเป็นกล่องสี่เหลี่ยมแทนตัวละคร โดยไม่มี error อะไรเลย
+// ลืมใส่ชื่อท่าใน attacks ของตัวละคร = ท่านั้นวาดเป็นกล่องสี่เหลี่ยมแทนตัวละคร โดยไม่มี error อะไรเลย
 {
   const fs = await import("fs");
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
   const { MOVES } = await import(G + "/core.js");
-  const listed = new Set((scene.match(/nyxAttacks = new Set\(\[([\s\S]*?)\]\)/)[1].match(/"[^"]+"/g) || [])
+  const listed = new Set((scene.match(/attacks:\s*new Set\(\[([\s\S]*?)\]\)/)[1].match(/"[^"]+"/g) || [])
     .map((s) => s.replace(/"/g, "")));
   const missing = Object.keys(MOVES).filter((k) => !listed.has(k) && !PENDING_ART.has(k));
   ok(missing.length === 0, `ทุกท่าใน MOVES ลงทะเบียนอาร์ตไว้ในฉากครบ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
   const early = [...PENDING_ART].filter((k) => listed.has(k));
-  ok(early.length === 0, `ท่าที่ยังไม่มีอาร์ตต้องไม่อยู่ใน nyxAttacks (เจอ: ${early.join(", ") || "ไม่มี"})`);
+  ok(early.length === 0, `ท่าที่ยังไม่มีอาร์ตต้องไม่อยู่ในตาราง attacks (เจอ: ${early.join(", ") || "ไม่มี"})`);
   ok(/KI_MAX/.test(scene), "ฉากวาดหลอด ki");
   ok(/_syncSkillBtns/.test(scene), "ฉากหรี่ปุ่มสกิลตามคูลดาวน์/ki");
   // ห้ามใช้ disabled หรี่ปุ่ม: ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างจะไม่ส่ง event ปล่อย ปุ่มจะค้าง
@@ -961,4 +961,45 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   run(g4, 40, {});
   const c = g4.anchorOf(g4.p1);
   ok(c === null || c.target === "p2", "เล่มไหนในชุดโดนก็ได้หมายหัว ไม่ใช่เฉพาะเล่มกลาง");
+}
+
+// ── ชั้นตัวละคร: ตารางท่าอ่านจากตัวละคร ไม่ใช่ตัวแปรกลางตัวเดียว ──
+// มีไว้เพื่อให้เพิ่มตัวที่สองได้โดยไม่ต้องแก้ core — เพิ่มระเบียนใน CHARACTERS แล้วจบ
+{
+  const { CHARACTERS, DEFAULT_CHAR, Fighter } = await import(G + "/core.js");
+
+  ok(CHARACTERS[DEFAULT_CHAR] != null, `ตัวละครเริ่มต้น '${DEFAULT_CHAR}' มีอยู่ในทะเบียน`);
+  for (const [id, ch] of Object.entries(CHARACTERS)) {
+    ok(ch.moves && Object.keys(ch.moves).length > 0, `ตัวละคร '${id}' มีตารางท่า`);
+    ok(Array.isArray(ch.skills) && ch.skills.length === 3, `ตัวละคร '${id}' มีช่องสกิลสามช่อง`);
+    ok(Array.isArray(ch.skillCd) && ch.skillCd.length === 3, `ตัวละคร '${id}' มีคูลดาวน์ครบสามช่อง`);
+    // ทุกตัวต้องมีชื่อท่าพื้นฐานครบ ไม่งั้น pickMove() จะชี้ไปท่าที่ไม่มี
+    const BASIC = ["jab1", "side", "up", "down", "nair", "sair", "dair"];
+    const miss = BASIC.filter((k) => !ch.moves[k]);
+    ok(miss.length === 0, `ตัวละคร '${id}' มีท่าพื้นฐานครบ (ขาด: ${miss.join(", ") || "ไม่มี"})`);
+    // สกิลที่ประกาศไว้ต้องมีอยู่ในตารางท่าของตัวนั้นจริง
+    const badSkill = ch.skills.filter((k) => k && !ch.moves[k]);
+    ok(badSkill.length === 0, `สกิลของ '${id}' มีอยู่ในตารางท่าจริง (ผิด: ${badSkill.join(", ") || "ไม่มี"})`);
+  }
+
+  // Fighter อ่านตารางท่าจากตัวละครของตัวเอง
+  const f = new Fighter("p1", "T", 100, 1);
+  ok(f.char === DEFAULT_CHAR, `Fighter รู้ว่าตัวเองเป็นตัวละครไหน (${f.char})`);
+  ok(f.moves === CHARACTERS[DEFAULT_CHAR].moves, "f.moves ชี้ไปตารางท่าของตัวละครตัวนั้น");
+  ok(f.skills === CHARACTERS[DEFAULT_CHAR].skills, "f.skills ชี้ไปช่องสกิลของตัวละครตัวนั้น");
+
+  // core ต้องไม่เหลือการอ่านตารางท่าแบบตัวแปรกลาง
+  const fs = await import("fs");
+  const core = fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url), "utf8");
+  const body = core.slice(core.indexOf("class Game"));
+  ok(!/\bMOVES\[/.test(body), "Game ไม่อ่าน MOVES[...] ตรง ๆ แล้ว (อ่านผ่านตัวละคร)");
+  ok(!/\bSKILL_CD\[/.test(body), "Game ไม่อ่าน SKILL_CD[...] ตรง ๆ แล้ว");
+
+  // ฝั่งฉากก็ต้องมีทะเบียนอาร์ตต่อตัวเหมือนกัน และคีย์ต้องตรงกับฝั่ง sim
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  ok(/const CHAR_ART = \{/.test(scene), "ฉากมีทะเบียนอาร์ตต่อตัวละคร");
+  const artIds = [...scene.matchAll(/^  (\w+):\s*\{\s*$/gm)].map((m) => m[1]);
+  for (const id of artIds) {
+    ok(CHARACTERS[id] != null, `ตัวละคร '${id}' ในทะเบียนอาร์ต มีระเบียนฝั่ง sim ด้วย`);
+  }
 }

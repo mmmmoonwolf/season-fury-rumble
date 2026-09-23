@@ -163,6 +163,19 @@ const SKILLS = ['fox1', 'curse1', 'ult1'];
 // คูลดาวน์ต่อสล็อต (เฟรม) — สล็อต 3 ไม่ใช้เวลา แต่ใช้หลอด ki ที่เติมจากดาเมจ
 const SKILL_CD = [150, 240, 0];
 const KI_MAX = 100;
+/**
+ * ทะเบียนตัวละคร (ฝั่ง sim) — ตารางท่า/สกิล/คูลดาวน์ แยกต่อตัว
+ *
+ * ทุกตัวใช้ "ชื่อท่า" ชุดเดียวกัน (jab1 / side / up / down / nair / sair / dair)
+ * แต่ค่าเฟรมเดต้าเป็นของใครของมัน — pickMove() จึงไม่ต้องรู้ว่ากำลังเล่นตัวไหน
+ * ส่วนอาร์ต (atlas / animation / รายชื่อท่าที่มีอาร์ตแล้ว) อยู่ฝั่งฉากใน ScrambleScene.js
+ * เพราะ core.js ตั้งใจไม่แตะ Phaser เลย จะได้เดินเทสต์ใน node ตรง ๆ ได้
+ */
+const CHARACTERS = {
+  nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
+};
+const DEFAULT_CHAR = 'nyx';
+
 // อัลติวาร์ปได้เฉพาะเมื่อคู่ต่อสู้อยู่ในระยะนี้ ไกลกว่านั้นพุ่งไปข้างหน้าแทน ไม่ใช่วาร์ปข้ามจอ
 const ULT_REACH = 340, ULT_GAP = 56, ULT_DASH = 190;
 // มีดที่ขว้างออกไป: บินไกลสุดเท่านี้แล้วหยุด · มีดกลางค้างเป็น "หมุดวาร์ป" ต่ออีกเท่านี้
@@ -176,10 +189,15 @@ const SHOT_RANGE = 430, SHOT_SPEED = 13, ANCHOR_HOLD = 70, MARK_HOLD = 300;
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
 class Fighter {
-  constructor(id, name, x, facing) {
+  constructor(id, name, x, facing, char = DEFAULT_CHAR) {
     this.id = id; this.name = name; this.spawnX = x; this.spawnFacing = facing;
+    this.char = char;
     this.maxHp = 100; this.reset();
   }
+  /** ตารางท่าของตัวละครตัวนี้ — ชื่อท่าเหมือนกันทุกตัว ค่าเฟรมเดต้าเป็นของใครของมัน */
+  get moves() { return CHARACTERS[this.char].moves; }
+  get skills() { return CHARACTERS[this.char].skills; }
+  get skillCd() { return CHARACTERS[this.char].skillCd; }
   reset() {
     Object.assign(this, {
       x: this.spawnX, y: STAGE.groundY, vx: 0, vy: 0, facing: this.spawnFacing,
@@ -288,14 +306,14 @@ class Game {
 
   startMove(f, id, dir) {
     if (dir) f.facing = dir;
-    const mv = MOVES[id];
+    const mv = f.moves[id];
     if (mv.warp) this.warp(f);
     if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
     f.move = mv; f.moveId = id; f.moveF = 0;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
-    this.lastMoveInfo = { id, ...MOVES[id] };
+    this.lastMoveInfo = { id, ...f.moves[id] };
     this.events.push({ type: 'move', id });
   }
 
@@ -450,21 +468,21 @@ class Game {
   // สกิลพร้อมใช้ไหม — สล็อต 3 ดูหลอด ki ที่เหลือใช้คูลดาวน์เวลา
   // f.used กันไม่ให้สกิลเดียวกันออกซ้ำในคอมโบเดียว (เคลียร์เมื่อเริ่มท่าจากท่ายืน)
   skillReady(f, i) {
-    const id = SKILLS[i];
+    const id = f.skills[i];
     if (!id) return false;
     // มีหมุดค้างอยู่ = ครึ่งหลังของการใช้ครั้งเดิม กดได้เสมอ ไม่ติดคูลดาวน์และไม่ติด used
-    if (MOVES[id].shots && this.anchorOf(f)) return true;
+    if (f.moves[id].shots && this.anchorOf(f)) return true;
     if (f.used.has(id)) return false;
     return i === 2 ? f.ki >= KI_MAX : f.cd[i] <= 0;
   }
 
   startSkill(f, i, dir) {
     // เทงงุกดซ้ำตอนมีดกลางยังค้างอยู่ = วาร์ปตามไป ไม่ใช่ขว้างชุดใหม่ (ไม่กินคูลดาวน์เพิ่ม)
-    const follow = SKILLS[i] && MOVES[SKILLS[i]].shots && this.anchorOf(f) ? 'curse2' : null;
+    const follow = f.skills[i] && f.moves[f.skills[i]].shots && this.anchorOf(f) ? 'curse2' : null;
     if (follow) { this.startMove(f, follow, dir || f.facing); return; }
     if (i === 2) { f.ki = 0; this.events.push({ type: 'ult', x: f.x, y: f.y - 60 }); }
-    else f.cd[i] = SKILL_CD[i];
-    this.startMove(f, SKILLS[i], dir || f.facing);
+    else f.cd[i] = f.skillCd[i];
+    this.startMove(f, f.skills[i], dir || f.facing);
   }
 
   doJump(f, inp) {
@@ -507,7 +525,7 @@ class Game {
       // เงื่อนไข hitConfirmed ทำให้ยกเลิกท่าที่ตีพลาดไม่ได้ ท่าที่พลาดจึงยังมีจังหวะเสียตามเดิม
       // กินปุ่มเฉพาะตอนยกเลิกได้จริง ที่เหลือปล่อยค้างใน buffer ต่อ (เหมือนปุ่มตี)
       // ถ้ากินทิ้งตรงนี้ กดสกิลท้ายท่าที่ฟันลมจะเงียบสนิท ทั้งที่ควรออกท่าทันทีที่ท่าเดิมจบ
-      for (let i = 0; i < SKILLS.length; i++) {
+      for (let i = 0; i < f.skills.length; i++) {
         if (!this.buffered('skill' + (i + 1))) continue;
         if (!f.hitConfirmed || !f.onGround || f.moveF < m.startup) continue;
         if (!this.skillReady(f, i)) continue;
@@ -520,7 +538,7 @@ class Game {
         if (m.chain && neutral && (afterActive || f.hitConfirmed)) next = m.chain;
         else if (f.hitConfirmed && f.moveF >= m.startup) {
           const cand = this.pickMove(f, inp);
-          if (!f.used.has(cand) && MOVES[cand].kind === m.kind) next = cand;
+          if (!f.used.has(cand) && f.moves[cand].kind === m.kind) next = cand;
         }
         if (next) { this.consume('attack'); this.startMove(f, next, dir); return; }
       }
@@ -537,7 +555,7 @@ class Game {
     }
     // สกิล 1/2/3 — เริ่มได้เฉพาะตอนยืนอยู่บนพื้น (เป็นคอมโบเดินหน้า ไม่มีเวอร์ชันกลางอากาศ)
     // สล็อตที่ยังว่าง (SKILLS[i] === null) กินปุ่มทิ้งไปเฉย ๆ ไม่ค้างอยู่ใน buffer ให้ไปออกท่าทีหลัง
-    for (let i = 0; i < SKILLS.length; i++) {
+    for (let i = 0; i < f.skills.length; i++) {
       if (!this.buffered('skill' + (i + 1))) continue;
       this.consume('skill' + (i + 1));
       if (!f.onGround) continue;
@@ -764,4 +782,4 @@ class Game {
 // ===================== Input =====================
 const held = new Set(); let pressed = new Set();
 
-export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ACTIONABLE, Fighter, Game, overlap };
+export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS, DEFAULT_CHAR, ACTIONABLE, Fighter, Game, overlap };

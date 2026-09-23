@@ -57,6 +57,33 @@ const RUN_STRIDE = 102;
 const isTouch = (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 
 // ---------- หน้าตา (ยกจาก prototype) ----------
+/**
+ * ทะเบียนอาร์ตต่อตัวละคร (ฝั่งฉาก) — คู่กับ CHARACTERS ใน core.js ที่เก็บฝั่งเฟรมเดต้า
+ * แยกกันเพราะ core.js ตั้งใจไม่แตะ Phaser จะได้เดินเทสต์ใน node ตรง ๆ ได้
+ *
+ * `anims`   = ชื่อท่า -> จำนวนเฟรม (ลงทะเบียนเป็น animation ที่เล่นตามเวลา)
+ * `attacks` = ท่าโจมตีที่มีอาร์ตแล้ว 3 เฟรมต่อท่า เลือกเฟรมจาก phase() ไม่ใช่ตามเวลา
+ * ตัวที่ไม่อยู่ในทะเบียนนี้ (หุ่นซ้อม) วาดเป็นกล่องเหมือนเดิม
+ */
+/** เวลาต่อรอบของแต่ละท่า (วินาที) — ใช้ร่วมกันทุกตัวละคร ตั้งเป็นเวลาไม่ใช่ fps
+ *  เพิ่ม/ลดเฟรมในท่าแล้วจังหวะไม่เปลี่ยน และตรงกับเวลาที่เอนจิ้นถือ state นั้นไว้ */
+const ANIM_SECONDS = { idle: 0.8, hurt: 0.5, crouch: 1.2, jump: 0.6, knockdown: 0.25,
+  techroll: 0.22, tech: 0.17, block: 1.0, blockstun: 0.2, blockcrouch: 1.0 };
+
+const CHAR_ART = {
+  nyx: {
+    atlasKey: 'scnyx',
+    texture: 'assets/characters/scramble_nyx.png',
+    data: 'assets/characters/scramble_nyx.json',
+    anims: { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
+      block: 3, blockstun: 2, blockcrouch: 1 },
+    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "thrust1", "thrust2", "thrust3", "thrust4",
+      "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]),
+    // เติมตอน _initCharSprite: meta / sprite / lastState / lastJumps
+  },
+};
+
 const C = {
   skyTop: 0x1a2440, skyBot: 0x3b4a6a, far: 0x2b3656, near: 0x212a42, window: 0xe8c56d,
   asphalt: 0x262a33, stripe: 0xd6dae2, slab: 0x9aa0a8, slabTop: 0xcdd1d6, slabUnder: 0x565b64,
@@ -203,7 +230,7 @@ class ScrambleScene extends Phaser.Scene {
   constructor() { super('ScrambleScene'); }
 
   preload() {
-    this.load.atlas('scnyx', 'assets/characters/scramble_nyx.png', 'assets/characters/scramble_nyx.json');
+    for (const art of Object.values(CHAR_ART)) this.load.atlas(art.atlasKey, art.texture, art.data);
   }
   create() {
     activeScene = this;
@@ -240,7 +267,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
     this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
-    this._initNyxSprite();
+    this._initSprites();
     this.syncTools();
   }
 
@@ -386,28 +413,25 @@ class ScrambleScene extends Phaser.Scene {
    * state อื่น (กระโดด/ตี/โดนตี/ล้ม) ยังวาดเป็นกล่องเหมือนเดิมจนกว่าคลิปจะมาครบ
    * ทำแบบนี้เพื่อให้เห็นของจริงบางส่วนก่อนโดยไม่ต้องรอครบ และเทียบได้ว่าอันไหนแทนแล้วอันไหนยัง
    */
-  _initNyxSprite() {
-    const meta = this.textures.get('scnyx')?.customData?.meta ?? {};
+  _initSprites() {
+    for (const id of Object.keys(CHAR_ART)) this._initCharSprite(id);
+  }
+
+  _initCharSprite(charId) {
+    const art = CHAR_ART[charId];
+    const meta = this.textures.get(art.atlasKey)?.customData?.meta ?? {};
     // จุดยึดมาจากตอน build ไม่เดาเอง — feetY/anchorX คือตำแหน่งเท้าและกึ่งกลางหัวบน canvas ต้นฉบับ
     // ใช้ขนาด canvas จาก meta ไม่อ่านจาก sprite.width เพราะเฟรมใน atlas ถูก trim ไว้
     // sprite.width จึงขึ้นกับว่า Phaser ตีความ trimmed frame ยังไง ซึ่งเปราะเกินจะพึ่ง
-    this.nyxMeta = {
+    art.meta = {
       anchorX: meta.anchorX ?? 192, feetY: meta.feetY ?? 315, standing: meta.standing ?? 300,
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
-    this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
-      block: 3, blockstun: 2, blockcrouch: 1 };
-    // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
-    // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
-    // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
-    this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
-      "thrust1", "thrust2", "thrust3", "thrust4",
-      "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]);
-    for (const [name, n] of Object.entries(this.nyxAnims)) {
-      if (this.anims.exists('scnyx/' + name)) continue;
+    for (const [name, n] of Object.entries(art.anims)) {
+      if (this.anims.exists(art.atlasKey + '/' + name)) continue;
       this.anims.create({
-        key: 'scnyx/' + name,
-        frames: Array.from({ length: n }, (_, i) => ({ key: 'scnyx', frame: `${name}_${i + 1}.png` })),
+        key: art.atlasKey + '/' + name,
+        frames: Array.from({ length: n }, (_, i) => ({ key: art.atlasKey, frame: `${name}_${i + 1}.png` })),
         // ความเร็วตั้งเป็น "เวลาต่อรอบ" ไม่ใช่ fps ตายตัว เพิ่ม/ลดเฟรมแล้วจังหวะไม่เปลี่ยน
         // เวลาต่อรอบ (วินาที) — ท่าที่ผูกกับ state ที่เอนจิ้นจับเวลาไว้ ตั้งให้พอดีกับเวลานั้น
         // (PHYS: knockdownFrames 28 = 0.47 วิ, techRollFrames 20 = 0.33 วิ ที่ 60 เฟรม/วินาที)
@@ -416,8 +440,7 @@ class ScrambleScene extends Phaser.Scene {
         frameRate:
           n / (name === 'run'
             ? RUN_STRIDE / (PHYS.run * 60)
-            : { idle: 0.8, hurt: 0.5, crouch: 1.2, jump: 0.6, knockdown: 0.25, techroll: 0.22, tech: 0.17,
-                block: 1.0, blockstun: 0.2, blockcrouch: 1.0 }[name]),
+            : ANIM_SECONDS[name]),
         // ท่าโดนตีเล่นรอบเดียวแล้วค้างเฟรมสุดท้าย — hitstun ในเอนจิ้นยาวไม่เท่ากัน (17-38 เฟรม)
         // ถ้าวนซ้ำ ตัวจะสะบัดรับแรงซ้ำ ๆ ทั้งที่โดนตีครั้งเดียว
         // ท่าที่ "เล่นจบแล้วค้าง" = ท่าที่เอนจิ้นถือไว้ยาวไม่เท่ากันทุกครั้ง
@@ -426,32 +449,39 @@ class ScrambleScene extends Phaser.Scene {
         repeat: ["hurt", "jump", "knockdown", "tech", "blockstun"].includes(name) ? 0 : -1,
       });
     }
-    this.nyx = this.add.sprite(0, 0, 'scnyx', 'idle_1.png').setVisible(false).setDepth(5);
+    art.sprite = this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setVisible(false).setDepth(5);
   }
 
   /** วาง/ย่อ/พลิกสไปรท์ให้ตรงกับตัวละคร — ใช้ร่วมกันทั้งท่าปกติและท่าโจมตี */
-  _applyNyxTransform(f) {
-    const m = this.nyxMeta;
+  _applyCharTransform(f) {
+    const art = CHAR_ART[f.char];
+    const m = art.meta;
     // สไปรท์สูง SPRITE_H px บนเวที เทียบกับ hurtbox ที่สูง PHYS.standH (118)
     // เก็บมา 300 px จึงย่อลงด้วยอัตราส่วนนี้ แล้วเลื่อนให้ "เท้าในภาพ" ไปอยู่ที่เท้าของตัวละครพอดี
     const scale = SPRITE_H / m.standing;
-    this.nyx.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
-    this.nyx.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
-    this.nyx.setPosition(f.x, f.y);
-    this.nyx.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
+    const sp = art.sprite;
+    sp.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
+    sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
+    sp.setPosition(f.x, f.y);
+    sp.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
   }
 
-  /** วาด Nyx ด้วยสไปรท์ถ้า state นั้นมีอาร์ตแล้ว — คืน true ถ้าวาดให้แล้ว */
-  _drawNyxSprite(f) {
+  /** วาดตัวละครด้วยสไปรท์ถ้าตัวนั้นมีอาร์ตของ state นั้นแล้ว — คืน true ถ้าวาดให้แล้ว
+   *  ตัวที่ยังไม่มีอาร์ต (เช่นหุ่นซ้อม) ไม่มีใน CHAR_ART ก็ตกไปวาดเป็นกล่องเหมือนเดิม */
+  _drawCharSprite(f) {
+    const art = CHAR_ART[f.char];
+    if (!art) return false;
+    const sp = art.sprite;
+
     // ท่าโจมตี: เลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ ไม่ผ่าน animation ที่เล่นตามเวลา
     // เพราะ animation ต้องกะ fps ให้จบพอดีกับ startup+active+recovery ซึ่งคลาดเคลื่อนได้เสมอ
     // อ่านจาก phase() แทน = เฟรม "ฟันสุดแขน" โผล่ตรงกับช่วงที่ hitbox มีผลจริงเป๊ะทุกครั้ง
-    if (f.state === 'attack' && this.nyxAttacks.has(f.moveId)) {
+    if (f.state === 'attack' && art.attacks.has(f.moveId)) {
       const i = { startup: 1, active: 2, recovery: 3 }[f.phase()] ?? 1;
-      this._applyNyxTransform(f);
-      this.nyx.anims.stop();
-      this.nyx.setFrame(`${f.moveId}_${i}.png`);
-      this._nyxState = 'attack:' + f.moveId + i;
+      this._applyCharTransform(f);
+      sp.anims.stop();
+      sp.setFrame(`${f.moveId}_${i}.png`);
+      art.lastState = 'attack:' + f.moveId + i;
       return true;
     }
 
@@ -462,20 +492,20 @@ class ScrambleScene extends Phaser.Scene {
       hitstun: 'hurt', knockdown: 'knockdown', techroll: 'techroll', tech: 'tech',
       block: 'block', blockcrouch: 'blockcrouch', blockstun: 'blockstun',
     }[f.state] ?? null;
-    if (!key) { this.nyx.setVisible(false); return false; }
+    if (!key || !art.anims[key]) { sp.setVisible(false); return false; }
 
-    this._applyNyxTransform(f);
-    const anim = 'scnyx/' + key;
+    this._applyCharTransform(f);
+    const anim = art.atlasKey + '/' + key;
     // เล่นใหม่เมื่อเปลี่ยน state — โดนตีซ้ำตอนยังอยู่ใน hitstun เอนจิ้นไม่รีเซ็ต stateF ให้
     // (setState เช็คว่าซ้ำเดิมไหม) ท่าจึงควรเล่นต่อไม่กระตุกกลับเฟรมแรก
     // ยกเว้นดับเบิลจัมพ์: ยังอยู่ state 'air' เหมือนเดิมแต่ควรตีลังกาใหม่ — ดูจาก jumpsLeft ที่ลดลง
-    const doubleJumped = f.jumpsLeft !== this._nyxJumps;
-    this._nyxJumps = f.jumpsLeft;
-    if (this._nyxState !== f.state || (key === 'jump' && doubleJumped)) {
-      this._nyxState = f.state;
+    const doubleJumped = f.jumpsLeft !== art.lastJumps;
+    art.lastJumps = f.jumpsLeft;
+    if (art.lastState !== f.state || (key === 'jump' && doubleJumped)) {
+      art.lastState = f.state;
       // ลงพื้น = ค้างที่เฟรมสุดท้ายของท่ากระโดด (ยืดตัวรับพื้น) ไม่ใช่เริ่มตีลังกาใหม่ตอนแตะพื้น
-      if (f.state === 'landing') this.nyx.anims.stop(), this.nyx.setFrame(`jump_${this.nyxAnims.jump}.png`);
-      else this.nyx.play(anim);
+      if (f.state === 'landing') sp.anims.stop(), sp.setFrame(`jump_${art.anims.jump}.png`);
+      else sp.play(anim);
     }
     return true;
   }
@@ -539,7 +569,7 @@ class ScrambleScene extends Phaser.Scene {
     g.clear(); fx.clear(); hud.clear();
     this.drawFighter(g, s.p2, C.dummy, C.dummyMark, true);
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง
-    if (this._drawNyxSprite(s.p1)) {
+    if (this._drawCharSprite(s.p1)) {
       g.fillStyle(0x000000, 0.25);
       g.fillEllipse(s.p1.x, s.p1.onGround ? s.p1.y + 2 : Math.min(STAGE.groundY, s.p1.y + 200) + 2, 50, 10);
     } else {
