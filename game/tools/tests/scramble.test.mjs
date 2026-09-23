@@ -12,8 +12,9 @@ const { Game, PHYS, MOVES, STAGE, ACTIONABLE } = await import(G + "/core.js");
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
 /** ท่าที่ระบบทำเสร็จแล้วแต่ยังรออาร์ต — ระหว่างนี้ฉากวาดเป็นกล่องแทน (พฤติกรรมเดิมของฉาก)
- *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง */
-const PENDING_ART = new Set(["curse1", "curse2"]);
+ *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง
+ *  ตอนนี้ว่าง = ทุกท่าในเกมมีอาร์ตจริงครบแล้ว */
+const PENDING_ART = new Set();
 
 const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });

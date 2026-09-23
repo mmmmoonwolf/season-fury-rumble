@@ -402,7 +402,7 @@ class ScrambleScene extends Phaser.Scene {
     // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
     this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "thrust1", "thrust2", "thrust3", "thrust4",
-      "fox1", "fox2", "ult1", "ult2", "ult3", "ult4"]);
+      "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]);
     for (const [name, n] of Object.entries(this.nyxAnims)) {
       if (this.anims.exists('scnyx/' + name)) continue;
       this.anims.create({
