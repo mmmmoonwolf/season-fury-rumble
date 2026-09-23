@@ -15,6 +15,7 @@ from PIL import Image
 from scipy import ndimage
 from cut import cutout, estimate_bg
 from repack_atlas import repack
+from sheet_poses import sheet_poses
 
 RAW = os.environ.get("SCRAMBLE_RAW", "/tmp/sc")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets", "characters")
@@ -91,32 +92,6 @@ CLIP_REF = {
 SEQ_SCALE = {"crouch": 1.13}
 
 
-def sheet_poses(path, min_area=3000):
-    """แยกท่าจากภาพเดียวที่มีหลายท่าเรียงกัน (ไม่ใช่คลิป) — คืนลิสต์ (ภาพ, กรอบ, ศูนย์กลางมวล) เรียงซ้ายไปขวา
-
-    บางท่ามาเป็นภาพนิ่งแทนคลิป (เช่น ท่ากระโดดที่ส่งมาเป็นภาพ 5 ท่า) แยกด้วยการหาชิ้นที่ไม่ติดกัน
-    เพราะแต่ละท่าวางห่างกันบนพื้นขาว ไม่ต้องกะตำแหน่งตัดเอง
-    """
-    rgb = np.asarray(Image.open(path).convert("RGB")).astype(np.float32)
-    bg = estimate_bg(rgb)
-    dist = np.abs(rgb - bg).max(axis=2)
-    solid = ndimage.binary_fill_holes(ndimage.binary_closing(dist > 18, np.ones((5, 5))))
-    lab, n = ndimage.label(solid)
-    sizes = ndimage.sum(solid, lab, range(1, n + 1))
-    ids = [i + 1 for i, a in enumerate(sizes) if a >= min_area]
-    ids.sort(key=lambda i: ndimage.center_of_mass(solid, lab, i)[1])
-
-    out = []
-    for i in ids:
-        m = lab == i
-        ys, xs = np.nonzero(m)
-        box = (int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max()))
-        # alpha ไล่ขอบเหมือน cutout ปกติ แต่จำกัดเฉพาะชิ้นนี้ ไม่ให้ท่าข้าง ๆ ติดมา
-        a = np.clip(dist / 40.0, 0, 1) * ndimage.binary_dilation(m, np.ones((3, 3)), iterations=2)
-        fg = np.clip((rgb - (1 - a[..., None]) * bg) / np.maximum(a[..., None], 1e-3), 0, 255)
-        img = Image.fromarray(np.dstack([fg, a * 255]).astype(np.uint8), "RGBA")
-        out.append((img.crop((0, 0, img.width, img.height)), box, float(xs.mean())))
-    return out
 
 
 def frame_data(path):
