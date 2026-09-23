@@ -11,6 +11,10 @@ const { Game, PHYS, MOVES, STAGE, ACTIONABLE } = await import(G + "/core.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
+/** ท่าที่ระบบทำเสร็จแล้วแต่ยังรออาร์ต — ระหว่างนี้ฉากวาดเป็นกล่องแทน (พฤติกรรมเดิมของฉาก)
+ *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง */
+const PENDING_ART = new Set(["tengu1", "tengu2"]);
+
 const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
 /** เดิน n เฟรมด้วย input เดิม (เฟรมแรกเท่านั้นที่นับเป็น "เพิ่งกด") */
@@ -333,10 +337,19 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   const missing = HANDOFF.filter((k) => !ids.includes(k));
   ok(missing.length === 0, `มีท่าตาม handoff ครบ 9 ท่า (ขาด ${missing.join(", ") || "ไม่มี"})`);
   // 9 ท่าพื้นฐาน + แทงรัว 4 + Fox Step 2 + Oni Veil 4 = 19
-  ok(ids.length === 19, `รวมสกิลทั้งสามแล้วเป็น 19 ท่า (ได้ ${ids.length})`);
-  // ท่าที่ประกาศ noHit ไว้ (ช่วงหายตัวของอัลติ) ไม่มีดาเมจโดยตั้งใจ ต้องไม่มีหน้าต่างโจมตีด้วย
-  const badNoHit = ids.filter((k) => MOVES[k].noHit && !(MOVES[k].active === 0 && !MOVES[k].dmg));
-  ok(badNoHit.length === 0, `ท่า noHit ต้องไม่มีหน้าต่างโจมตีเลย — ผิด: ${badNoHit}`);
+  ok(ids.length === 21, `รวมสกิลทั้งสามแล้วเป็น 21 ท่า (ได้ ${ids.length})`);
+  // ท่าที่ประกาศ noHit (ช่วงหายตัวของอัลติ / ช่วงขว้างมีด) ต้องทำดาเมจประชิดไม่ได้จริง
+  // เช็กที่ hitbox() ตรง ๆ ไม่ใช่ดูแค่ตัวเลข เพราะสิ่งที่ต้องการคือ "ตีไม่โดน" ไม่ใช่ "ตั้งค่าไว้ถูก"
+  const badNoHit = ids.filter((k) => {
+    if (!MOVES[k].noHit) return false;
+    if (MOVES[k].dmg) return true;
+    const g = new Game();
+    g.startMove(g.p1, k, 1);
+    // เช็กเฉพาะช่วงที่ยังเป็นท่านี้อยู่ — ult1 ต่อเข้า ult2 เองซึ่งมีกรอบโจมตีตามปกติ
+    while (g.p1.moveId === k) { if (g.p1.hitbox()) return true; g.step(inp()); }
+    return false;
+  });
+  ok(badNoHit.length === 0, `ท่า noHit ต้องไม่มีกรอบโจมตีสักเฟรม — ผิด: ${badNoHit}`);
   const bad = ids.filter((k) => {
     const m = MOVES[k];
     if (m.noHit) return false;
@@ -538,7 +551,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const { SKILLS, KI_MAX } = await import(G + "/core.js");
   ok(SKILLS.length === 3, `มีสล็อตสกิลสามช่อง (ได้ ${SKILLS.length})`);
   ok(SKILLS[0] === "fox1", `ช่อง 1 = Fox Step (ได้ ${SKILLS[0]})`);
-  ok(SKILLS[1] === null, `ช่อง 2 ยังว่าง รออาร์ตหน้ากากใหม่ (ได้ ${SKILLS[1]})`);
+  ok(SKILLS[1] === "tengu1", `ช่อง 2 = Tengu Gale (ได้ ${SKILLS[1]})`);
   ok(SKILLS[2] === "ult1", `ช่อง 3 = Oni Veil (ได้ ${SKILLS[2]})`);
   // กติกา "หน้ากาก = สกิล": Thrust Rush ไม่มีหน้ากาก จึงต้องไม่อยู่ในช่องสกิลอีกแล้ว
   ok(!SKILLS.includes("thrust1"), "Thrust Rush ไม่ใช่สกิลแล้ว (ไม่มีหน้ากาก)");
@@ -547,9 +560,8 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
     const g = new Game();
     g.p1.ki = KI_MAX;                             // ช่อง 3 ใช้หลอด ki เติมให้เต็มก่อนถึงจะกดได้
     g.step(inp({ ["skill" + slot]: 1, p: { ["skill" + slot]: 1 } }));
-    run(g, 80, {});
-    const fired = g.p1.x !== new Game().p1.x || g.p1.state === "attack";
-    if (SKILLS[slot - 1]) ok(fired, `ปุ่ม ${slot} มีสกิล -> ออกท่าจริง`);
+    const fired = g.p1.moveId === SKILLS[slot - 1];
+    if (SKILLS[slot - 1]) ok(fired, `ปุ่ม ${slot} มีสกิล -> ออกท่าจริง (ได้ ${g.p1.moveId})`);
     else ok(!fired && g.p1.state === "idle", `ปุ่ม ${slot} ยังว่าง -> กดแล้วไม่เกิดอะไร และไม่ค้างไว้ออกทีหลัง`);
   }
 
@@ -747,8 +759,10 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const { MOVES } = await import(G + "/core.js");
   const listed = new Set((scene.match(/nyxAttacks = new Set\(\[([\s\S]*?)\]\)/)[1].match(/"[^"]+"/g) || [])
     .map((s) => s.replace(/"/g, "")));
-  const missing = Object.keys(MOVES).filter((k) => !listed.has(k));
+  const missing = Object.keys(MOVES).filter((k) => !listed.has(k) && !PENDING_ART.has(k));
   ok(missing.length === 0, `ทุกท่าใน MOVES ลงทะเบียนอาร์ตไว้ในฉากครบ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
+  const early = [...PENDING_ART].filter((k) => listed.has(k));
+  ok(early.length === 0, `ท่าที่ยังไม่มีอาร์ตต้องไม่อยู่ใน nyxAttacks (เจอ: ${early.join(", ") || "ไม่มี"})`);
   ok(/KI_MAX/.test(scene), "ฉากวาดหลอด ki");
   ok(/_syncSkillBtns/.test(scene), "ฉากหรี่ปุ่มสกิลตามคูลดาวน์/ki");
   // ห้ามใช้ disabled หรี่ปุ่ม: ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างจะไม่ส่ง event ปล่อย ปุ่มจะค้าง
@@ -763,8 +777,14 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const atlas = JSON.parse(fs.readFileSync(new URL("../../assets/characters/scramble_nyx.json", import.meta.url), "utf8"));
   const have = new Set(Object.keys(atlas.frames));
   const missing = [];
-  for (const k of Object.keys(MOVES)) for (const n of [1, 2, 3]) if (!have.has(`${k}_${n}.png`)) missing.push(`${k}_${n}`);
+  for (const k of Object.keys(MOVES)) {
+    if (PENDING_ART.has(k)) continue;
+    for (const n of [1, 2, 3]) if (!have.has(`${k}_${n}.png`)) missing.push(`${k}_${n}`);
+  }
   ok(missing.length === 0, `ทุกท่ามีอาร์ตครบ 3 เฟรมใน atlas (ขาด: ${missing.join(", ") || "ไม่มี"})`);
+  // เมื่ออาร์ตมาแล้วต้องเอาชื่อออกจาก PENDING_ART — เทสต์บรรทัดนี้เตือนให้เอาออก
+  const arrived = [...PENDING_ART].filter((k) => have.has(`${k}_2.png`));
+  ok(arrived.length === 0, `มีอาร์ตแล้วต้องถอดออกจาก PENDING_ART (เจอ: ${arrived.join(", ") || "ไม่มี"})`);
 }
 
 // ── กดสกิลตอนท่าที่ฟันลมยังไม่จบ ต้องออกท่าให้ทันทีที่ท่าเดิมจบ ไม่ใช่เงียบหาย ──
@@ -787,4 +807,100 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
   run(g2, 30, {});
   ok(g2.p1.moveId === null, "กดตั้งแต่ต้นท่า เลยช่วง buffer ไปแล้ว ไม่ออกท่าย้อนหลัง");
+}
+
+// ── สกิล 2: Tengu Gale — ขว้างมีด 3 เล่ม แล้วกดซ้ำวาร์ปไปเล่มกลาง ──
+{
+  const { SKILL_CD } = await import(G + "/core.js");
+
+  // ขว้างออกมา 3 เล่ม เล่มกลางเป็นหมุด
+  const g = new Game();
+  g.p2.x = g.p1.x + 900;                       // ไกลจนมีดไปไม่ถึง จะได้ดูการบินล้วน ๆ
+  g.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g.p1.moveId === "tengu1", `กดปุ่ม 2 ออกท่าขว้าง (ได้ ${g.p1.moveId})`);
+  ok(g.shots.length === 0, "ยังไม่ปล่อยมีดตั้งแต่เฟรมแรก (รอถึงเฟรมปล่อยมือ)");
+  run(g, 10, {});
+  ok(g.shots.length === 3, `ปล่อยมีดออกมา 3 เล่ม (ได้ ${g.shots.length})`);
+  ok(g.shots.filter((s) => s.anchor).length === 1, "มีหมุดเล่มเดียว (เล่มกลาง)");
+  const ys = g.shots.map((s) => Math.round(s.vy)).sort((a, b) => a - b);
+  ok(ys[0] < 0 && ys[1] === 0 && ys[2] > 0, `กระจายเป็นพัด บน/ตรง/ล่าง (ได้ ${ys.join(",")})`);
+
+  // มีดบินไปข้างหน้าตามทิศที่หัน
+  const x0 = g.shots[0].x;
+  run(g, 10, {});
+  ok(g.shots.length && g.shots[0].x > x0, "มีดบินไปข้างหน้า");
+
+  // เล่มข้างหายเมื่อสุดระยะ เล่มกลางค้างเป็นหมุด
+  run(g, 60, {});
+  const left = g.shots;
+  ok(left.length === 1 && left[0].anchor, `สุดระยะแล้วเหลือแต่หมุด (ได้ ${left.length} เล่ม)`);
+  ok(left[0].stuck > 0, "หมุดค้างอยู่กับที่ รอให้วาร์ปตาม");
+
+  // กดซ้ำ = วาร์ปไปที่หมุด ไม่ใช่ขว้างชุดใหม่
+  const anchorX = left[0].x;
+  g.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g.p1.moveId === "tengu2", `กดซ้ำออกท่าวาร์ป (ได้ ${g.p1.moveId})`);
+  ok(Math.abs(g.p1.x - anchorX) < 30, `วาร์ปไปอยู่ตรงหมุด (หมุด ${Math.round(anchorX)} ตัว ${Math.round(g.p1.x)})`);
+  ok(g.anchorOf(g.p1) === null, "ใช้หมุดแล้วหมุดหาย กดซ้ำอีกไม่ได้");
+
+  // หมุดหมดอายุเอง ถ้าไม่กดตาม
+  const g2 = new Game();
+  g2.p2.x = g2.p1.x + 900;
+  g2.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g2, 200, {});
+  ok(g2.shots.length === 0, "ไม่กดตาม หมุดหมดอายุหายไปเอง");
+
+  // มีดทำดาเมจได้ และคิดคูลดาวน์จากการขว้าง ไม่ใช่การวาร์ป
+  const g3 = new Game();
+  g3.p1.x = g3.p2.x - 260;
+  g3.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g3.p1.cd[1] >= SKILL_CD[1] - 1, `ขว้างแล้วติดคูลดาวน์ (ได้ ${g3.p1.cd[1]})`);
+  let hp = g3.p2.hp;
+  run(g3, 40, {});
+  ok(g3.p2.hp < hp, `มีดโดนแล้วเสียเลือด (${hp} -> ${g3.p2.hp})`);
+
+  // โดนตัวแล้วหมุดหยุดตรงนั้น = วาร์ปไปติดตัวคู่ต่อสู้พอดี
+  const g4 = new Game();
+  g4.p1.x = g4.p2.x - 260;
+  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g4, 40, {});
+  const a = g4.anchorOf(g4.p1);
+  ok(a !== null, "โดนตัวแล้วหมุดยังอยู่ (ไม่ใช่หายไปพร้อมดาเมจ)");
+  if (a) ok(Math.abs(a.x - g4.p2.x) < 80, `หมุดหยุดตรงตัวคู่ต่อสู้ (ห่าง ${Math.round(Math.abs(a.x - g4.p2.x))} px)`);
+
+  // ท่าวาร์ปกดได้แม้ยังติดคูลดาวน์ — เป็นครึ่งหลังของการใช้ครั้งเดิม ไม่ใช่การใช้ครั้งใหม่
+  const g5 = new Game();
+  g5.p2.x = g5.p1.x + 900;
+  g5.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g5, 40, {});
+  ok(g5.p1.cd[1] > 0, "ยังติดคูลดาวน์อยู่");
+  g5.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g5.p1.moveId === "tengu2", "แต่กดวาร์ปตามได้");
+
+  // ไม่มีหมุดแล้วกดตอนติดคูลดาวน์ = ไม่ออกท่า
+  const g6 = new Game();
+  g6.p2.x = g6.p1.x + 900;
+  g6.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g6, 200, {});                            // หมุดหมดอายุไปแล้ว
+  g6.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g6.p1.moveId !== "tengu1" && g6.p1.moveId !== "tengu2", "หมุดหมดแล้วและยังติดคูลดาวน์ = กดไม่ออก");
+
+  // ยืนติดตัวแล้วขว้าง ต้องโดนแค่เล่มเดียว ไม่ใช่ครบสามเล่มในเฟรมเดียว
+  // (มีดชุดเดียวกันใช้ hitList ร่วมกัน เหมือนท่าปกติที่ตีคนเดิมซ้ำในท่าเดียวไม่ได้)
+  const g7 = new Game();
+  g7.p1.x = g7.p2.x - 60;
+  const hp7 = g7.p2.hp;
+  g7.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g7, 30, {});
+  const dealt = hp7 - g7.p2.hp;
+  ok(dealt > 0 && dealt <= 3, `ขว้างระยะประชิดโดนเล่มเดียว (เสียเลือด ${dealt})`);
+
+  // ระยะไกลก็ต้องโดนครั้งเดียวเหมือนกัน
+  const g8 = new Game();
+  g8.p1.x = g8.p2.x - 260;
+  const hp8 = g8.p2.hp;
+  g8.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g8, 50, {});
+  const d8 = hp8 - g8.p2.hp;
+  ok(d8 > 0 && d8 <= 3, `ขว้างระยะไกลก็โดนครั้งเดียว (เสียเลือด ${d8})`);
 }

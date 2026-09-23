@@ -345,6 +345,8 @@ class ScrambleScene extends Phaser.Scene {
       // อัลติ: ควันตอนหาย/โผล่ + จอกระพริบตอนเริ่มท่า
       if (e.type === 'vanish') { this.spark(e.x, e.y - 60, 18, 0x2a2333); this.cameras.main.shake(60, 0.003); }
       if (e.type === 'appear') this.spark(e.x, e.y - 60, 14, 0xb9312f);
+      if (e.type === 'throw') this.spark(e.x, e.y, 7, 0xc9a227);
+      if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
       if (e.type === 'ult') {
         this.popup(e.x, e.y, 'Oni Veil', '#e05a57');
         this.cameras.main.shake(180, 0.008);
@@ -541,6 +543,21 @@ class ScrambleScene extends Phaser.Scene {
       g.fillEllipse(s.p1.x, s.p1.onGround ? s.p1.y + 2 : Math.min(STAGE.groundY, s.p1.y + 200) + 2, 50, 10);
     } else {
       this.drawFighter(g, s.p1, C.nyx, C.nyxScarf, false);
+    }
+
+    // มีดที่ขว้างออกไป — หมุดที่ปะทะแล้วค้างอยู่วาดเป็นวงแดงกระพริบให้รู้ว่ากดวาร์ปตามได้
+    for (const sh of s.shots) {
+      const ang = sh.stuck > 0 ? 0 : Math.atan2(sh.vy, sh.vx);
+      g.lineStyle(4, 0xc9a227, 1);
+      g.beginPath();
+      g.moveTo(sh.x - Math.cos(ang) * 13, sh.y - Math.sin(ang) * 13);
+      g.lineTo(sh.x + Math.cos(ang) * 13, sh.y + Math.sin(ang) * 13);
+      g.strokePath();
+      if (sh.anchor && sh.stuck > 0) {
+        const pulse = 0.45 + 0.35 * Math.sin(this.sim.frame * 0.35);
+        g.lineStyle(2, 0xe05a57, pulse);
+        g.strokeCircle(sh.x, sh.y, 17);
+      }
     }
 
     for (const f of [s.p1, s.p2]) {

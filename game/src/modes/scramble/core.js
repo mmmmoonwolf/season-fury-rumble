@@ -116,6 +116,17 @@ const MOVES = {
   fox2: { label: 'Fox Step', kind: 'ground', startup: 5, active: 4, recovery: 12, dmg: 5,
     hb: { x: 2, y: -108, w: 96, h: 66 }, kb: [7, -6], stun: 26, faceFoe: true, imp: { f: 4, vx: 9 } },
 
+  // ---- สกิล 2 Tengu Gale: ขว้างมีด 3 เล่ม แล้วกดซ้ำเพื่อวาร์ปไปที่เล่มกลาง (ปุ่ม 2) ----
+  // เล่มบน/ล่างเป็นแค่ดาเมจ เล่มกลางคือ "หมุด" — หยุดตรงจุดที่ปะทะแล้วค้างไว้ให้วาร์ปตาม
+  // โดนตัว = วาร์ปไปติดตัวเขาเลย · พลาด = ได้ระยะเข้าหาแทน ใช้ได้ทั้งสองทาง
+  tengu1: { label: 'Tengu Gale', kind: 'ground', startup: 7, active: 1, recovery: 16, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: -3.4 }, { vy: 0, anchor: true }, { vy: 3.4 }], shotAt: 7, shotDmg: 3, shotStun: 18 },
+  // กดซ้ำ: หายตัวไปโผล่ที่หมุดพร้อมฟันสวน — ไม่มีแรงถีบขึ้น จะได้ต่อคอมโบจิ้มได้ทันที
+  tengu2: { label: 'Tengu Gale', kind: 'ground', startup: 5, active: 4, recovery: 14, dmg: 6,
+    hb: { x: -30, y: -112, w: 92, h: 72 }, kb: [4, 0], stun: 28,
+    iframes: [0, 9], warpAnchor: true, faceFoe: true },
+
   // ---- สกิล 3 Oni Veil (อัลติ): หายตัวสลับโผล่ฟัน 4 จังหวะ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
   // จังหวะแรกไม่มีดาเมจ เป็นช่วงสวมหน้ากาก + วาร์ปไปอีกฝั่งของคู่ต่อสู้
   ult1: { label: 'Oni Veil', kind: 'ground', startup: 8, active: 0, recovery: 10, dmg: 0,
@@ -148,12 +159,14 @@ const MOVES = {
  */
 // กติกาของชุดนี้: **ใส่หน้ากาก = สกิล · หน้าเปล่า = ท่าปกติ** อ่านออกจากภาพได้ทันทีว่าอะไรเป็นอะไร
 // Thrust Rush จึงย้ายออกจากช่องสกิลไปเป็นหางของคอมโบจิ้ม (jab3 -> thrust1) เพราะไม่มีหน้ากาก
-const SKILLS = ['fox1', null, 'ult1'];
+const SKILLS = ['fox1', 'tengu1', 'ult1'];
 // คูลดาวน์ต่อสล็อต (เฟรม) — สล็อต 3 ไม่ใช้เวลา แต่ใช้หลอด ki ที่เติมจากดาเมจ
-const SKILL_CD = [150, 0, 0];
+const SKILL_CD = [150, 240, 0];
 const KI_MAX = 100;
 // อัลติวาร์ปได้เฉพาะเมื่อคู่ต่อสู้อยู่ในระยะนี้ ไกลกว่านั้นพุ่งไปข้างหน้าแทน ไม่ใช่วาร์ปข้ามจอ
 const ULT_REACH = 340, ULT_GAP = 56, ULT_DASH = 190;
+// มีดที่ขว้างออกไป: บินไกลสุดเท่านี้แล้วหยุด · มีดกลางค้างเป็น "หมุดวาร์ป" ต่ออีกเท่านี้
+const SHOT_RANGE = 430, SHOT_SPEED = 13, ANCHOR_HOLD = 70;
 
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
@@ -182,6 +195,7 @@ class Fighter {
   hurtbox() { const w = PHYS.width; return { x: this.x - w / 2, y: this.y - this.h, w, h: this.h }; }
   hitbox() {
     const m = this.move; if (!m || this.state !== 'attack') return null;
+    if (m.noHit) return null;   // ท่าที่ประกาศว่าไม่มีดาเมจ (ช่วงหายตัว / ช่วงขว้าง) ห้ามมีกรอบโจมตีเด็ดขาด
     if (this.moveF < m.startup || this.moveF >= m.startup + m.active) return null;
     const hb = m.hb;
     const left = this.facing > 0 ? this.x + hb.x : this.x - hb.x - hb.w;
@@ -217,8 +231,9 @@ class Game {
     this.dashLatch = false;
     this.meter = []; this.meterIdle = 0;
     this.lastMoveInfo = null;
+    this.shots = [];
   }
-  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; }
+  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; }
 
   step(inp) {
     this.frame++; this.events = [];
@@ -241,6 +256,7 @@ class Game {
     }
     if (d.hitstop > 0) d.hitstop--; else { this.controlDummy(d); this.physics(d, null); this.advanceMove(d, null); }
 
+    if (p.hitstop <= 0 && d.hitstop <= 0) this.updateShots();
     this.resolveHit(p, d);
     this.resolveHit(d, p);
     this.pushApart(p, d);
@@ -269,6 +285,7 @@ class Game {
     if (dir) f.facing = dir;
     const mv = MOVES[id];
     if (mv.warp) this.warp(f);
+    if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
     f.move = mv; f.moveId = id; f.moveF = 0;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
@@ -304,15 +321,108 @@ class Game {
 
   gainKi(f, amount) { f.ki = Math.min(KI_MAX, f.ki + amount); }
 
+  /** ปล่อยมีดตามที่ท่ากำหนด — เรียกจาก advance ตอนถึงเฟรม shotAt
+   *
+   * มีดชุดเดียวกันใช้ hitList ร่วมกัน (volley) = ขว้างหนึ่งครั้งโดนคนหนึ่งได้ครั้งเดียว
+   * ถ้าไม่ทำ ยืนติดตัวแล้วขว้างจะโดนครบสามเล่มในเฟรมเดียว (9 ดาเมจทันทีไม่มีเวลาบิน)
+   * ท่าที่ออกแบบมากวนระยะไกลกลายเป็นท่าประชิดที่แรงที่สุดไปเลย — วัดได้จริงก่อนแก้
+   * การกระจายเป็นพัดมีไว้ครอบมุมสูง/ต่ำ ไม่ได้มีไว้ให้โดนซ้อนกันสามเล่ม
+   */
+  fireShots(f) {
+    const m = f.move;
+    const volley = { hit: new Set() };
+    for (const spec of m.shots) {
+      this.shots.push({
+        owner: f.id, x: f.x + f.facing * 30, y: f.y - 96,
+        vx: f.facing * SHOT_SPEED, vy: spec.vy, facing: f.facing,
+        dmg: m.shotDmg, stun: m.shotStun, volley,
+        anchor: !!spec.anchor, stuck: 0, travelled: 0, dead: false,
+      });
+    }
+    this.events.push({ type: 'throw', x: f.x, y: f.y - 96 });
+  }
+
+  /** หมุดที่ยังวาร์ปไปได้ของฝั่งนี้ (มีดกลางที่ยังไม่หมดอายุ) */
+  anchorOf(f) {
+    return this.shots.find((s) => s.anchor && s.owner === f.id && !s.dead) ?? null;
+  }
+
+  updateShots() {
+    for (const sh of this.shots) {
+      if (sh.dead) continue;
+      // มีดที่ปะทะแล้วหยุดนิ่ง นับถอยหลังรอหมดอายุ ไม่บินต่อ
+      if (sh.stuck > 0) { if (--sh.stuck <= 0) sh.dead = true; continue; }
+      sh.x += sh.vx; sh.y += sh.vy; sh.travelled += Math.abs(sh.vx);
+
+      const foe = sh.owner === 'p1' ? this.p2 : this.p1;
+      const hurt = foe.hurtbox();
+      const hit = sh.x > hurt.x && sh.x < hurt.x + hurt.w && sh.y > hurt.y && sh.y < hurt.y + hurt.h;
+      const wall = sh.x < STAGE.wallL || sh.x > STAGE.wallR;
+      const spent = sh.travelled >= SHOT_RANGE;
+      if (!hit && !wall && !spent) continue;
+
+      if (hit && foe.invuln <= 0 && !sh.volley.hit.has(foe.id)) {
+        sh.volley.hit.add(foe.id);
+        this.hitByShot(sh, foe);
+      }
+      // มีดกลางค้างไว้เป็นหมุดตรงจุดที่หยุด เล่มอื่นหายไปเลย
+      if (sh.anchor) { sh.stuck = ANCHOR_HOLD; this.events.push({ type: 'anchor', x: sh.x, y: sh.y }); }
+      else sh.dead = true;
+      if (wall) sh.x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, sh.x));
+    }
+    this.shots = this.shots.filter((s) => !s.dead);
+  }
+
+  hitByShot(sh, d) {
+    const a = sh.owner === 'p1' ? this.p1 : this.p2;
+    const facingAttacker = Math.sign(a.x - d.x) === d.facing || a.x === d.x;
+    if ((d.state === 'block' || d.state === 'blockcrouch') && d.onGround && facingAttacker) {
+      d.lowStun = d.state === 'blockcrouch';
+      d.setState('blockstun'); d.stun = Math.ceil(sh.stun * 0.45);
+      this.gainKi(a, sh.dmg * 0.4); this.gainKi(d, sh.dmg * 0.6);
+      this.events.push({ type: 'block', x: sh.x, y: sh.y });
+      return;
+    }
+    const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
+    const dmg = Math.max(1, Math.round(sh.dmg * scale));
+    d.hp = Math.max(0, d.hp - dmg);
+    d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
+    d.stun = Math.round(sh.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
+    d.move = null; d.moveId = null; d.setState('hitstun');
+    d.vx = sh.facing * 2;                 // ถีบเบา ๆ ไม่ลอย จะได้ตามไปต่อคอมโบได้
+    d.facing = -sh.facing;
+    this.gainKi(a, dmg * 1.4); this.gainKi(d, dmg * 0.9);
+    this.events.push({ type: 'hit', x: sh.x, y: sh.y, dmg, heavy: false, launch: false });
+  }
+
+  /** วาร์ปไปที่หมุด — ใช้กับ tengu2 ตอนกดปุ่มซ้ำ */
+  warpToAnchor(f) {
+    const a = this.anchorOf(f);
+    if (!a) return false;
+    this.events.push({ type: 'vanish', x: f.x, y: f.y });
+    const half = PHYS.width / 2;
+    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, a.x));
+    f.y = STAGE.groundY; f.vx = 0; f.vy = 0; f.onGround = true;
+    a.dead = true;
+    this.events.push({ type: 'appear', x: f.x, y: f.y });
+    return true;
+  }
+
   // สกิลพร้อมใช้ไหม — สล็อต 3 ดูหลอด ki ที่เหลือใช้คูลดาวน์เวลา
   // f.used กันไม่ให้สกิลเดียวกันออกซ้ำในคอมโบเดียว (เคลียร์เมื่อเริ่มท่าจากท่ายืน)
   skillReady(f, i) {
     const id = SKILLS[i];
-    if (!id || f.used.has(id)) return false;
+    if (!id) return false;
+    // มีหมุดค้างอยู่ = ครึ่งหลังของการใช้ครั้งเดิม กดได้เสมอ ไม่ติดคูลดาวน์และไม่ติด used
+    if (MOVES[id].shots && this.anchorOf(f)) return true;
+    if (f.used.has(id)) return false;
     return i === 2 ? f.ki >= KI_MAX : f.cd[i] <= 0;
   }
 
   startSkill(f, i, dir) {
+    // เทงงุกดซ้ำตอนมีดกลางยังค้างอยู่ = วาร์ปตามไป ไม่ใช่ขว้างชุดใหม่ (ไม่กินคูลดาวน์เพิ่ม)
+    const follow = SKILLS[i] && MOVES[SKILLS[i]].shots && this.anchorOf(f) ? 'tengu2' : null;
+    if (follow) { this.startMove(f, follow, dir || f.facing); return; }
     if (i === 2) { f.ki = 0; this.events.push({ type: 'ult', x: f.x, y: f.y - 60 }); }
     else f.cd[i] = SKILL_CD[i];
     this.startMove(f, SKILLS[i], dir || f.facing);
@@ -535,6 +645,7 @@ class Game {
     if (f.state === 'attack') {
       f.moveF++;
       const m = f.move;
+      if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี autoChain ต่อท่าถัดไปเองโดยไม่ต้องกดซ้ำ — ใช้ทำคอมโบสกิลกดครั้งเดียวจบชุด
         // ต่อเฉพาะตอนยังยืนอยู่บนพื้น ถ้าโดนตีจนหลุด state หรือตกลงมา คอมโบก็ขาดตามธรรมชาติ
