@@ -13,7 +13,7 @@ const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
 /** ท่าที่ระบบทำเสร็จแล้วแต่ยังรออาร์ต — ระหว่างนี้ฉากวาดเป็นกล่องแทน (พฤติกรรมเดิมของฉาก)
  *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง */
-const PENDING_ART = new Set(["tengu1", "tengu2"]);
+const PENDING_ART = new Set(["curse1", "curse2"]);
 
 const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
@@ -551,7 +551,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const { SKILLS, KI_MAX } = await import(G + "/core.js");
   ok(SKILLS.length === 3, `มีสล็อตสกิลสามช่อง (ได้ ${SKILLS.length})`);
   ok(SKILLS[0] === "fox1", `ช่อง 1 = Fox Step (ได้ ${SKILLS[0]})`);
-  ok(SKILLS[1] === "tengu1", `ช่อง 2 = Tengu Gale (ได้ ${SKILLS[1]})`);
+  ok(SKILLS[1] === "curse1", `ช่อง 2 = Stone Curse (ได้ ${SKILLS[1]})`);
   ok(SKILLS[2] === "ult1", `ช่อง 3 = Oni Veil (ได้ ${SKILLS[2]})`);
   // กติกา "หน้ากาก = สกิล": Thrust Rush ไม่มีหน้ากาก จึงต้องไม่อยู่ในช่องสกิลอีกแล้ว
   ok(!SKILLS.includes("thrust1"), "Thrust Rush ไม่ใช่สกิลแล้ว (ไม่มีหน้ากาก)");
@@ -809,7 +809,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(g2.p1.moveId === null, "กดตั้งแต่ต้นท่า เลยช่วง buffer ไปแล้ว ไม่ออกท่าย้อนหลัง");
 }
 
-// ── สกิล 2: Tengu Gale — ขว้างมีด 3 เล่ม แล้วกดซ้ำวาร์ปไปเล่มกลาง ──
+// ── สกิล 2: Stone Curse — ขว้างมีด 3 เล่ม แล้วกดซ้ำวาร์ปไปเล่มกลาง ──
 {
   const { SKILL_CD } = await import(G + "/core.js");
 
@@ -817,7 +817,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const g = new Game();
   g.p2.x = g.p1.x + 900;                       // ไกลจนมีดไปไม่ถึง จะได้ดูการบินล้วน ๆ
   g.step(inp({ skill2: 1, p: { skill2: 1 } }));
-  ok(g.p1.moveId === "tengu1", `กดปุ่ม 2 ออกท่าขว้าง (ได้ ${g.p1.moveId})`);
+  ok(g.p1.moveId === "curse1", `กดปุ่ม 2 ออกท่าขว้าง (ได้ ${g.p1.moveId})`);
   ok(g.shots.length === 0, "ยังไม่ปล่อยมีดตั้งแต่เฟรมแรก (รอถึงเฟรมปล่อยมือ)");
   run(g, 10, {});
   ok(g.shots.length === 3, `ปล่อยมีดออกมา 3 เล่ม (ได้ ${g.shots.length})`);
@@ -839,7 +839,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   // กดซ้ำ = วาร์ปไปที่หมุด ไม่ใช่ขว้างชุดใหม่
   const anchorX = left[0].x;
   g.step(inp({ skill2: 1, p: { skill2: 1 } }));
-  ok(g.p1.moveId === "tengu2", `กดซ้ำออกท่าวาร์ป (ได้ ${g.p1.moveId})`);
+  ok(g.p1.moveId === "curse2", `กดซ้ำออกท่าวาร์ป (ได้ ${g.p1.moveId})`);
   ok(Math.abs(g.p1.x - anchorX) < 30, `วาร์ปไปอยู่ตรงหมุด (หมุด ${Math.round(anchorX)} ตัว ${Math.round(g.p1.x)})`);
   ok(g.anchorOf(g.p1) === null, "ใช้หมุดแล้วหมุดหาย กดซ้ำอีกไม่ได้");
 
@@ -875,7 +875,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   run(g5, 40, {});
   ok(g5.p1.cd[1] > 0, "ยังติดคูลดาวน์อยู่");
   g5.step(inp({ skill2: 1, p: { skill2: 1 } }));
-  ok(g5.p1.moveId === "tengu2", "แต่กดวาร์ปตามได้");
+  ok(g5.p1.moveId === "curse2", "แต่กดวาร์ปตามได้");
 
   // ไม่มีหมุดแล้วกดตอนติดคูลดาวน์ = ไม่ออกท่า
   const g6 = new Game();
@@ -883,7 +883,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   g6.step(inp({ skill2: 1, p: { skill2: 1 } }));
   run(g6, 200, {});                            // หมุดหมดอายุไปแล้ว
   g6.step(inp({ skill2: 1, p: { skill2: 1 } }));
-  ok(g6.p1.moveId !== "tengu1" && g6.p1.moveId !== "tengu2", "หมุดหมดแล้วและยังติดคูลดาวน์ = กดไม่ออก");
+  ok(g6.p1.moveId !== "curse1" && g6.p1.moveId !== "curse2", "หมุดหมดแล้วและยังติดคูลดาวน์ = กดไม่ออก");
 
   // ยืนติดตัวแล้วขว้าง ต้องโดนแค่เล่มเดียว ไม่ใช่ครบสามเล่มในเฟรมเดียว
   // (มีดชุดเดียวกันใช้ hitList ร่วมกัน เหมือนท่าปกติที่ตีคนเดิมซ้ำในท่าเดียวไม่ได้)
@@ -927,7 +927,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 
   // วาร์ปไปหาเป้า "ตำแหน่งล่าสุด" และมาโผล่ข้างตัว ไม่ใช่ทับตัว
   g.step(inp({ skill2: 1, p: { skill2: 1 } }));
-  ok(g.p1.moveId === "tengu2", `กดซ้ำออกท่าวาร์ป (ได้ ${g.p1.moveId})`);
+  ok(g.p1.moveId === "curse2", `กดซ้ำออกท่าวาร์ป (ได้ ${g.p1.moveId})`);
   const gap = Math.abs(g.p1.x - g.p2.x);
   ok(gap > 20 && gap < 110, `ไปโผล่ข้างตัวเป้า ไม่ทับกัน (ห่าง ${Math.round(gap)} px)`);
 

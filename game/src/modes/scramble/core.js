@@ -116,14 +116,14 @@ const MOVES = {
   fox2: { label: 'Fox Step', kind: 'ground', startup: 5, active: 4, recovery: 12, dmg: 5,
     hb: { x: 2, y: -108, w: 96, h: 66 }, kb: [7, -6], stun: 26, faceFoe: true, imp: { f: 4, vx: 9 } },
 
-  // ---- สกิล 2 Tengu Gale: ขว้างมีด 3 เล่ม แล้วกดซ้ำเพื่อวาร์ปไปที่เล่มกลาง (ปุ่ม 2) ----
+  // ---- สกิล 2 Stone Curse (คำสาปศิลา): ขว้างมีด 3 เล่ม แล้วกดซ้ำเพื่อวาร์ปไปที่เล่มกลาง (ปุ่ม 2) ----
   // เล่มบน/ล่างเป็นแค่ดาเมจ เล่มกลางคือ "หมุด" — หยุดตรงจุดที่ปะทะแล้วค้างไว้ให้วาร์ปตาม
   // โดนตัว = วาร์ปไปติดตัวเขาเลย · พลาด = ได้ระยะเข้าหาแทน ใช้ได้ทั้งสองทาง
-  tengu1: { label: 'Tengu Gale', kind: 'ground', startup: 7, active: 1, recovery: 16, dmg: 0,
+  curse1: { label: 'Stone Curse', kind: 'ground', startup: 7, active: 1, recovery: 16, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     shots: [{ vy: -3.4 }, { vy: 0, anchor: true }, { vy: 3.4 }], shotAt: 7, shotDmg: 3, shotStun: 18 },
   // กดซ้ำ: หายตัวไปโผล่ที่หมุดพร้อมฟันสวน — ไม่มีแรงถีบขึ้น จะได้ต่อคอมโบจิ้มได้ทันที
-  tengu2: { label: 'Tengu Gale', kind: 'ground', startup: 5, active: 4, recovery: 14, dmg: 6,
+  curse2: { label: 'Stone Curse', kind: 'ground', startup: 5, active: 4, recovery: 14, dmg: 6,
     hb: { x: -30, y: -112, w: 92, h: 72 }, kb: [4, 0], stun: 28,
     iframes: [0, 9], warpAnchor: true, faceFoe: true },
 
@@ -159,7 +159,7 @@ const MOVES = {
  */
 // กติกาของชุดนี้: **ใส่หน้ากาก = สกิล · หน้าเปล่า = ท่าปกติ** อ่านออกจากภาพได้ทันทีว่าอะไรเป็นอะไร
 // Thrust Rush จึงย้ายออกจากช่องสกิลไปเป็นหางของคอมโบจิ้ม (jab3 -> thrust1) เพราะไม่มีหน้ากาก
-const SKILLS = ['fox1', 'tengu1', 'ult1'];
+const SKILLS = ['fox1', 'curse1', 'ult1'];
 // คูลดาวน์ต่อสล็อต (เฟรม) — สล็อต 3 ไม่ใช้เวลา แต่ใช้หลอด ki ที่เติมจากดาเมจ
 const SKILL_CD = [150, 240, 0];
 const KI_MAX = 100;
@@ -428,7 +428,7 @@ class Game {
     this.events.push({ type: 'hit', x: sh.x, y: sh.y, dmg, heavy: false, launch: false });
   }
 
-  /** วาร์ปไปที่หมุด — ใช้กับ tengu2 ตอนกดปุ่มซ้ำ */
+  /** วาร์ปไปที่หมุด — ใช้กับ curse2 ตอนกดปุ่มซ้ำ */
   warpToAnchor(f) {
     const a = this.anchorOf(f);
     if (!a) return false;
@@ -460,7 +460,7 @@ class Game {
 
   startSkill(f, i, dir) {
     // เทงงุกดซ้ำตอนมีดกลางยังค้างอยู่ = วาร์ปตามไป ไม่ใช่ขว้างชุดใหม่ (ไม่กินคูลดาวน์เพิ่ม)
-    const follow = SKILLS[i] && MOVES[SKILLS[i]].shots && this.anchorOf(f) ? 'tengu2' : null;
+    const follow = SKILLS[i] && MOVES[SKILLS[i]].shots && this.anchorOf(f) ? 'curse2' : null;
     if (follow) { this.startMove(f, follow, dir || f.facing); return; }
     if (i === 2) { f.ki = 0; this.events.push({ type: 'ult', x: f.x, y: f.y - 60 }); }
     else f.cd[i] = SKILL_CD[i];

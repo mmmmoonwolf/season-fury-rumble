@@ -134,40 +134,34 @@ python3 tools/measure_sheet_scale.py /tmp/sc/fox_sheet.jpg
 
 ---
 
-## สกิล 2 — Tengu Gale / ลมเทงงุ (หน้ากากเทงงุ) · 6 ท่า · 2 แถว แถวละ 3
+## สกิล 2 — Stone Curse / คำสาปศิลา (หน้ากากหินแตก) · 6 ท่า · 2 แถว แถวละ 3
 
 ขว้างมีด 3 เล่มเป็นพัด แล้วกดซ้ำเพื่อวาร์ปตามไป
-**โดนคน** = หมายหัวคนนั้น 5 วิ หมุดเกาะตัวเขาไป เขาวิ่งหนีไปไหนก็วาร์ปตามไปเจอ
+**โดนคน** = สาปติดตัวคนนั้น 5 วิ หมุดเกาะตัวเขาไป เขาวิ่งหนีไปไหนก็วาร์ปตามไปเจอ
 **ขว้างพลาด** = หมุดปักอยู่กับที่ ~1.2 วิ ใช้เป็นระยะเข้าหา/ถอยหนีแทน
 ท่า 1-3 = ช่วงขว้าง · ท่า 4-6 = ช่วงโผล่แล้วฟัน
 
-**หน้ากากเทงงุ** ยังไม่มีภาพอ้างอิง ต้องเจนหน้ากากก่อนแล้วค่อยเอาไปเป็น reference ของชีต
-เหมือนที่ทำกับจิ้งจอกและอสูร — เจนหน้ากากเดี่ยวให้ผ่านก่อน ค่อยทำชีตท่า
-
-```
-A white tengu mask for a chibi ninja character: a long straight red nose
-jutting forward, thick angry red eyebrows, round bulging eyes, a small
-grim mouth, deep red lacquer markings on white. Front view, centered on a
-pure white background, no character, no body, just the mask.
-```
-
-ได้หน้ากากแล้วค่อยสั่งชีต (แนบทั้งเฟรม Nyx จาก atlas และหน้ากากที่เพิ่งได้):
+**แนบภาพอ้างอิง 2 อัน:** เฟรม Nyx จาก atlas จริง + รูปหน้ากากหินที่เลือกไว้
 
 ```
 A 6-pose action sprite sheet of the same character, arranged in 2 rows of 3,
 read left to right, top row first. Even spacing, no pose touching another.
-The character wears the white long-nosed tengu mask from the attached mask
-reference. The mask must be the exact same size in all six poses.
+The character wears the cracked dark stone oni mask from the attached
+reference: weathered grey-green stone with a crack running down one side,
+two curved horns, hollow dark eye holes with black tear streaks running
+down the cheeks, a closed grim mouth. The mask must be the exact same size
+in all six poses.
 
 Pose 1 — standing coiled, right hand raised beside the head holding three
-wooden daggers fanned between the fingers, left hand lifting the tengu mask
-onto the face, mask not yet fully on.
+wooden daggers fanned out between the fingers, left hand pressing the stone
+mask onto the face, mask not yet fully seated.
 
 Pose 2 — mask fully on, torso twisted back, right arm cocked far behind the
 shoulder with all three daggers gripped in a fan, ready to whip forward.
 
 Pose 3 — right arm snapped fully forward and across the body at the end of
-a throw, hand open and empty, fingers splayed, body leaning into the throw.
+a throw, hand open and completely empty, fingers splayed, body leaning into
+the throw.
 
 Pose 4 — crouched low on landing as if just stepping out of thin air, both
 knees bent deep, one hand touching the ground, head up and facing forward.
@@ -179,5 +173,27 @@ Pose 6 — finished upright, dagger held out high from the follow-through,
 other arm trailing low behind, mask still on, settled and balanced.
 ```
 
-**หมายเหตุ:** มีดที่ลอยอยู่กลางอากาศเกมวาดเองแล้ว (เส้นทองหมุนตามทิศ + วงแดงกระพริบตรงหมุด)
-อย่าวาดมีดที่ปล่อยออกไปแล้วลอยอยู่ในชีต — ท่า 3 มือต้องว่างเปล่า
+### สองข้อที่ต้องกำชับเป็นพิเศษกับหน้ากากนี้
+
+**1. ขอบหน้ากากต้องสว่างกว่าผม** หน้ากากนี้สีเข้มพอ ๆ กับผมและชุด ถ้าไม่มีขอบตัดกัน
+พอย่อเหลือ ~130 px ในเกม หัวจะกลายเป็นก้อนดำก้อนเดียวแยกไม่ออกว่าตรงไหนหน้ากาก
+ต่อท้าย prompt ได้ว่า: `the stone mask must read clearly lighter than the black hair behind it`
+
+**2. ท่า 3 มือต้องว่างเปล่า** มีดที่ปล่อยออกไปแล้วเกมวาดเองหมด (เส้นทองหมุนตามทิศ +
+วงแดงกระพริบตรงเป้าที่โดนสาป) อย่าวาดมีดลอยอยู่ในชีต
+
+---
+
+## หลังได้ชีตมา
+
+```sh
+cp <ไฟล์> /tmp/sc/curse_sheet.jpg
+cd game
+python3 tools/measure_sheet_scale.py /tmp/sc/curse_sheet.jpg
+```
+
+**หน้ากากนี้วัดสเกลต่างจากสองอันแรก** — จิ้งจอกกับอสูรเป็นหน้ากากขาว วัดความกว้างหน้ากากได้
+แต่อันนี้สีเข้มกลืนกับผม วิธีที่ใช้ได้คือ **ค่าจาก "มวลผม"** ซึ่งจะวัดผม+หน้ากากรวมกันเป็นก้อนหัวก้อนเดียว
+ซึ่งเป็นก้อนที่ไม่เปลี่ยนขนาดตามท่าอยู่แล้ว ใช้เป็นไม้บรรทัดได้ดี (ค่าจากโทนผิวใช้ไม่ได้ หน้าโดนบังมิด)
+
+แล้ว build ออกมาวัดความสูงเฟรมจริงเทียบท่ายืนเสมอ — ท่าตั้งหลักต้องได้ 96-100% ท่าย่อ/พุ่งต่ำกว่านั้น
