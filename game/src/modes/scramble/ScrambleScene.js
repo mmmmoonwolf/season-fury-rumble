@@ -350,7 +350,7 @@ class ScrambleScene extends Phaser.Scene {
       anchorX: meta.anchorX ?? 192, feetY: meta.feetY ?? 315, standing: meta.standing ?? 300,
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
-    this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1,
+    this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
       block: 3, blockstun: 2, blockcrouch: 1 };
     // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
     // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
