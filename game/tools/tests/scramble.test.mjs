@@ -761,3 +761,25 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   for (const k of Object.keys(MOVES)) for (const n of [1, 2, 3]) if (!have.has(`${k}_${n}.png`)) missing.push(`${k}_${n}`);
   ok(missing.length === 0, `ทุกท่ามีอาร์ตครบ 3 เฟรมใน atlas (ขาด: ${missing.join(", ") || "ไม่มี"})`);
 }
+
+// ── กดสกิลตอนท่าที่ฟันลมยังไม่จบ ต้องออกท่าให้ทันทีที่ท่าเดิมจบ ไม่ใช่เงียบหาย ──
+// ปุ่มตีทำแบบนี้อยู่แล้ว (ค้างใน buffer ต่อถ้ายังต่อท่าไม่ได้) ปุ่มสกิลต้องเหมือนกัน
+{
+  const g = new Game();
+  g.p2.x = g.p1.x + 600;                      // ไกลจนจิ้มไม่โดน = ยกเลิกเข้าสกิลไม่ได้
+  g.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(g, 12, {});                             // jab1 ยาว 18 เฟรม กดตอนใกล้จบให้อยู่ในช่วง buffer (9 เฟรม)
+  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  ok(g.p1.moveId === "jab1", "ยังยกเลิกไม่ได้ระหว่างท่า");
+  run(g, 8, {});
+  ok(g.p1.moveId === "thrust1", `ท่าเดิมจบแล้วสกิลออกให้เอง (ได้ ${g.p1.moveId})`);
+
+  // กดเร็วเกินจนเลยช่วง buffer = ไม่ออก เหมือนปุ่มตีทุกประการ ไม่ใช่ค้างไว้ออกทีหลังแบบไม่มีสาเหตุ
+  const g2 = new Game();
+  g2.p2.x = g2.p1.x + 600;
+  g2.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(g2, 2, {});
+  g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  run(g2, 30, {});
+  ok(g2.p1.moveId === null, "กดตั้งแต่ต้นท่า เลยช่วง buffer ไปแล้ว ไม่ออกท่าย้อนหลัง");
+}

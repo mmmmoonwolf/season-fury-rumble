@@ -24,7 +24,7 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 // พิมพ์ path ผิด = ไฟล์ 404 = Phaser หาย = อาการเดียวกับ CDN ล่มเป๊ะ ๆ
 {
   const srcs = [...html.matchAll(/<script[^>]*\ssrc=["']([^"']+)["']/g)].map((m) => m[1]);
-  ok(srcs.length >= 2, `มี <script src> อย่างน้อย phaser กับ peerjs (เจอ ${srcs.length})`);
+  ok(srcs.length >= 1, `มี <script src> ของ phaser (เจอ ${srcs.length})`);
   for (const src of srcs) {
     const f = path.join(root, src);
     ok(fs.existsSync(f), `ไฟล์ที่ index.html อ้างมีอยู่จริง: ${src}`);
@@ -36,7 +36,6 @@ const html = fs.readFileSync(path.join(root, "index.html"), "utf8");
 {
   const cases = [
     { file: "vendor/phaser-3.70.0.min.js", version: "3.70.0", needle: (v) => `VERSION:"${v}"`, minKB: 500, global: "Phaser" },
-    { file: "vendor/peerjs-1.5.5.min.js", version: "1.5.5", needle: (v) => `"${v}"`, minKB: 40, global: "Peer" },
   ];
   for (const c of cases) {
     const f = path.join(root, c.file);

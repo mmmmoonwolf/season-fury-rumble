@@ -353,11 +353,13 @@ class Game {
       }
       // ต่อคอมโบเข้าสกิล: กดปุ่มสกิลตอนท่าปัจจุบัน "ตีโดนแล้ว" ยกเลิกท่าเข้าสกิลได้เลย
       // เงื่อนไข hitConfirmed ทำให้ยกเลิกท่าที่ตีพลาดไม่ได้ ท่าที่พลาดจึงยังมีจังหวะเสียตามเดิม
+      // กินปุ่มเฉพาะตอนยกเลิกได้จริง ที่เหลือปล่อยค้างใน buffer ต่อ (เหมือนปุ่มตี)
+      // ถ้ากินทิ้งตรงนี้ กดสกิลท้ายท่าที่ฟันลมจะเงียบสนิท ทั้งที่ควรออกท่าทันทีที่ท่าเดิมจบ
       for (let i = 0; i < SKILLS.length; i++) {
         if (!this.buffered('skill' + (i + 1))) continue;
-        this.consume('skill' + (i + 1));
         if (!f.hitConfirmed || !f.onGround || f.moveF < m.startup) continue;
         if (!this.skillReady(f, i)) continue;
+        this.consume('skill' + (i + 1));
         this.startSkill(f, i, f.facing); return;
       }
       if (this.buffered('attack')) {

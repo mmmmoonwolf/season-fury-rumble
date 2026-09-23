@@ -15,7 +15,6 @@ const scrambleCss = fs.readFileSync(root + "src/modes/scramble/ScrambleScene.js"
 globalThis.window = { matchMedia: () => ({ matches: false }) };
 globalThis.location = { search: "" };
 const G = new URL("../../src", import.meta.url).href;
-const { TouchControls } = await import(G + "/systems/TouchControls.js");
 const { GAME_HEIGHT, gameWidthFor } = await import(G + "/config/viewport.config.js");
 
 // ── [hidden] ต้องชนะ .lobby-panel ──
@@ -60,16 +59,14 @@ const { GAME_HEIGHT, gameWidthFor } = await import(G + "/config/viewport.config.
   }
 }
 
-// ── ปุ่มสัมผัสของ SCRAMBLE ต้องห่างขอบล่างพอ ๆ กับโหมดปกติ ──
-// มือถือมีแถบ gesture / ขีดโฮม ทับอยู่ล่างจอ ซึ่งกินการแตะไปก่อนเสมอ
-// โหมดปกติเรียนรู้เรื่องนี้ไปแล้ว (BOTTOM_SAFE) แต่ SCRAMBLE พอร์ตเข้ามาทีหลังพร้อม DOM ของตัวเอง
-// เลยยังเว้นแค่ 14px อยู่ = ปุ่มจมอยู่ในโซนที่ระบบกินการแตะ
+// ── ปุ่มสัมผัสของ SCRAMBLE ต้องห่างขอบล่างพอ ──
+// มือถือมีแถบ gesture / ขีดโฮม ทับอยู่ล่างจอ ซึ่งกินการแตะไปก่อนเสมอ ปุ่มที่จมอยู่ในโซนนั้นกดไม่ติด
+//
+// ตัวเลข 13% มาจากโหมด 1v1 เดิมที่ปรับจนใช้ได้จริงบนมือถือ: ปุ่มที่ต่ำที่สุด (ปุ่มกัน)
+// ขอบล่างห่างจากขอบผืนเกม 94 หน่วยจาก 720 = 13.06% — โหมดนั้นถูกลบไปแล้ว
+// จึงตรึงตัวเลขไว้ตรงนี้แทน พร้อมที่มา ไม่งั้นเหลือแค่ "13" ลอย ๆ ที่ไม่มีใครรู้ว่ามาจากไหน
 {
-  // ระยะจริงของโหมดปกติ: ขอบล่างของปุ่มที่ต่ำที่สุด ห่างจากขอบล่างผืนเกมกี่หน่วย
-  const tc = new TouchControls(makeScene(), 90);
-  const gap = Math.min(...tc.buttons.map((b) => GAME_HEIGHT - (b.y + b.r)));
-  const pct = (gap / GAME_HEIGHT) * 100;
-  ok(gap > 0, `โหมดปกติ: ปุ่มล่างสุดห่างขอบล่าง ${gap} หน่วยเกม (${pct.toFixed(1)}% ของความสูงจอ)`);
+  const pct = 94 / GAME_HEIGHT * 100;
 
   const pads = [...scrambleCss.matchAll(/#sc-touch\s*\{\s*padding-bottom:\s*max\(\s*([\d.]+)(dvh|vh)/g)].map((m) => ({ pct: +m[1], unit: m[2] }));
   ok(pads.length >= 1, "#sc-touch มีกฎ padding-bottom ที่คิดจากความสูงจอ");
@@ -118,7 +115,9 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
 
   // กดค้างแล้วเด้งเมนูคัดลอก/แชร์ขวางกลางเกม
   ok(/-webkit-touch-callout:\s*none/.test(html), "ปิดเมนูกดค้างของ iOS");
-  ok(/\.lobby-input \{[^}]*-webkit-touch-callout:\s*default/.test(html), "ยกเว้นช่องกรอกรหัสห้อง ยังวาง/เลือกข้อความได้");
+  // เดิมมีข้อยกเว้นให้ช่องกรอกรหัสห้อง (วาง/เลือกข้อความได้) — ถอดออกพร้อมโหมดออนไลน์
+  // ตอนนี้ทั้งหน้าไม่มี <input> เลย ปิดเมนูกดค้างทั้งหน้าได้โดยไม่ต้องมีข้อยกเว้น
+  ok(!/<input/.test(html), "ไม่มีช่องกรอกข้อความในหน้าแล้ว จึงไม่ต้องมีข้อยกเว้น callout");
 
   // meta viewport: iOS เมิน แต่ Android ยังฟัง จึงยังต้องมี
   ok(/maximum-scale=1/.test(html) && /user-scalable=no/.test(html), "meta viewport ยังกันซูมฝั่ง Android ไว้");

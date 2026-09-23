@@ -54,7 +54,6 @@
     /* กดค้างบนมือถือแล้วเด้งเมนู "คัดลอก/แชร์" ขึ้นมาขวางกลางเกม — ปิดทิ้ง
        (ยกเว้นช่องกรอกรหัสห้อง ที่ยังต้องวาง/เลือกข้อความได้) */
     body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
-    .lobby-input { -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
 
     /* ---------- ล็อบบี้ออนไลน์ (DOM ล้วน ทับบน canvas — ไม่ใช่ Phaser scene ตั้งใจแยกกันเด็ดขาด) ---------- */
     #lobby {
@@ -95,29 +94,10 @@
     .lobby-btn:active { transform: scale(.98); }
     .lobby-btn-primary { background: #f97316; border-color: #f97316; color: #1e293b; }
     .lobby-btn-primary:hover { background: #fb923c; }
-    .lobby-btn-secondary { background: transparent; border-color: #334155; color: #94a3b8; font-weight: 500; font-size: 14px; }
-    .lobby-btn-secondary:hover { background: #334155; color: #e2e8f0; }
-    .lobby-status { margin: 4px 0; min-height: 1.4em; color: #7dd3fc; font-size: 14px; }
-    .lobby-hint { margin: 0 0 8px; font-size: 13px; color: #94a3b8; }
-    .room-code {
-      font: bold 40px monospace; letter-spacing: .12em; color: #facc15;
-      background: #0f172a; border: 2px dashed #f97316; border-radius: 10px;
-      padding: 14px 8px; margin: 4px 0 10px; user-select: all;
-    }
-    .lobby-input {
-      font: bold 24px monospace; letter-spacing: .18em; text-align: center; text-transform: uppercase;
-      padding: 12px; border-radius: 10px; border: 1px solid #475569; background: #0f172a; color: #f1f5f9;
-    }
     .lobby-error {
       margin: 14px 0 0; padding: 10px 12px; border-radius: 8px;
       background: rgba(239,68,68,.15); border: 1px solid #ef4444; color: #fca5a5; font-size: 14px;
     }
-    .spinner {
-      width: 22px; height: 22px; margin: 6px auto 0;
-      border: 3px solid #334155; border-top-color: #f97316; border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -141,30 +121,14 @@
     }
   </script>
 
-  <!-- ล็อบบี้: เลือกโหมดก่อนเข้าเกมเสมอ — offline (เดิม, ไม่แตะ) / host / guest ผ่าน WebRTC (PeerJS) -->
+  <!-- ล็อบบี้: เหลือโหมดเดียว (SCRAMBLE) จึงเป็นปุ่มเริ่มเล่นปุ่มเดียว
+       โหมด 1v1 กับการเล่นออนไลน์ถูกถอดออกพร้อมกัน — ดู docs/OLD_MODE_SKILLS.md -->
   <div id="lobby">
     <div class="lobby-card">
       <h1>Season Fury Rumble</h1>
 
       <div id="lobby-menu" class="lobby-panel">
-        <button id="btn-solo" class="lobby-btn lobby-btn-primary">เล่นคนเดียว (VS NPC)</button>
-        <button id="btn-host" class="lobby-btn">สร้างห้อง</button>
-        <button id="btn-join" class="lobby-btn">เข้าร่วมห้อง</button>
-      </div>
-
-      <div id="lobby-host" class="lobby-panel" hidden>
-        <p class="lobby-status" id="host-status">กำลังสร้างห้อง...</p>
-        <div class="spinner" id="host-spinner"></div>
-        <div class="room-code" id="room-code-display"></div>
-        <p class="lobby-hint">บอกรหัสนี้ให้เพื่อนพิมพ์ในช่อง "เข้าร่วมห้อง"</p>
-        <button class="lobby-btn lobby-btn-secondary" id="btn-host-back">ย้อนกลับ</button>
-      </div>
-
-      <div id="lobby-join" class="lobby-panel" hidden>
-        <input id="join-code-input" class="lobby-input" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" />
-        <button class="lobby-btn lobby-btn-primary" id="btn-join-submit">เชื่อมต่อ</button>
-        <p class="lobby-status" id="join-status"></p>
-        <button class="lobby-btn lobby-btn-secondary" id="btn-join-back">ย้อนกลับ</button>
+        <button id="btn-solo" class="lobby-btn lobby-btn-primary">เริ่มเล่น (SCRAMBLE)</button>
       </div>
 
       <p class="lobby-error" id="lobby-error" hidden></p>
@@ -179,7 +143,6 @@
        โหลด Phaser ไม่สำเร็จ = <script type="module"> ข้างล่าง throw ตั้งแต่ import แรก
        แล้วปุ่มล็อบบี้ทุกปุ่มไม่ถูกผูก event เลย กดแล้วเงียบสนิทโดยไม่มีอะไรบอกว่าพัง -->
   <script src="vendor/phaser-3.70.0.min.js"></script>
-  <script src="vendor/peerjs-1.5.5.min.js"></script>
 
   <!-- ตัวดักพังแบบเห็นบนจอ ต้องเป็น script ธรรมดา (ไม่ใช่ module) และอยู่ก่อน module
        เพราะ error ตอนโหลด/รัน module script ไม่ขึ้นที่ไหนเลยนอกจาก devtools ซึ่งบนมือถือเปิดไม่ได้
@@ -214,11 +177,8 @@
     })();
   </script>
   <script type="module">
-    import { LobbyScene } from "./src/scenes/LobbyScene.js";
-    import { MainGameScene } from "./src/scenes/MainGameScene.js";
     import { ScrambleScene } from "./src/modes/scramble/ScrambleScene.js";
     import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
-    import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
 
     /**
      * ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
@@ -248,12 +208,9 @@
           width: w,
           height: GAME_HEIGHT,
         },
-        physics: {
-          default: "arcade",
-          arcade: { gravity: { y: 0 }, debug: false },
-        },
-        // LobbyScene เริ่มก่อนเสมอ (เลือกโหมด) แล้วค่อย start ไปฉากของโหมดนั้น
-        scene: [LobbyScene, MainGameScene, ScrambleScene],
+        // ไม่ตั้ง physics ของ Phaser: SCRAMBLE เดินฟิสิกส์เองใน core.js ทีละเฟรม
+        // (ฉากเป็นแค่ตัววาด อ่านสถานะจาก sim) เปิด arcade ไว้ก็มีแต่กิน CPU เปล่า
+        scene: [ScrambleScene],
       };
     }
 
@@ -290,97 +247,13 @@
     document.addEventListener("fullscreenchange", () => { syncFsIcon(); syncOrientation(); });
     syncFsIcon();
 
-    /** ซ่อนล็อบบี้แล้วเริ่มเกมจริง — เรียกได้จากทั้ง 3 เส้นทาง (solo / host ต่อสำเร็จ / guest ต่อสำเร็จ) */
+    /** ซ่อนล็อบบี้แล้วเริ่มเกมจริง */
     function startGame() {
       document.getElementById("lobby").style.display = "none";
       window.__sfrGame = new Phaser.Game(makeConfig());
     }
 
-    // ---------- ปุ่ม/พาเนลล็อบบี้ ----------
-    const $ = (id) => document.getElementById(id);
-    const panels = { menu: $("lobby-menu"), host: $("lobby-host"), join: $("lobby-join") };
-
-    function showPanel(name) {
-      for (const [key, el] of Object.entries(panels)) el.hidden = key !== name;
-      $("lobby-error").hidden = true;
-    }
-
-    function showError(msg) {
-      const el = $("lobby-error");
-      el.textContent = msg;
-      el.hidden = false;
-    }
-
-    $("btn-solo").addEventListener("click", () => startGame());
-
-    $("btn-host").addEventListener("click", () => {
-      showPanel("host");
-      $("host-status").textContent = "กำลังสร้างห้อง...";
-      $("host-spinner").hidden = false;
-      $("room-code-display").textContent = "";
-      hostRoom({
-        onCodeReady: (code) => {
-          $("room-code-display").textContent = code;
-          $("host-status").textContent = "รอผู้เล่นอีกฝั่งเข้าร่วม — บอกรหัสด้านบนให้เพื่อน";
-          $("host-spinner").hidden = false;
-        },
-        onConnected: () => {
-          $("host-status").textContent = "เชื่อมต่อสำเร็จ! กำลังเริ่มเกม...";
-          $("host-spinner").hidden = true;
-          setTimeout(startGame, 250);
-        },
-        onError: (msg) => {
-          cancelSession();
-          showPanel("menu");
-          showError(msg);
-        },
-      });
-    });
-
-    $("btn-host-back").addEventListener("click", () => {
-      cancelSession();
-      showPanel("menu");
-    });
-
-    $("btn-join").addEventListener("click", () => {
-      showPanel("join");
-      $("join-status").textContent = "";
-      const input = $("join-code-input");
-      input.value = "";
-      input.focus();
-    });
-
-    $("btn-join-back").addEventListener("click", () => {
-      cancelSession();
-      showPanel("menu");
-    });
-
-    function submitJoin() {
-      const code = $("join-code-input").value.trim().toUpperCase();
-      if (code.length < 4) {
-        showError("กรอกรหัสห้องให้ครบก่อน");
-        return;
-      }
-      $("join-status").textContent = "กำลังเชื่อมต่อ...";
-      joinRoom(code, {
-        onConnected: () => {
-          $("join-status").textContent = "เชื่อมต่อสำเร็จ! กำลังเริ่มเกม...";
-          setTimeout(startGame, 250);
-        },
-        onError: (msg) => {
-          cancelSession();
-          $("join-status").textContent = "";
-          showError(msg);
-        },
-      });
-    }
-    $("btn-join-submit").addEventListener("click", submitJoin);
-    $("join-code-input").addEventListener("keydown", (e) => {
-      if (e.key === "Enter") submitJoin();
-    });
-
-    // เผื่อเทสอัตโนมัติ (Playwright) อ่านสถานะห้องปัจจุบันได้ตรงๆ โดยไม่ต้อง parse DOM
-    window.__netSession = getSession();
+    document.getElementById("btn-solo").addEventListener("click", startGame);
   </script>
 </body>
 </html>
