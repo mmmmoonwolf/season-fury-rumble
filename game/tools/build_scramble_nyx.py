@@ -126,7 +126,7 @@ CLIP_STANDING_PX = {
     "@blockcrouch_sheet": 1330,
     "@rise_sheet": 834,
     "@spin_sheet": 433,
-    "@sweep_sheet": 537,
+    "@sweep_sheet": 670,
     "@dive_sheet": 589,
     "@plunge_sheet": 672,
 }
@@ -138,7 +138,7 @@ CLIP_STANDING_PX = {
 # บนจอตัวละครหดจาก 130 px เหลือ 86 px จึงดูเหมือนตัวเล็กลงทั้งตัวมากกว่าดูเหมือนย่อ
 # คูณขึ้นให้สูง ~97 px และขยับ PHYS.crouchH เป็น 88 ตามกัน สไปรท์จึงสูงกว่า hurtbox 10%
 # เท่ากับท่ายืน (130 ต่อ 118) — สัดส่วนเดียวกันทุกท่า ไม่มีท่าไหนโผล่พ้นกรอบผิดปกติ
-SEQ_SCALE = {"crouch": 1.13}
+SEQ_SCALE = {"crouch": 1.27}
 
 
 
