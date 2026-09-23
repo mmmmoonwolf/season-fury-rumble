@@ -87,6 +87,22 @@ const MOVES = {
     hb: { x: -56, y: -132, w: 112, h: 132 }, kb: [3.5, -8], stun: 26, jumpCancel: true },
   sair: { label: 'Dive Thrust', kind: 'air', startup: 7, active: 10, recovery: 14, dmg: 7,
     hb: { x: 6, y: -82, w: 98, h: 30 }, kb: [11, -6], stun: 30, imp: { f: 6, vx: 13, vy: -1.5 }, floaty: true },
+  // ---- สกิล: แทงรัวเดินหน้า 4 จังหวะ (ปุ่ม Shift) ----
+  // ทำเป็นท่าสั้น 4 ท่าต่อกันด้วย autoChain แทนที่จะเป็นท่าเดียวที่มีหลายหน้าต่างโจมตี
+  // เพราะแบบนี้ใช้กลไกเดิมได้ทั้งหมด (hitbox/hitList/แรงดัน/การแม็พเฟรมจาก phase())
+  // ไม่ต้องแตะ advanceMove/hitbox ที่เป็นหัวใจของระบบและ playtest มาแล้ว
+  // แต่ละจังหวะมีแรงดันไปข้างหน้า = ตัวละครเดินหน้าไปเรื่อย ๆ ตรงกับอาร์ตที่ก้าวเท้าทุกครั้งที่แทง
+  // stun ของสามจังหวะแรกตั้งให้ยาวพอให้จังหวะถัดไปตามทัน คู่ต่อสู้จึงโดนครบชุดถ้าโดนจังหวะแรก
+  thrust1: { label: 'Thrust Rush', kind: 'ground', startup: 5, active: 3, recovery: 4, dmg: 3,
+    hb: { x: 8, y: -92, w: 78, h: 26 }, kb: [1.5, 0], stun: 20, autoChain: 'thrust2', imp: { f: 4, vx: 5 } },
+  thrust2: { label: 'Thrust Rush', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 3,
+    hb: { x: 8, y: -92, w: 82, h: 26 }, kb: [1.5, 0], stun: 20, autoChain: 'thrust3', imp: { f: 3, vx: 5 } },
+  thrust3: { label: 'Thrust Rush', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 3,
+    hb: { x: 8, y: -92, w: 86, h: 26 }, kb: [1.5, 0], stun: 20, autoChain: 'thrust4', imp: { f: 3, vx: 5 } },
+  // ไม้จบ: แทงสองมือ แรงกว่า ดันคู่ต่อสู้ออกไปจริง ๆ แล้วจบคอมโบ (ไม่มี autoChain)
+  thrust4: { label: 'Thrust Rush', kind: 'ground', startup: 6, active: 4, recovery: 20, dmg: 7,
+    hb: { x: 10, y: -90, w: 100, h: 30 }, kb: [12, -5], stun: 30, imp: { f: 5, vx: 9 } },
+
   dair: { label: 'Plunge', kind: 'air', startup: 8, active: 90, recovery: 0, dmg: 6,
     hb: { x: -26, y: -32, w: 52, h: 48 }, kb: [2, -12], stun: 30, imp: { f: 7, vxMul: 0.3, vy: 17 },
     untilLand: true, landLag: 14, pogo: -12 },
@@ -149,7 +165,7 @@ class Game {
     this.dummyTech = 'off';
     this.lastInp = null;
     this.events = [];
-    this.buf = { attack: 0, jump: 0 };
+    this.buf = { attack: 0, jump: 0, skill: 0 };
     this.lastTap = { dir: 0, f: -99 };
     this.dashLatch = false;
     this.meter = []; this.meterIdle = 0;
@@ -162,6 +178,7 @@ class Game {
     const p = this.p1, d = this.p2;
     if (inp.p.attack) this.buf.attack = PHYS.buffer + 1;
     if (inp.p.jump) this.buf.jump = PHYS.buffer + 1;
+    if (inp.p.skill) this.buf.skill = PHYS.buffer + 1;
 
     this.lastInp = inp;
     // tech input: press Block while airborne; missing the window locks you out briefly (anti-mash)
@@ -173,6 +190,7 @@ class Game {
       // input buffer only ages while the player is not frozen in hitstop
       if (this.buf.attack > 0) this.buf.attack--;
       if (this.buf.jump > 0) this.buf.jump--;
+      if (this.buf.skill > 0) this.buf.skill--;
     }
     if (d.hitstop > 0) d.hitstop--; else { this.controlDummy(d); this.physics(d, null); this.advanceMove(d, null); }
 
@@ -265,6 +283,11 @@ class Game {
         this.consume('jump'); f.dropT = 14; f.onGround = false; f.y += 2; f.setState('air'); return;
       }
       if (this.doJump(f, inp)) { this.consume('jump'); return; }
+    }
+    // สกิลแทงรัว — เริ่มได้เฉพาะตอนยืนอยู่บนพื้น (เป็นคอมโบเดินหน้า ไม่มีเวอร์ชันกลางอากาศ)
+    if (this.buffered('skill') && f.onGround) {
+      this.consume('skill'); f.used.clear();
+      this.startMove(f, 'thrust1', dir || f.facing); return;
     }
     // attack
     if (this.buffered('attack')) {
@@ -397,6 +420,9 @@ class Game {
       f.moveF++;
       const m = f.move;
       if (f.moveF >= m.startup + m.active + m.recovery) {
+        // ท่าที่มี autoChain ต่อท่าถัดไปเองโดยไม่ต้องกดซ้ำ — ใช้ทำคอมโบสกิลกดครั้งเดียวจบชุด
+        // ต่อเฉพาะตอนยังยืนอยู่บนพื้น ถ้าโดนตีจนหลุด state หรือตกลงมา คอมโบก็ขาดตามธรรมชาติ
+        if (m.autoChain && f.onGround) { this.startMove(f, m.autoChain, f.facing); return; }
         f.move = null; f.moveId = null; f.used.clear();
         f.setState(f.onGround ? 'idle' : 'air');
       }

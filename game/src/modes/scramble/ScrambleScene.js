@@ -35,8 +35,10 @@ function readInput() {
   const h = (c) => held.has(c), any = (...c) => c.some(h), anyP = (...c) => c.some((k) => pressed.has(k));
   return {
     left: any('KeyA','ArrowLeft'), right: any('KeyD','ArrowRight'), up: any('KeyW','ArrowUp'), down: any('KeyS','ArrowDown'),
-    jump: any('Space','KeyK'), attack: any('KeyJ'), block: any('KeyL'), run: any('ShiftLeft','ShiftRight'),
-    p: { left: anyP('KeyA','ArrowLeft'), right: anyP('KeyD','ArrowRight'), jump: anyP('Space','KeyK'), attack: anyP('KeyJ'), block: anyP('KeyL') },
+    jump: any('Space','KeyK'), attack: any('KeyJ'), block: any('KeyL'), run: 0,
+    skill: any('ShiftLeft','ShiftRight'),
+    p: { left: anyP('KeyA','ArrowLeft'), right: anyP('KeyD','ArrowRight'), jump: anyP('Space','KeyK'), attack: anyP('KeyJ'), block: anyP('KeyL'),
+          skill: anyP('ShiftLeft','ShiftRight') },
   };
 }
 
@@ -153,6 +155,7 @@ const OVERLAY_HTML = `
   <div class="acts">
     <button class="big" data-code="KeyL">Block</button>
     <button class="big" data-code="Space">Jump</button><button class="big" data-code="KeyJ">Attack</button>
+    <button class="big" data-code="ShiftLeft">Skill</button>
   </div>
 </div>`;
 
@@ -225,7 +228,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tCombo = T(1210, 150, '', 44, '#ffffff', 1).setFontStyle('700');
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
-    this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L', 12, C.dim, 1);
+    this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skill Shift', 12, C.dim, 1);
     this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   1 2 3 dummy   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     this._initNyxSprite();
@@ -355,7 +358,8 @@ class ScrambleScene extends Phaser.Scene {
     // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
     // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
     // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
-    this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair"]);
+    this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "thrust1", "thrust2", "thrust3", "thrust4"]);
     for (const [name, n] of Object.entries(this.nyxAnims)) {
       if (this.anims.exists('scnyx/' + name)) continue;
       this.anims.create({

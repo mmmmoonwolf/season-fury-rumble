@@ -11,7 +11,7 @@ const { Game, PHYS, MOVES, STAGE, ACTIONABLE } = await import(G + "/core.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
-const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0 };
+const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
 /** เดิน n เฟรมด้วย input เดิม (เฟรมแรกเท่านั้นที่นับเป็น "เพิ่งกด") */
 const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ? o : { ...o, p: {} })); };
@@ -328,7 +328,11 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
 // ── ตารางท่าครบและสมเหตุสมผล ──
 {
   const ids = Object.keys(MOVES);
-  ok(ids.length === 9, `มีท่าครบ 9 ท่าตาม handoff (ได้ ${ids.length})`);
+  // 9 ท่าตาม handoff + 4 จังหวะของสกิลแทงรัว (thrust1-4) ที่เพิ่มทีหลัง
+  const HANDOFF = ["jab1","jab2","jab3","side","up","down","nair","sair","dair"];
+  const missing = HANDOFF.filter((k) => !ids.includes(k));
+  ok(missing.length === 0, `มีท่าตาม handoff ครบ 9 ท่า (ขาด ${missing.join(", ") || "ไม่มี"})`);
+  ok(ids.length === 13, `รวมสกิลแทงรัว 4 จังหวะแล้วเป็น 13 ท่า (ได้ ${ids.length})`);
   const bad = ids.filter((k) => {
     const m = MOVES[k];
     return !(m.startup > 0 && m.active > 0 && m.recovery >= 0 && m.dmg > 0 && m.stun > 0 && m.hb && m.kb);
@@ -444,7 +448,8 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
   ok(!/\bpadX\b/.test(scene), "ฉากไม่ต้องเลื่อนกล้องชดเชยขอบเวทีอีกแล้ว (ไม่มี padX)");
   ok(/setStageWidth\(this\.sys\.game\.config\.width\)/.test(scene), "ฉากตั้งความกว้างเวทีจากผืนเกมจริง");
-  ok(!/data-code="ShiftLeft"/.test(scene), 'ปุ่ม "Run" ถูกถอดออกจากปุ่มบนจอแล้ว (วิ่งเสมอ)');
+  ok(!/>Run</.test(scene), 'ไม่มีปุ่ม "Run" บนจอแล้ว (วิ่งเสมอ ไม่ต้องกด)');
+  ok(/data-code="ShiftLeft">Skill</.test(scene), 'Shift ที่เคยเป็นปุ่มวิ่งถูกใช้เป็นปุ่มสกิลแทน');
   ok(!/walk:\s*\d+/.test(scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1]), "ไม่ลงทะเบียนท่าเดินใน atlas อีกแล้ว");
 }
 
@@ -468,4 +473,50 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   for (const name of imported) {
     ok(name in core, `core.js ส่งออก ${name} จริงตามที่ฉาก import`);
   }
+}
+
+
+// ── สกิลแทงรัว: กดครั้งเดียวได้ครบ 4 จังหวะ และเดินหน้าไปเรื่อย ๆ ──
+// ต่อท่าด้วย autoChain แทนที่จะทำท่าเดียวที่มีหลายหน้าต่างโจมตี เพื่อให้ใช้กลไกเดิมได้ทั้งหมด
+// (hitbox/hitList/แรงดัน/การแม็พเฟรมจาก phase()) ไม่ต้องแตะ advanceMove ที่เป็นหัวใจของระบบ
+{
+  const g = new Game();
+  const startX = g.p1.x;
+  g.step(inp({ skill: 1, p: { skill: 1 } }));
+  ok(g.p1.moveId === "thrust1", `กดสกิลแล้วออกท่าแรก (ได้ ${g.p1.moveId})`);
+
+  const seen = [];
+  for (let i = 0; i < 80; i++) {
+    run(g, 1, {});
+    if (g.p1.moveId && !seen.includes(g.p1.moveId)) seen.push(g.p1.moveId);
+  }
+  ok(
+    seen.join(">") === "thrust1>thrust2>thrust3>thrust4",
+    `กดครั้งเดียวต่อครบสี่จังหวะเอง ไม่ต้องกดซ้ำ (ได้ ${seen.join(">")})`
+  );
+  ok(g.p1.state === "idle", "จบคอมโบแล้วกลับมาคุมตัวได้ตามปกติ");
+  ok(g.p1.x > startX + 60, `คอมโบพาตัวละครเดินหน้าไปจริง (ไปได้ ${(g.p1.x - startX).toFixed(0)} px)`);
+
+  // ทุกจังหวะต้องมีอาร์ตครบ 3 เฟรมเหมือนท่าโจมตีอื่น ไม่งั้น Phaser ค้างเฟรมเดิมแบบเงียบ ๆ
+  const fs = await import("fs");
+  const atlas = JSON.parse(fs.readFileSync(new URL("../../assets/characters/scramble_nyx.json", import.meta.url)));
+  for (const id of ["thrust1", "thrust2", "thrust3", "thrust4"]) {
+    const have = [1, 2, 3].filter((i) => atlas.frames[`${id}_${i}.png`]);
+    ok(have.length === 3, `${id}: มีอาร์ตครบ 3 เฟรม (ได้ ${have.length})`);
+  }
+}
+
+// ── สกิลเริ่มได้เฉพาะบนพื้น และคอมโบขาดเองถ้าหลุดจากพื้น ──
+{
+  const g = new Game();
+  g.p1.onGround = false; g.p1.y -= 50; g.p1.setState("air");
+  g.step(inp({ skill: 1, p: { skill: 1 } }));
+  ok(g.p1.moveId !== "thrust1", "กดสกิลกลางอากาศไม่ออกท่า (เป็นคอมโบเดินหน้าบนพื้น)");
+
+  const g2 = new Game();
+  g2.step(inp({ skill: 1, p: { skill: 1 } }));
+  run(g2, 12, {});
+  g2.p1.onGround = false;                       // จำลองว่าหลุดจากพื้นกลางคอมโบ
+  run(g2, 40, {});
+  ok(g2.p1.moveId !== "thrust4", "หลุดจากพื้นกลางคอมโบแล้วไม่ต่อจังหวะสุดท้ายให้");
 }
