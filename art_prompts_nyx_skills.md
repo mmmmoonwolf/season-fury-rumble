@@ -1,8 +1,10 @@
 # Nyx — Prompt สกิล 2 และ 3 (SCRAMBLE)
 
-**สถานะ: ใช้ไปแล้วทั้งสองชุด** ชีตที่ได้เข้าเกมเรียบร้อย
+**สถานะ:** จิ้งจอก (ปุ่ม 1) กับอสูร (ปุ่ม 3) เข้าเกมแล้ว
 (`@fox_sheet` = 678, `@oni_sheet` = 575 ใน `CLIP_STANDING_PX`)
-เก็บ prompt ไว้สำหรับเจนซ่อมบางท่า หรือทำสกิลชุดถัดไปให้สไตล์ตรงกัน
+**เทงงุ (ปุ่ม 2) ระบบพร้อมแล้ว รออาร์ตอย่างเดียว** — prompt อยู่ท้ายไฟล์
+
+กติกาของชุดนี้: **ใส่หน้ากาก = สกิล · หน้าเปล่า = ท่าปกติ** ดูเฟรมเดียวก็แยกออก
 
 ไฟล์นี้คู่กับ `game/tools/build_scramble_nyx.py` — ชีตที่ได้เอาไปวางที่ `/tmp/sc/` แล้วรัน build
 
@@ -128,3 +130,52 @@ python3 tools/measure_sheet_scale.py /tmp/sc/fox_sheet.jpg
 1. ดู**ความกว้างหน้ากาก**ของทุกท่า ต้องเท่ากันหมด (ยอมให้ท่าที่หันข้างแคบกว่าได้) — เช็กว่าอาร์ตสเกลตรงกันไหม
 2. เอา**ท่าที่ตั้งตรงที่สุดในชีต**เป็นตัวอ้างอิง ใส่ `CLIP_STANDING_PX` แล้ว build
 3. วัดความสูงเฟรมจริงเทียบท่ายืน — ท่าตั้งหลักต้องได้ 96-100% ท่าพุ่ง/ย่อต่ำกว่านั้น
+
+
+---
+
+## สกิล 2 — Tengu Gale / ลมเทงงุ (หน้ากากเทงงุ) · 6 ท่า · 2 แถว แถวละ 3
+
+ขว้างมีด 3 เล่มเป็นพัด แล้วกดซ้ำเพื่อวาร์ปไปที่เล่มกลาง
+ท่า 1-3 = ช่วงขว้าง · ท่า 4-6 = ช่วงโผล่ที่หมุดแล้วฟัน
+
+**หน้ากากเทงงุ** ยังไม่มีภาพอ้างอิง ต้องเจนหน้ากากก่อนแล้วค่อยเอาไปเป็น reference ของชีต
+เหมือนที่ทำกับจิ้งจอกและอสูร — เจนหน้ากากเดี่ยวให้ผ่านก่อน ค่อยทำชีตท่า
+
+```
+A white tengu mask for a chibi ninja character: a long straight red nose
+jutting forward, thick angry red eyebrows, round bulging eyes, a small
+grim mouth, deep red lacquer markings on white. Front view, centered on a
+pure white background, no character, no body, just the mask.
+```
+
+ได้หน้ากากแล้วค่อยสั่งชีต (แนบทั้งเฟรม Nyx จาก atlas และหน้ากากที่เพิ่งได้):
+
+```
+A 6-pose action sprite sheet of the same character, arranged in 2 rows of 3,
+read left to right, top row first. Even spacing, no pose touching another.
+The character wears the white long-nosed tengu mask from the attached mask
+reference. The mask must be the exact same size in all six poses.
+
+Pose 1 — standing coiled, right hand raised beside the head holding three
+wooden daggers fanned between the fingers, left hand lifting the tengu mask
+onto the face, mask not yet fully on.
+
+Pose 2 — mask fully on, torso twisted back, right arm cocked far behind the
+shoulder with all three daggers gripped in a fan, ready to whip forward.
+
+Pose 3 — right arm snapped fully forward and across the body at the end of
+a throw, hand open and empty, fingers splayed, body leaning into the throw.
+
+Pose 4 — crouched low on landing as if just stepping out of thin air, both
+knees bent deep, one hand touching the ground, head up and facing forward.
+
+Pose 5 — rising out of the crouch into a rising diagonal slash, one wooden
+dagger sweeping upward from low to high across the body.
+
+Pose 6 — finished upright, dagger held out high from the follow-through,
+other arm trailing low behind, mask still on, settled and balanced.
+```
+
+**หมายเหตุ:** มีดที่ลอยอยู่กลางอากาศเกมวาดเองแล้ว (เส้นทองหมุนตามทิศ + วงแดงกระพริบตรงหมุด)
+อย่าวาดมีดที่ปล่อยออกไปแล้วลอยอยู่ในชีต — ท่า 3 มือต้องว่างเปล่า
