@@ -351,11 +351,11 @@ class ScrambleScene extends Phaser.Scene {
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
     this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1,
-      block: 3, blockstun: 2, blockcrouch: 4 };
+      block: 3, blockstun: 2, blockcrouch: 1 };
     // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
     // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
     // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
-    this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side"]);
+    this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair"]);
     for (const [name, n] of Object.entries(this.nyxAnims)) {
       if (this.anims.exists('scnyx/' + name)) continue;
       this.anims.create({
