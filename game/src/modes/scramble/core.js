@@ -92,7 +92,7 @@ const MOVES = {
     untilLand: true, landLag: 14, pogo: -12 },
 };
 
-const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block']);
+const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
 class Fighter {
   constructor(id, name, x, facing) {
@@ -108,7 +108,14 @@ class Fighter {
       comboHits: 0, comboDmg: 0, wallBounced: false, jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
     });
   }
-  get h() { return (this.state === 'crouch' || (this.move && this.move.crouch) || this.state === 'knockdown' || this.state === 'techroll') ? PHYS.crouchH : PHYS.standH; }
+  // กันแบบก้ม (blockcrouch) ตัวเตี้ยเท่าท่าย่อ — ไม่งั้นก้มกันแล้วกรอบยังสูงเท่าเดิม ก็ไม่ต่างจากกันยืน
+  // lowStun = จำไว้ว่า blockstun นี้มาจากท่าก้ม เพื่อให้กรอบยังเตี้ยตลอดช่วงเซ ไม่เด้งสูงกลางคัน
+  // (เด้งสูงกลางคันแปลว่าท่าที่ตีสูงจะจิ้มโดนหัวได้ ทั้งที่ผู้เล่นก้มกันอยู่ตลอด)
+  get h() {
+    const low = this.state === 'crouch' || this.state === 'blockcrouch' || (this.state === 'blockstun' && this.lowStun)
+      || (this.move && this.move.crouch) || this.state === 'knockdown' || this.state === 'techroll';
+    return low ? PHYS.crouchH : PHYS.standH;
+  }
   hurtbox() { const w = PHYS.width; return { x: this.x - w / 2, y: this.y - this.h, w, h: this.h }; }
   hitbox() {
     const m = this.move; if (!m || this.state !== 'attack') return null;
@@ -265,7 +272,9 @@ class Game {
       this.startMove(f, this.pickMove(f, inp), dir); return;
     }
     if (f.onGround) {
-      if (inp.block) { f.setState('block'); f.vx *= PHYS.stopFric; return; }
+      // กัน + กดลง = ก้มกัน (กรอบเตี้ยลงเท่าท่าย่อ) · กันเฉย ๆ = กันยืนเหมือนเดิม
+      // เช็ค block ก่อน down เหมือนเดิม ท่าย่อธรรมดาจึงไม่เปลี่ยนพฤติกรรม
+      if (inp.block) { f.setState(inp.down ? 'blockcrouch' : 'block'); f.vx *= PHYS.stopFric; return; }
       if (inp.down) { f.setState('crouch'); f.vx *= PHYS.stopFric; return; }
       if (dir !== 0) {
         f.facing = dir;
@@ -403,7 +412,8 @@ class Game {
     const m = a.move; a.hitList.add(d.id); a.hitConfirmed = true;
     const fx = hb.x + hb.w / 2, fy = hb.y + hb.h / 2;
     const facingAttacker = Math.sign(a.x - d.x) === d.facing || a.x === d.x;
-    if (d.state === 'block' && d.onGround && facingAttacker) {
+    if ((d.state === 'block' || d.state === 'blockcrouch') && d.onGround && facingAttacker) {
+      d.lowStun = d.state === 'blockcrouch';
       d.setState('blockstun'); d.stun = Math.ceil(m.stun * 0.45);
       d.vx = a.facing * 5; a.vx = -a.facing * 3;
       a.hitstop = d.hitstop = 4;

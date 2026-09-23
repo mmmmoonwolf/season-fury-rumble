@@ -350,7 +350,8 @@ class ScrambleScene extends Phaser.Scene {
       anchorX: meta.anchorX ?? 192, feetY: meta.feetY ?? 315, standing: meta.standing ?? 300,
       canvasW: meta.canvasW ?? 323, canvasH: meta.canvasH ?? 321,
     };
-    this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1 };
+    this.nyxAnims = { idle: 8, run: 10, hurt: 10, crouch: 7, jump: 5, knockdown: 2, techroll: 2, tech: 1,
+      block: 3, blockstun: 2, blockcrouch: 4 };
     // ท่าโจมตีที่มีอาร์ตแล้ว — 3 เฟรมต่อท่า: 1 เงื้อ / 2 ฟันสุดแขน / 3 ชักกลับ
     // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
     // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
@@ -368,13 +369,14 @@ class ScrambleScene extends Phaser.Scene {
         frameRate:
           n / (name === 'run'
             ? RUN_STRIDE / (PHYS.run * 60)
-            : { idle: 0.8, hurt: 0.5, crouch: 1.2, jump: 0.6, knockdown: 0.25, techroll: 0.22, tech: 0.17 }[name]),
+            : { idle: 0.8, hurt: 0.5, crouch: 1.2, jump: 0.6, knockdown: 0.25, techroll: 0.22, tech: 0.17,
+                block: 1.0, blockstun: 0.2, blockcrouch: 1.0 }[name]),
         // ท่าโดนตีเล่นรอบเดียวแล้วค้างเฟรมสุดท้าย — hitstun ในเอนจิ้นยาวไม่เท่ากัน (17-38 เฟรม)
         // ถ้าวนซ้ำ ตัวจะสะบัดรับแรงซ้ำ ๆ ทั้งที่โดนตีครั้งเดียว
         // ท่าที่ "เล่นจบแล้วค้าง" = ท่าที่เอนจิ้นถือไว้ยาวไม่เท่ากันทุกครั้ง
         // โดนตี: hitstun 17-38 เฟรมแล้วแต่ท่าที่โดน · กระโดด: ลอยนานแค่ไหนแล้วแต่กดค้าง/ชนเพดาน
         // ถ้าวนซ้ำจะเห็นสะบัดรับแรงซ้ำ ๆ หรือตีลังกาวนไม่หยุดกลางอากาศ
-        repeat: ["hurt", "jump", "knockdown", "tech"].includes(name) ? 0 : -1,
+        repeat: ["hurt", "jump", "knockdown", "tech", "blockstun"].includes(name) ? 0 : -1,
       });
     }
     this.nyx = this.add.sprite(0, 0, 'scnyx', 'idle_1.png').setVisible(false).setDepth(5);
@@ -411,6 +413,7 @@ class ScrambleScene extends Phaser.Scene {
       run: 'run', walk: 'run', idle: 'idle', crouch: 'crouch',
       air: 'jump', landing: 'jump',
       hitstun: 'hurt', knockdown: 'knockdown', techroll: 'techroll', tech: 'tech',
+      block: 'block', blockcrouch: 'blockcrouch', blockstun: 'blockstun',
     }[f.state] ?? null;
     if (!key) { this.nyx.setVisible(false); return false; }
 
