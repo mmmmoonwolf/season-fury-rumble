@@ -332,9 +332,14 @@ const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ?
   const HANDOFF = ["jab1","jab2","jab3","side","up","down","nair","sair","dair"];
   const missing = HANDOFF.filter((k) => !ids.includes(k));
   ok(missing.length === 0, `มีท่าตาม handoff ครบ 9 ท่า (ขาด ${missing.join(", ") || "ไม่มี"})`);
-  ok(ids.length === 13, `รวมสกิลแทงรัว 4 จังหวะแล้วเป็น 13 ท่า (ได้ ${ids.length})`);
+  // 9 ท่าพื้นฐาน + แทงรัว 4 + Fox Step 2 + Oni Veil 4 = 19
+  ok(ids.length === 19, `รวมสกิลทั้งสามแล้วเป็น 19 ท่า (ได้ ${ids.length})`);
+  // ท่าที่ประกาศ noHit ไว้ (ช่วงหายตัวของอัลติ) ไม่มีดาเมจโดยตั้งใจ ต้องไม่มีหน้าต่างโจมตีด้วย
+  const badNoHit = ids.filter((k) => MOVES[k].noHit && !(MOVES[k].active === 0 && !MOVES[k].dmg));
+  ok(badNoHit.length === 0, `ท่า noHit ต้องไม่มีหน้าต่างโจมตีเลย — ผิด: ${badNoHit}`);
   const bad = ids.filter((k) => {
     const m = MOVES[k];
+    if (m.noHit) return false;
     return !(m.startup > 0 && m.active > 0 && m.recovery >= 0 && m.dmg > 0 && m.stun > 0 && m.hb && m.kb);
   });
   ok(bad.length === 0, `ทุกท่ามีเฟรมเดต้าครบ (startup/active/recovery/dmg/stun/hitbox/knockback) — ขาด: ${bad}`);
@@ -527,12 +532,15 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 // ── ปุ่มสกิลสามช่อง ──
 // ช่องที่ยังว่างต้องกินปุ่มทิ้งไปเฉย ๆ ไม่ค้างอยู่ใน buffer แล้วไปออกท่าทีหลังแบบไม่มีสาเหตุ
 {
-  const { SKILLS } = await import(G + "/core.js");
+  const { SKILLS, KI_MAX } = await import(G + "/core.js");
   ok(SKILLS.length === 3, `มีสล็อตสกิลสามช่อง (ได้ ${SKILLS.length})`);
   ok(SKILLS[0] === "thrust1", `ช่อง 1 = สกิลแทงรัว (ได้ ${SKILLS[0]})`);
+  ok(SKILLS[1] === "fox1", `ช่อง 2 = Fox Step (ได้ ${SKILLS[1]})`);
+  ok(SKILLS[2] === "ult1", `ช่อง 3 = Oni Veil (ได้ ${SKILLS[2]})`);
 
   for (const slot of [1, 2, 3]) {
     const g = new Game();
+    g.p1.ki = KI_MAX;                             // ช่อง 3 ใช้หลอด ki เติมให้เต็มก่อนถึงจะกดได้
     g.step(inp({ ["skill" + slot]: 1, p: { ["skill" + slot]: 1 } }));
     run(g, 80, {});
     const fired = g.p1.x !== new Game().p1.x || g.p1.state === "attack";
@@ -545,4 +553,211 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const scene2 = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
   ok(/b\.disabled = true/.test(scene2), "ปุ่มสกิลช่องที่ว่างถูกปิดไว้ (ไม่ใช่กดได้แต่ไม่มีอะไรเกิด)");
   ok(/SKILLS\[Number\(b\.dataset\.slot\) - 1\]/.test(scene2), "อ่านว่าช่องไหนว่างจาก SKILLS ตรง ๆ เพิ่มสกิลแล้วปุ่มเปิดเอง");
+}
+
+// ── สกิล 2: Fox Step ──
+// พุ่งทะลุตัวคู่ต่อสู้ได้เพราะ invuln (pushApart ข้ามคนที่ invuln อยู่แล้ว) ไม่ได้เขียนกลไกทะลุแยก
+{
+  const { KI_MAX, SKILL_CD } = await import(G + "/core.js");
+
+  const g = new Game();
+  const x0 = g.p1.x;
+  g.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g.p1.moveId === "fox1", `กดปุ่ม 2 ออกท่า fox1 (ได้ ${g.p1.moveId})`);
+  run(g, 8, {});
+  ok(g.p1.invuln > 0, "ช่วงพุ่งมี invuln (= อมตะ + ทะลุตัวคู่ต่อสู้ได้)");
+  run(g, 12, {});
+  ok(g.p1.x - x0 > 60, `พุ่งไปข้างหน้าจริง (ได้ ${Math.round(g.p1.x - x0)} px)`);
+
+  // ต่อท่าสองเองโดยไม่ต้องกดซ้ำ
+  const g2 = new Game();
+  const seen = new Set();
+  g2.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  for (let i = 0; i < 60; i++) { if (g2.p1.moveId) seen.add(g2.p1.moveId); g2.step(inp()); }
+  ok(seen.has("fox1") && seen.has("fox2"), `ต่อ fox1 -> fox2 เอง (ได้ ${[...seen].join(" > ")})`);
+
+  // พุ่งทะลุไปอยู่ด้านหลังแล้ว ท่าสองต้องหันกลับมาหาคู่ต่อสู้เอง ไม่ใช่ฟันลม
+  const g3 = new Game();
+  g3.p1.x = g3.p2.x + 100;      // จำลองว่าพุ่งทะลุไปโผล่ด้านขวาของหุ่นแล้ว
+  g3.p1.facing = 1;             // ยังหันออกห่างอยู่
+  g3.startMove(g3.p1, "fox2", 1);
+  ok(g3.p1.facing === -1, `faceFoe หันกลับเข้าหาคู่ต่อสู้ให้ (ได้ facing ${g3.p1.facing})`);
+
+  // คูลดาวน์: กดซ้ำทันทีต้องไม่ออก
+  const g4 = new Game();
+  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g4, 60, {});
+  ok(g4.p1.cd[1] > 0, "ใช้แล้วติดคูลดาวน์");
+  const before = g4.p1.moveId;
+  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g4.p1.moveId === before, "ยังติดคูลดาวน์อยู่ กดซ้ำไม่ออกท่า");
+  run(g4, SKILL_CD[1] + 5, {});
+  ok(g4.p1.cd[1] === 0, "คูลดาวน์เดินจนหมดเอง");
+  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g4.p1.moveId === "fox1", "หมดคูลดาวน์แล้วกดได้อีก");
+}
+
+// ── สกิล 3: Oni Veil (อัลติ) ──
+{
+  const { KI_MAX } = await import(G + "/core.js");
+
+  const g = new Game();
+  ok(g.p1.ki === 0, "เริ่มเกมหลอด ki ว่าง");
+  g.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  ok(g.p1.moveId !== "ult1", "ki ไม่เต็ม กดอัลติไม่ออก");
+
+  // ki เติมจากดาเมจ ทั้งฝั่งที่ตีและฝั่งที่โดน
+  const g2 = new Game();
+  g2.p1.x = g2.p2.x - 70;
+  g2.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(g2, 20, {});
+  ok(g2.p1.ki > 0, `ตีโดนแล้วได้ ki (ได้ ${g2.p1.ki.toFixed(1)})`);
+  ok(g2.p2.ki > 0, `ฝั่งที่โดนตีก็ได้ ki ด้วย (ได้ ${g2.p2.ki.toFixed(1)})`);
+
+  // เต็มแล้วกดได้ และใช้แล้วหลอดหมดเกลี้ยง
+  const g3 = new Game();
+  g3.p1.ki = KI_MAX;
+  g3.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  ok(g3.p1.moveId === "ult1", `ki เต็มแล้วกดอัลติออก (ได้ ${g3.p1.moveId})`);
+  ok(g3.p1.ki === 0, "ใช้อัลติแล้วหลอดหมดเกลี้ยง");
+
+  // วาร์ปไปโผล่อีกฝั่งของคู่ต่อสู้
+  const g4 = new Game();
+  g4.p1.ki = KI_MAX;
+  g4.p1.x = g4.p2.x - 120;
+  g4.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  ok(g4.p1.x > g4.p2.x, `วาร์ปไปโผล่อีกฝั่ง (ผู้เล่น ${Math.round(g4.p1.x)} หุ่น ${Math.round(g4.p2.x)})`);
+  ok(g4.p1.facing === -1, "แล้วหันกลับเข้าหาคู่ต่อสู้");
+
+  // ไกลเกินระยะ = ไม่วาร์ป พุ่งไปข้างหน้าเฉย ๆ ไม่ใช่เทเลพอร์ตข้ามเวที
+  const g5 = new Game();
+  g5.p1.ki = KI_MAX;
+  g5.p1.x = 100; g5.p2.x = 1150;
+  g5.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  ok(g5.p1.x < g5.p2.x - 300, `ไกลเกินระยะไม่วาร์ปติดตัว (ได้ x ${Math.round(g5.p1.x)})`);
+
+  // ต่อครบสี่จังหวะเอง
+  const g6 = new Game();
+  g6.p1.ki = KI_MAX;
+  const seen = [];
+  g6.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  for (let i = 0; i < 160; i++) { if (g6.p1.moveId && seen[seen.length - 1] !== g6.p1.moveId) seen.push(g6.p1.moveId); g6.step(inp()); }
+  ok(seen.join(" > ") === "ult1 > ult2 > ult3 > ult4", `ต่อครบสี่จังหวะเอง (ได้ ${seen.join(" > ")})`);
+
+  // จังหวะแรกเป็นช่วงหายตัว ต้องไม่มี hitbox เลย
+  const g7 = new Game();
+  g7.p1.ki = KI_MAX;
+  g7.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  let anyHb = false;
+  for (let i = 0; i < 18 && g7.p1.moveId === "ult1"; i++) { if (g7.p1.hitbox()) anyHb = true; g7.step(inp()); }
+  ok(!anyHb, "ช่วงหายตัว (ult1) ไม่มีหน้าต่างโจมตีเลย");
+}
+
+// ── ต่อคอมโบเข้าสกิล ──
+// เงื่อนไขคือท่าปัจจุบันต้อง "ตีโดนแล้ว" เท่านั้น ท่าที่ฟันลมยังต้องมีจังหวะเสียตามเดิม
+{
+  const { KI_MAX } = await import(G + "/core.js");
+
+  const g = new Game();
+  g.p1.x = g.p2.x - 70;
+  g.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(g, 8, {});
+  ok(g.p1.hitConfirmed, "จิ้มโดนก่อน");
+  // กดตอนกำลังอยู่ใน hitstop ได้ — input ค้างใน buffer แล้วออกท่าให้เองเฟรมถัดมา
+  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  run(g, 3, {});
+  ok(g.p1.moveId === "thrust1", `ตีโดนแล้วกดสกิล 1 ยกเลิกท่าเข้าสกิลได้ (ได้ ${g.p1.moveId})`);
+
+  // ฟันลมแล้วกดสกิล ต้องไม่ยกเลิกให้
+  const g2 = new Game();
+  g2.p2.x = g2.p1.x + 600;                 // ไกลจนจิ้มไม่โดนแน่นอน
+  g2.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(g2, 8, {});
+  ok(!g2.p1.hitConfirmed, "ฟันลม ไม่มี hitConfirmed");
+  g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  run(g2, 3, {});
+  ok(g2.p1.moveId === "jab1", `ฟันลมแล้วยกเลิกเข้าสกิลไม่ได้ (ได้ ${g2.p1.moveId})`);
+
+  // สกิลเดียวกันใช้ซ้ำในคอมโบเดียวไม่ได้
+  const g3 = new Game();
+  g3.p1.x = g3.p2.x - 70;
+  g3.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(g3, 8, {});
+  g3.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  run(g3, 6, {});
+  const mid = g3.p1.moveId;
+  ok(mid && mid.startsWith("thrust"), `เข้าสกิลแล้ว (ได้ ${mid})`);
+  g3.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  ok(g3.p1.moveId === mid, "สกิลเดิมใช้ซ้ำในคอมโบเดียวไม่ได้");
+
+  // ยืนเฉย ๆ แล้วกดใหม่ = คอมโบใหม่ ใช้สกิลเดิมได้อีก (ถ้าหมดคูลดาวน์)
+  const g4 = new Game();
+  g4.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  run(g4, 200, {});
+  ok(g4.p1.cd[0] === 0, "รอจนหมดคูลดาวน์");
+  g4.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  ok(g4.p1.moveId === "thrust1", "เริ่มคอมโบใหม่จากท่ายืน ใช้สกิลเดิมได้อีก");
+}
+
+// ── ยกเลิกเข้าได้ทั้งสามสกิล ไม่ใช่แค่สกิล 1 ──
+{
+  const { KI_MAX } = await import(G + "/core.js");
+  const want = { 1: "thrust1", 2: "fox1", 3: "ult1" };
+  for (const slot of [1, 2, 3]) {
+    const g = new Game();
+    g.p1.x = g.p2.x - 70;
+    g.p1.ki = KI_MAX;
+    g.step(inp({ attack: 1, p: { attack: 1 } }));
+    run(g, 8, {});
+    g.step(inp({ ["skill" + slot]: 1, p: { ["skill" + slot]: 1 } }));
+    run(g, 3, {});
+    ok(g.p1.moveId === want[slot], `จิ้มโดนแล้วยกเลิกเข้าสกิล ${slot} ได้ (ได้ ${g.p1.moveId})`);
+  }
+
+  // Fox Step เดี่ยว ๆ ต้องเข้าครบสองจังหวะ ไม่ใช่จังหวะแรกโดนแล้วจังหวะสองเอื้อมไม่ถึง
+  const g = new Game();
+  g.p1.x = g.p2.x - 70;
+  g.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  let hits = 0, hp = g.p2.hp;
+  for (let i = 0; i < 70; i++) { g.step(inp()); if (g.p2.hp < hp) { hits++; hp = g.p2.hp; } }
+  ok(hits === 2, `Fox Step จากระยะประชิดเข้าครบสองจังหวะ (ได้ ${hits})`);
+  ok(g.p1.x > g.p2.x, "และพุ่งทะลุไปโผล่อีกฝั่งจริง");
+
+  // อัลติต้องเข้าครบสามจังหวะ — ท่ากลางคอมโบห้ามลอยคู่ต่อสู้จนกลายเป็นท่าล้ม (ซึ่งมี invuln)
+  const g2 = new Game();
+  g2.p1.ki = KI_MAX;
+  g2.p1.x = g2.p2.x - 110;
+  g2.step(inp({ skill3: 1, p: { skill3: 1 } }));
+  let uh = 0, uhp = g2.p2.hp;
+  for (let i = 0; i < 150; i++) { g2.step(inp()); if (g2.p2.hp < uhp) { uh++; uhp = g2.p2.hp; } }
+  ok(uh === 3, `อัลติเข้าครบสามจังหวะ (ได้ ${uh})`);
+  ok(g2.p2.maxHp - uhp >= 20, `อัลติรวมดาเมจ ${g2.p2.maxHp - uhp} (ต้อง >= 20)`);
+}
+
+// ── ฉาก: ท่าของสกิลใหม่ต้องลงทะเบียนอาร์ตครบ และมีหลอด ki บนจอ ──
+// ลืมใส่ชื่อท่าใน nyxAttacks = ท่านั้นวาดเป็นกล่องสี่เหลี่ยมแทนตัวละคร โดยไม่มี error อะไรเลย
+{
+  const fs = await import("fs");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const { MOVES } = await import(G + "/core.js");
+  const listed = new Set((scene.match(/nyxAttacks = new Set\(\[([\s\S]*?)\]\)/)[1].match(/"[^"]+"/g) || [])
+    .map((s) => s.replace(/"/g, "")));
+  const missing = Object.keys(MOVES).filter((k) => !listed.has(k));
+  ok(missing.length === 0, `ทุกท่าใน MOVES ลงทะเบียนอาร์ตไว้ในฉากครบ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
+  ok(/KI_MAX/.test(scene), "ฉากวาดหลอด ki");
+  ok(/_syncSkillBtns/.test(scene), "ฉากหรี่ปุ่มสกิลตามคูลดาวน์/ki");
+  // ห้ามใช้ disabled หรี่ปุ่ม: ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างจะไม่ส่ง event ปล่อย ปุ่มจะค้าง
+  ok(!/\.disabled = (?!false)(?!.*ยังไม่มีสกิล)/.test(scene.split("_syncSkillBtns")[1] ?? ""),
+    "หรี่ปุ่มด้วย opacity ไม่ใช่ disabled");
+}
+
+// ── อาร์ตของทุกท่าต้องมีอยู่จริงใน atlas ──
+{
+  const fs = await import("fs");
+  const { MOVES } = await import(G + "/core.js");
+  const atlas = JSON.parse(fs.readFileSync(new URL("../../assets/characters/scramble_nyx.json", import.meta.url), "utf8"));
+  const have = new Set(Object.keys(atlas.frames));
+  const missing = [];
+  for (const k of Object.keys(MOVES)) for (const n of [1, 2, 3]) if (!have.has(`${k}_${n}.png`)) missing.push(`${k}_${n}`);
+  ok(missing.length === 0, `ทุกท่ามีอาร์ตครบ 3 เฟรมใน atlas (ขาด: ${missing.join(", ") || "ไม่มี"})`);
 }

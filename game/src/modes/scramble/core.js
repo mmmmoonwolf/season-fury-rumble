@@ -103,6 +103,37 @@ const MOVES = {
   thrust4: { label: 'Thrust Rush', kind: 'ground', startup: 6, active: 4, recovery: 20, dmg: 7,
     hb: { x: 10, y: -90, w: 100, h: 30 }, kb: [12, -5], stun: 30, imp: { f: 5, vx: 9 } },
 
+  // ---- สกิล 2 Fox Step: พุ่งทะลุตัวคู่ต่อสู้ แล้วหันกลับมาเฉือน (ปุ่ม 2) ----
+  // iframes ครอบช่วงพุ่งทั้งหมด ซึ่งทำให้ "ทะลุตัว" ได้ฟรีด้วย เพราะ pushApart ข้ามคนที่ invuln อยู่แล้ว
+  // hitbox ตั้ง x ติดลบ = กรอบลากอยู่ "รอบตัว" ไม่ใช่ยื่นไปข้างหน้า จึงโดนตอนวิ่งผ่านสวนกัน
+  fox1: { label: 'Fox Step', kind: 'ground', startup: 5, active: 8, recovery: 6, dmg: 4,
+    hb: { x: -44, y: -104, w: 92, h: 62 }, kb: [2, 0], stun: 24,
+    iframes: [3, 15], imp: { f: 5, vx: 17 }, glide: true, autoChain: 'fox2' },
+  // ท่าสอง: faceFoe = หันเข้าหาคู่ต่อสู้ก่อนออกท่า ถ้าเมื่อกี้พุ่งทะลุไปด้านหลังก็หันกลับมาเองพอดี
+  // ต้องมีแรงพุ่งกลับเข้าหา (vx 9) ด้วย ไม่ใช่แค่หันหน้า — ยิ่งเริ่มพุ่งจากระยะประชิด
+  // ยิ่งทะลุเลยไปไกล ถ้ายืนฟันอยู่กับที่จะเอื้อมไม่ถึงแบบเฉียดฉิว (วัดได้ พลาดไป 2 px)
+  fox2: { label: 'Fox Step', kind: 'ground', startup: 5, active: 4, recovery: 12, dmg: 5,
+    hb: { x: 2, y: -108, w: 96, h: 66 }, kb: [7, -6], stun: 26, faceFoe: true, imp: { f: 4, vx: 9 } },
+
+  // ---- สกิล 3 Oni Veil (อัลติ): หายตัวสลับโผล่ฟัน 4 จังหวะ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  // จังหวะแรกไม่มีดาเมจ เป็นช่วงสวมหน้ากาก + วาร์ปไปอีกฝั่งของคู่ต่อสู้
+  ult1: { label: 'Oni Veil', kind: 'ground', startup: 8, active: 0, recovery: 10, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    iframes: [0, 18], warp: true, autoChain: 'ult2' },
+  // สองจังหวะกลางต้องถีบขึ้นเป็น 0 เท่านั้น: ถีบขึ้นแม้นิดเดียวจะทำให้คู่ต่อสู้ลอย
+  // พอตกลงพื้นระหว่างคอมโบก็กลายเป็นท่าล้ม ซึ่งมี invuln ติดมาด้วย จังหวะถัดไปจึงฟันลมทั้งดุ้น
+  // (วัดได้จริง: อัลติทำได้ 18 แทนที่จะเป็น 24 เพราะจังหวะที่สามหายไปทั้งจังหวะ) ไม้จบค่อยถีบออก
+  ult2: { label: 'Oni Veil', kind: 'ground', startup: 6, active: 4, recovery: 8, dmg: 6,
+    hb: { x: -50, y: -120, w: 104, h: 76 }, kb: [1.5, 0], stun: 34,
+    iframes: [0, 18], faceFoe: true, autoChain: 'ult3' },
+  ult3: { label: 'Oni Veil', kind: 'ground', startup: 6, active: 4, recovery: 10, dmg: 6,
+    hb: { x: -50, y: -120, w: 104, h: 76 }, kb: [1.5, 0], stun: 34,
+    iframes: [0, 20], warp: true, autoChain: 'ult4' },
+  // ไม้จบ: ปักมีดลงพื้น ถีบออกแรง + น็อคลง · recovery ยาวและไม่มี iframes = จุดเสี่ยงของท่านี้
+  ult4: { label: 'Oni Veil', kind: 'ground', startup: 8, active: 5, recovery: 24, dmg: 12,
+    hb: { x: -30, y: -108, w: 92, h: 108 }, kb: [14, -12], stun: 40,
+    iframes: [0, 13], faceFoe: true },
+
   dair: { label: 'Plunge', kind: 'air', startup: 8, active: 90, recovery: 0, dmg: 6,
     hb: { x: -26, y: -32, w: 52, h: 48 }, kb: [2, -12], stun: 30, imp: { f: 7, vxMul: 0.3, vy: 17 },
     untilLand: true, landLag: 14, pogo: -12 },
@@ -114,7 +145,12 @@ const MOVES = {
  * null = สล็อตที่เตรียมไว้แต่ยังไม่มีสกิล — กดแล้วไม่เกิดอะไร และปุ่มบนจอจะขึ้นเป็นสีจาง
  * เพิ่มสกิลใหม่ = ใส่ท่าใน MOVES แล้วใส่ชื่อท่าแรกตรงนี้ ไม่ต้องแตะที่อื่นอีก
  */
-const SKILLS = ['thrust1', null, null];
+const SKILLS = ['thrust1', 'fox1', 'ult1'];
+// คูลดาวน์ต่อสล็อต (เฟรม) — สล็อต 3 ไม่ใช้เวลา แต่ใช้หลอด ki ที่เติมจากดาเมจ
+const SKILL_CD = [90, 150, 0];
+const KI_MAX = 100;
+// อัลติวาร์ปได้เฉพาะเมื่อคู่ต่อสู้อยู่ในระยะนี้ ไกลกว่านั้นพุ่งไปข้างหน้าแทน ไม่ใช่วาร์ปข้ามจอ
+const ULT_REACH = 340, ULT_GAP = 56, ULT_DASH = 190;
 
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
@@ -128,7 +164,7 @@ class Fighter {
       x: this.spawnX, y: STAGE.groundY, vx: 0, vy: 0, facing: this.spawnFacing,
       onGround: true, state: 'idle', stateF: 0, jumpsLeft: 1, coyote: 0, dropT: 0,
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
-      hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999,
+      hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0,
       comboHits: 0, comboDmg: 0, wallBounced: false, jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
     });
   }
@@ -228,11 +264,55 @@ class Game {
 
   startMove(f, id, dir) {
     if (dir) f.facing = dir;
-    f.move = MOVES[id]; f.moveId = id; f.moveF = 0;
+    const mv = MOVES[id];
+    if (mv.warp) this.warp(f);
+    if (mv.faceFoe) this.faceFoe(f);
+    f.move = mv; f.moveId = id; f.moveF = 0;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
     this.lastMoveInfo = { id, ...MOVES[id] };
     this.events.push({ type: 'move', id });
+  }
+
+  foe(f) { return f === this.p1 ? this.p2 : this.p1; }
+
+  faceFoe(f) {
+    const o = this.foe(f);
+    if (o.x !== f.x) f.facing = Math.sign(o.x - f.x);
+  }
+
+  // วาร์ปไปโผล่ "อีกฝั่ง" ของคู่ต่อสู้ — เรียกสองจังหวะติดกันจึงสลับข้างไปมาเอง
+  // ไกลเกินระยะก็ไม่วาร์ป พุ่งไปข้างหน้าเฉย ๆ กันไม่ให้เป็นการเทเลพอร์ตข้ามเวที
+  warp(f) {
+    const o = this.foe(f);
+    this.events.push({ type: 'vanish', x: f.x, y: f.y });
+    if (Math.abs(o.x - f.x) <= ULT_REACH) {
+      const side = f.x <= o.x ? 1 : -1;
+      f.x = o.x + side * ULT_GAP;
+      f.facing = -side;
+    } else {
+      f.x += f.facing * ULT_DASH;
+    }
+    const half = PHYS.width / 2;
+    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, f.x));
+    f.y = STAGE.groundY; f.vx = 0; f.vy = 0; f.onGround = true;
+    this.events.push({ type: 'appear', x: f.x, y: f.y });
+  }
+
+  gainKi(f, amount) { f.ki = Math.min(KI_MAX, f.ki + amount); }
+
+  // สกิลพร้อมใช้ไหม — สล็อต 3 ดูหลอด ki ที่เหลือใช้คูลดาวน์เวลา
+  // f.used กันไม่ให้สกิลเดียวกันออกซ้ำในคอมโบเดียว (เคลียร์เมื่อเริ่มท่าจากท่ายืน)
+  skillReady(f, i) {
+    const id = SKILLS[i];
+    if (!id || f.used.has(id)) return false;
+    return i === 2 ? f.ki >= KI_MAX : f.cd[i] <= 0;
+  }
+
+  startSkill(f, i, dir) {
+    if (i === 2) { f.ki = 0; this.events.push({ type: 'ult', x: f.x, y: f.y - 60 }); }
+    else f.cd[i] = SKILL_CD[i];
+    this.startMove(f, SKILLS[i], dir || f.facing);
   }
 
   doJump(f, inp) {
@@ -271,6 +351,15 @@ class Game {
       if (f.hitConfirmed && m.jumpCancel && this.buffered('jump') && (f.onGround || f.jumpsLeft > 0)) {
         this.consume('jump'); f.used.clear(); this.doJump(f, inp); return;
       }
+      // ต่อคอมโบเข้าสกิล: กดปุ่มสกิลตอนท่าปัจจุบัน "ตีโดนแล้ว" ยกเลิกท่าเข้าสกิลได้เลย
+      // เงื่อนไข hitConfirmed ทำให้ยกเลิกท่าที่ตีพลาดไม่ได้ ท่าที่พลาดจึงยังมีจังหวะเสียตามเดิม
+      for (let i = 0; i < SKILLS.length; i++) {
+        if (!this.buffered('skill' + (i + 1))) continue;
+        this.consume('skill' + (i + 1));
+        if (!f.hitConfirmed || !f.onGround || f.moveF < m.startup) continue;
+        if (!this.skillReady(f, i)) continue;
+        this.startSkill(f, i, f.facing); return;
+      }
       if (this.buffered('attack')) {
         const neutral = dir === 0 && !inp.up && !inp.down;
         let next = null;
@@ -297,9 +386,10 @@ class Game {
     for (let i = 0; i < SKILLS.length; i++) {
       if (!this.buffered('skill' + (i + 1))) continue;
       this.consume('skill' + (i + 1));
-      if (!SKILLS[i] || !f.onGround) continue;
-      f.used.clear();
-      this.startMove(f, SKILLS[i], dir || f.facing); return;
+      if (!f.onGround) continue;
+      f.used.clear();                       // เริ่มคอมโบใหม่จากท่ายืน สกิลที่เคยใช้ไปแล้วกลับมาใช้ได้
+      if (!this.skillReady(f, i)) continue; // ติดคูลดาวน์/ki ไม่พอ = กินปุ่มทิ้ง ไม่ค้างไว้ออกทีหลัง
+      this.startSkill(f, i, dir || f.facing); return;
     }
     // attack
     if (this.buffered('attack')) {
@@ -344,7 +434,11 @@ class Game {
     if (f.invuln > 0) f.invuln--;
     if (f.dropT > 0) f.dropT--;
     if (f.coyote > 0) f.coyote--;
+    for (let i = 0; i < f.cd.length; i++) if (f.cd[i] > 0) f.cd[i]--;
     const m = f.state === 'attack' ? f.move : null;
+    // ท่าที่มี iframes: อัดค่า invuln ใหม่ทุกเฟรมที่อยู่ในช่วง แทนที่จะตั้งครั้งเดียวตอนเริ่มท่า
+    // (ตั้งครั้งเดียวจะโดนบรรทัด f.invuln-- ข้างบนกินไปเรื่อย ๆ จนหมดก่อนช่วงจริงจะจบ)
+    if (m && m.iframes && f.moveF >= m.iframes[0] && f.moveF < m.iframes[1]) f.invuln = Math.max(f.invuln, 2);
     // attack impulses
     if (m && m.imp && f.moveF === m.imp.f) {
       if (m.imp.vx !== undefined) f.vx = f.facing * m.imp.vx;
@@ -356,7 +450,12 @@ class Game {
       if (f.state === 'hitstun') g *= Math.min(1.6, 1 + 0.04 * f.comboHits); // juggle gravity scaling
       if (m && m.floaty && f.phase() === 'active') g *= 0.15;
       f.vy = Math.min(f.vy + g, (m && m.untilLand) ? 22 : Math.max(PHYS.fallMax, f.vy));
-    } else if (m) f.vx *= 0.82;
+    } else if (m) {
+      // ท่าที่มี glide: คงความเร็วไว้ตลอดหน้าต่างโจมตี = พุ่งด้วยความเร็วคงที่จนจบช่วงพุ่ง
+      // ถ้าปล่อยให้แรงเสียดทานกิน แรงถีบครั้งเดียวจะพุ่งได้แค่ ~1/2 ของระยะที่ออกแบบไว้
+      const gliding = m.glide && f.moveF >= m.startup && f.moveF < m.startup + m.active;
+      if (!gliding) f.vx *= 0.82;
+    }
     else if (f.state === 'hitstun' || f.state === 'knockdown' || f.state === 'blockstun') f.vx *= 0.85;
 
     const prevY = f.y;
@@ -455,6 +554,7 @@ class Game {
       d.setState('blockstun'); d.stun = Math.ceil(m.stun * 0.45);
       d.vx = a.facing * 5; a.vx = -a.facing * 3;
       a.hitstop = d.hitstop = 4;
+      this.gainKi(a, m.dmg * 0.4); this.gainKi(d, m.dmg * 0.6);
       this.events.push({ type: 'block', x: fx, y: fy });
       return;
     }
@@ -470,6 +570,8 @@ class Game {
     const hs = Math.round(4 + m.dmg * 0.6);
     a.hitstop = d.hitstop = hs;
     if (m.pogo) { a.vy = m.pogo; a.move = null; a.moveId = null; a.setState('air'); a.jumpsLeft = 1; }
+    // หลอดอัลติเติมจากทั้งฝั่งที่ตีและฝั่งที่โดน — ฝั่งที่โดนรัวจึงมีทางสวนกลับ ไม่ใช่แพ้ทางอย่างเดียว
+    this.gainKi(a, dmg * 1.4); this.gainKi(d, dmg * 0.9);
     this.events.push({ type: 'hit', x: fx, y: fy, dmg, heavy: m.dmg >= 6, launch: m.kb[1] < -10 });
   }
 
@@ -507,4 +609,4 @@ class Game {
 // ===================== Input =====================
 const held = new Set(); let pressed = new Set();
 
-export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, ACTIONABLE, Fighter, Game, overlap };
+export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ACTIONABLE, Fighter, Game, overlap };

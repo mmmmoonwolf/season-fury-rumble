@@ -1,4 +1,4 @@
-import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, Game } from "./core.js";
+import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, Game } from "./core.js";
 
 /**
  * SCRAMBLE — ฉาก Phaser: renderer แบบกล่อง (greybox) + เครื่องมือดีบัก
@@ -262,9 +262,11 @@ class ScrambleScene extends Phaser.Scene {
     // ปุ่มสัมผัส: ยิงเข้าชุด held/pressed ชุดเดียวกับคีย์บอร์ด โค้ดเกมจึงไม่ต้องรู้ว่ามาจากไหน
     // สล็อตที่ยังไม่มีสกิลถูกปิดไว้ และขึ้นเป็นสีจาง — อ่านจาก SKILLS ตรง ๆ
     // ใส่สกิลใน core.js แล้วปุ่มเปิดใช้งานเอง ไม่ต้องมาแก้ตรงนี้อีก
-    root.querySelectorAll('#sc-touch .skills button').forEach((b) => {
+    this.skillBtns = [...root.querySelectorAll('#sc-touch .skills button')];
+    this.skillBtns.forEach((b) => {
       const id = SKILLS[Number(b.dataset.slot) - 1];
-      if (!id) { b.disabled = true; b.title = 'ยังไม่มีสกิลในช่องนี้'; }
+      if (!id) { b.disabled = true; b.title = 'ยังไม่มีสกิลในช่องนี้'; return; }
+      b.title = MOVES[id].label;
     });
 
     root.querySelectorAll('#sc-touch button').forEach((b) => {
@@ -340,6 +342,14 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this.cameras.main.shake(90, 0.005); }
       if (e.type === 'tech') { this.spark(e.x, e.y + 30, 10, 0x57e39a); this.popup(e.x, e.y, e.label, '#8ff0bd'); }
       if (e.type === 'djump') this.spark(e.x, e.y, 6, 0x9aa3b5);
+      // อัลติ: ควันตอนหาย/โผล่ + จอกระพริบตอนเริ่มท่า
+      if (e.type === 'vanish') { this.spark(e.x, e.y - 60, 18, 0x2a2333); this.cameras.main.shake(60, 0.003); }
+      if (e.type === 'appear') this.spark(e.x, e.y - 60, 14, 0xb9312f);
+      if (e.type === 'ult') {
+        this.popup(e.x, e.y, 'Oni Veil', '#e05a57');
+        this.cameras.main.shake(180, 0.008);
+        this.cameras.main.flash(120, 190, 40, 40);
+      }
       if (e.type === 'comboEnd') { this.lastCombo = { hits: e.hits, dmg: e.dmg }; this.comboFade = e.hits > 1 ? 90 : 0; }
     }
     for (const s of this.sparks) s.life--;
@@ -348,6 +358,20 @@ class ScrambleScene extends Phaser.Scene {
     this.popups = this.popups.filter(p => p.life > 0);
     if (this.comboFade > 0) this.comboFade--;
   }
+  // หรี่ปุ่มสกิลตามคูลดาวน์/หลอด ki — ปุ่มยังกดได้ แค่บอกสายตาว่ายังไม่พร้อม
+  // ไม่ใช้ disabled เพราะปุ่มที่ disabled ตอนกำลังกดค้างอยู่จะไม่ส่ง event ปล่อย ทำให้ปุ่มค้าง
+  _syncSkillBtns() {
+    if (!this.skillBtns) return;
+    const f = this.sim.p1;
+    for (const b of this.skillBtns) {
+      const i = Number(b.dataset.slot) - 1;
+      if (!SKILLS[i]) continue;
+      const ready = i === 2 ? f.ki >= KI_MAX : f.cd[i] <= 0;
+      const want = ready ? '1' : '.4';
+      if (b.style.opacity !== want) b.style.opacity = want;
+    }
+  }
+
   spark(x, y, size, color) { this.sparks.push({ x, y, size, color, life: 9, max: 9, rot: Math.random() * Math.PI }); }
   popup(x, y, s, color) {
     const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: '20px', color, fontStyle: '700', stroke: '#0c111c', strokeThickness: 4 }).setOrigin(0.5);
@@ -374,7 +398,8 @@ class ScrambleScene extends Phaser.Scene {
     // ไม่ลงทะเบียนเป็น animation เพราะไม่ได้เล่นตามเวลา แต่เลือกเฟรมตาม phase() ของเอนจิ้น
     // (ดู _drawNyxSprite) ท่าที่ยังไม่มีอาร์ตไม่ต้องใส่ เดี๋ยววาดเป็นกล่องเหมือนเดิม
     this.nyxAttacks = new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
-      "thrust1", "thrust2", "thrust3", "thrust4"]);
+      "thrust1", "thrust2", "thrust3", "thrust4",
+      "fox1", "fox2", "ult1", "ult2", "ult3", "ult4"]);
     for (const [name, n] of Object.entries(this.nyxAnims)) {
       if (this.anims.exists('scnyx/' + name)) continue;
       this.anims.create({
@@ -548,6 +573,12 @@ class ScrambleScene extends Phaser.Scene {
     };
     bar(60, 380, s.p1.hp, s.p1.maxHp, false);
     bar(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.p2.hp, s.p2.maxHp, true);
+    // หลอด ki ของผู้เล่น — เต็มเมื่อไหร่ถึงกดอัลติได้ เต็มแล้วเปลี่ยนเป็นสีแดงให้เห็นชัด
+    const ki = s.p1.ki / KI_MAX;
+    hud.fillStyle(0x0c111c, 0.7); hud.fillRect(60, 64, 260, 10);
+    hud.fillStyle(ki >= 1 ? 0xe05a57 : 0x5aa0ff, 1);
+    hud.fillRect(61, 65, 258 * Math.min(1, ki), 8);
+    this._syncSkillBtns();
     this.tMode.setText('Dummy: ' + MODE_LABEL[s.dummyMode] + '    Tech: ' + TECH_LABEL[s.dummyTech]);
 
     // combo counter
