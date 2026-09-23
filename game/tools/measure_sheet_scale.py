@@ -11,6 +11,11 @@
 (ชีตก้มกันชุดแรกคลาด -16% ด้วยเหตุนี้) สคริปต์จึงพิมพ์ค่าของทุกท่าให้ดู ไม่ได้บอกแค่ตัวเลขเดียว
 ถ้าค่ากระจายกันมาก แปลว่าหน้าโดนบังบางท่า ให้เชื่อค่าสูงสุด แล้วยืนยันด้วยภาพในเกมเสมอ
 
+และวัด "มวลผม" คู่กันไปอีกทาง เพราะผมไม่โดนมือบัง แต่โดนผมหน้าม้าที่ยาวไม่เท่ากันในแต่ละชุดอาร์ตแทน
+ชีตแทงรัวโดนผมหน้าม้าปิดหน้าจนโทนผิวอ่านได้แค่ 80% ของจริง ขณะที่มวลผมอ่านได้ตรงกว่า
+สองค่านี้ต่างกันเกิน 15% เมื่อไหร่ แปลว่าอย่างน้อยหนึ่งทางโดนบัง อย่าเชื่อค่าไหนลอย ๆ
+ให้ build ออกมาแล้ววัดความสูงเฟรมจริงเทียบท่ายืน: ท่าตั้งหลักควรได้ 96-100% ท่าย่อลึกต่ำกว่านั้น
+
 รัน (จากโฟลเดอร์ game):  python3 tools/measure_sheet_scale.py <ไฟล์ภาพ> [ไฟล์ภาพ ...]
 """
 import os
@@ -49,6 +54,26 @@ def face_sqrt(img):
     return float(np.sqrt(ndimage.sum(skin, lab, range(1, n + 1)).max()))
 
 
+def hair_sqrt(img):
+    """รากที่สองของพื้นที่ผม (โทนเกือบดำในช่วงหัว) — อีกทางหนึ่งที่เป็นสัดส่วนตรงกับระยะกล้อง
+    ใช้คู่กับ face_sqrt เพราะคนละอย่างโดนบัง: หน้าโดนมือ/ดาบ ส่วนผมโดนผมหน้าม้าที่ยาวไม่เท่ากัน"""
+    a = np.asarray(img)
+    m = a[:, :, 3] > 110 if a.shape[2] == 4 else np.ones(a.shape[:2], bool)
+    rgb = a[:, :, :3].astype(np.float32)
+    ys, _ = np.nonzero(m)
+    if len(ys) == 0:
+        return 0.0
+    top, h = ys.min(), ys.max() - ys.min() + 1
+    dark = (rgb.max(axis=2) < 95) & m
+    band = np.zeros_like(dark)
+    band[top:top + int(h * 0.32)] = True
+    dark = ndimage.binary_opening(dark & band, np.ones((3, 3)))
+    lab, n = ndimage.label(dark)
+    if n == 0:
+        return 0.0
+    return float(np.sqrt(ndimage.sum(dark, lab, range(1, n + 1)).max()))
+
+
 def reference():
     im = Image.open(REF).convert("RGB")
     rgb = np.asarray(im).astype(np.float32)
@@ -60,27 +85,36 @@ def reference():
     big = lab == (1 + int(np.argmax(sizes)))
     ys, _ = np.nonzero(big)
     rgba = Image.fromarray(np.dstack([np.asarray(im), (big * 255).astype(np.uint8)]))
-    return int(ys.max() - ys.min() + 1), face_sqrt(rgba)
+    return int(ys.max() - ys.min() + 1), face_sqrt(rgba), hair_sqrt(rgba)
 
 
 def main(paths):
-    ref_h, ref_face = reference()
-    print(f"ท่ายืนอ้างอิง {REF}: สูง {ref_h} px  ใบหน้า {ref_face:.1f}\n")
+    ref_h, ref_face, ref_hair = reference()
+    print(f"ท่ายืนอ้างอิง {REF}: สูง {ref_h} px  ใบหน้า {ref_face:.1f}  ผม {ref_hair:.1f}\n")
     for path in paths:
         poses = sheet_poses(path)
-        faces = [face_sqrt(img.crop((b[0], b[1], b[2] + 1, b[3] + 1))) for img, b, _ in poses]
-        seen = [f for f in faces if f > 0]
-        if not seen:
-            print(f"{os.path.basename(path)}: วัดใบหน้าไม่ได้สักท่า — ต้องกำหนดเลขเอง")
-            continue
-        px = ref_h * max(seen) / ref_face
-        spread = (max(seen) / min(seen) - 1) * 100
+        crops = [img.crop((b[0], b[1], b[2] + 1, b[3] + 1)) for img, b, _ in poses]
+        faces = [face_sqrt(c) for c in crops]
+        hairs = [hair_sqrt(c) for c in crops]
         print(f"{os.path.basename(path)}  ({len(poses)} ท่า)")
-        print("   ใบหน้าแต่ละท่า: " + " ".join(f"{f:.0f}" for f in faces))
-        print(f"   -> CLIP_STANDING_PX = {px:.0f}")
-        if spread > 25:
-            print(f"   ** ค่ากระจาย {spread:.0f}% — บางท่าหน้าโดนบัง เชื่อค่าสูงสุด "
-                  f"และต้องยืนยันด้วยภาพในเกม **")
+        est = {}
+        for label, vals, ref in (("ใบหน้า", faces, ref_face), ("ผม", hairs, ref_hair)):
+            seen = [v for v in vals if v > 0]
+            print(f"   {label}แต่ละท่า: " + " ".join(f"{v:.0f}" for v in vals))
+            if not seen:
+                print(f"   วัด{label}ไม่ได้สักท่า")
+                continue
+            est[label] = ref_h * max(seen) / ref
+            spread = (max(seen) / min(seen) - 1) * 100
+            print(f"   -> จาก{label}: CLIP_STANDING_PX = {est[label]:.0f}  (กระจาย {spread:.0f}%)")
+        if not est:
+            print("   วัดไม่ได้เลย — ต้องกำหนดเลขเอง\n")
+            continue
+        if len(est) == 2:
+            lo, hi = min(est.values()), max(est.values())
+            if hi / lo - 1 > 0.15:
+                print(f"   ** สองทางต่างกัน {(hi / lo - 1) * 100:.0f}% — อย่างน้อยหนึ่งทางโดนบัง "
+                      f"ต้อง build แล้ววัดความสูงเฟรมจริงเทียบท่ายืน (ท่าตั้งหลักควรได้ 96-100%) **")
         print()
 
 
