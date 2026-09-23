@@ -11,7 +11,7 @@ const { Game, PHYS, MOVES, STAGE, ACTIONABLE } = await import(G + "/core.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
-const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill: 0 };
+const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
 /** เดิน n เฟรมด้วย input เดิม (เฟรมแรกเท่านั้นที่นับเป็น "เพิ่งกด") */
 const run = (g, n, o = {}) => { for (let i = 0; i < n; i++) g.step(inp(i === 0 ? o : { ...o, p: {} })); };
@@ -449,7 +449,9 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(!/\bpadX\b/.test(scene), "ฉากไม่ต้องเลื่อนกล้องชดเชยขอบเวทีอีกแล้ว (ไม่มี padX)");
   ok(/setStageWidth\(this\.sys\.game\.config\.width\)/.test(scene), "ฉากตั้งความกว้างเวทีจากผืนเกมจริง");
   ok(!/>Run</.test(scene), 'ไม่มีปุ่ม "Run" บนจอแล้ว (วิ่งเสมอ ไม่ต้องกด)');
-  ok(/data-code="ShiftLeft">Skill</.test(scene), 'Shift ที่เคยเป็นปุ่มวิ่งถูกใช้เป็นปุ่มสกิลแทน');
+  ok(/data-code="Digit1" data-slot="1"/.test(scene), 'มีปุ่มสกิล 1 บนจอ');
+  ok(/data-code="Digit2" data-slot="2"/.test(scene), 'มีปุ่มสกิล 2 บนจอ');
+  ok(/data-code="Digit3" data-slot="3"/.test(scene), 'มีปุ่มสกิล 3 บนจอ');
   ok(!/walk:\s*\d+/.test(scene.match(/nyxAnims\s*=\s*\{([^}]*)\}/)[1]), "ไม่ลงทะเบียนท่าเดินใน atlas อีกแล้ว");
 }
 
@@ -482,7 +484,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 {
   const g = new Game();
   const startX = g.p1.x;
-  g.step(inp({ skill: 1, p: { skill: 1 } }));
+  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
   ok(g.p1.moveId === "thrust1", `กดสกิลแล้วออกท่าแรก (ได้ ${g.p1.moveId})`);
 
   const seen = [];
@@ -510,13 +512,37 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 {
   const g = new Game();
   g.p1.onGround = false; g.p1.y -= 50; g.p1.setState("air");
-  g.step(inp({ skill: 1, p: { skill: 1 } }));
+  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
   ok(g.p1.moveId !== "thrust1", "กดสกิลกลางอากาศไม่ออกท่า (เป็นคอมโบเดินหน้าบนพื้น)");
 
   const g2 = new Game();
-  g2.step(inp({ skill: 1, p: { skill: 1 } }));
+  g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
   run(g2, 12, {});
   g2.p1.onGround = false;                       // จำลองว่าหลุดจากพื้นกลางคอมโบ
   run(g2, 40, {});
   ok(g2.p1.moveId !== "thrust4", "หลุดจากพื้นกลางคอมโบแล้วไม่ต่อจังหวะสุดท้ายให้");
+}
+
+
+// ── ปุ่มสกิลสามช่อง ──
+// ช่องที่ยังว่างต้องกินปุ่มทิ้งไปเฉย ๆ ไม่ค้างอยู่ใน buffer แล้วไปออกท่าทีหลังแบบไม่มีสาเหตุ
+{
+  const { SKILLS } = await import(G + "/core.js");
+  ok(SKILLS.length === 3, `มีสล็อตสกิลสามช่อง (ได้ ${SKILLS.length})`);
+  ok(SKILLS[0] === "thrust1", `ช่อง 1 = สกิลแทงรัว (ได้ ${SKILLS[0]})`);
+
+  for (const slot of [1, 2, 3]) {
+    const g = new Game();
+    g.step(inp({ ["skill" + slot]: 1, p: { ["skill" + slot]: 1 } }));
+    run(g, 80, {});
+    const fired = g.p1.x !== new Game().p1.x || g.p1.state === "attack";
+    if (SKILLS[slot - 1]) ok(fired, `ปุ่ม ${slot} มีสกิล -> ออกท่าจริง`);
+    else ok(!fired && g.p1.state === "idle", `ปุ่ม ${slot} ยังว่าง -> กดแล้วไม่เกิดอะไร และไม่ค้างไว้ออกทีหลัง`);
+  }
+
+  // ปุ่มบนจอของช่องที่ว่างต้องถูกปิด ไม่ใช่กดได้แล้วเงียบ
+  const fs = await import("fs");
+  const scene2 = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  ok(/b\.disabled = true/.test(scene2), "ปุ่มสกิลช่องที่ว่างถูกปิดไว้ (ไม่ใช่กดได้แต่ไม่มีอะไรเกิด)");
+  ok(/SKILLS\[Number\(b\.dataset\.slot\) - 1\]/.test(scene2), "อ่านว่าช่องไหนว่างจาก SKILLS ตรง ๆ เพิ่มสกิลแล้วปุ่มเปิดเอง");
 }

@@ -108,6 +108,14 @@ const MOVES = {
     untilLand: true, landLag: 14, pogo: -12 },
 };
 
+/**
+ * สล็อตสกิล — ลำดับในนี้ตรงกับปุ่มสกิล 1/2/3 บนจอและคีย์ 1/2/3
+ * ค่าคือ "ท่าแรก" ของสกิลนั้น ที่เหลือต่อกันเองด้วย autoChain
+ * null = สล็อตที่เตรียมไว้แต่ยังไม่มีสกิล — กดแล้วไม่เกิดอะไร และปุ่มบนจอจะขึ้นเป็นสีจาง
+ * เพิ่มสกิลใหม่ = ใส่ท่าใน MOVES แล้วใส่ชื่อท่าแรกตรงนี้ ไม่ต้องแตะที่อื่นอีก
+ */
+const SKILLS = ['thrust1', null, null];
+
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
 class Fighter {
@@ -165,7 +173,7 @@ class Game {
     this.dummyTech = 'off';
     this.lastInp = null;
     this.events = [];
-    this.buf = { attack: 0, jump: 0, skill: 0 };
+    this.buf = { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 };
     this.lastTap = { dir: 0, f: -99 };
     this.dashLatch = false;
     this.meter = []; this.meterIdle = 0;
@@ -178,7 +186,7 @@ class Game {
     const p = this.p1, d = this.p2;
     if (inp.p.attack) this.buf.attack = PHYS.buffer + 1;
     if (inp.p.jump) this.buf.jump = PHYS.buffer + 1;
-    if (inp.p.skill) this.buf.skill = PHYS.buffer + 1;
+    for (let i = 1; i <= 3; i++) if (inp.p['skill' + i]) this.buf['skill' + i] = PHYS.buffer + 1;
 
     this.lastInp = inp;
     // tech input: press Block while airborne; missing the window locks you out briefly (anti-mash)
@@ -190,7 +198,7 @@ class Game {
       // input buffer only ages while the player is not frozen in hitstop
       if (this.buf.attack > 0) this.buf.attack--;
       if (this.buf.jump > 0) this.buf.jump--;
-      if (this.buf.skill > 0) this.buf.skill--;
+      for (let i = 1; i <= 3; i++) if (this.buf['skill' + i] > 0) this.buf['skill' + i]--;
     }
     if (d.hitstop > 0) d.hitstop--; else { this.controlDummy(d); this.physics(d, null); this.advanceMove(d, null); }
 
@@ -284,10 +292,14 @@ class Game {
       }
       if (this.doJump(f, inp)) { this.consume('jump'); return; }
     }
-    // สกิลแทงรัว — เริ่มได้เฉพาะตอนยืนอยู่บนพื้น (เป็นคอมโบเดินหน้า ไม่มีเวอร์ชันกลางอากาศ)
-    if (this.buffered('skill') && f.onGround) {
-      this.consume('skill'); f.used.clear();
-      this.startMove(f, 'thrust1', dir || f.facing); return;
+    // สกิล 1/2/3 — เริ่มได้เฉพาะตอนยืนอยู่บนพื้น (เป็นคอมโบเดินหน้า ไม่มีเวอร์ชันกลางอากาศ)
+    // สล็อตที่ยังว่าง (SKILLS[i] === null) กินปุ่มทิ้งไปเฉย ๆ ไม่ค้างอยู่ใน buffer ให้ไปออกท่าทีหลัง
+    for (let i = 0; i < SKILLS.length; i++) {
+      if (!this.buffered('skill' + (i + 1))) continue;
+      this.consume('skill' + (i + 1));
+      if (!SKILLS[i] || !f.onGround) continue;
+      f.used.clear();
+      this.startMove(f, SKILLS[i], dir || f.facing); return;
     }
     // attack
     if (this.buffered('attack')) {
@@ -495,4 +507,4 @@ class Game {
 // ===================== Input =====================
 const held = new Set(); let pressed = new Set();
 
-export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, ACTIONABLE, Fighter, Game, overlap };
+export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, ACTIONABLE, Fighter, Game, overlap };

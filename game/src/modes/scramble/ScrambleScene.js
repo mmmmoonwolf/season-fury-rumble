@@ -1,4 +1,4 @@
-import { STAGE, setStageWidth, PHYS, MOVES, Game } from "./core.js";
+import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, Game } from "./core.js";
 
 /**
  * SCRAMBLE — ฉาก Phaser: renderer แบบกล่อง (greybox) + เครื่องมือดีบัก
@@ -16,8 +16,8 @@ import { STAGE, setStageWidth, PHYS, MOVES, Game } from "./core.js";
  */
 
 // ---------- อินพุต (ยกจาก prototype) ----------
-const GAME_KEYS = new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyJ','KeyK','KeyL','ShiftLeft','ShiftRight']);
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit1','Digit2','Digit3','Digit4','KeyR','KeyP','KeyN','KeyO']);
+const GAME_KEYS = new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyJ','KeyK','KeyL','ShiftLeft','ShiftRight','Digit1','Digit2','Digit3']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -36,9 +36,9 @@ function readInput() {
   return {
     left: any('KeyA','ArrowLeft'), right: any('KeyD','ArrowRight'), up: any('KeyW','ArrowUp'), down: any('KeyS','ArrowDown'),
     jump: any('Space','KeyK'), attack: any('KeyJ'), block: any('KeyL'), run: 0,
-    skill: any('ShiftLeft','ShiftRight'),
+    skill1: any('Digit1','ShiftLeft','ShiftRight'), skill2: any('Digit2'), skill3: any('Digit3'),
     p: { left: anyP('KeyA','ArrowLeft'), right: anyP('KeyD','ArrowRight'), jump: anyP('Space','KeyK'), attack: anyP('KeyJ'), block: anyP('KeyL'),
-          skill: anyP('ShiftLeft','ShiftRight') },
+          skill1: anyP('Digit1','ShiftLeft','ShiftRight'), skill2: anyP('Digit2'), skill3: anyP('Digit3') },
   };
 }
 
@@ -132,9 +132,14 @@ body.sc-touch #sc-touch { display:flex; }
    สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
 #sc-tools, #sc-touch, #sc-touch .pad, #sc-touch .acts { touch-action:none; }
 #sc-touch .pad { display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(3,48px); gap:4px; pointer-events:auto; }
-#sc-touch .acts { display:grid; grid-template-columns:repeat(2,68px); gap:8px; pointer-events:auto; }
+#sc-touch .acts { display:grid; grid-template-columns:repeat(2,76px); gap:8px; pointer-events:auto; }
 #sc-touch .acts button { height:56px; }
 #sc-touch .acts .big { grid-column:span 2; height:62px; font-size:15px; }
+/* แถวสกิลสามปุ่ม เตี้ยกว่าปุ่มหลักเพราะกดไม่บ่อยเท่า แต่ยังกว้างพอตามระยะแตะขั้นต่ำ
+   สล็อตที่ยังไม่มีสกิลขึ้นเป็นสีจางและกดไม่ได้ จะได้รู้ว่าเตรียมที่ไว้ให้แล้วแต่ยังว่าง */
+#sc-touch .skills { grid-column:span 2; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; touch-action:none; }
+#sc-touch .skills button { height:46px; font-size:14px; }
+#sc-touch .skills button[disabled] { opacity:.32; }
 `;
 
 const OVERLAY_HTML = `
@@ -155,7 +160,11 @@ const OVERLAY_HTML = `
   <div class="acts">
     <button class="big" data-code="KeyL">Block</button>
     <button class="big" data-code="Space">Jump</button><button class="big" data-code="KeyJ">Attack</button>
-    <button class="big" data-code="ShiftLeft">Skill</button>
+    <div class="skills">
+      <button data-code="Digit1" data-slot="1">1</button>
+      <button data-code="Digit2" data-slot="2">2</button>
+      <button data-code="Digit3" data-slot="3">3</button>
+    </div>
   </div>
 </div>`;
 
@@ -228,8 +237,8 @@ class ScrambleScene extends Phaser.Scene {
     this.tCombo = T(1210, 150, '', 44, '#ffffff', 1).setFontStyle('700');
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
-    this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skill Shift', 12, C.dim, 1);
-    this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   1 2 3 dummy   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
+    this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
+    this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     this._initNyxSprite();
     this.syncTools();
@@ -251,6 +260,13 @@ class ScrambleScene extends Phaser.Scene {
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); this.tool(b.dataset.tool); });
     });
     // ปุ่มสัมผัส: ยิงเข้าชุด held/pressed ชุดเดียวกับคีย์บอร์ด โค้ดเกมจึงไม่ต้องรู้ว่ามาจากไหน
+    // สล็อตที่ยังไม่มีสกิลถูกปิดไว้ และขึ้นเป็นสีจาง — อ่านจาก SKILLS ตรง ๆ
+    // ใส่สกิลใน core.js แล้วปุ่มเปิดใช้งานเอง ไม่ต้องมาแก้ตรงนี้อีก
+    root.querySelectorAll('#sc-touch .skills button').forEach((b) => {
+      const id = SKILLS[Number(b.dataset.slot) - 1];
+      if (!id) { b.disabled = true; b.title = 'ยังไม่มีสกิลในช่องนี้'; }
+    });
+
     root.querySelectorAll('#sc-touch button').forEach((b) => {
       const code = b.dataset.code;
       const down = (e) => {
@@ -282,9 +298,8 @@ class ScrambleScene extends Phaser.Scene {
     const s = this.sim;
     if (code === 'KeyT') document.getElementById('sc-tune').classList.toggle('open');
     if (code === 'KeyH') this.showBoxes = !this.showBoxes;
-    if (code === 'Digit1') s.dummyMode = 'stand';
-    if (code === 'Digit2') s.dummyMode = 'block';
-    if (code === 'Digit3') s.dummyMode = 'jump';
+    // 1/2/3 เคยเป็นคีย์ลัดตั้งโหมดหุ่น ย้ายไปเป็นปุ่มสกิลแล้ว — ปุ่ม "Dummy" บนจอ (Digit0)
+    // ยังวนโหมดได้ครบเหมือนเดิม จึงไม่ได้เสียความสามารถอะไรไป
     if (code === 'Digit0') s.dummyMode = MODES[(MODES.indexOf(s.dummyMode) + 1) % MODES.length];
     if (code === 'Digit4') s.dummyTech = TECHS[(TECHS.indexOf(s.dummyTech) + 1) % TECHS.length];
     if (code === 'KeyR') { s.resetPositions(); this.comboFade = 0; }
