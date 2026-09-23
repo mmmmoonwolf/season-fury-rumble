@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <!-- ไม่มีบรรทัดนี้ มือถือจะถือว่าหน้าเว็บกว้าง 980px แล้วย่อทั้งหน้าลงให้พอดีจอ
        ตัวเกมเลยเล็กจิ๋วอ่านไม่ออก · viewport-fit=cover กันแถบดำที่รอยบากของ iPhone -->
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
   <title>Season Fury Rumble</title>
   <style>
     html, body {
@@ -37,9 +37,24 @@
     }
     body.touch #fs-btn { display: block; }
     body.touch.portrait #rotate-hint { display: flex; }
+    /* ---------- กันจอซูมเองตอนกดรัว ๆ (iPhone) ---------- */
+    /* iOS Safari เมิน user-scalable=no / maximum-scale มาตั้งแต่ iOS 10 (ตั้งใจ เพื่อการเข้าถึง)
+       สองบรรทัดนั้นจึงกันได้แค่ Android ทางเดียวที่ได้ผลบน iOS คือ touch-action
+       ของเดิมใส่ไว้แค่ canvas กับตัวปุ่ม แต่ช่องว่าง "ระหว่าง" ปุ่ม (gap 4-8px + padding ของกล่อง)
+       ยังเป็น touch-action: auto อยู่ กดรัว ๆ แล้วนิ้วพลาดลงช่องว่างสองทีติดกัน = iOS นับเป็น
+       double-tap แล้วซูมเข้า ซึ่งซูมแล้วซูมค้าง เพราะไม่มีทางสั่งให้ถอยกลับจากในหน้าเว็บ
+       manipulation = ยังเลื่อน/บีบซูมได้ แต่ไม่เอา double-tap zoom
+       ใช้ * เพื่อคลุมทุก element รวมช่องว่าง — specificity 0 กฎเจาะจงข้างล่างจึงยังชนะตามเดิม */
+    * { touch-action: manipulation; }
+
     /* touch-action: none สำคัญมากบนมือถือ — ไม่มีบรรทัดนี้ เบราว์เซอร์จะกินการแตะไปใช้เลื่อน/ซูมเอง
        ปุ่มบนจอจะกดไม่ติดบ้างติดบ้าง และกดค้างเดินไม่ได้เลย */
     canvas { image-rendering: pixelated; touch-action: none; }
+
+    /* กดค้างบนมือถือแล้วเด้งเมนู "คัดลอก/แชร์" ขึ้นมาขวางกลางเกม — ปิดทิ้ง
+       (ยกเว้นช่องกรอกรหัสห้อง ที่ยังต้องวาง/เลือกข้อความได้) */
+    body { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+    .lobby-input { -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
 
     /* ---------- ล็อบบี้ออนไลน์ (DOM ล้วน ทับบน canvas — ไม่ใช่ Phaser scene ตั้งใจแยกกันเด็ดขาด) ---------- */
     #lobby {
@@ -188,6 +203,13 @@
       window.addEventListener("unhandledrejection", function (e) { fatal(String(e.reason)); });
       window.addEventListener("load", function () {
         if (typeof window.Phaser === "undefined") fatal("ไม่พบ Phaser");
+      });
+
+      // บีบสองนิ้วซูม: touch-action ปิดได้แค่ double-tap ส่วนการบีบต้องปิดที่ event ของ Safari เอง
+      // (gesture* เป็น event เฉพาะ WebKit เบราว์เซอร์อื่นไม่มี ใส่ไว้ก็ไม่มีผลข้างเคียง)
+      // ต้อง passive:false ไม่งั้น preventDefault ถูกเมิน
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (ev) {
+        document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
       });
     })();
   </script>

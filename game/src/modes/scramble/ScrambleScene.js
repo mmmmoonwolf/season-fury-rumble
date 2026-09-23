@@ -126,6 +126,9 @@ const OVERLAY_CSS = `
 #sc-touch { padding-bottom: max(13vh, calc(14px + env(safe-area-inset-bottom,0px))); }
 #sc-touch { padding-bottom: max(13dvh, calc(14px + env(safe-area-inset-bottom,0px))); }
 body.sc-touch #sc-touch { display:flex; }
+/* กล่องที่ห่อปุ่มต้องปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่ม — นิ้วที่พลาดลงช่องว่างระหว่างปุ่ม
+   สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
+#sc-tools, #sc-touch, #sc-touch .pad, #sc-touch .acts { touch-action:none; }
 #sc-touch .pad { display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(3,48px); gap:4px; pointer-events:auto; }
 #sc-touch .acts { display:grid; grid-template-columns:repeat(2,68px); gap:8px; pointer-events:auto; }
 #sc-touch .acts button { height:56px; }

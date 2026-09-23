@@ -85,3 +85,41 @@ const { GAME_HEIGHT, gameWidthFor } = await import(G + "/config/viewport.config.
 }
 
 console.log("\nMobile landscape: lobby fits and switches panels, canvas matches screen after rotation, SCRAMBLE buttons clear the gesture bar");
+
+// ── กันจอซูมเองตอนกดรัว ๆ (iPhone) ──
+// iOS Safari เมิน user-scalable=no / maximum-scale มาตั้งแต่ iOS 10 ทางเดียวที่ได้ผลคือ touch-action
+// ของเดิมใส่ไว้แค่ canvas กับตัวปุ่ม แต่ช่องว่างระหว่างปุ่ม (gap 4-8px + padding ของกล่อง) ยังเป็น auto
+// กดรัว ๆ แล้วนิ้วพลาดลงช่องว่างสองทีติดกัน = iOS นับเป็น double-tap แล้วซูมค้าง
+// ซูมแล้วกู้ไม่ได้จากในหน้าเว็บ ต้องกันไม่ให้เกิดตั้งแต่แรกอย่างเดียว
+{
+  const scramble = fs.readFileSync(root + "src/modes/scramble/ScrambleScene.js", "utf8");
+
+  const star = html.match(/(^|\n)\s*\*\s*\{([^}]*)\}/);
+  ok(star != null && /touch-action:\s*manipulation/.test(star[2]),
+     "มีกฎ * { touch-action: manipulation } คลุมทุก element รวมช่องว่างระหว่างปุ่ม");
+
+  // กฎเจาะจงต้องยังชนะ * (specificity 0) — canvas กับปุ่มเกมต้องเป็น none ไม่ใช่ manipulation
+  ok(/canvas\s*\{[^}]*touch-action:\s*none/.test(html), "canvas ยังเป็น touch-action: none ตามเดิม");
+  ok(/#sc-tools button, #sc-touch button \{[^}]*touch-action:none/.test(scramble), "ปุ่มของ SCRAMBLE ยังเป็น none");
+
+  // กล่องที่ห่อปุ่ม — จุดที่ทำให้ซูมจริง ๆ
+  for (const sel of ["#sc-tools", "#sc-touch", "#sc-touch .pad", "#sc-touch .acts"]) {
+    const rule = scramble.match(new RegExp(`[^\\n]*${sel.replace(/[.#]/g, (c) => "\\" + c)}[^{\\n]*\\{([^}]*)\\}`));
+    ok(rule != null && /touch-action:\s*none/.test(rule[1]) ||
+       new RegExp(`#sc-tools, #sc-touch, #sc-touch \\.pad, #sc-touch \\.acts \\{ touch-action:none`).test(scramble),
+       `กล่อง ${sel} ปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่มข้างใน`);
+  }
+
+  // บีบสองนิ้ว: touch-action ปิดไม่ได้ ต้องดัก gesture event ของ WebKit เอง
+  for (const ev of ["gesturestart", "gesturechange", "gestureend"]) {
+    ok(html.includes(`"${ev}"`), `ดัก ${ev} เพื่อกันบีบสองนิ้วซูม (event เฉพาะ WebKit)`);
+  }
+  ok(/\{ passive: false \}/.test(html), "ลงทะเบียนแบบ passive: false ไม่งั้น preventDefault ถูกเมิน");
+
+  // กดค้างแล้วเด้งเมนูคัดลอก/แชร์ขวางกลางเกม
+  ok(/-webkit-touch-callout:\s*none/.test(html), "ปิดเมนูกดค้างของ iOS");
+  ok(/\.lobby-input \{[^}]*-webkit-touch-callout:\s*default/.test(html), "ยกเว้นช่องกรอกรหัสห้อง ยังวาง/เลือกข้อความได้");
+
+  // meta viewport: iOS เมิน แต่ Android ยังฟัง จึงยังต้องมี
+  ok(/maximum-scale=1/.test(html) && /user-scalable=no/.test(html), "meta viewport ยังกันซูมฝั่ง Android ไว้");
+}
