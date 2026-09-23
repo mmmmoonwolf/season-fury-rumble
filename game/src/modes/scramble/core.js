@@ -75,8 +75,9 @@ const MOVES = {
     hb: { x: 8, y: -96, w: 70, h: 30 }, kb: [2.5, 0], stun: 17, chain: 'jab2', imp: { f: 3, vx: 2.5 } },
   jab2: { label: 'Cross Slash', kind: 'ground', startup: 5, active: 3, recovery: 12, dmg: 3,
     hb: { x: 8, y: -104, w: 76, h: 46 }, kb: [3, 0], stun: 18, chain: 'jab3', imp: { f: 4, vx: 3 } },
+  // ไม้จบของคอมโบจิ้ม — ถีบขึ้นไม่ได้ ไม่งั้นต่อ Thrust Rush ไม่ติด (คู่ต่อสู้ลอยแล้วล้ม = อมตะ)
   jab3: { label: 'Finisher Thrust', kind: 'ground', startup: 7, active: 4, recovery: 20, dmg: 6,
-    hb: { x: 10, y: -88, w: 98, h: 26 }, kb: [10, -5], stun: 28, imp: { f: 6, vx: 7 } },
+    hb: { x: 10, y: -88, w: 98, h: 26 }, kb: [4, 0], stun: 28, chain: 'thrust1', imp: { f: 6, vx: 7 } },
   side: { label: 'Lunge Stab', kind: 'ground', startup: 9, active: 6, recovery: 20, dmg: 7,
     hb: { x: 12, y: -86, w: 92, h: 28 }, kb: [11, -4], stun: 28, imp: { f: 8, vx: 14 } },
   up: { label: 'Rising Slash', kind: 'ground', startup: 7, active: 6, recovery: 18, dmg: 6,
@@ -87,7 +88,7 @@ const MOVES = {
     hb: { x: -56, y: -132, w: 112, h: 132 }, kb: [3.5, -8], stun: 26, jumpCancel: true },
   sair: { label: 'Dive Thrust', kind: 'air', startup: 7, active: 10, recovery: 14, dmg: 7,
     hb: { x: 6, y: -82, w: 98, h: 30 }, kb: [11, -6], stun: 30, imp: { f: 6, vx: 13, vy: -1.5 }, floaty: true },
-  // ---- สกิล: แทงรัวเดินหน้า 4 จังหวะ (ปุ่ม Shift) ----
+  // ---- Thrust Rush: หางคอมโบจิ้ม แทงรัวเดินหน้า 4 จังหวะ (ต่อจาก jab3 ด้วยการกดตีซ้ำ) ----
   // ทำเป็นท่าสั้น 4 ท่าต่อกันด้วย autoChain แทนที่จะเป็นท่าเดียวที่มีหลายหน้าต่างโจมตี
   // เพราะแบบนี้ใช้กลไกเดิมได้ทั้งหมด (hitbox/hitList/แรงดัน/การแม็พเฟรมจาก phase())
   // ไม่ต้องแตะ advanceMove/hitbox ที่เป็นหัวใจของระบบและ playtest มาแล้ว
@@ -145,9 +146,11 @@ const MOVES = {
  * null = สล็อตที่เตรียมไว้แต่ยังไม่มีสกิล — กดแล้วไม่เกิดอะไร และปุ่มบนจอจะขึ้นเป็นสีจาง
  * เพิ่มสกิลใหม่ = ใส่ท่าใน MOVES แล้วใส่ชื่อท่าแรกตรงนี้ ไม่ต้องแตะที่อื่นอีก
  */
-const SKILLS = ['thrust1', 'fox1', 'ult1'];
+// กติกาของชุดนี้: **ใส่หน้ากาก = สกิล · หน้าเปล่า = ท่าปกติ** อ่านออกจากภาพได้ทันทีว่าอะไรเป็นอะไร
+// Thrust Rush จึงย้ายออกจากช่องสกิลไปเป็นหางของคอมโบจิ้ม (jab3 -> thrust1) เพราะไม่มีหน้ากาก
+const SKILLS = ['fox1', null, 'ult1'];
 // คูลดาวน์ต่อสล็อต (เฟรม) — สล็อต 3 ไม่ใช้เวลา แต่ใช้หลอด ki ที่เติมจากดาเมจ
-const SKILL_CD = [90, 150, 0];
+const SKILL_CD = [150, 0, 0];
 const KI_MAX = 100;
 // อัลติวาร์ปได้เฉพาะเมื่อคู่ต่อสู้อยู่ในระยะนี้ ไกลกว่านั้นพุ่งไปข้างหน้าแทน ไม่ใช่วาร์ปข้ามจอ
 const ULT_REACH = 340, ULT_GAP = 56, ULT_DASH = 190;

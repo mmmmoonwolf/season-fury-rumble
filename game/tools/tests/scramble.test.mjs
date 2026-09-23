@@ -483,26 +483,29 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 }
 
 
-// ── สกิลแทงรัว: กดครั้งเดียวได้ครบ 4 จังหวะ และเดินหน้าไปเรื่อย ๆ ──
+// ── Thrust Rush: หางของคอมโบจิ้ม ต่อจาก jab3 แล้วรัวเองครบ 4 จังหวะ ──
+// ย้ายออกจากช่องสกิลตามกติกา "ใส่หน้ากาก = สกิล" — ท่านี้หน้าเปล่า จึงเป็นท่าปกติ
 // ต่อท่าด้วย autoChain แทนที่จะทำท่าเดียวที่มีหลายหน้าต่างโจมตี เพื่อให้ใช้กลไกเดิมได้ทั้งหมด
-// (hitbox/hitList/แรงดัน/การแม็พเฟรมจาก phase()) ไม่ต้องแตะ advanceMove ที่เป็นหัวใจของระบบ
 {
   const g = new Game();
+  g.p1.x = g.p2.x - 70;
   const startX = g.p1.x;
-  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
-  ok(g.p1.moveId === "thrust1", `กดสกิลแล้วออกท่าแรก (ได้ ${g.p1.moveId})`);
-
   const seen = [];
-  for (let i = 0; i < 80; i++) {
-    run(g, 1, {});
+  // กดตีรัว ๆ: jab1 > jab2 > jab3 แล้วกดต่ออีกทีเข้า Thrust Rush
+  for (let i = 0; i < 140; i++) {
+    g.step(inp(i % 8 === 0 ? { attack: 1, p: { attack: 1 } } : {}));
     if (g.p1.moveId && !seen.includes(g.p1.moveId)) seen.push(g.p1.moveId);
   }
   ok(
-    seen.join(">") === "thrust1>thrust2>thrust3>thrust4",
-    `กดครั้งเดียวต่อครบสี่จังหวะเอง ไม่ต้องกดซ้ำ (ได้ ${seen.join(">")})`
+    seen.join(">") === "jab1>jab2>jab3>thrust1>thrust2>thrust3>thrust4",
+    `คอมโบจิ้มต่อเข้า Thrust Rush แล้วรัวเองจนจบ (ได้ ${seen.join(">")})`
   );
-  ok(g.p1.state === "idle", "จบคอมโบแล้วกลับมาคุมตัวได้ตามปกติ");
   ok(g.p1.x > startX + 60, `คอมโบพาตัวละครเดินหน้าไปจริง (ไปได้ ${(g.p1.x - startX).toFixed(0)} px)`);
+
+  // ต่อจาก jab3 เท่านั้น — กดตีเฉย ๆ จากท่ายืนต้องไม่ออก Thrust Rush ทันที
+  const g2 = new Game();
+  g2.step(inp({ attack: 1, p: { attack: 1 } }));
+  ok(g2.p1.moveId === "jab1", `กดตีครั้งแรกยังเป็น jab1 (ได้ ${g2.p1.moveId})`);
 
   // ทุกจังหวะต้องมีอาร์ตครบ 3 เฟรมเหมือนท่าโจมตีอื่น ไม่งั้น Phaser ค้างเฟรมเดิมแบบเงียบ ๆ
   const fs = await import("fs");
@@ -518,25 +521,27 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const g = new Game();
   g.p1.onGround = false; g.p1.y -= 50; g.p1.setState("air");
   g.step(inp({ skill1: 1, p: { skill1: 1 } }));
-  ok(g.p1.moveId !== "thrust1", "กดสกิลกลางอากาศไม่ออกท่า (เป็นคอมโบเดินหน้าบนพื้น)");
+  ok(g.p1.moveId !== "fox1", "กดสกิลกลางอากาศไม่ออกท่า (เป็นท่าพุ่งบนพื้น)");
 
   const g2 = new Game();
-  g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
-  run(g2, 12, {});
-  g2.p1.onGround = false;                       // จำลองว่าหลุดจากพื้นกลางคอมโบ
+  g2.p1.x = g2.p2.x - 70;
+  g2.step(inp({ attack: 1, p: { attack: 1 } }));   // เข้าคอมโบจิ้มก่อน
+  for (let i = 0; i < 40; i++) g2.step(inp(i % 8 === 0 ? { attack: 1, p: { attack: 1 } } : {}));
+  g2.p1.onGround = false;                          // จำลองว่าหลุดจากพื้นกลางคอมโบ
   run(g2, 40, {});
   ok(g2.p1.moveId !== "thrust4", "หลุดจากพื้นกลางคอมโบแล้วไม่ต่อจังหวะสุดท้ายให้");
 }
-
 
 // ── ปุ่มสกิลสามช่อง ──
 // ช่องที่ยังว่างต้องกินปุ่มทิ้งไปเฉย ๆ ไม่ค้างอยู่ใน buffer แล้วไปออกท่าทีหลังแบบไม่มีสาเหตุ
 {
   const { SKILLS, KI_MAX } = await import(G + "/core.js");
   ok(SKILLS.length === 3, `มีสล็อตสกิลสามช่อง (ได้ ${SKILLS.length})`);
-  ok(SKILLS[0] === "thrust1", `ช่อง 1 = สกิลแทงรัว (ได้ ${SKILLS[0]})`);
-  ok(SKILLS[1] === "fox1", `ช่อง 2 = Fox Step (ได้ ${SKILLS[1]})`);
+  ok(SKILLS[0] === "fox1", `ช่อง 1 = Fox Step (ได้ ${SKILLS[0]})`);
+  ok(SKILLS[1] === null, `ช่อง 2 ยังว่าง รออาร์ตหน้ากากใหม่ (ได้ ${SKILLS[1]})`);
   ok(SKILLS[2] === "ult1", `ช่อง 3 = Oni Veil (ได้ ${SKILLS[2]})`);
+  // กติกา "หน้ากาก = สกิล": Thrust Rush ไม่มีหน้ากาก จึงต้องไม่อยู่ในช่องสกิลอีกแล้ว
+  ok(!SKILLS.includes("thrust1"), "Thrust Rush ไม่ใช่สกิลแล้ว (ไม่มีหน้ากาก)");
 
   for (const slot of [1, 2, 3]) {
     const g = new Game();
@@ -555,15 +560,15 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/SKILLS\[Number\(b\.dataset\.slot\) - 1\]/.test(scene2), "อ่านว่าช่องไหนว่างจาก SKILLS ตรง ๆ เพิ่มสกิลแล้วปุ่มเปิดเอง");
 }
 
-// ── สกิล 2: Fox Step ──
+// ── สกิล 1: Fox Step ──
 // พุ่งทะลุตัวคู่ต่อสู้ได้เพราะ invuln (pushApart ข้ามคนที่ invuln อยู่แล้ว) ไม่ได้เขียนกลไกทะลุแยก
 {
   const { KI_MAX, SKILL_CD } = await import(G + "/core.js");
 
   const g = new Game();
   const x0 = g.p1.x;
-  g.step(inp({ skill2: 1, p: { skill2: 1 } }));
-  ok(g.p1.moveId === "fox1", `กดปุ่ม 2 ออกท่า fox1 (ได้ ${g.p1.moveId})`);
+  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
+  ok(g.p1.moveId === "fox1", `กดปุ่ม 1 ออกท่า fox1 (ได้ ${g.p1.moveId})`);
   run(g, 8, {});
   ok(g.p1.invuln > 0, "ช่วงพุ่งมี invuln (= อมตะ + ทะลุตัวคู่ต่อสู้ได้)");
   run(g, 12, {});
@@ -572,7 +577,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   // ต่อท่าสองเองโดยไม่ต้องกดซ้ำ
   const g2 = new Game();
   const seen = new Set();
-  g2.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
   for (let i = 0; i < 60; i++) { if (g2.p1.moveId) seen.add(g2.p1.moveId); g2.step(inp()); }
   ok(seen.has("fox1") && seen.has("fox2"), `ต่อ fox1 -> fox2 เอง (ได้ ${[...seen].join(" > ")})`);
 
@@ -585,15 +590,15 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
 
   // คูลดาวน์: กดซ้ำทันทีต้องไม่ออก
   const g4 = new Game();
-  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  g4.step(inp({ skill1: 1, p: { skill1: 1 } }));
   run(g4, 60, {});
-  ok(g4.p1.cd[1] > 0, "ใช้แล้วติดคูลดาวน์");
+  ok(g4.p1.cd[0] > 0, "ใช้แล้วติดคูลดาวน์");
   const before = g4.p1.moveId;
-  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  g4.step(inp({ skill1: 1, p: { skill1: 1 } }));
   ok(g4.p1.moveId === before, "ยังติดคูลดาวน์อยู่ กดซ้ำไม่ออกท่า");
-  run(g4, SKILL_CD[1] + 5, {});
-  ok(g4.p1.cd[1] === 0, "คูลดาวน์เดินจนหมดเอง");
-  g4.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  run(g4, SKILL_CD[0] + 5, {});
+  ok(g4.p1.cd[0] === 0, "คูลดาวน์เดินจนหมดเอง");
+  g4.step(inp({ skill1: 1, p: { skill1: 1 } }));
   ok(g4.p1.moveId === "fox1", "หมดคูลดาวน์แล้วกดได้อีก");
 }
 
@@ -666,7 +671,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   // กดตอนกำลังอยู่ใน hitstop ได้ — input ค้างใน buffer แล้วออกท่าให้เองเฟรมถัดมา
   g.step(inp({ skill1: 1, p: { skill1: 1 } }));
   run(g, 3, {});
-  ok(g.p1.moveId === "thrust1", `ตีโดนแล้วกดสกิล 1 ยกเลิกท่าเข้าสกิลได้ (ได้ ${g.p1.moveId})`);
+  ok(g.p1.moveId === "fox1", `ตีโดนแล้วกดสกิล 1 ยกเลิกท่าเข้าสกิลได้ (ได้ ${g.p1.moveId})`);
 
   // ฟันลมแล้วกดสกิล ต้องไม่ยกเลิกให้
   const g2 = new Game();
@@ -686,7 +691,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   g3.step(inp({ skill1: 1, p: { skill1: 1 } }));
   run(g3, 6, {});
   const mid = g3.p1.moveId;
-  ok(mid && mid.startsWith("thrust"), `เข้าสกิลแล้ว (ได้ ${mid})`);
+  ok(mid && mid.startsWith("fox"), `เข้าสกิลแล้ว (ได้ ${mid})`);
   g3.step(inp({ skill1: 1, p: { skill1: 1 } }));
   ok(g3.p1.moveId === mid, "สกิลเดิมใช้ซ้ำในคอมโบเดียวไม่ได้");
 
@@ -696,14 +701,14 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   run(g4, 200, {});
   ok(g4.p1.cd[0] === 0, "รอจนหมดคูลดาวน์");
   g4.step(inp({ skill1: 1, p: { skill1: 1 } }));
-  ok(g4.p1.moveId === "thrust1", "เริ่มคอมโบใหม่จากท่ายืน ใช้สกิลเดิมได้อีก");
+  ok(g4.p1.moveId === "fox1", "เริ่มคอมโบใหม่จากท่ายืน ใช้สกิลเดิมได้อีก");
 }
 
 // ── ยกเลิกเข้าได้ทั้งสามสกิล ไม่ใช่แค่สกิล 1 ──
 {
   const { KI_MAX } = await import(G + "/core.js");
-  const want = { 1: "thrust1", 2: "fox1", 3: "ult1" };
-  for (const slot of [1, 2, 3]) {
+  const want = { 1: "fox1", 3: "ult1" };   // ช่อง 2 ยังว่าง
+  for (const slot of [1, 3]) {
     const g = new Game();
     g.p1.x = g.p2.x - 70;
     g.p1.ki = KI_MAX;
@@ -717,7 +722,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   // Fox Step เดี่ยว ๆ ต้องเข้าครบสองจังหวะ ไม่ใช่จังหวะแรกโดนแล้วจังหวะสองเอื้อมไม่ถึง
   const g = new Game();
   g.p1.x = g.p2.x - 70;
-  g.step(inp({ skill2: 1, p: { skill2: 1 } }));
+  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
   let hits = 0, hp = g.p2.hp;
   for (let i = 0; i < 70; i++) { g.step(inp()); if (g.p2.hp < hp) { hits++; hp = g.p2.hp; } }
   ok(hits === 2, `Fox Step จากระยะประชิดเข้าครบสองจังหวะ (ได้ ${hits})`);
@@ -772,7 +777,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   g.step(inp({ skill1: 1, p: { skill1: 1 } }));
   ok(g.p1.moveId === "jab1", "ยังยกเลิกไม่ได้ระหว่างท่า");
   run(g, 8, {});
-  ok(g.p1.moveId === "thrust1", `ท่าเดิมจบแล้วสกิลออกให้เอง (ได้ ${g.p1.moveId})`);
+  ok(g.p1.moveId === "fox1", `ท่าเดิมจบแล้วสกิลออกให้เอง (ได้ ${g.p1.moveId})`);
 
   // กดเร็วเกินจนเลยช่วง buffer = ไม่ออก เหมือนปุ่มตีทุกประการ ไม่ใช่ค้างไว้ออกทีหลังแบบไม่มีสาเหตุ
   const g2 = new Game();
