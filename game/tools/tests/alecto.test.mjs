@@ -149,9 +149,10 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
     return { frames, dmg: 100 - g.p2.hp };
   };
 
+  // สกิล 1 สั้นกว่าอัลติ เพราะเล่นจริงแล้ว 5 วินาทีขาตาย โดนบุกเข้ามาแล้วทำอะไรไม่ได้เลย
   const shot = fire("skill1");
-  ok(shot.frames > 280 && shot.frames < 380, `ลูกโม่ยืนยิงได้ราว 5 วินาที (${shot.frames} เฟรม)`);
-  ok(shot.dmg > 15 && shot.dmg < 40, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${shot.dmg}`);
+  ok(shot.frames > 170 && shot.frames < 260, `ลูกโม่ยืนยิงได้ราว 3 วินาที (${shot.frames} เฟรม)`);
+  ok(shot.dmg > 10 && shot.dmg < 30, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${shot.dmg}`);
 
   const ult = fire("skill3", 100);
   ok(ult.frames > 280 && ult.frames < 400, `อัลติยืนยิงได้ราว 5 วินาที (${ult.frames} เฟรม)`);
