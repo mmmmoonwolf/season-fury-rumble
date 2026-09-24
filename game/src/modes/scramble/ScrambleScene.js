@@ -17,7 +17,7 @@ import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS
 
 // ---------- อินพุต (ยกจาก prototype) ----------
 const GAME_KEYS = new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyJ','KeyK','KeyL','ShiftLeft','ShiftRight','Digit1','Digit2','Digit3']);
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -194,6 +194,7 @@ const OVERLAY_HTML = `
   <button data-tool="KeyR">Reset</button>
   <button data-tool="KeyT">Tune</button>
   <button data-tool="KeyC">Char: NYX</button>
+  <button data-tool="KeyV">VS: HELIOS</button>
 </div>
 <div id="sc-tune"></div>
 <div id="sc-touch">
@@ -348,13 +349,11 @@ class ScrambleScene extends Phaser.Scene {
     if (code === 'KeyP') this.paused = !this.paused;
     if (code === 'KeyN') { this.paused = true; this.stepOnce = true; }
     if (code === 'KeyO') this.timeScale = this.timeScale === 1 ? 0.25 : 1;
-    // สลับตัวละครของผู้เล่น — ล้างสไปรท์ตัวเดิมทิ้งก่อน ไม่งั้นค้างอยู่บนจอทั้งที่ไม่ได้ใช้แล้ว
-    if (code === 'KeyC') {
+    // สลับตัวละคร — สไปรท์เป็นของฝั่ง ไม่ใช่ของตัวละคร จึงไม่มีตัวค้างบนจอให้ต้องซ่อน
+    if (code === 'KeyC' || code === 'KeyV') {
       const ids = Object.keys(CHARACTERS);
-      const cur = ids.indexOf(s.p1.char);
-      const prev = CHAR_ART[s.p1.char];
-      if (prev?.sprite) prev.sprite.setVisible(false);
-      s.p1.char = ids[(cur + 1) % ids.length];
+      const f = code === 'KeyC' ? s.p1 : s.p2;
+      f.char = ids[(ids.indexOf(f.char) + 1) % ids.length];
       this._syncSkillSlots();
       s.resetPositions();
       this.comboFade = 0;
@@ -370,6 +369,7 @@ class ScrambleScene extends Phaser.Scene {
     b('KeyO').classList.toggle('on', this.timeScale !== 1);
     b('KeyT').classList.toggle('on', document.getElementById('sc-tune').classList.contains('open'));
     b('KeyC').textContent = 'Char: ' + CHARACTERS[this.sim.p1.char].label;
+    b('KeyV').textContent = 'VS: ' + CHARACTERS[this.sim.p2.char].label;
   }
 
   update(time, delta) {
@@ -487,17 +487,34 @@ class ScrambleScene extends Phaser.Scene {
         repeat: ["hurt", "jump", "knockdown", "tech", "blockstun"].includes(name) ? 0 : -1,
       });
     }
-    art.sprite = this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setVisible(false).setDepth(5);
+  }
+
+  /** สไปรท์หนึ่งตัวต่อ "ฝั่ง" (p1/p2) ไม่ใช่ต่อตัวละคร
+   *  ถ้าผูกไว้กับตัวละคร พอทั้งสองฝั่งเลือกตัวเดียวกันจะแย่ง sprite ตัวเดียวกันวาด เหลือให้เห็นฝั่งเดียว
+   *  สถานะที่ใช้ตัดสินว่าจะเล่นท่าใหม่ไหม (lastState/lastJumps) ก็ต้องแยกต่อฝั่งด้วยเหตุผลเดียวกัน */
+  _rigFor(f) {
+    this.rigs ??= {};
+    let r = this.rigs[f.id];
+    if (!r) {
+      r = this.rigs[f.id] = { sprite: this.add.sprite(0, 0, CHAR_ART[f.char].atlasKey, 'idle_1.png')
+        .setVisible(false).setDepth(f.id === 'p1' ? 5 : 4), char: f.char, lastState: null, lastJumps: null };
+    }
+    if (r.char !== f.char) {   // สลับตัวละครกลางเกม: เปลี่ยนเท็กซ์เจอร์แล้วบังคับให้เริ่มท่าใหม่
+      r.sprite.setTexture(CHAR_ART[f.char].atlasKey, 'idle_1.png');
+      r.char = f.char; r.lastState = null;
+    }
+    return r;
   }
 
   /** วาง/ย่อ/พลิกสไปรท์ให้ตรงกับตัวละคร — ใช้ร่วมกันทั้งท่าปกติและท่าโจมตี */
   _applyCharTransform(f) {
     const art = CHAR_ART[f.char];
     const m = art.meta;
+    const rig = this._rigFor(f);
     // สไปรท์สูง SPRITE_H px บนเวที เทียบกับ hurtbox ที่สูง PHYS.standH (118)
     // เก็บมา 300 px จึงย่อลงด้วยอัตราส่วนนี้ แล้วเลื่อนให้ "เท้าในภาพ" ไปอยู่ที่เท้าของตัวละครพอดี
     const scale = SPRITE_H / m.standing;
-    const sp = art.sprite;
+    const sp = rig.sprite;
     sp.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
     sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
     sp.setPosition(f.x, f.y);
@@ -509,7 +526,8 @@ class ScrambleScene extends Phaser.Scene {
   _drawCharSprite(f) {
     const art = CHAR_ART[f.char];
     if (!art) return false;
-    const sp = art.sprite;
+    const rig = this._rigFor(f);
+    const sp = rig.sprite;
 
     // ท่าโจมตี: เลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ ไม่ผ่าน animation ที่เล่นตามเวลา
     // เพราะ animation ต้องกะ fps ให้จบพอดีกับ startup+active+recovery ซึ่งคลาดเคลื่อนได้เสมอ
@@ -519,7 +537,7 @@ class ScrambleScene extends Phaser.Scene {
       this._applyCharTransform(f);
       sp.anims.stop();
       sp.setFrame(`${f.moveId}_${i}.png`);
-      art.lastState = 'attack:' + f.moveId + i;
+      rig.lastState = 'attack:' + f.moveId + i;
       return true;
     }
 
@@ -537,10 +555,10 @@ class ScrambleScene extends Phaser.Scene {
     // เล่นใหม่เมื่อเปลี่ยน state — โดนตีซ้ำตอนยังอยู่ใน hitstun เอนจิ้นไม่รีเซ็ต stateF ให้
     // (setState เช็คว่าซ้ำเดิมไหม) ท่าจึงควรเล่นต่อไม่กระตุกกลับเฟรมแรก
     // ยกเว้นดับเบิลจัมพ์: ยังอยู่ state 'air' เหมือนเดิมแต่ควรตีลังกาใหม่ — ดูจาก jumpsLeft ที่ลดลง
-    const doubleJumped = f.jumpsLeft !== art.lastJumps;
-    art.lastJumps = f.jumpsLeft;
-    if (art.lastState !== f.state || (key === 'jump' && doubleJumped)) {
-      art.lastState = f.state;
+    const doubleJumped = f.jumpsLeft !== rig.lastJumps;
+    rig.lastJumps = f.jumpsLeft;
+    if (rig.lastState !== f.state || (key === 'jump' && doubleJumped)) {
+      rig.lastState = f.state;
       // ลงพื้น = ค้างที่เฟรมสุดท้ายของท่ากระโดด (ยืดตัวรับพื้น) ไม่ใช่เริ่มตีลังกาใหม่ตอนแตะพื้น
       if (f.state === 'landing') sp.anims.stop(), sp.setFrame(`jump_${art.anims.jump}.png`);
       else sp.play(anim);
@@ -605,13 +623,17 @@ class ScrambleScene extends Phaser.Scene {
   draw() {
     const s = this.sim, g = this.world, fx = this.fx, hud = this.hud;
     g.clear(); fx.clear(); hud.clear();
-    this.drawFighter(g, s.p2, C.dummy, C.dummyMark, true);
+    // ทั้งสองฝั่งวาดด้วยเส้นทางเดียวกัน — ท่าที่ยังไม่มีอาร์ตตกไปเป็นกล่องเหมือนเดิม
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง
-    if (this._drawCharSprite(s.p1)) {
-      g.fillStyle(0x000000, 0.25);
-      g.fillEllipse(s.p1.x, s.p1.onGround ? s.p1.y + 2 : Math.min(STAGE.groundY, s.p1.y + 200) + 2, 50, 10);
-    } else {
-      this.drawFighter(g, s.p1, C.nyx, C.nyxScarf, false);
+    for (const f of [s.p2, s.p1]) {
+      if (this._drawCharSprite(f)) {
+        g.fillStyle(0x000000, 0.25);
+        g.fillEllipse(f.x, f.onGround ? f.y + 2 : Math.min(STAGE.groundY, f.y + 200) + 2, 50, 10);
+      } else if (f === s.p1) {
+        this.drawFighter(g, f, C.nyx, C.nyxScarf, false);
+      } else {
+        this.drawFighter(g, f, C.dummy, C.dummyMark, true);
+      }
     }
 
     // มีดที่ขว้างออกไป — หมุดที่ปะทะแล้วค้างอยู่วาดเป็นวงแดงกระพริบให้รู้ว่ากดวาร์ปตามได้

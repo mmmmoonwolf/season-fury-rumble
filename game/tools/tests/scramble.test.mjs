@@ -1109,3 +1109,47 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
     ok(bad.length === 0, `'${id}': เฟรมใน anims มีอยู่จริงใน atlas ครบ (ขาด: ${bad.join(", ") || "ไม่มี"})`);
   }
 }
+
+// ── คู่ต่อสู้เป็นตัวละครจริง ไม่ใช่กล่อง ──
+{
+  const fs = await import("fs");
+  const { CHARACTERS } = await import(G + "/core.js");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+
+  const g = new Game();
+  ok(CHARACTERS[g.p2.char] != null, `หุ่นซ้อมเป็นตัวละครจริง (ได้ '${g.p2.char}')`);
+  ok(g.p1.char !== g.p2.char, `เริ่มเกมมาเป็นคนละตัว จะได้เห็นทั้งสองตัวพร้อมกัน (${g.p1.char} vs ${g.p2.char})`);
+  ok(g.p2.moves === CHARACTERS[g.p2.char].moves, "หุ่นอ่านตารางท่าจากตัวละครของตัวเอง");
+
+  // สไปรท์ต้องเป็นของ "ฝั่ง" ไม่ใช่ของตัวละคร
+  // ถ้าผูกกับตัวละคร พอสองฝั่งเลือกตัวเดียวกันจะแย่ง sprite ตัวเดียวกันวาด เหลือให้เห็นฝั่งเดียว
+  ok(/_rigFor\(f\)/.test(scene), "ฉากมีสไปรท์แยกต่อฝั่ง (_rigFor)");
+  ok(!/\bart\.sprite\b/.test(scene), "ไม่มีสไปรท์ผูกติดกับตัวละครหลงเหลือ");
+  ok(!/\bart\.lastState\b/.test(scene) && !/\bart\.lastJumps\b/.test(scene),
+    "สถานะที่ใช้ตัดสินการเล่นท่าใหม่ก็แยกต่อฝั่งด้วย");
+
+  // ทั้งสองฝั่งต้องวาดด้วยเส้นทางเดียวกัน ไม่ใช่ p2 ถูกบังคับเป็นกล่องเสมอ
+  ok(/for \(const f of \[s\.p2, s\.p1\]\)/.test(scene), "วาดทั้งสองฝั่งด้วยลูปเดียวกัน");
+  ok(!/drawFighter\(g, s\.p2, [^)]*\);\s*\n\s*\/\//.test(scene), "ไม่มีการบังคับวาดหุ่นเป็นกล่องก่อนเข้าลูป");
+
+  // มีปุ่มสลับตัวละครทั้งสองฝั่ง
+  ok(/data-tool="KeyC"/.test(scene) && /data-tool="KeyV"/.test(scene), "มีปุ่มสลับตัวละครทั้งฝั่งผู้เล่นและฝั่งหุ่น");
+  ok(/'KeyC','KeyV'\]/.test(scene) || /'KeyC',\s*'KeyV'/.test(scene), "ปุ่มทั้งสองลงทะเบียนเป็นคีย์เครื่องมือ");
+
+  // หุ่นยังโดนตีได้ตามปกติหลังเปลี่ยนเป็นตัวละครจริง
+  const h = new Game();
+  h.p1.x = h.p2.x - 70;
+  const hp = h.p2.hp;
+  h.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(h, 20, {});
+  ok(h.p2.hp < hp, `หุ่นยังกินดาเมจได้ (${hp} -> ${h.p2.hp})`);
+
+  // เปลี่ยนตัวละครของหุ่นแล้วยังเล่นต่อได้ ไม่พัง
+  const k = new Game();
+  k.p2.char = "nyx";
+  k.p1.x = k.p2.x - 70;
+  const hp2 = k.p2.hp;
+  k.step(inp({ attack: 1, p: { attack: 1 } }));
+  run(k, 20, {});
+  ok(k.p2.hp < hp2, "สลับตัวละครของหุ่นแล้วยังตีโดนเหมือนเดิม");
+}

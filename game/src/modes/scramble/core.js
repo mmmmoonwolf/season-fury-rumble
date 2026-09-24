@@ -317,8 +317,9 @@ class Game {
     // จุดเกิดเลื่อนตามเวทีที่กว้างขึ้นเหมือนแพลตฟอร์ม ไม่งั้นทั้งคู่ไปกองอยู่ค่อนซ้ายของจอ
     // ระยะห่างระหว่างสองฝั่ง (440) คงเดิม = ระยะเข้าปะทะที่ playtest ไว้ไม่เปลี่ยน
     const shift = (STAGE.w - STAGE_BASE_W) / 2;
-    this.p1 = new Fighter('p1', 'NYX', 420 + shift, 1);
-    this.p2 = new Fighter('p2', 'DUMMY', 860 + shift, -1);
+    this.p1 = new Fighter('p1', 'NYX', 420 + shift, 1, 'nyx');
+    // หุ่นซ้อมเป็นตัวละครจริงตัวหนึ่ง ไม่ใช่กล่องอีกแล้ว — ตั้งเป็นคนละตัวกับผู้เล่นจะได้เห็นทั้งสองตัวพร้อมกัน
+    this.p2 = new Fighter('p2', 'DUMMY', 860 + shift, -1, 'helios');
     this.dummyMode = 'stand';
     this.dummyTech = 'off';
     this.lastInp = null;
