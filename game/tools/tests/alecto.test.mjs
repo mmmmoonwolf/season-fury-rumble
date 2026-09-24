@@ -1,7 +1,7 @@
 // ทดสอบกลไกเฉพาะตัวของ Alecto — ตรารอยแส้ กองไฟ และท่าถอย
 // รัน: node tools/tests/alecto.test.mjs   (จากโฟลเดอร์ game)
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
-const { Game, PHYS } = await import(G + "/core.js");
+const { Game, PHYS, CHARACTERS } = await import(G + "/core.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
@@ -226,4 +226,48 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   g.p2.x = g.p1.x - 200;
   for (let i = 0; i < 10; i++) g.step(inp(), inp());
   ok(g.p1.facing < 0, "คู่ต่อสู้ข้ามไปอีกฝั่งแล้วหันตามทัน");
+}
+
+
+// ── ท่ากลิ้งถอยต้องเป็นท่าหนีจริง ไม่ใช่แค่ขยับ ──
+//
+// ผู้เล่นรายงานว่าเธอ "แพ้ง่าย คนอื่นใส่เป็นชุดเละเลย" วัดแล้วเจอต้นเหตุ:
+// ท่ากลิ้งของเธอไม่มี iframes เลยสักเฟรม กลิ้งหนีไปก็โดนตีอยู่ดี
+// ทั้งที่นี่คือท่าป้องกันตัวท่าเดียวที่เธอมี (ไม่มีเกราะ ไม่มีวาร์ป ไม่มีสวนกลับ)
+{
+  const M = CHARACTERS.alecto.moves;
+  ok(Array.isArray(M.roll.iframes), "ท่ากลิ้งมีช่วงอมตะ");
+  ok(M.roll.iframes[1] >= M.roll.startup + M.roll.active,
+    `ช่วงอมตะคลุมตลอดช่วงกลิ้ง (${M.roll.iframes.join("-")} · ท่ายาว ${M.roll.startup + M.roll.active})`);
+  ok(!M.hop.iframes, "กระโดดถอยไม่มีช่วงอมตะ — ให้มีทางเลือก ไวแต่เสี่ยง กับ ช้ากว่าแต่รอด");
+
+  // กลิ้งหนีจริงตอนโดนไล่ตี
+  const run = (escape) => {
+    const g = new Game(); g.p1.char = "helios"; g.p2.char = "alecto";
+    g.p1.hp = 100; g.p2.hp = 100; g.p2.x = g.p1.x + 95;
+    let dmg = 0;
+    for (let f = 1; f <= 50; f++) {
+      // เธอเป็นฝั่งขวาหันซ้าย ต้องกดขวาค้างถึงจะเป็นท่าถอย
+      const her = escape ? inp({ right: 1, p: f === 1 ? { skill2: 1 } : {} }) : inp();
+      g.step(inp({ p: { attack: f % 6 === 1 ? 1 : 0 } }), her);
+      for (const e of g.events) if (e.type === "hit") dmg += e.dmg;
+    }
+    return dmg;
+  };
+  const stood = run(false), rolled = run(true);
+  ok(rolled < stood, `กลิ้งหนีแล้วเจ็บน้อยกว่ายืนรับ (${rolled} เทียบ ${stood})`);
+  ok(rolled === 0, "กลิ้งถูกจังหวะแล้วรอดทั้งชุด");
+}
+
+// ── ท่าพื้นของเธอไม่ควรค้างนานกว่าคนที่จ่ายค่าความช้าด้วยเกราะ ──
+{
+  const A = CHARACTERS.alecto.moves, T = CHARACTERS.atlas.moves;
+  const span = (m) => m.startup + m.active + m.recovery;
+  ok(span(A.jab1) < span(T.jab1),
+    `ท่าจิ้มของเธอเร็วกว่าของ Atlas (${span(A.jab1)} เทียบ ${span(T.jab1)} เฟรม)`);
+  ok(A.side.recovery < T.side.recovery,
+    `ท่าพุ่งค้างน้อยกว่าของ Atlas (${A.side.recovery} เทียบ ${T.side.recovery})`);
+  // Atlas ต้องไม่ถูกแตะ — เคยเผลอแก้ไปพร้อมกันเพราะเฟรมเดต้าเหมือนกันเป๊ะ
+  ok(T.jab3.startup === 11 && T.jab3.recovery === 24,
+    `ไม้จบคอมโบของ Atlas ยังเป็น 11/5/24 ตามเดิม (${T.jab3.startup}/${T.jab3.active}/${T.jab3.recovery})`);
 }

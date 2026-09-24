@@ -270,10 +270,14 @@ const FIRE_HALF = 62;        // ครึ่งความกว้างขอ
 const FIRE_TICK = 24;        // กินเลือดทุกกี่เฟรม
 const FIRE_DMG = 2;
 
+// เฟรมเดต้าชุดนี้ปรับลงเมื่อวัดแล้วพบว่าเธอจ่ายค่า "ช้าและเอื้อมไกล" สองต่อ
+// ทั้งออกช้าและค้างนาน แต่ไม่ได้อะไรกลับมาเลย ไม่มีเกราะ ไม่มีเลือดพิเศษ ไม่มีต้านสถานะ
+// ขณะที่ Atlas ที่ช้ากว่าได้เลือด 130 + เกราะ + resist 0.5 มาจ่ายค่านั้น
+// และ Orpheus เอื้อมเกือบเท่ากัน (124 เทียบ 128) แต่ท่าครบชุดเร็วกว่า 6 เฟรม
 const ALECTO_MOVES = {
   // ---- ท่าตีปกติ: แส้ ----
   // ระยะ (hb.w) ยาวกว่าของ Nyx/Helios ราวเท่าตัว แลกกับ startup ที่ช้ากว่าทุกตัวในเกม
-  jab1: { label: 'Lash', kind: 'ground', startup: 7, active: 3, recovery: 13, dmg: 3,
+  jab1: { label: 'Lash', kind: 'ground', startup: 6, active: 3, recovery: 11, dmg: 3,
     hb: { x: 10, y: -104, w: 118, h: 30 }, kb: [2, 0], stun: 17, chain: 'jab2', lash: true },
   jab2: { label: 'Cross Lash', kind: 'ground', startup: 7, active: 3, recovery: 14, dmg: 3,
     hb: { x: 10, y: -98, w: 126, h: 40 }, kb: [2.5, 0], stun: 18, chain: 'jab3', lash: true },
@@ -282,9 +286,9 @@ const ALECTO_MOVES = {
   jab3: { label: 'Whip Crack', kind: 'ground', startup: 9, active: 4, recovery: 22, dmg: 7,
     hb: { x: 12, y: -100, w: 140, h: 36 }, kb: [14, 0], stun: 26, lash: true },
   // ลากเข้ามา: kb แกน x ติดลบ = ดึงเข้าหาตัวเธอ ตัวเปิดคอมโบจากระยะที่คนอื่นเอื้อมไม่ถึง
-  side: { label: 'Rope Pull', kind: 'ground', startup: 11, active: 5, recovery: 24, dmg: 4,
+  side: { label: 'Rope Pull', kind: 'ground', startup: 10, active: 5, recovery: 20, dmg: 4,
     hb: { x: 20, y: -96, w: 172, h: 30 }, kb: [-9, 0], stun: 30, lash: true },
-  up: { label: 'Sky Crack', kind: 'ground', startup: 9, active: 6, recovery: 20, dmg: 5,
+  up: { label: 'Sky Crack', kind: 'ground', startup: 9, active: 6, recovery: 17, dmg: 5,
     hb: { x: -10, y: -182, w: 100, h: 132 }, kb: [1.5, -16], stun: 36, jumpCancel: true, lash: true },
   down: { label: 'Ground Lash', kind: 'ground', crouch: true, startup: 8, active: 4, recovery: 18, dmg: 4,
     hb: { x: 6, y: -34, w: 132, h: 30 }, kb: [3, -10], stun: 28, lash: true },
@@ -340,9 +344,13 @@ const ALECTO_MOVES = {
   hop: { label: 'Backstep', kind: 'ground', startup: 3, active: 5, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     imp: { f: 2, vx: -13 }, glide: true, autoChain: 'shot1' },
+  // กลิ้งถอยต้องมีช่วงอมตะ ไม่งั้นมันไม่ใช่ "ท่าหนี" — กลิ้งไปก็โดนตีอยู่ดี
+  // นี่คือท่าป้องกันตัวท่าเดียวของเธอ และเดิมไม่มี iframes เลยสักเฟรม
+  // เทียบ: วาร์ปของ Nyx มี iframes [0,9] และ [0,18]
+  // กระโดดถอย (hop) ไม่ให้ เพื่อให้มีทางเลือก: hop ไวแต่ไม่อมตะ · roll ช้ากว่าแต่รอด
   roll: { label: 'Roll Back', kind: 'ground', startup: 3, active: 6, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    imp: { f: 2, vx: -15 }, glide: true, autoChain: 'fire2' },
+    iframes: [0, 9], imp: { f: 2, vx: -15 }, glide: true, autoChain: 'fire2' },
 };
 
 /* ================== ATLAS — สายแท้งค์ ==================
