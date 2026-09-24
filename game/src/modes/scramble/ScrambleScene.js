@@ -32,7 +32,7 @@ const BINDS = [
 const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
 
 const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -272,6 +272,7 @@ const OVERLAY_HTML = `
   <button data-tool="KeyR">Reset</button>
   <button data-tool="KeyT">Tune</button>
   <button data-tool="KeyB">เลือกตัว</button>
+  <button data-tool="KeyF">Hz</button>
 </div>
 <div id="sc-select">
   <div class="wrap">
@@ -397,6 +398,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
     this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'B เลือกตัว   T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
+    this.tPace = T(60, 96, '', 13, '#ffd166');   // ใต้ฉายา เหนือแถบข้อมูลท้ายจอที่จะทับ
     this._initSprites();
     this._syncMatchHud();
     this.syncTools();
@@ -519,6 +521,7 @@ class ScrambleScene extends Phaser.Scene {
     if (code === 'KeyO') this.timeScale = this.timeScale === 1 ? 0.25 : 1;
     // กลับไปหน้าเลือกตัว — ตอนต่อเน็ตกดไม่ได้อยู่แล้ว (VIEW_ONLY) เพราะอีกฝั่งไม่รู้ด้วย
     if (code === 'KeyB') { this.openSelect(); return; }
+    if (code === 'KeyF') this.showPace = !this.showPace;
     // สลับตัวละคร — สไปรท์เป็นของฝั่ง ไม่ใช่ของตัวละคร จึงไม่มีตัวค้างบนจอให้ต้องซ่อน
     if (code === 'KeyC' || code === 'KeyV') {
       const ids = Object.keys(CHARACTERS);
@@ -555,9 +558,28 @@ class ScrambleScene extends Phaser.Scene {
     b('Digit4').textContent = 'Tech: ' + TECH_LABEL[this.sim.dummyTech];
     b('KeyO').classList.toggle('on', this.timeScale !== 1);
     b('KeyT').classList.toggle('on', document.getElementById('sc-tune').classList.contains('open'));
+    b('KeyF').classList.toggle('on', !!this.showPace);
+  }
+
+  /** วัดว่าจอวาดจริงกี่ครั้งต่อวินาที และ sim เดินจริงกี่เฟรมต่อวินาที
+   *
+   *  ต้องใช้ performance.now() ไม่ใช่ delta ที่ Phaser ส่งมา เพราะ Phaser เกลี่ย delta
+   *  จนรายงาน 16.7 ms ตลอดไม่ว่าจริง ๆ จะผ่านไปเท่าไหร่ (วัดได้คลาด 2.5-5 เท่าบนเครื่องช้า)
+   *  ซึ่งก็คือต้นเหตุที่ทำให้ความเร็วเกมผูกกับอัตราเฟรมของจอแทนที่จะผูกกับเวลาจริง */
+  _measurePace() {
+    const now = performance.now();
+    const p = this.pace ?? (this.pace = { t0: now, draws: 0, frame0: this.sim.frame, hz: 0, sfps: 0 });
+    p.draws++;
+    const span = now - p.t0;
+    if (span >= 1000) {
+      p.hz = p.draws / (span / 1000);
+      p.sfps = (this.sim.frame - p.frame0) / (span / 1000);
+      p.t0 = now; p.draws = 0; p.frame0 = this.sim.frame;
+    }
   }
 
   update(time, delta) {
+    this._measurePace();
     const stepMs = 1000 / 60;
     // เลือกตัวอยู่ = sim หยุดนิ่ง แต่ยังวาดฉากอยู่ จะได้เห็นเวทีอยู่ข้างหลังแผง
     if (this.phase === 'select') { this.acc = 0; this.draw(); return; }
@@ -1120,6 +1142,11 @@ class ScrambleScene extends Phaser.Scene {
     hud.fillStyle(0x0c111c, 0.6); hud.fillRect(mx - 4, my - 4, 150 * 5 + 8, 18);
     s.meter.forEach((ph, i) => { hud.fillStyle(C[ph], 1); hud.fillRect(mx + i * 5, my, 4, 10); });
 
+    if (this.showPace && this.pace) {
+      const { hz, sfps } = this.pace;
+      // เกมควรเดิน 60 เฟรม/วินาทีเสมอ ไม่ว่าจอจะวาดกี่ครั้ง ตัวคูณที่ไม่ใช่ 1.00 คือผิด
+      this.tPace.setText(`จอวาด ${hz.toFixed(0)}/วิ · เกมเดิน ${sfps.toFixed(0)} เฟรม/วิ · ความเร็ว ${(sfps / 60).toFixed(2)}x`);
+    } else this.tPace.setText('');
     this.tStatus.setText(
       this.netMsg ? this.netMsg
       : this.versus === 'net' && this.netWait > 30 ? 'รออีกฝั่ง...'
