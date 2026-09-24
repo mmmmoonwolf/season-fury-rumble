@@ -52,7 +52,7 @@ chin, knees slightly bent, feet apart. Three-quarter view, body angled
 toward the viewer's right.
 ```
 
-## 1. คลิป: ยืน → วิ่ง  ← ทำต่อจากนี้
+## 1. คลิป: ยืน → วิ่ง  — ✅ เสร็จแล้ว
 
 **แนบ `art_reference/helios_idle_APPROVED.jpg`**
 
@@ -68,7 +68,7 @@ shadow, no ground line. Full body always visible, never cropped.
 
 ส่งคลิปมา เดี๋ยวตัดเฟรมให้
 
-## 2. ชีต A — ท่าเคลื่อนไหวและท่าโดน (9 ท่า · 3 แถวแถวละ 3)
+## 2. ชีต A — ✅ เสร็จแล้ว · ท่าเคลื่อนไหวและท่าโดน (9 ท่า · 3 แถวแถวละ 3)
 
 ```
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
@@ -88,7 +88,7 @@ Pose 9 — standing guard with both forearms raised and crossed in front of
 the face, bracing to block.
 ```
 
-## 3. ชีต B — คอมโบหมัดพื้นฐาน (9 ท่า · 3 แถวแถวละ 3)
+## 3. ชีต B — ✅ เสร็จแล้ว · คอมโบหมัดพื้นฐาน (9 ท่า · 3 แถวแถวละ 3)
 
 3 ท่าต่อหนึ่งหมัด: เงื้อ → สุดแขน → ชักกลับ
 
@@ -109,7 +109,7 @@ whole body committed, back foot lifted.
 Pose 9 — recovering from the finisher, arms lowering, feet resettling.
 ```
 
-## 4. ชีต C — ท่าพิเศษบนพื้น (9 ท่า · 3 แถวแถวละ 3)
+## 4. ชีต C — ✅ เสร็จแล้ว · ท่าพิเศษบนพื้น (9 ท่า · 3 แถวแถวละ 3)
 
 ```
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
@@ -129,7 +129,7 @@ supporting hand pressed to the floor.
 Pose 9 — pulling the sweeping leg back in, rising from the crouch.
 ```
 
-## 5. ชีต D — ท่ากลางอากาศ (9 ท่า · 3 แถวแถวละ 3)
+## 5. ชีต D — ✅ เสร็จแล้ว · ท่ากลางอากาศ (9 ท่า · 3 แถวแถวละ 3)
 
 ```
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
@@ -150,7 +150,7 @@ below the body, arms up for balance.
 Pose 9 — airborne, legs together underneath, body upright, ready to land.
 ```
 
-## 6. ชีต E — Chain Rush ชุดรัว (6 ท่า · 2 แถวแถวละ 3)
+## 6. ชีต E — ✅ เสร็จแล้ว · Chain Rush ชุดรัว (6 ท่า · 2 แถวแถวละ 3)
 
 หมัด → หมัด → เตะ → หมัด → เตะ + ท่าตั้งต้น
 
@@ -171,7 +171,7 @@ Pose 6 — landing the kicking foot down, fists coming back up into guard,
 still leaning forward and pressing in.
 ```
 
-## 7. ชีต F — ไม้จบสามทาง + เข่าพุ่ง (9 ท่า · 3 แถวแถวละ 3)
+## 7. ชีต F —  ← ทำต่อจากนี้ ·  ไม้จบสามทาง + เข่าพุ่ง (9 ท่า · 3 แถวแถวละ 3)
 
 ไม้จบของชุดรัวแยกสามทางตามปุ่มทิศที่กดค้าง
 

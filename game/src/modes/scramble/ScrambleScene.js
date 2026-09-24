@@ -86,15 +86,16 @@ const CHAR_ART = {
       "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]),
     // เติมตอน _initCharSprite: meta / sprite / lastState / lastJumps
   },
-  // Helios: ตอนนี้มีท่ายืนกับท่าวิ่ง state อื่นยังวาดเป็นกล่อง
-  // (วิธีเดียวกับที่ Nyx เริ่ม) ได้ชีตมาเพิ่มก็ใส่ใน anims/attacks แล้ว build ใหม่
+  // Helios: เหลือเข่าพุ่งกับอัลติที่ยังวาดเป็นกล่อง (รอชีต F/G)
   helios: {
     atlasKey: 'schelios',
     texture: 'assets/characters/scramble_helios.png',
     data: 'assets/characters/scramble_helios.json',
     runStride: 85,
-    anims: { idle: 1, run: 11 },
-    attacks: new Set([]),
+    anims: { idle: 1, run: 11, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
+      block: 1, blockstun: 1, blockcrouch: 1 },
+    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD"]),
   },
 };
 

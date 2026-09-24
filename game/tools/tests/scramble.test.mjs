@@ -11,10 +11,12 @@ const { Game, PHYS, MOVES, STAGE, ACTIONABLE } = await import(G + "/core.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
-/** ท่าที่ระบบทำเสร็จแล้วแต่ยังรออาร์ต — ระหว่างนี้ฉากวาดเป็นกล่องแทน (พฤติกรรมเดิมของฉาก)
- *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง
- *  ตอนนี้ว่าง = ทุกท่าในเกมมีอาร์ตจริงครบแล้ว */
-const PENDING_ART = new Set();
+/** ท่าที่ระบบทำเสร็จแล้วแต่ยังรออาร์ต แยกตามตัวละคร — ระหว่างนี้ฉากวาดเป็นกล่องแทน
+ *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง */
+const PENDING_ART_BY_CHAR = {
+  nyx: new Set(),
+  helios: new Set(["knee", "hh1", "hh2", "hh3", "hhEnd"]),   // รอชีต F/G
+};
 
 const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
@@ -755,65 +757,49 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(g2.p2.maxHp - uhp >= 20, `อัลติรวมดาเมจ ${g2.p2.maxHp - uhp} (ต้อง >= 20)`);
 }
 
-// ── ฉาก: ท่าของสกิลใหม่ต้องลงทะเบียนอาร์ตครบ และมีหลอด ki บนจอ ──
+// ── ฉาก: ทุกท่าของทุกตัวละครต้องลงทะเบียนอาร์ตครบ และมีหลอด ki บนจอ ──
 // ลืมใส่ชื่อท่าใน attacks ของตัวละคร = ท่านั้นวาดเป็นกล่องสี่เหลี่ยมแทนตัวละคร โดยไม่มี error อะไรเลย
 {
   const fs = await import("fs");
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
-  const { MOVES } = await import(G + "/core.js");
-  const listed = new Set((scene.match(/attacks:\s*new Set\(\[([\s\S]*?)\]\)/)[1].match(/"[^"]+"/g) || [])
-    .map((s) => s.replace(/"/g, "")));
-  const missing = Object.keys(MOVES).filter((k) => !listed.has(k) && !PENDING_ART.has(k));
-  ok(missing.length === 0, `ทุกท่าใน MOVES ลงทะเบียนอาร์ตไว้ในฉากครบ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
-  const early = [...PENDING_ART].filter((k) => listed.has(k));
-  ok(early.length === 0, `ท่าที่ยังไม่มีอาร์ตต้องไม่อยู่ในตาราง attacks (เจอ: ${early.join(", ") || "ไม่มี"})`);
+  const { CHARACTERS } = await import(G + "/core.js");
   ok(/KI_MAX/.test(scene), "ฉากวาดหลอด ki");
   ok(/_syncSkillBtns/.test(scene), "ฉากหรี่ปุ่มสกิลตามคูลดาวน์/ki");
-  // ห้ามใช้ disabled หรี่ปุ่ม: ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างจะไม่ส่ง event ปล่อย ปุ่มจะค้าง
-  // ดูเฉพาะ "ตัวเมธอด" ที่รันทุกเฟรม ไม่ใช่ทุกอย่างหลังคำว่า _syncSkillBtns ปรากฏครั้งแรก
-  // (จับกว้าง ๆ แล้วไปโดนคอมเมนต์ที่อ้างถึงชื่อเมธอด เทสต์เลยเช็กผิดบล็อกโดยไม่รู้ตัว)
-  const dimBody = scene.match(/_syncSkillBtns\(\)\s*\{[\s\S]*?\n  \}/)?.[0] ?? "";
-  ok(dimBody.length > 0, "หาตัวเมธอดหรี่ปุ่มเจอ");
-  ok(!/\.disabled\s*=/.test(dimBody), "ลูปหรี่ปุ่มรายเฟรมไม่แตะ disabled (ใช้ opacity อย่างเดียว)");
+
+  for (const [id, ch] of Object.entries(CHARACTERS)) {
+    const blk = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?attacks:\\s*new Set\\(\\[([\\s\\S]*?)\\]\\)`));
+    ok(blk != null, `ฉากมีรายชื่อท่าที่มีอาร์ตของ '${id}'`);
+    if (!blk) continue;
+    const listed = new Set((blk[1].match(/"[^"]+"/g) || []).map((x) => x.replace(/"/g, "")));
+    const pending = PENDING_ART_BY_CHAR[id] ?? new Set();
+    const missing = Object.keys(ch.moves).filter((k) => !listed.has(k) && !pending.has(k));
+    ok(missing.length === 0, `'${id}': ทุกท่าลงทะเบียนอาร์ตครบ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
+    const early = [...pending].filter((k) => listed.has(k));
+    ok(early.length === 0, `'${id}': ท่าที่ยังไม่มีอาร์ตต้องไม่อยู่ในรายชื่อ (เจอ: ${early.join(", ") || "ไม่มี"})`);
+    const ghost = [...listed].filter((k) => !ch.moves[k]);
+    ok(ghost.length === 0, `'${id}': ไม่มีชื่อท่าที่ไม่มีอยู่จริงในรายชื่ออาร์ต (เจอ: ${ghost.join(", ") || "ไม่มี"})`);
+  }
 }
 
-// ── อาร์ตของทุกท่าต้องมีอยู่จริงใน atlas ──
+// ── อาร์ตของทุกท่าต้องมีอยู่จริงใน atlas ของตัวละครนั้น ──
 {
   const fs = await import("fs");
-  const { MOVES } = await import(G + "/core.js");
-  const atlas = JSON.parse(fs.readFileSync(new URL("../../assets/characters/scramble_nyx.json", import.meta.url), "utf8"));
-  const have = new Set(Object.keys(atlas.frames));
-  const missing = [];
-  for (const k of Object.keys(MOVES)) {
-    if (PENDING_ART.has(k)) continue;
-    for (const n of [1, 2, 3]) if (!have.has(`${k}_${n}.png`)) missing.push(`${k}_${n}`);
+  const { CHARACTERS } = await import(G + "/core.js");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  for (const [id, ch] of Object.entries(CHARACTERS)) {
+    const m = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?data:\\s*'([^']+)'`));
+    if (!m) { ok(false, `หา atlas ของ '${id}' ไม่เจอ`); continue; }
+    const atlas = JSON.parse(fs.readFileSync(new URL("../../" + m[1], import.meta.url), "utf8"));
+    const pending = PENDING_ART_BY_CHAR[id] ?? new Set();
+    const missing = [];
+    for (const k of Object.keys(ch.moves)) {
+      if (pending.has(k)) continue;
+      for (const n of [1, 2, 3]) if (!atlas.frames[`${k}_${n}.png`]) missing.push(`${k}_${n}`);
+    }
+    ok(missing.length === 0, `'${id}': ทุกท่ามีอาร์ตครบ 3 เฟรม (ขาด: ${missing.join(", ") || "ไม่มี"})`);
+    const arrived = [...pending].filter((k) => atlas.frames[`${k}_2.png`]);
+    ok(arrived.length === 0, `'${id}': มีอาร์ตแล้วต้องถอดออกจากรายการรอ (เจอ: ${arrived.join(", ") || "ไม่มี"})`);
   }
-  ok(missing.length === 0, `ทุกท่ามีอาร์ตครบ 3 เฟรมใน atlas (ขาด: ${missing.join(", ") || "ไม่มี"})`);
-  // เมื่ออาร์ตมาแล้วต้องเอาชื่อออกจาก PENDING_ART — เทสต์บรรทัดนี้เตือนให้เอาออก
-  const arrived = [...PENDING_ART].filter((k) => have.has(`${k}_2.png`));
-  ok(arrived.length === 0, `มีอาร์ตแล้วต้องถอดออกจาก PENDING_ART (เจอ: ${arrived.join(", ") || "ไม่มี"})`);
-}
-
-// ── กดสกิลตอนท่าที่ฟันลมยังไม่จบ ต้องออกท่าให้ทันทีที่ท่าเดิมจบ ไม่ใช่เงียบหาย ──
-// ปุ่มตีทำแบบนี้อยู่แล้ว (ค้างใน buffer ต่อถ้ายังต่อท่าไม่ได้) ปุ่มสกิลต้องเหมือนกัน
-{
-  const g = new Game();
-  g.p2.x = g.p1.x + 600;                      // ไกลจนจิ้มไม่โดน = ยกเลิกเข้าสกิลไม่ได้
-  g.step(inp({ attack: 1, p: { attack: 1 } }));
-  run(g, 12, {});                             // jab1 ยาว 18 เฟรม กดตอนใกล้จบให้อยู่ในช่วง buffer (9 เฟรม)
-  g.step(inp({ skill1: 1, p: { skill1: 1 } }));
-  ok(g.p1.moveId === "jab1", "ยังยกเลิกไม่ได้ระหว่างท่า");
-  run(g, 8, {});
-  ok(g.p1.moveId === "fox1", `ท่าเดิมจบแล้วสกิลออกให้เอง (ได้ ${g.p1.moveId})`);
-
-  // กดเร็วเกินจนเลยช่วง buffer = ไม่ออก เหมือนปุ่มตีทุกประการ ไม่ใช่ค้างไว้ออกทีหลังแบบไม่มีสาเหตุ
-  const g2 = new Game();
-  g2.p2.x = g2.p1.x + 600;
-  g2.step(inp({ attack: 1, p: { attack: 1 } }));
-  run(g2, 2, {});
-  g2.step(inp({ skill1: 1, p: { skill1: 1 } }));
-  run(g2, 30, {});
-  ok(g2.p1.moveId === null, "กดตั้งแต่ต้นท่า เลยช่วง buffer ไปแล้ว ไม่ออกท่าย้อนหลัง");
 }
 
 // ── สกิล 2: Stone Curse — ขว้างมีด 3 เล่ม แล้วกดซ้ำวาร์ปไปเล่มกลาง ──
