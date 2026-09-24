@@ -569,8 +569,11 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   // ปุ่มบนจอของช่องที่ว่างต้องถูกปิด ไม่ใช่กดได้แล้วเงียบ
   const fs = await import("fs");
   const scene2 = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
-  ok(/b\.disabled = true/.test(scene2), "ปุ่มสกิลช่องที่ว่างถูกปิดไว้ (ไม่ใช่กดได้แต่ไม่มีอะไรเกิด)");
-  ok(/SKILLS\[Number\(b\.dataset\.slot\) - 1\]/.test(scene2), "อ่านว่าช่องไหนว่างจาก SKILLS ตรง ๆ เพิ่มสกิลแล้วปุ่มเปิดเอง");
+  ok(/b\.disabled = !id/.test(scene2), "ปุ่มสกิลช่องที่ว่างถูกปิดไว้ (ไม่ใช่กดได้แต่ไม่มีอะไรเกิด)");
+  ok(/f\.skills\[Number\(b\.dataset\.slot\) - 1\]/.test(scene2),
+    "อ่านว่าช่องไหนว่างจากสกิลของตัวที่กำลังเล่น — สลับตัวละครแล้วปุ่มเปลี่ยนตามเอง");
+  // ตั้ง disabled ต้องอยู่นอกลูปที่รันทุกเฟรม ไม่งั้นปุ่มค้างเมื่อถูก disable ตอนนิ้วยังกดอยู่
+  ok(/_syncSkillSlots\(\)\s*\{/.test(scene2), "แยกการตั้งช่องว่าง/ชื่อสกิลออกจากลูปหรี่ปุ่มรายเฟรม");
 }
 
 // ── สกิล 1: Fox Step ──
@@ -767,8 +770,11 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/KI_MAX/.test(scene), "ฉากวาดหลอด ki");
   ok(/_syncSkillBtns/.test(scene), "ฉากหรี่ปุ่มสกิลตามคูลดาวน์/ki");
   // ห้ามใช้ disabled หรี่ปุ่ม: ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างจะไม่ส่ง event ปล่อย ปุ่มจะค้าง
-  ok(!/\.disabled = (?!false)(?!.*ยังไม่มีสกิล)/.test(scene.split("_syncSkillBtns")[1] ?? ""),
-    "หรี่ปุ่มด้วย opacity ไม่ใช่ disabled");
+  // ดูเฉพาะ "ตัวเมธอด" ที่รันทุกเฟรม ไม่ใช่ทุกอย่างหลังคำว่า _syncSkillBtns ปรากฏครั้งแรก
+  // (จับกว้าง ๆ แล้วไปโดนคอมเมนต์ที่อ้างถึงชื่อเมธอด เทสต์เลยเช็กผิดบล็อกโดยไม่รู้ตัว)
+  const dimBody = scene.match(/_syncSkillBtns\(\)\s*\{[\s\S]*?\n  \}/)?.[0] ?? "";
+  ok(dimBody.length > 0, "หาตัวเมธอดหรี่ปุ่มเจอ");
+  ok(!/\.disabled\s*=/.test(dimBody), "ลูปหรี่ปุ่มรายเฟรมไม่แตะ disabled (ใช้ opacity อย่างเดียว)");
 }
 
 // ── อาร์ตของทุกท่าต้องมีอยู่จริงใน atlas ──
@@ -1002,4 +1008,88 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   for (const id of artIds) {
     ok(CHARACTERS[id] != null, `ตัวละคร '${id}' ในทะเบียนอาร์ต มีระเบียนฝั่ง sim ด้วย`);
   }
+}
+
+// ── HELIOS: สายรัว — ชุดรัว 5 จังหวะ ไม้จบแยกสามทาง เข่าเปิดชุดซ้ำ อัลติกดรัวต่อได้ ──
+{
+  const { CHARACTERS } = await import(G + "/core.js");
+  const H = CHARACTERS.helios;
+  ok(H != null, "มีตัวละคร helios ในทะเบียน");
+  ok(H.skills.join(",") === "rush1,knee,hh1", `ช่องสกิลของ Helios (ได้ ${H.skills.join(",")})`);
+
+  const asHelios = () => { const g = new Game(); g.p1.char = "helios"; g.p1.x = g.p2.x - 70; return g; };
+
+  // ชุดรัวต่อเองครบ 5 จังหวะ แล้วจบด้วยหมัดตรงถ้าไม่กดทิศ
+  {
+    const g = asHelios();
+    const seen = [];
+    g.step(inp({ skill1: 1, p: { skill1: 1 } }));
+    for (let i = 0; i < 120; i++) { if (g.p1.moveId && seen[seen.length - 1] !== g.p1.moveId) seen.push(g.p1.moveId); g.step(inp()); }
+    ok(seen.join(">") === "rush1>rush2>rush3>rush4>rush5>rushEndF",
+      `ไม่กดทิศ จบด้วยหมัดตรง (ได้ ${seen.join(">")})`);
+  }
+
+  // กดขึ้นค้าง -> จบด้วยเตะยกคาง (ลอย)
+  {
+    const g = asHelios();
+    const seen = [];
+    g.step(inp({ skill1: 1, p: { skill1: 1 } }));
+    for (let i = 0; i < 120; i++) { if (g.p1.moveId && seen[seen.length - 1] !== g.p1.moveId) seen.push(g.p1.moveId); g.step(inp({ up: 1 })); }
+    ok(seen[seen.length - 1] === "rushEndU", `กดขึ้นค้าง จบด้วยเตะยกคาง (ได้ ${seen[seen.length - 1]})`);
+    ok(H.moves.rushEndU.kb[1] < -10, "ไม้จบทางขึ้นยกคู่ต่อสู้ลอยจริง");
+  }
+
+  // กดลงค้าง -> จบด้วยกวาดขา
+  {
+    const g = asHelios();
+    const seen = [];
+    g.step(inp({ skill1: 1, p: { skill1: 1 } }));
+    for (let i = 0; i < 120; i++) { if (g.p1.moveId && seen[seen.length - 1] !== g.p1.moveId) seen.push(g.p1.moveId); g.step(inp({ down: 1 })); }
+    ok(seen[seen.length - 1] === "rushEndD", `กดลงค้าง จบด้วยกวาดขา (ได้ ${seen[seen.length - 1]})`);
+  }
+
+  // จังหวะกลางชุดห้ามถีบขึ้น ไม่งั้นคู่ต่อสู้ลอยแล้วล้ม = อมตะ จังหวะถัดไปฟันลม
+  for (const id of ["rush1", "rush2", "rush3", "rush4", "rush5", "hh1", "hh2", "hh3"]) {
+    ok(H.moves[id].kb[1] === 0, `${id}: ไม่ถีบขึ้นกลางคอมโบ (ได้ ${H.moves[id].kb[1]})`);
+  }
+
+  // เข่าพุ่ง: ปลดล็อกให้ใช้ชุดรัวซ้ำได้ในคอมโบเดียว
+  {
+    const g = asHelios();
+    g.startMove(g.p1, "rush1", 1);
+    ok(g.p1.used.has("rush1"), "ใช้ชุดรัวไปแล้วติด used");
+    g.startMove(g.p1, "knee", 1);
+    ok(!g.p1.used.has("rush1"), "เข่าพุ่งปลดล็อกให้ใช้ชุดรัวซ้ำได้");
+  }
+
+  // อัลติ: ไม่กดรัวก็ไหลไปไม้จบเอง
+  {
+    const g = asHelios();
+    g.p1.ki = 100;                                 // อัลติใช้หลอด ki เต็มเหมือนของ Nyx
+    const seen = [];
+    g.step(inp({ skill3: 1, p: { skill3: 1 } }));
+    for (let i = 0; i < 140; i++) { if (g.p1.moveId && seen[seen.length - 1] !== g.p1.moveId) seen.push(g.p1.moveId); g.step(inp()); }
+    ok(seen.join(">") === "hh1>hh2>hh3>hhEnd", `ไม่กดรัว จบเลย (ได้ ${seen.join(">")})`);
+  }
+
+  // อัลติ: กดรัวแล้ววนเพิ่มรอบจริง และหยุดที่เพดาน ไม่วนไม่รู้จบ
+  {
+    const g = asHelios();
+    g.p1.ki = 100;
+    let loops = 0, prev = null;
+    g.step(inp({ skill3: 1, p: { skill3: 1 } }));
+    for (let i = 0; i < 400; i++) {
+      if (g.p1.moveId === "hh2" && prev === "hh3") loops++;
+      prev = g.p1.moveId;
+      g.step(inp({ attack: 1, p: { attack: 1 } }));   // กดรัวทุกเฟรม
+    }
+    ok(loops > 0, `กดรัวแล้ววนเพิ่มรอบจริง (วนได้ ${loops} รอบ)`);
+    ok(loops <= H.moves.hh1.mashMax, `วนไม่เกินเพดาน ${H.moves.hh1.mashMax} รอบ (ได้ ${loops})`);
+    ok(g.p1.state !== "attack" || g.p1.moveId !== "hh2", "สุดท้ายต้องหลุดออกจากวง ไม่ค้างอยู่ตลอดไป");
+  }
+
+  // Nyx ต้องไม่ได้รับผลอะไรจากกลไกใหม่ — ท่าของ Nyx ไม่มี branch/refresh/mashChain
+  const nyxMoves = CHARACTERS.nyx.moves;
+  const leaked = Object.keys(nyxMoves).filter((k) => nyxMoves[k].branch || nyxMoves[k].refresh || nyxMoves[k].mashChain);
+  ok(leaked.length === 0, `กลไกของ Helios ไม่หลุดไปอยู่ในท่าของ Nyx (เจอ: ${leaked.join(", ") || "ไม่มี"})`);
 }

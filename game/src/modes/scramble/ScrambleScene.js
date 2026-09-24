@@ -1,4 +1,4 @@
-import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, Game } from "./core.js";
+import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS, Game } from "./core.js";
 
 /**
  * SCRAMBLE — ฉาก Phaser: renderer แบบกล่อง (greybox) + เครื่องมือดีบัก
@@ -17,7 +17,7 @@ import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, Game } fro
 
 // ---------- อินพุต (ยกจาก prototype) ----------
 const GAME_KEYS = new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyJ','KeyK','KeyL','ShiftLeft','ShiftRight','Digit1','Digit2','Digit3']);
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -81,6 +81,15 @@ const CHAR_ART = {
       "thrust1", "thrust2", "thrust3", "thrust4",
       "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]),
     // เติมตอน _initCharSprite: meta / sprite / lastState / lastJumps
+  },
+  // Helios: ตอนนี้มีแค่ท่ายืนที่อนุมัติแล้ว state อื่นยังวาดเป็นกล่อง
+  // (วิธีเดียวกับที่ Nyx เริ่ม) ได้ชีตมาเพิ่มก็ใส่ใน anims/attacks แล้ว build ใหม่
+  helios: {
+    atlasKey: 'schelios',
+    texture: 'assets/characters/scramble_helios.png',
+    data: 'assets/characters/scramble_helios.json',
+    anims: { idle: 1 },
+    attacks: new Set([]),
   },
 };
 
@@ -177,6 +186,7 @@ const OVERLAY_HTML = `
   <button data-tool="KeyO">Slow-mo</button>
   <button data-tool="KeyR">Reset</button>
   <button data-tool="KeyT">Tune</button>
+  <button data-tool="KeyC">Char: NYX</button>
 </div>
 <div id="sc-tune"></div>
 <div id="sc-touch">
@@ -245,6 +255,7 @@ class ScrambleScene extends Phaser.Scene {
     // ต้องตั้งก่อน new Game() เพราะจุดเกิดของทั้งสองฝั่งอ่าน STAGE ตอนสร้าง
     setStageWidth(this.sys.game.config.width);
     this.sim = new Game();
+    this._syncSkillSlots();   // ต้องหลัง new Game() — อ่านสกิลจากตัวละครของผู้เล่น
     this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
     this.sparks = []; this.popups = []; this.comboFade = 0;
     drawBackground(this.add.graphics());
@@ -290,11 +301,6 @@ class ScrambleScene extends Phaser.Scene {
     // สล็อตที่ยังไม่มีสกิลถูกปิดไว้ และขึ้นเป็นสีจาง — อ่านจาก SKILLS ตรง ๆ
     // ใส่สกิลใน core.js แล้วปุ่มเปิดใช้งานเอง ไม่ต้องมาแก้ตรงนี้อีก
     this.skillBtns = [...root.querySelectorAll('#sc-touch .skills button')];
-    this.skillBtns.forEach((b) => {
-      const id = SKILLS[Number(b.dataset.slot) - 1];
-      if (!id) { b.disabled = true; b.title = 'ยังไม่มีสกิลในช่องนี้'; return; }
-      b.title = MOVES[id].label;
-    });
 
     root.querySelectorAll('#sc-touch button').forEach((b) => {
       const code = b.dataset.code;
@@ -335,6 +341,17 @@ class ScrambleScene extends Phaser.Scene {
     if (code === 'KeyP') this.paused = !this.paused;
     if (code === 'KeyN') { this.paused = true; this.stepOnce = true; }
     if (code === 'KeyO') this.timeScale = this.timeScale === 1 ? 0.25 : 1;
+    // สลับตัวละครของผู้เล่น — ล้างสไปรท์ตัวเดิมทิ้งก่อน ไม่งั้นค้างอยู่บนจอทั้งที่ไม่ได้ใช้แล้ว
+    if (code === 'KeyC') {
+      const ids = Object.keys(CHARACTERS);
+      const cur = ids.indexOf(s.p1.char);
+      const prev = CHAR_ART[s.p1.char];
+      if (prev?.sprite) prev.sprite.setVisible(false);
+      s.p1.char = ids[(cur + 1) % ids.length];
+      this._syncSkillSlots();
+      s.resetPositions();
+      this.comboFade = 0;
+    }
     this.syncTools();
   }
   syncTools() {
@@ -345,6 +362,7 @@ class ScrambleScene extends Phaser.Scene {
     b('Digit4').textContent = 'Tech: ' + TECH_LABEL[this.sim.dummyTech];
     b('KeyO').classList.toggle('on', this.timeScale !== 1);
     b('KeyT').classList.toggle('on', document.getElementById('sc-tune').classList.contains('open'));
+    b('KeyC').textContent = 'Char: ' + CHARACTERS[this.sim.p1.char].label;
   }
 
   update(time, delta) {
@@ -390,12 +408,25 @@ class ScrambleScene extends Phaser.Scene {
   }
   // หรี่ปุ่มสกิลตามคูลดาวน์/หลอด ki — ปุ่มยังกดได้ แค่บอกสายตาว่ายังไม่พร้อม
   // ไม่ใช้ disabled เพราะปุ่มที่ disabled ตอนกำลังกดค้างอยู่จะไม่ส่ง event ปล่อย ทำให้ปุ่มค้าง
+  /** ตั้งว่าช่องไหนมีสกิล — เรียกตอนเริ่มฉากและตอนสลับตัวละครเท่านั้น ไม่ใช่ทุกเฟรม
+   *  ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างอยู่จะไม่ส่ง event ปล่อย แล้วปุ่มจะค้าง
+   *  การหรี่ตามคูลดาวน์จึงใช้ opacity อย่างเดียว (ดู _syncSkillBtns) */
+  _syncSkillSlots() {
+    if (!this.skillBtns || !this.sim) return;
+    const f = this.sim.p1;
+    for (const b of this.skillBtns) {
+      const id = f.skills[Number(b.dataset.slot) - 1];
+      b.disabled = !id;
+      b.title = id ? f.moves[id].label : 'ยังไม่มีสกิลในช่องนี้';
+    }
+  }
+
   _syncSkillBtns() {
     if (!this.skillBtns) return;
     const f = this.sim.p1;
     for (const b of this.skillBtns) {
       const i = Number(b.dataset.slot) - 1;
-      if (!SKILLS[i]) continue;
+      if (!f.skills[i]) continue;
       const ready = i === 2 ? f.ki >= KI_MAX : f.cd[i] <= 0;
       const want = ready ? '1' : '.4';
       if (b.style.opacity !== want) b.style.opacity = want;

@@ -164,6 +164,79 @@ const SKILLS = ['fox1', 'curse1', 'ult1'];
 const SKILL_CD = [150, 240, 0];
 const KI_MAX = 100;
 /**
+ * ===================== HELIOS =====================
+ * สายไฟต์เตอร์มือเปล่า — คู่ตรงข้าม Nyx: Nyx ย้ายตำแหน่ง Helios เกาะติดแล้วรัวยาว
+ *
+ * ทุกท่าตั้งใจ "ไม่ถีบคู่ต่อสู้ออก" (kb แนวนอนต่ำ แนวตั้ง 0) และตัวเองเดินหน้าตามไปด้วย
+ * ถ้าถีบออกเหมือนท่าปกติทั่วไป คอมโบจะขาดตั้งแต่ไม้ที่สอง ซึ่งขัดกับทั้งคอนเซปต์ของตัวนี้
+ */
+const HELIOS_MOVES = {
+  // ---- ท่าพื้นฐาน ----
+  jab1: { label: 'Jab', kind: 'ground', startup: 3, active: 3, recovery: 9, dmg: 3,
+    hb: { x: 8, y: -100, w: 62, h: 28 }, kb: [2, 0], stun: 16, chain: 'jab2', imp: { f: 3, vx: 2 } },
+  jab2: { label: 'Cross', kind: 'ground', startup: 4, active: 3, recovery: 11, dmg: 3,
+    hb: { x: 8, y: -100, w: 68, h: 28 }, kb: [2.5, 0], stun: 17, chain: 'jab3', imp: { f: 3, vx: 2.5 } },
+  jab3: { label: 'Overhand', kind: 'ground', startup: 6, active: 4, recovery: 18, dmg: 6,
+    hb: { x: 10, y: -96, w: 84, h: 34 }, kb: [4, 0], stun: 26, imp: { f: 5, vx: 5 } },
+  side: { label: 'Lunge Straight', kind: 'ground', startup: 8, active: 5, recovery: 19, dmg: 7,
+    hb: { x: 12, y: -94, w: 88, h: 30 }, kb: [9, -3], stun: 27, imp: { f: 7, vx: 13 } },
+  up: { label: 'Uppercut', kind: 'ground', startup: 6, active: 5, recovery: 18, dmg: 6,
+    hb: { x: -10, y: -168, w: 76, h: 116 }, kb: [1.5, -16], stun: 36, jumpCancel: true },
+  down: { label: 'Low Sweep', kind: 'ground', crouch: true, startup: 5, active: 4, recovery: 15, dmg: 5,
+    hb: { x: 4, y: -34, w: 88, h: 30 }, kb: [3, -9], stun: 28 },
+  nair: { label: 'Spin Kick', kind: 'air', startup: 5, active: 8, recovery: 10, dmg: 5,
+    hb: { x: -50, y: -128, w: 104, h: 120 }, kb: [3, -7], stun: 24, jumpCancel: true },
+  sair: { label: 'Flying Kick', kind: 'air', startup: 6, active: 9, recovery: 13, dmg: 7,
+    hb: { x: 6, y: -86, w: 94, h: 34 }, kb: [10, -5], stun: 28, imp: { f: 5, vx: 12, vy: -1.5 }, floaty: true },
+  dair: { label: 'Axe Kick', kind: 'air', startup: 7, active: 90, recovery: 0, dmg: 6,
+    hb: { x: -24, y: -34, w: 48, h: 50 }, kb: [2, -11], stun: 28, imp: { f: 6, vxMul: 0.3, vy: 16 },
+    untilLand: true, landLag: 13, pogo: -11 },
+
+  // ---- สกิล 1 Chain Rush: หมัด-หมัด-เตะ-หมัด-เตะ แล้วไม้จบแยกสามทางตามปุ่มทิศ ----
+  rush1: { label: 'Chain Rush', kind: 'ground', startup: 4, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 6, y: -100, w: 66, h: 28 }, kb: [1.2, 0], stun: 18, autoChain: 'rush2', imp: { f: 3, vx: 4 } },
+  rush2: { label: 'Chain Rush', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 6, y: -100, w: 70, h: 28 }, kb: [1.2, 0], stun: 18, autoChain: 'rush3', imp: { f: 3, vx: 4 } },
+  rush3: { label: 'Chain Rush', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 6, y: -74, w: 78, h: 30 }, kb: [1.2, 0], stun: 18, autoChain: 'rush4', imp: { f: 3, vx: 4 } },
+  rush4: { label: 'Chain Rush', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 6, y: -104, w: 74, h: 30 }, kb: [1.2, 0], stun: 18, autoChain: 'rush5', imp: { f: 3, vx: 4 } },
+  // จังหวะที่ 5 แยกทางตามปุ่มทิศที่กดค้าง: ไม่กด = หมัดตรง · ขึ้น = เตะยกคาง · ลง = กวาดขา
+  rush5: { label: 'Chain Rush', kind: 'ground', startup: 3, active: 3, recovery: 4, dmg: 3,
+    hb: { x: 6, y: -96, w: 80, h: 34 }, kb: [1.2, 0], stun: 18, imp: { f: 3, vx: 4 },
+    branch: { neutral: 'rushEndF', up: 'rushEndU', down: 'rushEndD' } },
+  rushEndF: { label: 'Chain Rush', kind: 'ground', startup: 5, active: 4, recovery: 20, dmg: 7,
+    hb: { x: 10, y: -98, w: 96, h: 34 }, kb: [13, -4], stun: 30, imp: { f: 4, vx: 7 } },
+  rushEndU: { label: 'Chain Rush', kind: 'ground', startup: 5, active: 5, recovery: 22, dmg: 6,
+    hb: { x: -8, y: -170, w: 80, h: 120 }, kb: [1.5, -17], stun: 38, jumpCancel: true },
+  rushEndD: { label: 'Chain Rush', kind: 'ground', crouch: true, startup: 5, active: 4, recovery: 20, dmg: 6,
+    hb: { x: 4, y: -34, w: 96, h: 30 }, kb: [3, -12], stun: 32 },
+
+  // ---- สกิล 2 Knee Drive: พุ่งเข่า ดันคู่ต่อสู้ไปข้างหน้า และเปิดให้ใช้ชุดรัวซ้ำได้ ----
+  knee: { label: 'Knee Drive', kind: 'ground', startup: 6, active: 5, recovery: 16, dmg: 5,
+    hb: { x: 8, y: -102, w: 76, h: 46 }, kb: [6, 0], stun: 26,
+    glide: true, imp: { f: 5, vx: 13 }, refresh: ['rush1'] },
+
+  // ---- สกิล 3 Hundred Hands (อัลติ): รัวหมัดเตะ กดรัวเพิ่มจำนวนทีได้ ----
+  hh1: { label: 'Hundred Hands', kind: 'ground', startup: 6, active: 3, recovery: 2, dmg: 2,
+    hb: { x: 6, y: -100, w: 76, h: 34 }, kb: [0.8, 0], stun: 20, autoChain: 'hh2', imp: { f: 4, vx: 2 },
+    // กดรัวต่อรอบได้สูงสุดกี่รอบ — นับต่อการกดสกิลหนึ่งครั้ง
+    // 9 รอบวัดได้ 51 ดาเมจ ซึ่งแรงกว่าอัลติของ Nyx (22) เท่าตัว ลดเหลือ 5
+    mashMax: 5 },
+  hh2: { label: 'Hundred Hands', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2,
+    hb: { x: 6, y: -100, w: 76, h: 34 }, kb: [0.8, 0], stun: 20, autoChain: 'hh3', imp: { f: 2, vx: 2 } },
+  // hh3 วนกลับมา hh2 ได้เรื่อย ๆ ถ้าผู้เล่นกดปุ่มรัว — mashChain จำกัดจำนวนรอบไว้ที่ mashMax
+  hh3: { label: 'Hundred Hands', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2,
+    hb: { x: 6, y: -76, w: 82, h: 36 }, kb: [0.8, 0], stun: 20, imp: { f: 2, vx: 2 },
+    mashChain: 'hh2', autoChain: 'hhEnd' },
+  hhEnd: { label: 'Hundred Hands', kind: 'ground', startup: 6, active: 5, recovery: 26, dmg: 8,
+    hb: { x: 10, y: -100, w: 104, h: 40 }, kb: [17, -6], stun: 40, imp: { f: 5, vx: 9 } },
+};
+
+const HELIOS_SKILLS = ['rush1', 'knee', 'hh1'];
+const HELIOS_SKILL_CD = [120, 200, 0];
+
+/**
  * ทะเบียนตัวละคร (ฝั่ง sim) — ตารางท่า/สกิล/คูลดาวน์ แยกต่อตัว
  *
  * ทุกตัวใช้ "ชื่อท่า" ชุดเดียวกัน (jab1 / side / up / down / nair / sair / dair)
@@ -173,6 +246,7 @@ const KI_MAX = 100;
  */
 const CHARACTERS = {
   nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
+  helios: { id: 'helios', label: 'HELIOS', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -203,7 +277,7 @@ class Fighter {
       x: this.spawnX, y: STAGE.groundY, vx: 0, vy: 0, facing: this.spawnFacing,
       onGround: true, state: 'idle', stateF: 0, jumpsLeft: 1, coyote: 0, dropT: 0,
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
-      hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0,
+      hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
       comboHits: 0, comboDmg: 0, wallBounced: false, jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
     });
   }
@@ -310,6 +384,9 @@ class Game {
     if (mv.warp) this.warp(f);
     if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
+    // ท่าที่ประกาศ refresh: ปลดชื่อท่าที่ระบุออกจาก used = ใช้ชุดนั้นซ้ำได้อีกรอบในคอมโบเดียว
+    // นี่คือสิ่งที่ทำให้ "รัวยาว" เกิดขึ้นจริง แทนที่จะจบที่ชุดเดียวเพราะติด used
+    if (mv.refresh) for (const k of mv.refresh) f.used.delete(k);
     f.move = mv; f.moveId = id; f.moveF = 0;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
@@ -357,6 +434,17 @@ class Game {
   }
 
   gainKi(f, amount) { f.ki = Math.min(KI_MAX, f.ki + amount); }
+
+  /** กดปุ่มอะไรก็ได้ที่ใช้โจมตีอยู่ไหม — ใช้กับท่าที่ "กดรัวเพื่อต่อรอบ"
+   *  รับทั้งปุ่มตีและปุ่มสกิลทั้งสามช่อง คนเล่นจะรัวปุ่มไหนก็ได้ ไม่ต้องจำว่าปุ่มไหนถูก */
+  mashPressed(f) {
+    if (f.id !== 'p1') return false;
+    if (this.buffered('attack')) { this.consume('attack'); return true; }
+    for (let i = 1; i <= 3; i++) {
+      if (this.buffered('skill' + i)) { this.consume('skill' + i); return true; }
+    }
+    return false;
+  }
 
   /** ปล่อยมีดตามที่ท่ากำหนด — เรียกจาก advance ตอนถึงเฟรม shotAt
    *
@@ -482,6 +570,8 @@ class Game {
     if (follow) { this.startMove(f, follow, dir || f.facing); return; }
     if (i === 2) { f.ki = 0; this.events.push({ type: 'ult', x: f.x, y: f.y - 60 }); }
     else f.cd[i] = f.skillCd[i];
+    // โควต้า "กดรัวเพื่อต่อรอบ" เป็นของการกดสกิลหนึ่งครั้ง ตั้งตอนเริ่มชุด ไม่ใช่ตอนถึงท่าที่วน
+    f.mashLeft = f.moves[f.skills[i]].mashMax ?? 0;
     this.startMove(f, f.skills[i], dir || f.facing);
   }
 
@@ -532,6 +622,10 @@ class Game {
         this.consume('skill' + (i + 1));
         this.startSkill(f, i, f.facing); return;
       }
+      // ชุดท่าที่ต่อกันเองอยู่แล้ว (autoChain/mashChain) ห้ามโดนปุ่มตียกเลิกกลางคัน
+      // ไม่งั้นการ "กดรัวเพื่อต่อรอบ" กลายเป็นการยกเลิกอัลติทิ้งไปออกหมัดธรรมดาแทน
+      // (วัดได้จริง: กดรัวตอนอัลติแล้วหลุดไป jab1 ตั้งแต่จังหวะแรก)
+      if (m.autoChain || m.mashChain) return;
       if (this.buffered('attack')) {
         const neutral = dir === 0 && !inp.up && !inp.down;
         let next = null;
@@ -704,6 +798,19 @@ class Game {
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (f.moveF >= m.startup + m.active + m.recovery) {
+        // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
+        // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
+        if (m.branch && f.onGround) {
+          const i = f.id === 'p1' ? (this.lastInp ?? {}) : {};
+          const pick = i.up ? 'up' : i.down ? 'down' : 'neutral';
+          this.startMove(f, m.branch[pick] ?? m.branch.neutral, f.facing); return;
+        }
+        // ท่าที่มี mashChain: กดปุ่มรัวเพื่อวนต่ออีกรอบ จำกัดจำนวนรอบด้วย mashMax
+        // ไม่กด (หรือครบโควต้าแล้ว) ก็ไหลไป autoChain ซึ่งเป็นไม้จบตามปกติ
+        if (m.mashChain && f.onGround && f.mashLeft > 0 && this.mashPressed(f)) {
+          f.mashLeft--;
+          this.startMove(f, m.mashChain, f.facing); return;
+        }
         // ท่าที่มี autoChain ต่อท่าถัดไปเองโดยไม่ต้องกดซ้ำ — ใช้ทำคอมโบสกิลกดครั้งเดียวจบชุด
         // ต่อเฉพาะตอนยังยืนอยู่บนพื้น ถ้าโดนตีจนหลุด state หรือตกลงมา คอมโบก็ขาดตามธรรมชาติ
         if (m.autoChain && f.onGround) { this.startMove(f, m.autoChain, f.facing); return; }

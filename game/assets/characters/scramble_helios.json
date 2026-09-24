@@ -1,0 +1,35 @@
+{
+ "frames": {
+  "idle_1.png": {
+   "frame": {
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 260
+   },
+   "sourceSize": {
+    "w": 176,
+    "h": 260
+   },
+   "spriteSourceSize": {
+    "x": 0,
+    "y": 0,
+    "w": 176,
+    "h": 260
+   }
+  }
+ },
+ "meta": {
+  "image": "scramble_helios.png",
+  "size": {
+   "w": 176,
+   "h": 260
+  },
+  "scale": "1",
+  "anchorX": 88,
+  "feetY": 250,
+  "standing": 240,
+  "canvasW": 176,
+  "canvasH": 260
+ }
+}
