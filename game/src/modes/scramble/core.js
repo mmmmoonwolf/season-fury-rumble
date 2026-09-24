@@ -430,7 +430,9 @@ const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
 //
 // ไฟของเขาต่างจาก Alecto ตรงที่ **ติดไปกับคนที่โดน** ไม่ใช่กองนิ่งอยู่กับพื้น
 // Alecto เผาที่ (ปฏิเสธพื้นที่ ยืนห่าง) · Orpheus เผาคน (ประชิด ตามไปกัด)
-const BLAZE_TIME = 480;      // บัฟกีตาร์ติดไฟอยู่กี่เฟรม (8 วินาที)
+// ไฟของเขาไม่ได้มาจากบัฟล่องหนที่ต้องกดก่อน — **ใครแตะไฟของเขา คนนั้นติดไฟ**
+// ของเดิมเป็นบัฟ 8 วินาทีที่กดแล้วไม่มีอะไรให้เห็น ในเกมที่คนใส่กันรัวคือปุ่มที่ไม่มีใครอยากเสียจังหวะไปกด
+// ย้ายกลไกมาไว้บนเวทีที่มองเห็นได้แทน
 const BURN_TIME = 120;       // ไฟติดตัวคนโดนกี่เฟรม (2 วินาที) — โดนซ้ำนับใหม่ ไม่ซ้อน
 const BURN_TICK = 20;        // ตอดเลือดทุกกี่เฟรม
 const BURN_DMG = 1;
@@ -476,15 +478,23 @@ const ORPHEUS_MOVES = {
   slide2: { label: 'Power Slide', kind: 'ground', startup: 6, active: 6, recovery: 20, dmg: 8,
     hb: { x: -10, y: -178, w: 106, h: 128 }, kb: [3, -14], stun: 32, jumpCancel: true },
 
-  // ---- สกิล 2 Blaze: จุดไฟที่กีตาร์ ระหว่างบัฟ ฟาดโดนแล้วติดไฟ (ปุ่ม 2) ----
-  blaze: { label: 'Blaze', kind: 'ground', startup: 10, active: 6, recovery: 18, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, blaze: BLAZE_TIME },
+  // ---- สกิล 2 Burnout: ฟาดกีตาร์ลงพื้น แล้วถีบตัวถอยหลัง ทิ้งกองไฟไว้ตรงที่เพิ่งยืน (ปุ่ม 2) ----
+  //
+  // ลำดับสำคัญ: ฟาดก่อน (เฟรม 8 เกิดกองไฟตรงเท้า) แล้วค่อยถีบถอย (เฟรม 13)
+  // สลับลำดับแล้วกองไฟจะไปเกิดที่ใหม่ ซึ่งพลาดทั้งประเด็น —
+  // ไฟต้องอยู่ตรงที่เขาเพิ่งยืน ระหว่างตัวเขากับคนที่กำลังไล่
+  //
+  // เป็นท่าป้องกันตัวท่าเดียวของเขา: ไม่มีเกราะ ไม่มีวาร์ป ไม่มีสวนกลับ เลือด 100
+  // และท่าไล่หวดมัดเขาไว้กับที่ ถ้าไม่มีปุ่มนี้คือโดนต้อนติดมุมแล้วจบ
+  burn1: { label: 'Burnout', kind: 'ground', startup: 7, active: 5, recovery: 20, dmg: 7,
+    hb: { x: 0, y: -62, w: 134, h: 72 }, kb: [6, 0], stun: 24,
+    firePool: { at: 8, dx: 0, burns: true }, imp: { f: 13, vx: -13 } },
 
   // ---- สกิล 3 Burn the House Down (อัลติ): โซโล่ เดินได้ ไฟติดตามรอยที่เดิน ----
   // เดินได้ตั้งแต่แรกเพราะบทเรียน "ขาตาย" ของ Alecto — ยืนตายอยู่กับที่ไม่สนุก
   solo1: { label: 'Burn the House Down', kind: 'ground', startup: 10, active: 5, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    blaze: BLAZE_TIME, stance: SOLO_FRAMES, autoChain: 'solo2', mobile: 0.4 },
+    stance: SOLO_FRAMES, autoChain: 'solo2', mobile: 0.4 },
   // trail = ทิ้งกองไฟไว้ตรงที่ยืนทุกกี่เฟรม · ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้ทั้งเวที
   solo2: { label: 'Burn the House Down', kind: 'ground', startup: 5, active: 5, recovery: 8, dmg: 5,
     hb: { x: -30, y: -140, w: 150, h: 130 }, kb: [2, 0], stun: 20,
@@ -497,8 +507,8 @@ const ORPHEUS_MOVES = {
     hb: { x: -170, y: -190, w: 340, h: 200 }, kb: [10, -12], stun: 36 },
 };
 
-const ORPHEUS_SKILLS = ['slide1', 'blaze', 'solo1'];
-const ORPHEUS_SKILL_CD = [120, 1200, 0];   // สไลด์กดถี่ได้ · บัฟคูลดาวน์ยาว 20 วินาที
+const ORPHEUS_SKILLS = ['slide1', 'burn1', 'solo1'];
+const ORPHEUS_SKILL_CD = [120, 240, 0];   // สไลด์กดถี่ได้ · ถอยลากไฟ 4 วินาที กันกดหนีรัว
 
 const CHARACTERS = {
   nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
@@ -550,8 +560,7 @@ class Fighter {
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
-      blaze: 0,                     // บัฟกีตาร์ติดไฟของ Orpheus เหลือกี่เฟรม (อยู่ที่ "คนฟาด")
-      burn: 0, burnF: -9999,        // ไฟติดตัวจากบัฟนั้น — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
+      burn: 0, burnF: -9999,        // ไฟที่ติดตัวอยู่ — อยู่ที่ "คนโดน" ติดจากการแตะกองไฟของ Orpheus
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
       lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
@@ -727,7 +736,6 @@ class Game {
     if (mv.refresh) for (const k of mv.refresh) f.used.delete(k);
     f.move = mv; f.moveId = id; f.moveF = 0;
     f.armorLeft = mv.armor ?? 0;
-    if (mv.blaze) f.blaze = mv.blaze;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
     this.lastMoveInfo = { id, ...f.moves[id] };
@@ -882,13 +890,12 @@ class Game {
    * หนีออกจากจุดที่โดนแล้วก็ยังไหม้ต่อ ซึ่งเป็นคนละปัญหากับ "อย่าเดินเข้าไปตรงนั้น"
    */
   tickFlame(f) {
-    if (f.blaze > 0) f.blaze--;
     if (f.burn <= 0) return;
     f.burn--;
-    if ((BURN_TIME - f.burn) % BURN_TICK) return;
+    if (f.burn % BURN_TICK) return;
     // ไม่คูณกับตัวลดดาเมจคอมโบ เพราะตอดห่างกันเกินกว่าตัวนับคอมโบจะต่อติด
     // ตั้งเลขดิบให้ต่ำตั้งแต่แรกแทน (บทเรียนจากท่ายืนยิงของ Alecto ที่คำนวณไว้ 19 แต่ออกจริง 46)
-    const dmg = Math.max(1, Math.round(BURN_DMG * f.resist));
+    const dmg = BURN_DMG;
     f.hp = Math.max(0, f.hp - dmg);
     f.lastHitF = this.frame;
     this.gainKi(f, dmg * 0.6);
@@ -916,7 +923,7 @@ class Game {
   /** กองไฟบนพื้น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน */
   spawnFire(f, spec) {
     const x = Math.max(STAGE.wallL + FIRE_HALF, Math.min(STAGE.wallR - FIRE_HALF, f.x + f.facing * spec.dx));
-    this.fires.push({ x, owner: f.id, life: FIRE_LIFE, t: 0 });
+    this.fires.push({ x, owner: f.id, life: FIRE_LIFE, t: 0, burns: !!spec.burns });
     this.events.push({ type: 'firepool', x, y: STAGE.groundY });
   }
 
@@ -932,6 +939,12 @@ class Game {
       d.lastHitF = this.frame;
       this.gainKi(d, dmg * 0.6);
       this.events.push({ type: 'burn', x: d.x, y: d.y - 60, dmg });
+      // กองไฟของ Orpheus ทำให้ติดไฟตามตัวไปด้วย ของ Alecto ไม่ทำ (เธอเผาที่ เขาเผาคน)
+      if (fire.burns && d.burn <= 0) this.events.push({ type: 'ignite', x: d.x, y: d.y - 90 });
+      // ต้านไฟลดที่ "ไหม้นานแค่ไหน" ไม่ใช่ "ตอดทีละเท่าไหร่"
+      // เพราะตอดทีละ 1 อยู่แล้ว ครึ่งหนึ่งยังปัดเป็น 1 เหมือนเดิม resist เลยหายไปเฉย ๆ
+      // (วิธีเดียวกับที่ตรารอยแส้ของ Alecto สลายเร็วขึ้นตาม resist)
+      if (fire.burns) d.burn = Math.round(BURN_TIME * d.resist);
     }
     this.fires = this.fires.filter((fi) => fi.life > 0);
   }
@@ -1252,7 +1265,7 @@ class Game {
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
-      if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0 });
+      if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
         // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
@@ -1308,8 +1321,6 @@ class Game {
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
     if (m.lash) this.addLash(d);
-    // บัฟติดอยู่ที่คนฟาด แต่ไฟไปติดที่คนโดน · โดนซ้ำนับใหม่ ไม่ซ้อนกัน
-    if (a.blaze > 0) { d.burn = BURN_TIME; this.events.push({ type: 'ignite', x: d.x, y: d.y - 90 }); }
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');

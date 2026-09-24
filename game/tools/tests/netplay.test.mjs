@@ -56,7 +56,7 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
-  f.char, f.lash, f.lashF, f.armorLeft, f.blaze, f.burn, f.burnF,
+  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF,
 ]),
   g.shots.length,
   ...g.shots.map((s) => [s.owner, Math.round(s.x * 1000), Math.round(s.y * 1000), Math.round(s.vx * 1000), s.dead ? 1 : 0].join(",")),
@@ -186,8 +186,8 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
   const orph = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'orpheus', c2: 'orpheus', frames: 420 });
   ok(orph.mismatch === null, "orpheus: สองเครื่องเห็นตรงกันทุกเฟรมตอนไล่หวดประชิด");
   ok((orph.tally.a.ignite ?? 0) === (orph.tally.b.ignite ?? 0), "การจุดไฟใส่คู่ต่อสู้ตรงกันสองเครื่อง");
-  ok(orph.gA.p1.blaze === orph.gB.p1.blaze && orph.gA.p2.burn === orph.gB.p2.burn,
-    `บัฟไฟกับไฟที่ติดตัวตรงกันสองเครื่อง (blaze ${orph.gA.p1.blaze} · burn ${orph.gA.p2.burn})`);
+  ok(orph.gA.p2.burn === orph.gB.p2.burn && orph.gA.p1.burn === orph.gB.p1.burn,
+    `ไฟที่ติดตัวตรงกันสองเครื่อง (${orph.gA.p1.burn} / ${orph.gA.p2.burn})`);
   ok((alecto.tally.a.firepool ?? 0) === (alecto.tally.b.firepool ?? 0), "กองไฟลุกตรงกันสองเครื่อง");
 
   // เหตุการณ์ทุกชนิดต้องเกิดจำนวนเท่ากันทั้งสองเครื่อง ไม่ใช่แค่ตำแหน่งตรงกัน

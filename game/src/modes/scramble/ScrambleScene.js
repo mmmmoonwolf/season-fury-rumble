@@ -165,11 +165,11 @@ const CHAR_ART = {
     box: 0x8a8f9a, boxAccent: 0xc08a3e,
     title: 'The Fury of the Final Encore',
     role: 'สายไล่หวดติดไฟ',
-    tip: 'กดรัวแล้วหวดรัวห้าจังหวะ · จุดไฟที่กีตาร์แล้วฟาดโดนใครคนนั้นติดไฟ',
+    tip: 'กดรัวแล้วหวดรัวห้าจังหวะ · ถอยหลังฟาดกีตาร์ลงพื้นทิ้งไฟไว้ให้คนที่ไล่',
     anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "jab4", "jab5", "side", "up", "down",
-      "nair", "sair", "dair", "slide1", "slide2", "blaze",
+      "nair", "sair", "dair", "slide1", "slide2", "burn1",
       "solo1", "solo2", "solo3", "soloEnd"]),
   },
 };
