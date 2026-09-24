@@ -136,7 +136,7 @@ const CHAR_ART = {
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "shot1", "shot2", "shot3", "fire1", "fire2", "rifle1", "rifle2", "rifleEnd",
-      "hail1", "hail2", "hail3", "hailEnd", "hop", "roll"]),
+      "dust1", "dust2", "hop", "roll"]),
   },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
   // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
@@ -1051,11 +1051,26 @@ class ScrambleScene extends Phaser.Scene {
     sp.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
     sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
     sp.setPosition(f.x, f.y);
-    sp.setAlpha(f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1);
+    sp.setAlpha(this._veilAlpha(f, f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1));
   }
 
   /** วาดตัวละครด้วยสไปรท์ถ้าตัวนั้นมีอาร์ตของ state นั้นแล้ว — คืน true ถ้าวาดให้แล้ว
    *  ตัวที่ยังไม่มีอาร์ต (เช่นหุ่นซ้อม) ไม่มีใน CHAR_ART ก็ตกไปวาดเป็นกล่องเหมือนเดิม */
+  /** ความจางตอนอยู่ในวงฝุ่น
+   *
+   * ข้อจำกัดจริง: เล่นสองคนเครื่องเดียวกันมองจอเดียวกัน ถ้าซ่อนสนิทคนเล่นเธอก็มองไม่เห็นตัวเอง
+   * จึงทำสองระดับ — ต่อเน็ตแยกได้ว่าใครเป็นฝั่งเรา เลยซ่อนจากอีกฝั่งได้เต็มที่
+   * ส่วนจอเดียวกันต้องประนีประนอม จางพอให้ติดตามยากแต่ยังบังคับได้
+   *
+   * ค่านี้เป็นแค่การวาด ไม่แตะ sim เลย สองเครื่องจึงยังคำนวณตรงกันเป๊ะ
+   */
+  _veilAlpha(f, base) {
+    if (!f.veil) return base;
+    const mine = this.versus === 'net' && f.id === (this.isHost ? 'p1' : 'p2');
+    const hidden = this.versus === 'net' ? (mine ? 0.55 : 0.08) : 0.3;
+    return Math.min(base, hidden);
+  }
+
   _drawCharSprite(f) {
     const art = CHAR_ART[f.char];
     // ตัวที่ยังไม่มีอาร์ตต้อง "ซ่อนสไปรท์เดิมของฝั่งนั้น" ก่อนคืนค่า ไม่ใช่คืนเฉย ๆ
@@ -1250,6 +1265,17 @@ class ScrambleScene extends Phaser.Scene {
         const a = sp.rot + i * Math.PI / 3;
         fx.lineBetween(sp.x + Math.cos(a) * len * 0.35, sp.y + Math.sin(a) * len * 0.35, sp.x + Math.cos(a) * len, sp.y + Math.sin(a) * len);
       }
+    }
+
+    // วงฝุ่นของ Alecto — วาดเป็นแถบจาง ๆ กว้าง ๆ ตรงพื้น บอกขอบเขตให้ชัดว่าตรงไหนปลอดภัย
+    if (s.dust) {
+      const d = s.dust, t = Math.min(1, d.life / 45);
+      fx.fillStyle(0xbfae8e, 0.16 * t);
+      fx.fillRect(d.x - 200, STAGE.groundY - 150, 400, 150);
+      fx.fillStyle(0xd8c9a8, 0.1 * t);
+      fx.fillRect(d.x - 200, STAGE.groundY - 60, 400, 60);
+      fx.lineStyle(2, 0xd8c9a8, 0.22 * t);
+      fx.strokeRect(d.x - 200, STAGE.groundY - 150, 400, 150);
     }
 
     // HP bars

@@ -106,7 +106,7 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
     g3.step(i === 0 ? inp({ left:1, skill3:1, p:{ skill3:1 } }) : inp({ left:1 }), inp());
     if (g3.p1.moveId && ult[ult.length-1] !== g3.p1.moveId) ult.push(g3.p1.moveId);
   }
-  ok(ult[0] === "hail1", `อัลติกดถอยค้างก็ยังปักหลัก (ได้ ${ult[0]})`);
+  ok(ult[0] === "dust1", `อัลติกดถอยค้างก็ยังออกท่าอัลติ ไม่กลายเป็นท่าถอย (ได้ ${ult[0]})`);
 }
 
 // ── ท่าลากต้องดึงคู่ต่อสู้เข้ามา ไม่ใช่ผลักออก ──
@@ -122,7 +122,7 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
 {
   const g = mk();
   const M = g.p1.moves;
-  const mid = ["jab1", "jab2", "jab3", "side", "hail1", "hail2", "hail3"];
+  const mid = ["jab1", "jab2", "jab3", "side", "rifle1", "rifle2"];
   const bad = mid.filter((k) => M[k].kb[1] !== 0);
   ok(bad.length === 0, `ท่ากลางคอมโบไม่มีท่าไหนถีบขึ้น${bad.length ? " (เจอ " + bad.join(",") + ")" : ""}`);
 }
@@ -156,8 +156,6 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   ok(rifle.frames > 260 && rifle.frames < 400, `โหมดไรเฟิลยืนยิงได้ราว 5 วินาที (${rifle.frames} เฟรม)`);
   ok(rifle.dmg > 10 && rifle.dmg < 40, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${rifle.dmg}`);
 
-  const ult = fire("skill3", 100);
-  ok(ult.frames > 280 && ult.frames < 400, `อัลติยืนยิงได้ราว 5 วินาที (${ult.frames} เฟรม)`);
 
   // เดินหนีออกจากระยะต้องกินดาเมจน้อยลงมาก — ไม่งั้นเป็นดาเมจฟรีที่ไม่มีทางแก้
   const run = fire("skill2", 0, () => inp({ right: 1 }), true);
@@ -210,8 +208,6 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   const shot = back("skill2", 0, 220, true);
   ok(shot.moved > 150, `ถือไรเฟิลแล้วถอยไปได้ ${shot.moved} px`);
   ok(shot.still, "ถอยแล้วยังอยู่ในท่ายิง ไม่หลุด");
-  const ult = back("skill3", 100, 320);
-  ok(ult.moved > 200, `อัลติก็ถอยได้ ${ult.moved} px`);
 
   // ช้ากว่าวิ่งปกติชัดเจน ไม่งั้นกลายเป็นวิ่งยิงฟรี
   const speed = (key, ki, n) => {
@@ -275,4 +271,63 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   // Atlas ต้องไม่ถูกแตะ — เคยเผลอแก้ไปพร้อมกันเพราะเฟรมเดต้าเหมือนกันเป๊ะ
   ok(T.jab3.startup === 11 && T.jab3.recovery === 24,
     `ไม้จบคอมโบของ Atlas ยังเป็น 11/5/24 ตามเดิม (${T.jab3.startup}/${T.jab3.active}/${T.jab3.recovery})`);
+}
+
+// ── อัลติ Dust Devil: ท่าเอาตัวรอด ไม่ใช่ท่าทำดาเมจ ──
+//
+// ผู้เล่นรายงานว่าคนเล่นเธอโดนรุมประจำ อัลติเดิม (ยืนกราด) ไม่ได้ช่วยเรื่องนั้นเลย
+{
+  const M = CHARACTERS.alecto.moves;
+  ok(M.dust1.autoChain === "dust2" && !!M.dust2.dustPool, "อัลติปาถุงฝุ่นลงพื้น");
+  ok(M.dust2.dustPool.at <= M.dust2.startup + M.dust2.active,
+    "ฝุ่นเกิดภายในช่วงที่ท่ากำลังออก ไม่ใช่หลังจบท่า");
+
+  const g = mk(150); g.p1.ki = 100;
+  for (let i = 0; i < 30; i++) g.step(inp(i === 0 ? { skill3:1, p:{ skill3:1 } } : {}), inp());
+  ok(!!g.dust, "เกิดวงฝุ่นจริง");
+  ok(Math.abs(g.dust.x - g.p1.x) < 60, "วงเกิดตรงที่เธอยืน ไม่ใช่ขว้างไปไกลแบบมอลอตอฟ");
+  ok(g.p1.dustGuard > 0 && g.p1.veil > 0, "ยืนอยู่ในวงของตัวเอง");
+
+  // อยู่ในวงแล้วเจ็บน้อยลงจริง
+  const combo = (inDust) => {
+    const h = new Game(); h.p1.char = "helios"; h.p2.char = "alecto";
+    h.p1.hp = 100; h.p2.hp = 100; h.p2.x = h.p1.x + 95;
+    if (inDust) h.dust = { x: h.p2.x, owner: "p2", life: 300 };
+    let d = 0;
+    for (let f = 1; f <= 60; f++) {
+      h.step(inp({ p: { attack: f % 6 === 1 ? 1 : 0 } }), inp());
+      for (const e of h.events) if (e.type === "hit") d += e.dmg;
+    }
+    return d;
+  };
+  const out = combo(false), inside = combo(true);
+  ok(inside < out, `อยู่ในวงเจ็บน้อยกว่าอยู่นอกวง (${inside} เทียบ ${out})`);
+
+  // กันสถานะ: ไฟของ Orpheus ต้องไม่ติด
+  const f2 = new Game(); f2.p1.char = "orpheus"; f2.p2.char = "alecto";
+  f2.p1.hp = 100; f2.p2.hp = 100; f2.p2.x = f2.p1.x + 100;
+  f2.dust = { x: f2.p2.x, owner: "p2", life: 400 };
+  for (let i = 0; i < 60; i++) f2.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : {}), inp());
+  for (let i = 0; i < 60; i++) f2.step(inp(), inp({ left: 1 }));
+  ok(f2.p2.burn === 0, "อยู่ในวงฝุ่นแล้วไฟไม่ติดตัว");
+}
+
+// ── ออกจากวงแล้วยังจางต่อ = มีเวลาหนีจริง ──
+//
+// แยกสองค่าเพราะ "ป้องกัน" ต้องหมดทันทีที่ออกจากวง แต่ "มองไม่เห็น" ต้องค้างต่ออีกพัก
+// ถ้าหมดพร้อมกัน ออกจากวงมาก็โผล่ให้ตีต่อทันที ซึ่งพลาดทั้งประเด็นของท่านี้
+{
+  const g = mk(150);
+  g.dust = { x: g.p1.x, owner: "p1", life: 400 };
+  g.step(inp(), inp());
+  const inGuard = g.p1.dustGuard, inVeil = g.p1.veil;
+  ok(inGuard > 0 && inVeil > 0, "ในวง: ทั้งกันดาเมจและจางอยู่");
+
+  g.p1.x += 500;                       // เดินออกไปนอกวง
+  g.step(inp(), inp());
+  ok(g.p1.dustGuard === 0, "ออกจากวงแล้วการป้องกันหมดทันที");
+  ok(g.p1.veil > 0, `แต่ยังจางต่ออีก ${g.p1.veil} เฟรม — นี่คือเวลาหนี`);
+
+  for (let i = 0; i < 60; i++) g.step(inp(), inp());
+  ok(g.p1.veil === 0, "จางหมดเวลาแล้วกลับมาเห็นตามปกติ");
 }

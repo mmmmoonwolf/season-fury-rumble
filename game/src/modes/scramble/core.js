@@ -254,6 +254,13 @@ const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% �
 // ท่าตั้งป้อมยืนยิง — กดสกิลครั้งเดียวแล้วปักหลักยิงยาวเท่านี้เฟรม
 // สกิล 1 สั้นกว่าเพราะเล่นจริงแล้ว 5 วินาทีขาตาย โดนบุกเข้ามาแล้วทำอะไรไม่ได้เลย
 // อัลติยาวกว่าได้ เพราะจ่ายหลอด ki เต็มไปแล้วและตั้งใจให้เป็นการทุ่มหมดหน้าตัก
+// ---------- อัลติ Dust Devil ของ Alecto ----------
+// ไม่ใช่ท่าทำดาเมจ แต่เป็นท่าเอาตัวรอดตอนโดนรุม — ผู้เล่นรายงานว่าคนเล่นเธอโดนรุมประจำ
+const DUST_HALF = 200;       // ครึ่งความกว้างของวง — กว้างกว่ากองไฟ (62) สามเท่า
+const DUST_LIFE = 300;       // วงฝุ่นอยู่กี่เฟรม (5 วินาที)
+const DUST_DR = 0.45;        // อยู่ในวงแล้วดาเมจที่รับเหลือเท่าไหร่
+const VEIL_TIME = 45;        // ออกจากวงแล้วยังจาง ๆ ต่ออีกกี่เฟรม — ช่วงนี้คือเวลาหนี
+
 const RIFLE_FRAMES = 340;    // สกิล 2 ของ Alecto: ขว้างระเบิดแล้วยกไรเฟิลยิงได้ราว 5 วินาที
 const STANCE_FRAMES = 180;        // 3 วินาที (สกิล 1)
 // ---------- ระบบแพ้ชนะ ----------
@@ -346,19 +353,16 @@ const ALECTO_MOVES = {
   rifleEnd: { label: 'Rifle', kind: 'ground', startup: 6, active: 4, recovery: 20, dmg: 4,
     hb: { x: 12, y: -104, w: 190, h: 40 }, kb: [12, 0], stun: 30 },
 
-  // ---- สกิล 3 Last Call (อัลติ): ทอมมี่กันกราด กดรัวต่อรอบได้ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
-  // ดาเมจขึ้นกับตราที่เป้ามีอยู่ (lashDmg) — สะสมด้วยแส้ แล้วมาขึ้นเงินที่ตรงนี้
-  hail1: { label: 'Last Call', kind: 'ground', startup: 7, active: 3, recovery: 3, dmg: 1,
-    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 16,
-    stance: ULT_STANCE_FRAMES, autoChain: 'hail2', lashDmg: true, mobile: 0.35 },
-  hail2: { label: 'Last Call', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 1,
-    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 16,
-    holdChain: 'hail3', autoChain: 'hailEnd', lashDmg: true, mobile: 0.35 },
-  hail3: { label: 'Last Call', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 1,
-    hb: { x: 10, y: -82, w: 186, h: 34 }, kb: [0.8, 0], stun: 16,
-    holdChain: 'hail2', autoChain: 'hailEnd', lashDmg: true, mobile: 0.35 },
-  hailEnd: { label: 'Last Call', kind: 'ground', startup: 7, active: 5, recovery: 26, dmg: 7,
-    hb: { x: 12, y: -106, w: 198, h: 46 }, kb: [16, -6], stun: 40, lashDmg: true },
+  // ---- สกิล 3 Dust Devil (อัลติ): ปาถุงฝุ่นลงพื้น หายเข้าไปในวง (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  //
+  // อัลติที่ไม่ได้ทำดาเมจ แต่ซื้อเวลาให้รอด — ตัวเธอเปราะและไม่มีทางออกเวลาโดนไล่ต้อน
+  // อยู่ในวง: ดาเมจที่รับเหลือ 45% · กันสถานะทุกชนิด · คนอื่นแทบมองไม่เห็น
+  // ออกจากวง: ยังจางต่ออีก 45 เฟรม = มีเวลาหนีจริง ไม่ใช่โผล่มาให้ตีต่อทันที
+  dust1: { label: 'Dust Devil', kind: 'ground', startup: 6, active: 4, recovery: 4, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'dust2' },
+  // ปาลงที่เท้าตัวเอง ไม่ใช่ขว้างไปไกลแบบมอลอตอฟ — วงต้องเกิดตรงที่เธอยืนถึงจะหนีทัน
+  dust2: { label: 'Dust Devil', kind: 'ground', startup: 5, active: 5, recovery: 14, dmg: 3,
+    hb: { x: -40, y: -70, w: 150, h: 80 }, kb: [5, 0], stun: 18, dustPool: { at: 6 } },
 
   // ---- ท่าถอย: กดทิศถอยค้างไว้ตอนกดสกิล 1/2 จะถอยก่อนแล้วค่อยใช้อาวุธ ----
   // ตั้งใจไม่ใส่ iframes — ต้องสวนได้ ไม่งั้นกลายเป็นวาร์ปของ Nyx ที่ไม่มีคูลดาวน์
@@ -439,7 +443,7 @@ const ATLAS_MOVES = {
 const ATLAS_SKILLS = ['ram1', 'leap', 'sky1'];
 const ATLAS_SKILL_CD = [150, 180, 0];
 
-const ALECTO_SKILLS = ['shot1', 'fire1', 'hail1'];
+const ALECTO_SKILLS = ['shot1', 'fire1', 'dust1'];
 const ALECTO_SKILL_CD = [180, 420, 0];   // ชุดรีวอลเวอร์สั้นลงเลยกดถี่ได้ · โหมดไรเฟิลยาวเลยคูลดาวน์ยาว
 // กดทิศถอยค้าง -> เริ่มด้วยท่าถอยแทน แล้ว autoChain เข้าสกิลเอง
 const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
@@ -587,6 +591,7 @@ class Fighter {
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
+      veil: 0, dustGuard: 0,        // อยู่ในวงฝุ่นของ Alecto / จางต่อหลังออกจากวง
       burn: 0, burnF: -9999,        // ไฟที่ติดตัวอยู่ — อยู่ที่ "คนโดน" ติดจากการแตะกองไฟของ Orpheus
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
@@ -641,6 +646,7 @@ class Game {
     this.lastMoveInfo = null;
     this.shots = [];
     this.fires = [];
+    this.dust = null;               // วงฝุ่นของ Alecto — มีได้ทีละวงเดียว
     // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
     this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
   }
@@ -691,7 +697,7 @@ class Game {
     this.events.push({ type: 'ko', loser: out.slice() });
   }
 
-  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; this.fires = []; }
+  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; this.fires = []; this.dust = null; }
 
   /**
    * เดินหนึ่งเฟรม — รับอินพุตสองฝั่ง
@@ -717,6 +723,7 @@ class Game {
     if (p.hitstop <= 0 && d.hitstop <= 0) { this.updateShots(); this.updateFires(); }
     this.decayLash(p); this.decayLash(d);
     this.tickFlame(p); this.tickFlame(d);
+    this.updateDust();
     this.resolveHit(p, d);
     this.resolveHit(d, p);
     this.pushApart(p, d);
@@ -954,6 +961,21 @@ class Game {
     this.events.push({ type: 'firepool', x, y: STAGE.groundY });
   }
 
+  /** วงฝุ่น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน
+   *
+   * dustGuard = อยู่ในวงอยู่ตอนนี้ (ลดดาเมจ + กันสถานะ)
+   * veil      = ยังจางอยู่ รวมช่วงที่ออกจากวงมาแล้ว (ใช้แค่ตอนวาด ไม่กระทบการคำนวณ)
+   * แยกสองค่าเพราะ "ป้องกัน" ต้องหมดทันทีที่ออกจากวง แต่ "มองไม่เห็น" ต้องค้างต่อให้มีเวลาหนี
+   */
+  updateDust() {
+    if (this.dust && --this.dust.life <= 0) this.dust = null;
+    for (const f of [this.p1, this.p2]) {
+      const inside = !!this.dust && Math.abs(f.x - this.dust.x) <= DUST_HALF;
+      f.dustGuard = inside ? 1 : 0;
+      f.veil = inside ? VEIL_TIME : Math.max(0, f.veil - 1);
+    }
+  }
+
   updateFires() {
     for (const fire of this.fires) {
       fire.life--; fire.t++;
@@ -971,7 +993,7 @@ class Game {
       // ต้านไฟลดที่ "ไหม้นานแค่ไหน" ไม่ใช่ "ตอดทีละเท่าไหร่"
       // เพราะตอดทีละ 1 อยู่แล้ว ครึ่งหนึ่งยังปัดเป็น 1 เหมือนเดิม resist เลยหายไปเฉย ๆ
       // (วิธีเดียวกับที่ตรารอยแส้ของ Alecto สลายเร็วขึ้นตาม resist)
-      if (fire.burns) d.burn = Math.round(BURN_TIME * d.resist);
+      if (fire.burns && !d.dustGuard) d.burn = Math.round(BURN_TIME * d.resist);
     }
     this.fires = this.fires.filter((fi) => fi.life > 0);
   }
@@ -987,7 +1009,7 @@ class Game {
       return;
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
-    const dmg = Math.max(1, Math.round(sh.dmg * scale));
+    const dmg = Math.max(1, Math.round(sh.dmg * scale * (d.dustGuard ? DUST_DR : 1)));
     // เกราะกินกระสุนด้วย ไม่งั้น "ทะลุกระสุนได้" ที่ออกแบบไว้ไม่เป็นจริง
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, sh.x, sh.y); return; }
     d.hp = Math.max(0, d.hp - dmg);
@@ -1295,6 +1317,10 @@ class Game {
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
       if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
+      if (m.dustPool && f.moveF === m.dustPool.at) {
+        this.dust = { x: f.x, owner: f.id, life: DUST_LIFE };
+        this.events.push({ type: 'dust', x: f.x, y: STAGE.groundY });
+      }
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
         // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
@@ -1343,13 +1369,13 @@ class Game {
       return;
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
-    // ท่าที่ติดธง lashDmg แรงขึ้นตามตราที่เป้ามีอยู่ (ท่าแส้ทุกท่า + อัลติของ Alecto)
+    // ท่าที่ติดธง lashDmg แรงขึ้นตามตราที่เป้ามีอยู่ (ท่าแส้ทุกท่า)
     const lash = (m.lash || m.lashDmg) ? this.lashMul(d) : 1;
-    const dmg = Math.max(1, Math.round(m.dmg * scale * lash));
+    const dmg = Math.max(1, Math.round(m.dmg * scale * lash * (d.dustGuard ? DUST_DR : 1)));
     // เกราะกินไว้: เจ็บลดลง ไม่เข้า hitstun ท่าของเขาเดินต่อ
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
-    if (m.lash) this.addLash(d);
+    if (m.lash && !d.dustGuard) this.addLash(d);   // ในวงฝุ่นกันสถานะทุกชนิด
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');

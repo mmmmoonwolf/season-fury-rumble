@@ -56,11 +56,12 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
-  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF,
+  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard,
 ]),
   g.shots.length,
   ...g.shots.map((s) => [s.owner, Math.round(s.x * 1000), Math.round(s.y * 1000), Math.round(s.vx * 1000), s.dead ? 1 : 0].join(",")),
   // ระบบยก: ถ้าสองเครื่องนับหลอดคนละแบบ จะกลายเป็นคนละยกกันโดยไม่มีใครรู้
+  g.dust ? Math.round(g.dust.x) + ':' + g.dust.life : '-',
   g.match.round, g.match.freeze, g.match.winner ?? '-', g.match.bars.join(','),
   g.fires.length,
   ...g.fires.map((fi) => [fi.owner, Math.round(fi.x * 1000), fi.life, fi.t].join(",")),
