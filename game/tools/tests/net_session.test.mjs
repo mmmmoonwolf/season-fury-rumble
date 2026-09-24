@@ -99,3 +99,68 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
   cancelSession();
   ok(getSession().onData === null, "ยกเลิกห้องแล้วล้างตัวรับทิ้ง");
 }
+
+// ── หน้าเลือกตัวละคร ตอนเล่นข้ามเครื่อง ──
+//
+// จุดที่พังแล้วเงียบ: ถ้าสองเครื่องเริ่มนับเฟรมไม่พร้อมกัน หรือแพ็คเก็ตอินพุตที่มาถึง
+// ตอนยังเลือกตัวอยู่ถูกทิ้ง เกมจะค้างโดยไม่มีอะไรฟ้อง เหมือนบั๊กที่ผู้เล่นเจอมาแล้วรอบหนึ่ง
+{
+  const { Lockstep } = await import(G + "/netplay.js");
+  globalThis.document = { body: { classList: { add() {}, remove() {}, toggle() {} } },
+    getElementById: () => null, querySelector: () => null };
+
+  const mk = (isHost) => {
+    const sc = {
+      isHost, versus: "net", phase: null, selSide: null, myReady: false, foeReady: false, foePick: null,
+      sim: { frame: 999, p1: { char: "nyx" }, p2: { char: "helios" }, resetPositions() { this.reset = (this.reset ?? 0) + 1; } },
+      out: [],
+      _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
+    };
+    sc.net = new Lockstep((pk) => sc.out.push(pk));
+    sc.netSend = (pk) => sc.out.push(pk);
+    for (const m of ["openSelect", "_pickChar", "_selectGo", "_maybeStartNetMatch", "beginMatch", "netReceive"])
+      sc[m] = ScrambleScene.prototype[m];
+    sc.openSelect();
+    return sc;
+  };
+  const host = mk(true), guest = mk(false);
+  // ท่อสองทาง: หยิบของที่ฝั่งหนึ่งส่ง ไปหย่อนใส่อีกฝั่ง
+  const flush = (from, to) => { const q = from.out.splice(0); for (const pk of q) to.netReceive(pk); return q; };
+
+  ok(host.phase === "select" && guest.phase === "select", "ต่อห้องแล้วทั้งคู่เข้าหน้าเลือกตัวก่อน ยังไม่เริ่มเดิน");
+  ok(host.selSide === 0 && guest.selSide === 1, "โฮสต์เลือกให้ฝั่งซ้าย แขกเลือกให้ฝั่งขวา");
+
+  // แขกเปลี่ยนตัว โฮสต์ต้องเห็น
+  guest._pickChar("nyx");
+  flush(guest, host);
+  ok(host.sim.p2.char === "nyx" && host.foePick === "nyx", "เปลี่ยนตัวแล้วอีกฝั่งเห็นทันที");
+
+  // โฮสต์กดพร้อมฝ่ายเดียว ต้องยังไม่เริ่ม และต้องไม่มี go หลุดออกไป
+  host._selectGo();
+  const sent = flush(host, guest);
+  ok(host.phase === "select", "พร้อมฝ่ายเดียวยังไม่เริ่ม");
+  ok(!sent.some(p => p.t === "go"), "ยังไม่ส่งสัญญาณเริ่มออกไป");
+  ok(guest.phase === "select" && guest.foeReady === true, "แขกรู้ว่าอีกฝั่งพร้อมแล้ว แต่ยังไม่เริ่มเอง");
+
+  // แขกกดพร้อม -> โฮสต์ส่ง go แล้วเริ่มทันที
+  guest._selectGo();
+  flush(guest, host);
+  ok(host.phase === "fight", "พร้อมครบสองฝั่ง โฮสต์เริ่มแมตช์");
+  ok(host.sim.frame === 0, "โฮสต์รีเซ็ตนาฬิกาเป็นเฟรม 0");
+  const go = flush(host, guest).find(p => p.t === "go");
+  ok(!!go && go.tune, "สัญญาณเริ่มพ่วงตัวละครและค่าปรับจูนมาด้วย");
+  ok(guest.phase === "fight" && guest.sim.frame === 0, "แขกเริ่มพร้อมกันที่เฟรม 0");
+  ok(guest.sim.p1.char === go.p1 && guest.sim.p2.char === go.p2, "สองเครื่องใช้ตารางท่าชุดเดียวกัน");
+
+  // แขกต้องไม่เริ่มเองเด็ดขาด ต่อให้กดพร้อมค้างไว้ก่อน
+  const g2 = mk(false);
+  g2._selectGo(); g2.foeReady = true; g2._maybeStartNetMatch();
+  ok(g2.phase === "select", "แขกไม่เริ่มเองแม้พร้อมครบ — ต้องรอสัญญาณจากโฮสต์เท่านั้น");
+
+  // อินพุตที่มาถึงตอนยังเลือกตัวอยู่ ต้องเก็บไว้ ไม่ใช่ทิ้ง (ไม่งั้นค้างรอเฟรมต้น ๆ ตลอดกาล)
+  const g3 = mk(false);
+  for (let f = 0; f < 3; f++) g3.netReceive({ t: "i", f, v: 0 });
+  ok(g3.net.remote.size === 3, `อินพุตที่มาก่อนเริ่มแมตช์ถูกเก็บไว้ครบ (${g3.net.remote.size}/3)`);
+  g3.netReceive({ t: "go", p1: "nyx", p2: "nyx", tune: {} });
+  ok(g3.phase === "fight" && g3.net.ready(), "พอเริ่มแมตช์ก็เดินได้ทันที ไม่ต้องรออะไรอีก");
+}

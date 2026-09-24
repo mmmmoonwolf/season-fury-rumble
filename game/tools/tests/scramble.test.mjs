@@ -1132,8 +1132,11 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/for \(const f of \[s\.p2, s\.p1\]\)/.test(scene), "วาดทั้งสองฝั่งด้วยลูปเดียวกัน");
   ok(!/drawFighter\(g, s\.p2, [^)]*\);\s*\n\s*\/\//.test(scene), "ไม่มีการบังคับวาดหุ่นเป็นกล่องก่อนเข้าลูป");
 
-  // มีปุ่มสลับตัวละครทั้งสองฝั่ง
-  ok(/data-tool="KeyC"/.test(scene) && /data-tool="KeyV"/.test(scene), "มีปุ่มสลับตัวละครทั้งฝั่งผู้เล่นและฝั่งหุ่น");
+  // หน้าเลือกตัวละคร — เลือกได้ทั้งสองฝั่ง และการ์ดสร้างจาก CHARACTERS ไม่ใช่รายชื่อตายตัว
+  ok(/id="sc-select"/.test(scene), "มีหน้าเลือกตัวละคร");
+  ok(/data-side="0"/.test(scene) && /data-side="1"/.test(scene), "เลือกได้ทั้งสองฝั่ง");
+  ok(/for \(const id of Object\.keys\(CHARACTERS\)\)/.test(scene),
+    "การ์ดสร้างจาก CHARACTERS — เพิ่มตัวละครแล้วโผล่เอง ไม่ต้องแก้หน้าเลือกตัว");
   ok(/'KeyC','KeyV'\]/.test(scene) || /'KeyC',\s*'KeyV'/.test(scene), "ปุ่มทั้งสองลงทะเบียนเป็นคีย์เครื่องมือ");
 
   // หุ่นยังโดนตีได้ตามปกติหลังเปลี่ยนเป็นตัวละครจริง

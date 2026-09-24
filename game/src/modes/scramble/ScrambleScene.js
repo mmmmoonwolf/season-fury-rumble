@@ -32,7 +32,7 @@ const BINDS = [
 const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
 
 const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -98,6 +98,8 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_nyx.png',
     data: 'assets/characters/scramble_nyx.json',
     runStride: 102,
+    role: 'นักลอบสังหาร',
+    tip: 'เข้าออกไว วาร์ปหาเป้า ดาเมจต่อคอมโบสูง แต่ตัวบาง',
     anims: { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
       block: 3, blockstun: 2, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
@@ -111,6 +113,8 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_helios.png',
     data: 'assets/characters/scramble_helios.json',
     runStride: 85,
+    role: 'นักสู้ระยะประชิด',
+    tip: 'ต่อยเตะรัว กดต่อเนื่องได้ยาว ถนัดกดดันติดตัว',
     anims: { idle: 1, run: 11, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
@@ -204,6 +208,56 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 #sc-touch .skills { grid-column:span 2; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; touch-action:none; }
 #sc-touch .skills button { height:46px; font-size:14px; }
 #sc-touch .skills button[disabled] { opacity:.32; }
+
+/* ---------- หน้าเลือกตัวละคร ----------
+   คุมความสูงเป็นหลัก ไม่ใช่ความกว้าง: มือถือแนวนอนสูงแค่ ~390 px ซึ่งเตี้ยกว่าจอคอมครึ่งหนึ่ง
+   ทุกก้อนจึงวัดจาก dvh และการ์ดวางนอน (รูปซ้าย ข้อความขวา) เพื่อกินความสูงให้น้อยที่สุด */
+#sc-select { position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
+  background:rgba(8,12,20,.82); backdrop-filter:blur(3px); font:14px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6;
+  touch-action:none; -webkit-tap-highlight-color:transparent; }
+#sc-select.open { display:flex; }
+#sc-select .wrap { width:min(96vw,860px); max-height:94dvh; overflow-y:auto; display:flex; flex-direction:column;
+  align-items:center; gap:max(1.4dvh,6px); padding:max(1.6dvh,8px) 14px; }
+#sc-select h2 { margin:0; font-size:clamp(15px,3.4dvh,22px); font-weight:700; letter-spacing:.5px; }
+#sc-select .hint { color:#9aa3b5; font-size:clamp(11px,2.2dvh,13px); margin:0; text-align:center; }
+
+/* แถบสองฝั่ง: บอกว่าตอนนี้กำลังเลือกให้ใคร ฝั่งที่กำลังเลือกมีกรอบแดง */
+#sc-select .slots { display:flex; align-items:center; gap:10px; }
+#sc-select .slot { min-width:clamp(104px,22vw,150px); padding:5px 10px; border-radius:10px; text-align:center;
+  border:2px solid rgba(233,227,214,.22); background:rgba(233,227,214,.07); }
+#sc-select .slot.pickable { cursor:pointer; }
+#sc-select .slot.active { border-color:#c8323c; background:rgba(200,50,60,.18); }
+#sc-select .slot .tag { display:block; font-size:clamp(9px,1.8dvh,11px); color:#9aa3b5; }
+#sc-select .slot .who { font-weight:700; font-size:clamp(13px,2.6dvh,17px); }
+#sc-select .slot.waiting .who { color:#9aa3b5; font-weight:600; }
+#sc-select .vs { color:#9aa3b5; font-weight:700; font-size:clamp(11px,2.2dvh,14px); }
+
+/* การ์ดตัวละคร — เรียงแนวนอน ล้นแล้วตัดบรรทัดเอง ใส่ตัวใหม่ใน CHARACTERS แล้วโผล่เองไม่ต้องแก้ CSS */
+#sc-select .grid { display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:8px; }
+#sc-select .card { display:flex; gap:8px; align-items:center; width:clamp(190px,40vw,260px); padding:6px 9px 6px 6px;
+  border:2px solid rgba(233,227,214,.22); border-radius:12px; background:rgba(233,227,214,.07); text-align:left; }
+#sc-select .card.on { border-color:#c8323c; background:rgba(200,50,60,.2); }
+/* กรอบรูปต้อง overflow:hidden — เฟรมในอัตลาสวางติดกัน ตัวที่ผอมกว่ากรอบจะเห็นเฟรมข้าง ๆ โผล่มาด้วย
+   (Helios ขึ้นเป็นสองคนอยู่พักหนึ่งเพราะเรื่องนี้) ตัวรูปจริงเป็นลูกข้างในที่ขนาดเท่าเฟรมเป๊ะ */
+#sc-select .card .pic { position:relative; overflow:hidden; flex:0 0 auto; width:clamp(44px,9vw,60px);
+  height:clamp(58px,13dvh,84px); border-radius:8px; background:rgba(8,12,20,.5); }
+#sc-select .card .pic i { position:absolute; display:block; image-rendering:pixelated; background-repeat:no-repeat; }
+#sc-select .card .name { font-weight:700; font-size:clamp(13px,2.6dvh,17px); letter-spacing:.5px; }
+#sc-select .card .role { color:#ffd166; font-size:clamp(10px,2dvh,12px); }
+#sc-select .card .skills { color:#9aa3b5; font-size:clamp(9px,1.8dvh,11px); line-height:1.35; margin-top:2px; }
+
+#sc-select .modes { display:flex; gap:6px; }
+#sc-select button { font:600 clamp(12px,2.4dvh,15px) "Chakra Petch", system-ui, sans-serif; color:#e9e3d6;
+  background:rgba(233,227,214,.14); border:1px solid rgba(233,227,214,.28); border-radius:10px; padding:7px 14px;
+  touch-action:none; -webkit-tap-highlight-color:transparent; }
+#sc-select .modes button.on { background:rgba(200,50,60,.55); border-color:#c8323c; }
+#sc-select .go { min-width:clamp(150px,32vw,220px); padding:9px 18px; background:#c8323c; border-color:#c8323c;
+  font-size:clamp(14px,2.8dvh,18px); font-weight:700; }
+#sc-select .go[disabled] { opacity:.45; }
+#sc-select .note { color:#9aa3b5; font-size:clamp(10px,2dvh,12px); min-height:1em; text-align:center; }
+
+/* กำลังเลือกตัวอยู่ ปุ่มเล่น/เครื่องมือต้องหลบไปก่อน ไม่งั้นนิ้วไปโดนปุ่มใต้แผง */
+body.sc-picking #sc-touch, body.sc-picking #sc-tools, body.sc-picking #sc-tune { display:none; }
 `;
 
 const OVERLAY_HTML = `
@@ -214,9 +268,25 @@ const OVERLAY_HTML = `
   <button data-tool="KeyO">Slow-mo</button>
   <button data-tool="KeyR">Reset</button>
   <button data-tool="KeyT">Tune</button>
-  <button data-tool="KeyC">Char: NYX</button>
-  <button data-tool="KeyV">VS: HELIOS</button>
-  <button data-tool="KeyM">2P: Off</button>
+  <button data-tool="KeyB">เลือกตัว</button>
+</div>
+<div id="sc-select">
+  <div class="wrap">
+    <h2>เลือกตัวละคร</h2>
+    <div class="slots">
+      <div class="slot" data-side="0"><span class="tag"></span><span class="who"></span></div>
+      <span class="vs">VS</span>
+      <div class="slot" data-side="1"><span class="tag"></span><span class="who"></span></div>
+    </div>
+    <p class="hint"></p>
+    <div class="grid"></div>
+    <div class="modes">
+      <button data-mode="solo">ซ้อมกับหุ่น</button>
+      <button data-mode="local">2 คน เครื่องเดียว</button>
+    </div>
+    <button class="go">เริ่ม</button>
+    <p class="note"></p>
+  </div>
 </div>
 <div id="sc-tune"></div>
 <div id="sc-touch">
@@ -319,11 +389,13 @@ class ScrambleScene extends Phaser.Scene {
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
     this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
-    this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
+    this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'B เลือกตัว   T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     this._initSprites();
     this._syncMatchHud();
     this.syncTools();
+    // ต่อห้องอยู่แล้ว startNet เปิดหน้าเลือกตัวให้เอง (ต้องรออีกฝั่งด้วย) เล่นออฟไลน์ก็เปิดเลย
+    if (this.phase !== 'select') this.openSelect();
   }
 
   _mountOverlay() {
@@ -360,6 +432,51 @@ class ScrambleScene extends Phaser.Scene {
     });
 
     buildTune();
+    this._wireSelect(root);
+  }
+
+  /** ผูกปุ่มของหน้าเลือกตัว — ทำครั้งเดียวตอน mount การ์ดสร้างจาก CHARACTERS ตรง ๆ
+   *  เพิ่มตัวละครใน core.js แล้วการ์ดโผล่เอง ไม่ต้องมาแก้ที่นี่อีก */
+  _wireSelect(root) {
+    const el = root.querySelector('#sc-select');
+    this.selEl = el;
+    this.selGrid = el.querySelector('.grid');
+    this.selSlots = [...el.querySelectorAll('.slot')];
+    this.selGo = el.querySelector('.go');
+    this.selNote = el.querySelector('.note');
+    this.selHint = el.querySelector('.hint');
+    this.selModes = [...el.querySelectorAll('.modes button')];
+
+    for (const id of Object.keys(CHARACTERS)) {
+      const ch = CHARACTERS[id], art = CHAR_ART[id] ?? {};
+      const skills = ch.skills.map((k) => (k ? ch.moves[k].label : null)).filter(Boolean).join(' · ');
+      const card = document.createElement('button');
+      card.className = 'card';
+      card.dataset.char = id;
+      card.innerHTML = `<span class="pic"></span><span><span class="name">${ch.label}</span>`
+        + `<span class="role"> ${art.role ?? ''}</span><br><span class="skills">${art.tip ?? ''}<br>${skills}</span></span>`;
+      card.addEventListener('pointerdown', (e) => { e.preventDefault(); this._pickChar(id); });
+      this.selGrid.appendChild(card);
+    }
+    // ฝั่งที่กำลังเลือก — ตอนต่อเน็ตล็อกไว้ที่ฝั่งตัวเอง กดสลับไม่ได้
+    for (const sl of this.selSlots) {
+      sl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        if (this.versus === 'net') return;
+        this.selSide = Number(sl.dataset.side);
+        this._drawSelect();
+      });
+    }
+    for (const b of this.selModes) {
+      b.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        if (this.versus === 'net') return;
+        this.versus = b.dataset.mode;
+        if (this.versus === 'solo') this.selSide = 0;
+        this._drawSelect();
+      });
+    }
+    this.selGo.addEventListener('pointerdown', (e) => { e.preventDefault(); this._selectGo(); });
   }
 
   _unmountOverlay() {
@@ -393,6 +510,8 @@ class ScrambleScene extends Phaser.Scene {
     // สลับโหมดสองคน — ฝั่งขวาเปลี่ยนจากหุ่นซ้อมเป็นคนเล่นจริง (ลูกศร + numpad)
     if (code === 'KeyM') { this.versus = this.versus === 'local' ? 'solo' : 'local'; s.resetPositions(); this._syncMatchHud(); }
     if (code === 'KeyO') this.timeScale = this.timeScale === 1 ? 0.25 : 1;
+    // กลับไปหน้าเลือกตัว — ตอนต่อเน็ตกดไม่ได้อยู่แล้ว (VIEW_ONLY) เพราะอีกฝั่งไม่รู้ด้วย
+    if (code === 'KeyB') { this.openSelect(); return; }
     // สลับตัวละคร — สไปรท์เป็นของฝั่ง ไม่ใช่ของตัวละคร จึงไม่มีตัวค้างบนจอให้ต้องซ่อน
     if (code === 'KeyC' || code === 'KeyV') {
       const ids = Object.keys(CHARACTERS);
@@ -427,14 +546,12 @@ class ScrambleScene extends Phaser.Scene {
     b('Digit4').textContent = 'Tech: ' + TECH_LABEL[this.sim.dummyTech];
     b('KeyO').classList.toggle('on', this.timeScale !== 1);
     b('KeyT').classList.toggle('on', document.getElementById('sc-tune').classList.contains('open'));
-    b('KeyC').textContent = 'Char: ' + CHARACTERS[this.sim.p1.char].label;
-    b('KeyV').textContent = 'VS: ' + CHARACTERS[this.sim.p2.char].label;
-    b('KeyM').textContent = '2P: ' + (this.versus === 'local' ? 'On' : 'Off');
-    b('KeyM').classList.toggle('on', this.versus === 'local');
   }
 
   update(time, delta) {
     const stepMs = 1000 / 60;
+    // เลือกตัวอยู่ = sim หยุดนิ่ง แต่ยังวาดฉากอยู่ จะได้เห็นเวทีอยู่ข้างหลังแผง
+    if (this.phase === 'select') { this.acc = 0; this.draw(); return; }
     if (!this.paused) {
       this.acc += Math.min(delta, 100) * this.timeScale;
       while (this.acc >= stepMs) { this.acc -= stepMs; this.tick(); }
@@ -482,6 +599,140 @@ class ScrambleScene extends Phaser.Scene {
   /** ตั้งว่าช่องไหนมีสกิล — เรียกตอนเริ่มฉากและตอนสลับตัวละครเท่านั้น ไม่ใช่ทุกเฟรม
    *  ปุ่มที่ถูก disable ตอนนิ้วยังกดค้างอยู่จะไม่ส่ง event ปล่อย แล้วปุ่มจะค้าง
    *  การหรี่ตามคูลดาวน์จึงใช้ opacity อย่างเดียว (ดู _syncSkillBtns) */
+  /* ================= หน้าเลือกตัวละคร =================
+   *
+   * เปิดค้างไว้ก่อนเริ่มแมตช์เสมอ (this.phase === 'select') ตอนนั้น sim หยุดนิ่ง
+   * ยังวาดฉากอยู่เบื้องหลัง จะได้เห็นว่ากำลังจะเล่นบนเวทีไหน
+   *
+   * ตอนต่อเน็ตเป็นการจับมือสามจังหวะ:
+   *   ทั้งสองฝั่งส่ง 'pick' ทุกครั้งที่เปลี่ยนตัว (อีกฝั่งเห็นสด ๆ ว่าเลือกอะไรอยู่)
+   *   กดพร้อม -> ส่ง 'ready'
+   *   โฮสต์เห็นพร้อมครบสองฝั่ง -> ส่ง 'go' พร้อมตัวละครและค่าปรับจูนชุดสุดท้าย แล้วเริ่มเอง
+   *   แขกเริ่มก็ต่อเมื่อได้ 'go' เท่านั้น ไม่เริ่มเอง — นาฬิกาเฟรม 0 ต้องออกตัวพร้อมกัน
+   */
+  openSelect() {
+    this.phase = 'select';
+    this.selSide = this.versus === 'net' ? (this.isHost ? 0 : 1) : 0;
+    this.myReady = false; this.foeReady = false;
+    document.body.classList.add('sc-picking');
+    this.selEl?.classList.add('open');
+    this._drawSelect();
+  }
+
+  /** เลือกตัวให้ฝั่งที่กำลังแก้อยู่ — ตอนต่อเน็ตบอกอีกฝั่งด้วยเพื่อให้เห็นสด ๆ */
+  _pickChar(id) {
+    if (this.phase !== 'select') return;
+    if (this.versus === 'net' && this.myReady) return;   // กดพร้อมแล้วเปลี่ยนไม่ได้ กันสลับตัวตอนโฮสต์กำลังส่ง go
+    const f = this.selSide === 0 ? this.sim.p1 : this.sim.p2;
+    f.char = id;
+    if (this.versus === 'net') this.netSend?.({ t: 'pick', char: id });
+    this._syncSkillSlots();
+    this._drawSelect();
+  }
+
+  /** กดปุ่มใหญ่: ออฟไลน์เริ่มเลย · ต่อเน็ตแปลว่า "พร้อม" แล้วรออีกฝั่ง */
+  _selectGo() {
+    if (this.phase !== 'select') return;
+    if (this.versus !== 'net') { this.beginMatch(); return; }
+    this.myReady = !this.myReady;
+    this.netSend?.({ t: 'ready', ready: this.myReady, char: this.sim[this.isHost ? 'p1' : 'p2'].char });
+    this._maybeStartNetMatch();
+    this._drawSelect();
+  }
+
+  /** โฮสต์เท่านั้นที่ตัดสินว่าเริ่มได้แล้ว — แขกรอ 'go' อย่างเดียว */
+  _maybeStartNetMatch() {
+    if (!this.isHost || this.phase !== 'select' || !this.myReady || !this.foeReady) return;
+    const p1 = this.sim.p1.char, p2 = this.sim.p2.char;
+    this.netSend?.({ t: 'go', p1, p2, tune: tuneSnapshot() });
+    this.beginMatch();
+  }
+
+  /** เริ่มแมตช์จริง — จุดเดียวที่ sim กลับมาเดิน */
+  beginMatch() {
+    this.phase = 'fight';
+    document.body.classList.remove('sc-picking');
+    this.selEl?.classList.remove('open');
+    this.sim.resetPositions();
+    this.comboFade = 0; this.netMsg = null;
+    if (this.versus === 'net') {
+      // นาฬิกาต้องเริ่มที่ศูนย์พร้อมกันทั้งสองเครื่อง — เลขเฟรมเป็นส่วนหนึ่งของเส้นเวลาที่ใช้ร่วมกัน
+      this.sim.frame = 0;
+      this.net.primeStart();
+    }
+    this._syncSkillSlots();
+    this._syncMatchHud();
+    this.syncTools();
+  }
+
+  /** วาดหน้าเลือกตัวใหม่ทั้งแผง — เรียกเมื่อมีอะไรเปลี่ยน ไม่ใช่ทุกเฟรม */
+  _drawSelect() {
+    if (!this.selEl || !this.sim) return;
+    const net = this.versus === 'net';
+    const chars = [this.sim.p1.char, this.sim.p2.char];
+    const mine = net ? (this.isHost ? 0 : 1) : this.selSide;
+
+    this.selSlots.forEach((sl, i) => {
+      const label = net ? (i === mine ? 'คุณ' : 'เพื่อน') : (this.versus === 'local' ? `ผู้เล่น ${i + 1}` : i === 0 ? 'คุณ' : 'หุ่นซ้อม');
+      sl.querySelector('.tag').textContent = label;
+      const waiting = net && i !== mine && !this.foePick;
+      sl.querySelector('.who').textContent = waiting ? 'กำลังเลือก...' : CHARACTERS[chars[i]].label;
+      sl.classList.toggle('waiting', waiting);
+      sl.classList.toggle('active', i === this.selSide);
+      sl.classList.toggle('pickable', !net);
+    });
+
+    for (const card of this.selGrid.children) {
+      card.classList.toggle('on', card.dataset.char === chars[this.selSide]);
+      this._paintPortrait(card.querySelector('.pic'), card.dataset.char);
+    }
+    for (const b of this.selModes) {
+      b.classList.toggle('on', !net && this.versus === b.dataset.mode);
+      b.disabled = net;
+    }
+    this.selEl.querySelector('.modes').style.display = net ? 'none' : 'flex';
+
+    this.selHint.textContent = net
+      ? (this.isHost ? 'คุณคือฝั่งซ้าย' : 'คุณคือฝั่งขวา')
+      : 'แตะที่ช่องด้านบนเพื่อสลับว่ากำลังเลือกให้ฝั่งไหน';
+    this.selGo.textContent = !net ? 'เริ่ม' : this.myReady ? 'ยกเลิกพร้อม' : 'พร้อม';
+    this.selNote.textContent = !net ? ''
+      : this.myReady && !this.foeReady ? 'รออีกฝั่งกดพร้อม...'
+      : this.foeReady && !this.myReady ? 'อีกฝั่งพร้อมแล้ว รอคุณ'
+      : '';
+  }
+
+  /** รูปตัวละครบนการ์ด — ครอปจากอัตลาสด้วย CSS
+   *
+   *  ใช้ meta ของชีต (anchorX / feetY / standing) จัดให้ทุกตัวสูงเท่ากันและยืนกลางกรอบเสมอ
+   *  ถ้าวัดจากกรอบเฟรมตรง ๆ ตัวที่ชีตถ่ายไกลกว่าจะเล็กกว่าเพื่อนทันที (ปัญหาเดียวกับตอนประกอบชีต)
+   *  อ่าน meta ไม่ได้ก็ปล่อยว่าง เหลือแต่ชื่อกับสกิล ดีกว่าโชว์รูปเพี้ยน ๆ */
+  _paintPortrait(el, charId) {
+    if (!el || el.dataset.painted === charId) return;
+    const art = CHAR_ART[charId];
+    let meta, fr;
+    try {
+      meta = this.textures.get(art.atlasKey).customData.meta;
+      fr = this.textures.getFrame(art.atlasKey, 'idle_1.png');
+    } catch (e) { return; }
+    if (!meta || !fr) return;
+    const box = el.getBoundingClientRect();
+    const h = box.height || 72, w = box.width || 52;
+    const scale = (h * 0.9) / meta.standing;   // ทุกตัวสูงเท่ากันในกรอบ ไม่ว่าชีตจะถ่ายใกล้ไกลแค่ไหน
+    // จุดยึด/ปลายเท้า วัดในผืนวาดเต็ม ต้องหักระยะที่เฟรมถูกตัดขอบออก (fr.x / fr.y) ให้เป็นพิกัดในเฟรม
+    const ax = (meta.anchorX - fr.x) * scale;
+    const fy = (meta.feetY - fr.y) * scale;
+    const img = el.firstElementChild ?? el.appendChild(document.createElement('i'));
+    img.style.width = `${fr.cutWidth * scale}px`;
+    img.style.height = `${fr.cutHeight * scale}px`;
+    img.style.left = `${w / 2 - ax}px`;
+    img.style.top = `${h - 3 - fy}px`;
+    img.style.backgroundImage = `url("${art.texture}")`;
+    img.style.backgroundSize = `${fr.source.width * scale}px ${fr.source.height * scale}px`;
+    img.style.backgroundPosition = `${-fr.cutX * scale}px ${-fr.cutY * scale}px`;
+    el.dataset.painted = charId;
+  }
+
   _syncSkillSlots() {
     if (!this.skillBtns || !this.sim) return;
     const f = this.sim.p1;
@@ -516,29 +767,38 @@ class ScrambleScene extends Phaser.Scene {
   startNet({ isHost, send }) {
     this.versus = 'net';
     this.isHost = isHost;
+    // ต้องสร้าง Lockstep ตั้งแต่ตอนนี้ ไม่ใช่ตอนเริ่มแมตช์
+    // อีกฝั่งอาจกดพร้อมและเริ่มยิงอินพุตก่อนเราจะเลือกตัวเสร็จ ถ้ายังไม่มีที่รับ แพ็คเก็ตพวกนั้นหาย
+    // แล้วค้างรอเฟรมที่ไม่มีวันมาถึง (บั๊กเดียวกับตอนที่ฉากโหลดช้ากว่าอีกฝั่ง)
     this.net = new Lockstep(send);
     this.netSend = send;
-    // โฮสต์เป็นคนตัดสินว่าใครเล่นตัวไหน ไม่งั้นสองเครื่องเดินคนละตารางท่า = ภาพหลุดกันทันที
-    if (isHost) send({ t: 'start', p1: this.sim.p1.char, p2: this.sim.p2.char, tune: tuneSnapshot() });
-    this.sim.resetPositions();
-    // นาฬิกาของ sim ต้องเริ่มที่ศูนย์พร้อมกันทั้งสองเครื่อง — เลขเฟรมเป็นส่วนหนึ่งของเส้นเวลาที่ใช้ร่วมกัน
-    // (สองเครื่องเปิดเกมคนละเวลา ฝั่งที่เปิดก่อนเดินโหมดซ้อมไปแล้วหลายร้อยเฟรมก่อนจะต่อห้องได้)
-    this.sim.frame = 0;
-    this.net.primeStart();
+    this.foePick = null;
     this._syncSkillSlots();
     this._syncMatchHud();
     this.syncTools();
+    this.openSelect();
     return (pk) => this.netReceive(pk);
   }
 
   netReceive(pk) {
     if (!this.net || !pk) return;
-    if (pk.t === 'start') {
-      if (this.isHost) return;                  // โฮสต์เป็นคนกำหนด ไม่รับกลับ
+    // อีกฝั่งเปลี่ยนตัวละคร — เห็นสด ๆ บนหน้าเลือกตัว
+    if (pk.t === 'pick' || pk.t === 'ready') {
+      if (pk.char && CHARACTERS[pk.char]) {
+        this.foePick = pk.char;
+        (this.isHost ? this.sim.p2 : this.sim.p1).char = pk.char;
+      }
+      if (pk.t === 'ready') { this.foeReady = !!pk.ready; this._maybeStartNetMatch(); }
+      this._drawSelect();
+      return;
+    }
+    // โฮสต์สั่งเริ่ม — ตัวละครและค่าปรับจูนชุดสุดท้ายมาพร้อมกันในแพ็คเก็ตนี้
+    // แขกไม่เริ่มเองเด็ดขาด ต้องรออันนี้เท่านั้น นาฬิกาเฟรม 0 จะได้ออกตัวพร้อมกัน
+    if (pk.t === 'go') {
+      if (this.isHost || this.phase !== 'select') return;
       this.sim.p1.char = pk.p1; this.sim.p2.char = pk.p2;
-      applyTune(pk.tune);                       // ฟิสิกส์ต้องเป็นชุดของโฮสต์ ไม่ใช่ที่เครื่องนี้เคยลากไว้
-      this._syncSkillSlots();
-      this._syncMatchHud();
+      applyTune(pk.tune);       // ฟิสิกส์ต้องเป็นชุดของโฮสต์ ไม่ใช่ที่เครื่องนี้เคยลากสไลเดอร์ไว้
+      this.beginMatch();
       return;
     }
     this.net.onPacket(pk);
