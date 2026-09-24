@@ -98,6 +98,7 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_nyx.png',
     data: 'assets/characters/scramble_nyx.json',
     runStride: 102,
+    title: 'The Fury of Silence',
     role: 'นักลอบสังหาร',
     tip: 'เข้าออกไว วาร์ปหาเป้า ดาเมจต่อคอมโบสูง แต่ตัวบาง',
     anims: { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
@@ -113,6 +114,7 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_helios.png',
     data: 'assets/characters/scramble_helios.json',
     runStride: 85,
+    title: 'The Fury of a Hundred Suns',
     role: 'นักสู้ระยะประชิด',
     tip: 'ต่อยเตะรัว กดต่อเนื่องได้ยาว ถนัดกดดันติดตัว',
     anims: { idle: 1, run: 11, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
@@ -243,7 +245,8 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
   height:clamp(58px,13dvh,84px); border-radius:8px; background:rgba(8,12,20,.5); }
 #sc-select .card .pic i { position:absolute; display:block; image-rendering:pixelated; background-repeat:no-repeat; }
 #sc-select .card .name { font-weight:700; font-size:clamp(13px,2.6dvh,17px); letter-spacing:.5px; }
-#sc-select .card .role { color:#ffd166; font-size:clamp(10px,2dvh,12px); }
+#sc-select .card .title { color:#ffd166; font-style:italic; font-size:clamp(10px,2dvh,12px); }
+#sc-select .card .skills b { color:#e9e3d6; font-weight:600; }
 #sc-select .card .skills { color:#9aa3b5; font-size:clamp(9px,1.8dvh,11px); line-height:1.35; margin-top:2px; }
 
 #sc-select .modes { display:flex; gap:6px; }
@@ -385,6 +388,9 @@ class ScrambleScene extends Phaser.Scene {
     this.tP1 = T(60, 14, 'NYX', 20, C.ink);
     this.tP2 = T(W - RPAD, 14, 'Training dummy', 20, C.ink, 1);
     this.tMode = T(W - RPAD, 66, '', 13, C.dim, 1);
+    // ฉายาอยู่ใต้หลอดเลือดและหลอดพลัง (หลอดจบที่ y=74) ไม่ใช่ใต้ชื่อ — ตรงนั้นหลอดเลือดกินที่อยู่
+    this.tP1Sub = T(60, 78, '', 11, C.dim);
+    this.tP2Sub = T(W - RPAD, 78, '', 11, C.dim, 1);
     this.tCombo = T(1210, 150, '', 44, '#ffffff', 1).setFontStyle('700');
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
@@ -454,7 +460,8 @@ class ScrambleScene extends Phaser.Scene {
       card.className = 'card';
       card.dataset.char = id;
       card.innerHTML = `<span class="pic"></span><span><span class="name">${ch.label}</span>`
-        + `<span class="role"> ${art.role ?? ''}</span><br><span class="skills">${art.tip ?? ''}<br>${skills}</span></span>`;
+        + `<br><span class="title">${art.title ?? ''}</span>`
+        + `<br><span class="skills"><b>${art.role ?? ''}</b> · ${art.tip ?? ''}<br>${skills}</span></span>`;
       card.addEventListener('pointerdown', (e) => { e.preventDefault(); this._pickChar(id); });
       this.selGrid.appendChild(card);
     }
@@ -533,6 +540,8 @@ class ScrambleScene extends Phaser.Scene {
       : this.versus === 'local' ? 'Local 2P' : 'Training');
     this.tP1.setText(name(this.sim.p1));
     this.tP2.setText(this.versus === 'solo' ? 'Training dummy' : name(this.sim.p2));
+    this.tP1Sub?.setText(CHAR_ART[this.sim.p1.char]?.title ?? '');
+    this.tP2Sub?.setText(this.versus === 'solo' ? '' : CHAR_ART[this.sim.p2.char]?.title ?? '');
     // แถวเครื่องมือซ้อมกินพื้นที่ครึ่งจอบนมือถือ และตอนต่อเน็ตก็กดไม่ได้อยู่แล้ว
     document.body.classList.toggle('sc-net', net);
     if (net) document.getElementById('sc-tune')?.classList.remove('open');
