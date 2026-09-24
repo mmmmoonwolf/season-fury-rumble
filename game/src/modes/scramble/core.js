@@ -120,7 +120,7 @@ const MOVES = {
   // เล่มบน/ล่างเป็นแค่ดาเมจ เล่มกลางคือ "หมุด" — หยุดตรงจุดที่ปะทะแล้วค้างไว้ให้วาร์ปตาม
   // โดนตัว = วาร์ปไปติดตัวเขาเลย · พลาด = ได้ระยะเข้าหาแทน ใช้ได้ทั้งสองทาง
   curse1: { label: 'Stone Curse', kind: 'ground', startup: 7, active: 1, recovery: 16, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, warpFollow: 'curse2',
     shots: [{ vy: -3.4 }, { vy: 0, anchor: true }, { vy: 3.4 }], shotAt: 7, shotDmg: 3, shotStun: 18 },
   // กดซ้ำ: หายตัวไปโผล่ที่หมุดพร้อมฟันสวน — ไม่มีแรงถีบขึ้น จะได้ต่อคอมโบจิ้มได้ทันที
   curse2: { label: 'Stone Curse', kind: 'ground', startup: 5, active: 4, recovery: 14, dmg: 6,
@@ -236,6 +236,102 @@ const HELIOS_MOVES = {
 const HELIOS_SKILLS = ['rush1', 'knee', 'hh1'];
 const HELIOS_SKILL_CD = [120, 200, 0];
 
+/* ================== ALECTO — สายคุมพื้นที่ ==================
+ *
+ * ท่าตีปกติเป็นแส้: ระยะไกลที่สุดในเกม แลกกับออกช้าที่สุดและดาเมจต่อครั้งต่ำสุด
+ * ฟาดโดนสะสม "ตรารอยแส้" ที่ตัวคนโดน ยิ่งมีตรายิ่งเจ็บและยิ่งเดินช้า (ดู docs/ALECTO_KIT.md)
+ */
+
+// ตรารอยแส้ — อยู่ที่ตัวคนโดน ไม่ใช่ตัวเธอ (เล่นหลายคนทีหลังจะได้แยกรายเป้าหมายเอง)
+const LASH_MAX = 5;          // เพดานชั้น
+const LASH_DELAY = 90;       // ไม่โดนแส้ครบกี่เฟรมถึงเริ่มสลาย (1.5 วินาที)
+const LASH_EVERY = 30;       // สลายชั้นละกี่เฟรมหลังจากนั้น
+const LASH_DMG = 0.08;       // ดาเมจแส้ +8% ต่อชั้น
+const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% ต่อชั้น
+// เพดานเพิ่ม x1.40 ต้องเล็กกว่าเพดานลดดาเมจตามความยาวคอมโบ x0.50 เสมอ
+// ไม่งั้นคอมโบยิ่งยาวยิ่งแรง = เปิดช่องคอมโบวนไม่รู้จบที่ระบบลดดาเมจกันไว้ตั้งแต่ต้น
+
+// กองไฟจากมอลอตอฟ
+const FIRE_LIFE = 240;       // อยู่บนพื้นกี่เฟรม (4 วินาที)
+const FIRE_HALF = 62;        // ครึ่งความกว้างของกอง
+const FIRE_TICK = 24;        // กินเลือดทุกกี่เฟรม
+const FIRE_DMG = 2;
+
+const ALECTO_MOVES = {
+  // ---- ท่าตีปกติ: แส้ ----
+  // ระยะ (hb.w) ยาวกว่าของ Nyx/Helios ราวเท่าตัว แลกกับ startup ที่ช้ากว่าทุกตัวในเกม
+  jab1: { label: 'Lash', kind: 'ground', startup: 7, active: 3, recovery: 13, dmg: 3,
+    hb: { x: 10, y: -104, w: 118, h: 30 }, kb: [2, 0], stun: 17, chain: 'jab2', lash: true },
+  jab2: { label: 'Cross Lash', kind: 'ground', startup: 7, active: 3, recovery: 14, dmg: 3,
+    hb: { x: 10, y: -98, w: 126, h: 40 }, kb: [2.5, 0], stun: 18, chain: 'jab3', lash: true },
+  // ไม้จบผลักออกไกล = คืนระยะให้ตัวเอง เป็นท่าไล่คนที่เข้ามาแนบด้วย
+  // kb แนวตั้งต้องเป็น 0 ไม่งั้นคนโดนลอยแล้วล้ม ซึ่งมีอมตะติดมา คอมโบขาดทันที
+  jab3: { label: 'Whip Crack', kind: 'ground', startup: 9, active: 4, recovery: 22, dmg: 7,
+    hb: { x: 12, y: -100, w: 140, h: 36 }, kb: [14, 0], stun: 26, lash: true },
+  // ลากเข้ามา: kb แกน x ติดลบ = ดึงเข้าหาตัวเธอ ตัวเปิดคอมโบจากระยะที่คนอื่นเอื้อมไม่ถึง
+  side: { label: 'Rope Pull', kind: 'ground', startup: 11, active: 5, recovery: 24, dmg: 4,
+    hb: { x: 20, y: -96, w: 172, h: 30 }, kb: [-9, 0], stun: 30, lash: true },
+  up: { label: 'Sky Crack', kind: 'ground', startup: 9, active: 6, recovery: 20, dmg: 5,
+    hb: { x: -10, y: -182, w: 100, h: 132 }, kb: [1.5, -16], stun: 36, jumpCancel: true, lash: true },
+  down: { label: 'Ground Lash', kind: 'ground', crouch: true, startup: 8, active: 4, recovery: 18, dmg: 4,
+    hb: { x: 6, y: -34, w: 132, h: 30 }, kb: [3, -10], stun: 28, lash: true },
+  nair: { label: 'Air Coil', kind: 'air', startup: 6, active: 9, recovery: 12, dmg: 4,
+    hb: { x: -60, y: -138, w: 132, h: 132 }, kb: [3, -7], stun: 24, jumpCancel: true, lash: true },
+  sair: { label: 'Dive Lash', kind: 'air', startup: 8, active: 9, recovery: 15, dmg: 5,
+    hb: { x: 10, y: -88, w: 142, h: 32 }, kb: [9, -5], stun: 28,
+    imp: { f: 7, vx: 10, vy: -1 }, floaty: true, lash: true },
+  dair: { label: 'Down Lash', kind: 'air', startup: 9, active: 8, recovery: 16, dmg: 5,
+    hb: { x: -20, y: -44, w: 112, h: 84 }, kb: [4, -4], stun: 26, lash: true },
+
+  // ---- สกิล 1 Six Shooter: ยิงลูกโม่ กดรัวได้ 3 นัด (ปุ่ม 1) ----
+  // ใช้ระบบกระสุนเดิมของ Stone Curse รวมถึงรายชื่อเป้าที่โดนแล้วต่อหนึ่งชุด
+  // ไม่มี anchor = ไม่มีหมุดวาร์ป (ของ Nyx) กระสุนเป็นดาเมจล้วน
+  shot1: { label: 'Six Shooter', kind: 'ground', startup: 8, active: 1, recovery: 14, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: 0 }], shotAt: 8, shotDmg: 3, shotStun: 16, mashChain: 'shot2', mashMax: 2 },
+  shot2: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 1, recovery: 12, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 16, mashChain: 'shot3' },
+  shot3: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 1, recovery: 20, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 4, shotStun: 18 },
+
+  // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ เหลือกองไฟบนพื้น (ปุ่ม 2) ----
+  fire1: { label: 'Firewater', kind: 'ground', startup: 10, active: 0, recovery: 8, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'fire2' },
+  // ขว้างแล้วเกิดกองไฟข้างหน้า — วิถีขวดเป็นแค่เอฟเฟค ตำแหน่งกองไฟคงที่เพื่อให้สองเครื่องตรงกัน
+  fire2: { label: 'Firewater', kind: 'ground', startup: 8, active: 0, recovery: 22, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    firePool: { at: 8, dx: 200 } },
+
+  // ---- สกิล 3 Last Call (อัลติ): ทอมมี่กันกราด กดรัวต่อรอบได้ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  // ดาเมจขึ้นกับตราที่เป้ามีอยู่ (lashDmg) — สะสมด้วยแส้ แล้วมาขึ้นเงินที่ตรงนี้
+  hail1: { label: 'Last Call', kind: 'ground', startup: 7, active: 3, recovery: 3, dmg: 2,
+    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 20,
+    autoChain: 'hail2', lashDmg: true, mashMax: 5 },
+  hail2: { label: 'Last Call', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 2,
+    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 20, autoChain: 'hail3', lashDmg: true },
+  hail3: { label: 'Last Call', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 2,
+    hb: { x: 10, y: -82, w: 186, h: 34 }, kb: [0.8, 0], stun: 20,
+    mashChain: 'hail2', autoChain: 'hailEnd', lashDmg: true },
+  hailEnd: { label: 'Last Call', kind: 'ground', startup: 7, active: 5, recovery: 26, dmg: 7,
+    hb: { x: 12, y: -106, w: 198, h: 46 }, kb: [16, -6], stun: 40, lashDmg: true },
+
+  // ---- ท่าถอย: กดทิศถอยค้างไว้ตอนกดสกิล 1/2 จะถอยก่อนแล้วค่อยใช้อาวุธ ----
+  // ตั้งใจไม่ใส่ iframes — ต้องสวนได้ ไม่งั้นกลายเป็นวาร์ปของ Nyx ที่ไม่มีคูลดาวน์
+  hop: { label: 'Backstep', kind: 'ground', startup: 4, active: 0, recovery: 8, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    imp: { f: 2, vx: -13 }, glide: true, autoChain: 'shot1' },
+  roll: { label: 'Roll Back', kind: 'ground', startup: 4, active: 0, recovery: 10, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    imp: { f: 2, vx: -15 }, glide: true, autoChain: 'fire2' },
+};
+
+const ALECTO_SKILLS = ['shot1', 'fire1', 'hail1'];
+const ALECTO_SKILL_CD = [110, 200, 0];
+// กดทิศถอยค้าง -> เริ่มด้วยท่าถอยแทน แล้ว autoChain เข้าสกิลเอง
+const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
+
 /**
  * ทะเบียนตัวละคร (ฝั่ง sim) — ตารางท่า/สกิล/คูลดาวน์ แยกต่อตัว
  *
@@ -247,6 +343,8 @@ const HELIOS_SKILL_CD = [120, 200, 0];
 const CHARACTERS = {
   nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
   helios: { id: 'helios', label: 'HELIOS', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
+  alecto: { id: 'alecto', label: 'ALECTO', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
+    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -272,12 +370,14 @@ class Fighter {
   get moves() { return CHARACTERS[this.char].moves; }
   get skills() { return CHARACTERS[this.char].skills; }
   get skillCd() { return CHARACTERS[this.char].skillCd; }
+  get backstep() { return CHARACTERS[this.char].backstep ?? null; }
   reset() {
     Object.assign(this, {
       x: this.spawnX, y: STAGE.groundY, vx: 0, vy: 0, facing: this.spawnFacing,
       onGround: true, state: 'idle', stateF: 0, jumpsLeft: 1, coyote: 0, dropT: 0,
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
+      lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
       lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
@@ -330,8 +430,9 @@ class Game {
     this.meter = []; this.meterIdle = 0;
     this.lastMoveInfo = null;
     this.shots = [];
+    this.fires = [];
   }
-  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; }
+  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; this.fires = []; }
 
   /**
    * เดินหนึ่งเฟรม — รับอินพุตสองฝั่ง
@@ -354,7 +455,8 @@ class Game {
       for (const k of Object.keys(f.buf)) if (f.buf[k] > 0) f.buf[k]--;
     }
 
-    if (p.hitstop <= 0 && d.hitstop <= 0) this.updateShots();
+    if (p.hitstop <= 0 && d.hitstop <= 0) { this.updateShots(); this.updateFires(); }
+    this.decayLash(p); this.decayLash(d);
     this.resolveHit(p, d);
     this.resolveHit(d, p);
     this.pushApart(p, d);
@@ -523,6 +625,45 @@ class Game {
     this.shots = this.shots.filter((s) => !s.dead);
   }
 
+  /** ตราสลายเองเมื่อไม่โดนแส้ซ้ำนานพอ — เป็นเหตุผลที่ถอยออกไปตั้งหลักได้ผล */
+  decayLash(f) {
+    if (f.lash <= 0) return;
+    const idle = this.frame - f.lashF;
+    if (idle >= LASH_DELAY && (idle - LASH_DELAY) % LASH_EVERY === 0) f.lash--;
+  }
+
+  /** ตัวคูณดาเมจจากตราที่เป้ามีอยู่ — เพดาน x1.40 เล็กกว่าเพดานลดคอมโบ x0.50 เสมอ */
+  lashMul(d) { return 1 + LASH_DMG * d.lash; }
+
+  addLash(d) {
+    d.lash = Math.min(LASH_MAX, d.lash + 1);
+    d.lashF = this.frame;
+    this.events.push({ type: 'lash', x: d.x, y: d.y - 110, n: d.lash });
+  }
+
+  /** กองไฟบนพื้น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน */
+  spawnFire(f, spec) {
+    const x = Math.max(STAGE.wallL + FIRE_HALF, Math.min(STAGE.wallR - FIRE_HALF, f.x + f.facing * spec.dx));
+    this.fires.push({ x, owner: f.id, life: FIRE_LIFE, t: 0 });
+    this.events.push({ type: 'firepool', x, y: STAGE.groundY });
+  }
+
+  updateFires() {
+    for (const fire of this.fires) {
+      fire.life--; fire.t++;
+      if (fire.t % FIRE_TICK) continue;
+      const d = fire.owner === 'p1' ? this.p2 : this.p1;
+      if (d.invuln > 0 || !d.onGround) continue;
+      if (Math.abs(d.x - fire.x) > FIRE_HALF) continue;
+      const dmg = Math.max(1, Math.round(FIRE_DMG * Math.max(0.5, 1 - 0.08 * d.comboHits)));
+      d.hp = Math.max(0, d.hp - dmg);
+      d.lastHitF = this.frame;
+      this.gainKi(d, dmg * 0.6);
+      this.events.push({ type: 'burn', x: d.x, y: d.y - 60, dmg });
+    }
+    this.fires = this.fires.filter((fi) => fi.life > 0);
+  }
+
   hitByShot(sh, d) {
     const a = sh.owner === 'p1' ? this.p1 : this.p2;
     const facingAttacker = Math.sign(a.x - d.x) === d.facing || a.x === d.x;
@@ -577,12 +718,19 @@ class Game {
 
   startSkill(f, i, dir) {
     // เทงงุกดซ้ำตอนมีดกลางยังค้างอยู่ = วาร์ปตามไป ไม่ใช่ขว้างชุดใหม่ (ไม่กินคูลดาวน์เพิ่ม)
-    const follow = f.skills[i] && f.moves[f.skills[i]].shots && this.anchorOf(f) ? 'curse2' : null;
+    // ท่าที่ตามหมุดไปเป็นของตัวละครนั้น ไม่ใช่ชื่อตายตัว — Alecto ก็ใช้ระบบกระสุนแต่ไม่มีหมุด
+    const sk = f.skills[i] && f.moves[f.skills[i]];
+    const follow = sk && sk.shots && sk.warpFollow && this.anchorOf(f) ? sk.warpFollow : null;
     if (follow) { this.startMove(f, follow, dir || f.facing); return; }
     if (i === 2) { f.ki = 0; this.events.push({ type: 'ult', x: f.x, y: f.y - 60 }); }
     else f.cd[i] = f.skillCd[i];
     // โควต้า "กดรัวเพื่อต่อรอบ" เป็นของการกดสกิลหนึ่งครั้ง ตั้งตอนเริ่มชุด ไม่ใช่ตอนถึงท่าที่วน
     f.mashLeft = f.moves[f.skills[i]].mashMax ?? 0;
+    // กดทิศตรงข้ามกับที่หันอยู่ค้างไว้ = ถอยก่อนแล้วค่อยใช้อาวุธ (ท่าถอย autoChain เข้าสกิลเอง)
+    // อ่านจาก f.inp ของเฟรมนั้น ไม่ใช่ปุ่มที่ค้างตอนวาด — สองเครื่องต้องอ่านค่าเดียวกัน
+    const back = f.backstep && f.backstep[f.skills[i]];
+    const held = f.inp ? (f.inp.right ? 1 : 0) - (f.inp.left ? 1 : 0) : 0;
+    if (back && held === -f.facing) { this.startMove(f, back, f.facing); return; }
     this.startMove(f, f.skills[i], dir || f.facing);
   }
 
@@ -680,7 +828,9 @@ class Game {
       if (inp.down) { f.setState('crouch'); f.vx *= PHYS.stopFric; return; }
       if (dir !== 0) {
         f.facing = dir;
-        const target = dir * (running ? PHYS.run : PHYS.walk);
+        // ตรารอยแส้ทำให้คนโดนเดินช้าลง — เป็นตัวที่ทำให้ "หนีจากเธอไม่ออก" เป็นจริงเชิงกลไก
+        const slow = Math.max(0.4, 1 - LASH_SLOW * f.lash);
+        const target = dir * (running ? PHYS.run : PHYS.walk) * slow;
         f.vx += Math.sign(target - f.vx) * Math.min(PHYS.groundAccel * (running ? PHYS.runAccelMul : 1), Math.abs(target - f.vx));
         f.setState(running ? 'run' : 'walk');
       } else { f.vx *= PHYS.stopFric; if (Math.abs(f.vx) < 0.2) f.vx = 0; f.setState('idle'); }
@@ -812,6 +962,7 @@ class Game {
       f.moveF++;
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
+      if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
         // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
@@ -854,8 +1005,11 @@ class Game {
       return;
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
-    const dmg = Math.max(1, Math.round(m.dmg * scale));
+    // ท่าที่ติดธง lashDmg แรงขึ้นตามตราที่เป้ามีอยู่ (ท่าแส้ทุกท่า + อัลติของ Alecto)
+    const lash = (m.lash || m.lashDmg) ? this.lashMul(d) : 1;
+    const dmg = Math.max(1, Math.round(m.dmg * scale * lash));
     d.hp = Math.max(0, d.hp - dmg);
+    if (m.lash) this.addLash(d);
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');

@@ -1,0 +1,136 @@
+// ทดสอบกลไกเฉพาะตัวของ Alecto — ตรารอยแส้ กองไฟ และท่าถอย
+// รัน: node tools/tests/alecto.test.mjs   (จากโฟลเดอร์ game)
+const G = new URL("../../src/modes/scramble", import.meta.url).href;
+const { Game, PHYS } = await import(G + "/core.js");
+
+const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
+const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
+const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
+const mk = (gap = 100) => {
+  const g = new Game(); g.p1.char = "alecto"; g.p2.char = "helios";
+  g.resetPositions(); g.p1.x = g.p2.x - gap; return g;
+};
+const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp()); };
+
+// ── ตรารอยแส้สะสมแล้วสลายเอง ──
+{
+  const g = mk(); jabs(g, 110);
+  ok(g.p2.lash > 0, `ฟาดแส้โดนแล้วได้ตรา (${g.p2.lash} ชั้น)`);
+  ok(g.p1.lash === 0, "ตราอยู่ที่คนโดน ไม่ใช่คนฟาด");
+  const peak = g.p2.lash;
+  for (let i = 0; i < 400; i++) g.step(inp(), inp());
+  ok(g.p2.lash === 0, `ปล่อยไว้แล้วตราสลายหมด (${peak} -> 0)`);
+}
+
+// ── เพดานตรา และเพดานดาเมจต้องไม่ชนะการลดดาเมจตามคอมโบ ──
+//
+// ถ้าฝั่งเพิ่มชนะฝั่งลดเมื่อไหร่ = คอมโบยิ่งยาวยิ่งแรง ซึ่งเปิดช่องคอมโบวนไม่รู้จบ
+// ที่ระบบลดดาเมจมีไว้กันตั้งแต่ต้น เป็นเงื่อนไขที่ห้ามหลุดไม่ว่าจะปรับตัวเลขยังไง
+{
+  const g = mk();
+  g.p2.lash = 99; g.p2.lashF = 1e9;
+  ok(g.p2.lash === 99, "ตั้งค่าทดสอบได้");
+  const mul = g.lashMul({ lash: 5 });
+  const comboFloor = 0.5;
+  ok(mul * comboFloor < 1, `เพดานเพิ่ม x${mul.toFixed(2)} คูณเพดานลด x${comboFloor} = ${(mul*comboFloor).toFixed(2)} ซึ่งยังต่ำกว่า 1`);
+}
+
+// ── ตราทำให้คนโดนเดินช้าลงจริง ──
+{
+  const dist = (l) => {
+    const g = mk(300); g.p2.lash = l; g.p2.lashF = 1e9;
+    const x0 = g.p2.x;
+    for (let i = 0; i < 60; i++) g.step(inp(), inp({ left: 1 }));
+    return Math.round(x0 - g.p2.x);
+  };
+  const d0 = dist(0), d5 = dist(5);
+  ok(d5 < d0, `ตราเต็มแล้วเดินได้สั้นลง (${d0} -> ${d5} px)`);
+  ok(d5 > d0 * 0.5, "แต่ไม่ถึงกับเดินไม่ได้ — ยังมีทางถอยหนีเพื่อให้ตราสลาย");
+}
+
+// ── กองไฟ: เกิดจริง กินเลือดจริง แล้วหมดอายุเอง ──
+{
+  const g = mk(); g.p2.x = g.p1.x + 200;
+  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : {}), inp());
+  ok(g.fires.length === 1, "ขว้างมอลอตอฟแล้วเกิดกองไฟหนึ่งกอง");
+  const hp0 = g.p2.hp;
+  for (let i = 0; i < 120; i++) g.step(inp(), inp());
+  ok(g.p2.hp < hp0, `ยืนในกองไฟแล้วเสียเลือด (${hp0} -> ${g.p2.hp})`);
+  for (let i = 0; i < 300; i++) g.step(inp(), inp());
+  ok(g.fires.length === 0, "กองไฟหมดอายุเองแล้วหายไป");
+}
+
+// ── กองไฟต้องเดินด้วยเลขเฟรมล้วน ไม่งั้นเล่นข้ามเครื่องแล้วภาพหลุดกัน ──
+{
+  const play = () => {
+    const g = mk(); g.p2.x = g.p1.x + 200;
+    for (let i = 0; i < 200; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : {}), inp());
+    return [g.p2.hp, g.fires.length, g.fires[0]?.life ?? -1, Math.round(g.fires[0]?.x ?? -1)].join("|");
+  };
+  ok(play() === play(), "เดินสองรอบด้วยอินพุตเดียวกันได้ผลเท่ากันเป๊ะ");
+}
+
+// ── กองไฟต้องถูกล้างตอนรีเซ็ต ไม่งั้นค้างข้ามแมตช์แล้วสองเครื่องเริ่มไม่เหมือนกัน ──
+{
+  const g = mk();
+  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : {}), inp());
+  ok(g.fires.length > 0, "มีกองไฟอยู่ก่อนรีเซ็ต");
+  g.resetPositions();
+  ok(g.fires.length === 0, "รีเซ็ตแล้วกองไฟถูกล้าง");
+  ok(g.p1.lash === 0 && g.p2.lash === 0, "รีเซ็ตแล้วตราถูกล้างด้วย");
+}
+
+// ── ท่าถอย: กดทิศถอยค้างตอนกดสกิลแล้วต้องถอยก่อน แล้วต่อเข้าสกิลเอง ──
+{
+  const seen = [];
+  const g = mk(140);
+  for (let i = 0; i < 60; i++) {
+    g.step(i === 0 ? inp({ left:1, skill1:1, p:{ skill1:1 } }) : inp({ left:1 }), inp());
+    if (g.p1.moveId && seen[seen.length-1] !== g.p1.moveId) seen.push(g.p1.moveId);
+  }
+  ok(seen[0] === "hop", `กดถอยค้าง -> ออกท่าถอยก่อน (ได้ ${seen[0]})`);
+  ok(seen.includes("shot1"), "แล้วต่อเข้าสกิลเอง");
+
+  const plain = [];
+  const g2 = mk(140);
+  for (let i = 0; i < 60; i++) {
+    g2.step(i === 0 ? inp({ skill1:1, p:{ skill1:1 } }) : inp(), inp());
+    if (g2.p1.moveId && plain[plain.length-1] !== g2.p1.moveId) plain.push(g2.p1.moveId);
+  }
+  ok(plain[0] === "shot1", "ไม่กดทิศ -> ยิงเลย ไม่ถอย (ต่อคอมโบจากแส้ได้)");
+
+  // อัลติต้องปักหลักเสมอ ถอยไม่ได้ ไม่งั้นเธอไม่ต้องรับผิดชอบอะไรทั้งเกม
+  const ult = [];
+  const g3 = mk(140); g3.p1.ki = 100;
+  for (let i = 0; i < 40; i++) {
+    g3.step(i === 0 ? inp({ left:1, skill3:1, p:{ skill3:1 } }) : inp({ left:1 }), inp());
+    if (g3.p1.moveId && ult[ult.length-1] !== g3.p1.moveId) ult.push(g3.p1.moveId);
+  }
+  ok(ult[0] === "hail1", `อัลติกดถอยค้างก็ยังปักหลัก (ได้ ${ult[0]})`);
+}
+
+// ── ท่าลากต้องดึงคู่ต่อสู้เข้ามา ไม่ใช่ผลักออก ──
+{
+  const g = mk(170);
+  const gap0 = g.p2.x - g.p1.x;
+  for (let i = 0; i < 50; i++) g.step(i === 0 ? inp({ right:1, attack:1, p:{ attack:1, right:1 } }) : inp(), inp());
+  ok(g.p2.x - g.p1.x < gap0, `Rope Pull ลากเข้ามาจริง (${Math.round(gap0)} -> ${Math.round(g.p2.x - g.p1.x)} px)`);
+}
+
+// ── ท่าแส้ทุกท่าที่อยู่กลางคอมโบต้องไม่ถีบขึ้น ──
+// ถีบขึ้นเมื่อไหร่คนโดนกลายเป็นล้ม ซึ่งมีอมตะติดมา คอมโบขาดทันที (เคยพลาดมาแล้วสามรอบ)
+{
+  const g = mk();
+  const M = g.p1.moves;
+  const mid = ["jab1", "jab2", "jab3", "side", "hail1", "hail2", "hail3"];
+  const bad = mid.filter((k) => M[k].kb[1] !== 0);
+  ok(bad.length === 0, `ท่ากลางคอมโบไม่มีท่าไหนถีบขึ้น${bad.length ? " (เจอ " + bad.join(",") + ")" : ""}`);
+}
+
+// ── แส้ต้องยาวกว่าของสองตัวแรกจริง ไม่งั้นไม่มีเหตุผลให้ยอมรับ startup ที่ช้ากว่า ──
+{
+  const g = mk(); const A = g.p1.moves;
+  const g2 = new Game(); g2.p1.char = "helios"; const H = g2.p1.moves;
+  ok(A.jab1.hb.w > H.jab1.hb.w * 1.4, `จิ้มของ Alecto ยาวกว่า Helios มาก (${A.jab1.hb.w} vs ${H.jab1.hb.w})`);
+  ok(A.jab1.startup > H.jab1.startup, `แลกกับออกช้ากว่า (${A.jab1.startup} vs ${H.jab1.startup} เฟรม)`);
+}

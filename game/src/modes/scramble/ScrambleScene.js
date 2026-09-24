@@ -123,6 +123,21 @@ const CHAR_ART = {
       "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD",
       "knee", "hh1", "hh2", "hh3", "hhEnd"]),
   },
+  // Alecto: ท่าตีปกติเป็นแส้ จึงต้องมี runStride ของตัวเอง (ขายาวใกล้ Helios)
+  alecto: {
+    atlasKey: 'scalecto',
+    texture: 'assets/characters/scramble_alecto.png',
+    data: 'assets/characters/scramble_alecto.json',
+    runStride: 86,
+    title: 'The Fury of the Burning Trail',
+    role: 'สายคุมพื้นที่',
+    tip: 'แส้ยาวที่สุดในเกม ฟาดซ้ำแล้วเจ็บขึ้นและทำให้คู่ต่อสู้เดินช้าลง',
+    anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
+      block: 1, blockstun: 1, blockcrouch: 1 },
+    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "shot1", "shot2", "shot3", "fire1", "fire2",
+      "hail1", "hail2", "hail3", "hailEnd", "hop", "roll"]),
+  },
 };
 
 const C = {
@@ -610,6 +625,9 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'vanish') { this.spark(e.x, e.y - 60, 18, 0x2a2333); this.cameras.main.shake(60, 0.003); }
       if (e.type === 'appear') this.spark(e.x, e.y - 60, 14, 0xb9312f);
       if (e.type === 'throw') this.spark(e.x, e.y, 7, 0xc9a227);
+      if (e.type === 'lash') this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97');
+      if (e.type === 'burn') { this.spark(e.x, e.y, 8, 0xffb03a); this.popup(e.x, e.y - 20, String(e.dmg), '#ffb03a'); }
+      if (e.type === 'firepool') { this.spark(e.x, e.y - 30, 20, 0xffb03a); this.cameras.main.shake(70, 0.004); }
       if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
       if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); }
       if (e.type === 'ult') {
@@ -1062,6 +1080,25 @@ class ScrambleScene extends Phaser.Scene {
       } else {
         this.drawFighter(g, f, C.dummy, C.dummyMark, true);
       }
+    }
+
+    // กองไฟจากมอลอตอฟ — ต้องเห็นขอบเขตชัดว่าตรงไหนเข้าไม่ได้ ไม่งั้นเป็นกับดักที่มองไม่เห็น
+    // เปลวไฟใช้เลขเฟรมของ sim เป็นตัวขยับ ไม่ใช่เวลาจริง ภาพสองเครื่องจึงตรงกันด้วย
+    for (const fire of s.fires) {
+      const fade = Math.min(1, fire.life / 40);        // ใกล้หมดอายุค่อย ๆ จาง
+      const y = STAGE.groundY;
+      g.fillStyle(0xe05a57, 0.16 * fade);
+      g.fillRect(fire.x - 62, y - 54, 124, 54);
+      for (let i = 0; i < 7; i++) {
+        const px = fire.x - 54 + i * 18;
+        const h = 22 + 16 * Math.abs(Math.sin(this.sim.frame * 0.22 + i * 1.7));
+        g.fillStyle(0xffb03a, 0.75 * fade);
+        g.fillRect(px - 5, y - h, 10, h);
+        g.fillStyle(0xffe08a, 0.85 * fade);
+        g.fillRect(px - 2, y - h * 0.55, 4, h * 0.55);
+      }
+      g.fillStyle(0xc8323c, 0.5 * fade);
+      g.fillRect(fire.x - 62, y - 5, 124, 5);
     }
 
     // มีดที่ขว้างออกไป — หมุดที่ปะทะแล้วค้างอยู่วาดเป็นวงแดงกระพริบให้รู้ว่ากดวาร์ปตามได้
