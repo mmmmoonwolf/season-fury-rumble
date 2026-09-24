@@ -297,11 +297,11 @@ const ALECTO_MOVES = {
   shot1: { label: 'Six Shooter', kind: 'ground', startup: 6, active: 6, recovery: 11, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     shots: [{ vy: 0 }], shotAt: 6, shotDmg: 2, shotStun: 14,
-    stance: STANCE_FRAMES, holdChain: 'shot2' },
+    stance: STANCE_FRAMES, holdChain: 'shot2', mobile: 0.45 },
   shot2: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 6, recovery: 15, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 14,
-    holdChain: 'shot2', autoChain: 'shot3' },
+    holdChain: 'shot2', autoChain: 'shot3', mobile: 0.45 },
   shot3: { label: 'Six Shooter', kind: 'ground', startup: 4, active: 5, recovery: 17, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 18 },
@@ -318,13 +318,13 @@ const ALECTO_MOVES = {
   // ดาเมจขึ้นกับตราที่เป้ามีอยู่ (lashDmg) — สะสมด้วยแส้ แล้วมาขึ้นเงินที่ตรงนี้
   hail1: { label: 'Last Call', kind: 'ground', startup: 7, active: 3, recovery: 3, dmg: 1,
     hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 16,
-    stance: ULT_STANCE_FRAMES, autoChain: 'hail2', lashDmg: true },
+    stance: ULT_STANCE_FRAMES, autoChain: 'hail2', lashDmg: true, mobile: 0.35 },
   hail2: { label: 'Last Call', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 1,
     hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 16,
-    holdChain: 'hail3', autoChain: 'hailEnd', lashDmg: true },
+    holdChain: 'hail3', autoChain: 'hailEnd', lashDmg: true, mobile: 0.35 },
   hail3: { label: 'Last Call', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 1,
     hb: { x: 10, y: -82, w: 186, h: 34 }, kb: [0.8, 0], stun: 16,
-    holdChain: 'hail2', autoChain: 'hailEnd', lashDmg: true },
+    holdChain: 'hail2', autoChain: 'hailEnd', lashDmg: true, mobile: 0.35 },
   hailEnd: { label: 'Last Call', kind: 'ground', startup: 7, active: 5, recovery: 26, dmg: 7,
     hb: { x: 12, y: -106, w: 198, h: 46 }, kb: [16, -6], stun: 40, lashDmg: true },
 
@@ -783,6 +783,16 @@ class Game {
     if (f.state === 'attack') {
       const m = f.move;
       const afterActive = f.moveF >= m.startup + m.active;
+      // ท่าที่ติดธง mobile: ย่องไปมาได้ระหว่างอยู่ในท่า (ช้ากว่าวิ่งปกติมาก)
+      // ท่าตั้งป้อมยืนยิงของ Alecto ใช้อันนี้ — ปักหลักนิ่งสนิท 3-5 วินาทีแล้วขาตาย
+      // หันเข้าหาคู่ต่อสู้ให้เองด้วย ถอยหลังจึงยังยิงใส่เขาอยู่ ไม่ใช่หันหลังยิงทิ้ง
+      if (m.mobile && f.onGround) {
+        this.faceFoe(f);
+        if (dir !== 0) {
+          const target = dir * PHYS.run * m.mobile;
+          f.vx += Math.sign(target - f.vx) * Math.min(PHYS.groundAccel, Math.abs(target - f.vx));
+        }
+      }
       if (f.hitConfirmed && m.jumpCancel && this.buffered(f, 'jump') && (f.onGround || f.jumpsLeft > 0)) {
         this.consume(f, 'jump'); f.used.clear(); this.doJump(f, inp); return;
       }
@@ -897,7 +907,9 @@ class Game {
       // ท่าที่มี glide: คงความเร็วไว้ตลอดหน้าต่างโจมตี = พุ่งด้วยความเร็วคงที่จนจบช่วงพุ่ง
       // ถ้าปล่อยให้แรงเสียดทานกิน แรงถีบครั้งเดียวจะพุ่งได้แค่ ~1/2 ของระยะที่ออกแบบไว้
       const gliding = m.glide && f.moveF >= m.startup && f.moveF < m.startup + m.active;
-      if (!gliding) f.vx *= 0.82;
+      // ท่าที่ขยับได้ใช้แรงเสียดทานแบบเดินปกติ ไม่ใช่ 0.82 ที่ตั้งไว้ให้ท่าโจมตีหยุดนิ่ง
+      if (m.mobile) f.vx *= (f.inp && (f.inp.left || f.inp.right)) ? 0.98 : PHYS.stopFric;
+      else if (!gliding) f.vx *= 0.82;
     }
     else if (f.state === 'hitstun' || f.state === 'knockdown' || f.state === 'blockstun') f.vx *= 0.85;
 

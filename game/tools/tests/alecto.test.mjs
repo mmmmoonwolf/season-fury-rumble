@@ -193,3 +193,37 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   }
   ok(seen[0] === "hop" && seen.includes("shot2"), "ถอยก่อนแล้วยังตั้งป้อมยิงต่อได้");
 }
+
+// ── ขยับได้ระหว่างยืนยิง ──
+//
+// เวอร์ชันแรกปักหลักนิ่งสนิท เล่นจริงแล้วขาตายทั้งสกิล 1 และอัลติ
+// ตอนนี้ย่องได้ช้า ๆ แลกกับดาเมจที่หายไปเพราะถอยออกจากระยะเอง
+{
+  const back = (key, ki, n) => {
+    const g = mk(200); g.p1.ki = ki; const x0 = g.p1.x;
+    for (let i = 0; i < n; i++) g.step(inp(i === 0 ? { [key]:1, p:{ [key]:1 } } : { left:1 }), inp());
+    return { moved: Math.round(x0 - g.p1.x), still: g.p1.state === "attack" };
+  };
+  const shot = back("skill1", 0, 200);
+  ok(shot.moved > 200, `ยิงลูกโม่ไปถอยไปได้ ${shot.moved} px`);
+  ok(shot.still, "ถอยแล้วยังอยู่ในท่ายิง ไม่หลุด");
+  const ult = back("skill3", 100, 320);
+  ok(ult.moved > 200, `อัลติก็ถอยได้ ${ult.moved} px`);
+
+  // ช้ากว่าวิ่งปกติชัดเจน ไม่งั้นกลายเป็นวิ่งยิงฟรี
+  const speed = (key, ki, n) => {
+    const g = mk(400); g.p1.ki = ki; const x0 = g.p1.x;
+    for (let i = 0; i < n; i++) g.step(inp(i === 0 && key ? { [key]:1, p:{ [key]:1 } } : { left:1 }), inp());
+    return (x0 - g.p1.x) / n * 60;
+  };
+  const plain = speed(null, 0, 60), firing = speed("skill1", 0, 120);
+  ok(firing < plain * 0.6, `ย่องตอนยิงช้ากว่าวิ่งปกติมาก (${firing.toFixed(0)} เทียบ ${plain.toFixed(0)} px/วินาที)`);
+
+  // ถอยหนีแล้วต้องยังหันหน้าใส่คู่ต่อสู้ ไม่ใช่หันหลังยิงทิ้ง
+  const g = mk(160);
+  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : { left:1 }), inp());
+  ok(g.p1.facing > 0, "ถอยซ้ายอยู่แต่ยังหันหน้าไปทางคู่ต่อสู้");
+  g.p2.x = g.p1.x - 200;
+  for (let i = 0; i < 10; i++) g.step(inp(), inp());
+  ok(g.p1.facing < 0, "คู่ต่อสู้ข้ามไปอีกฝั่งแล้วหันตามทัน");
+}
