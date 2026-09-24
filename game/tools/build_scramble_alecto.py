@@ -65,11 +65,15 @@ SEQ = {
     "shot2": ("E", [2, 3, 2], GROUND),
     "shot3": ("E", [2, 3, 6], GROUND),         # นัดท้ายแล้วเก็บปืน
 
-    # ---- โหมดไรเฟิล (ครึ่งหลังของสกิล 2) — ใช้ท่าปืนยาวของชีต G ที่มีอยู่แล้ว
-    # ไม่ต้องเจนอาร์ตใหม่เลย ขาดแค่ท่าเดินถือไรเฟิลซึ่งยังรออยู่
-    "rifle1":   ("G", [1, 2, 3], GROUND),
-    "rifle2":   ("G", [2, 3, 2], GROUND),
-    "rifleEnd": ("G", [5, 6, 6], GROUND),
+    # ---- โหมดไรเฟิล (ครึ่งหลังของสกิล 2) — ชีต J เป็นท่าปืนยาวโดยเฉพาะ
+    "rifle1":   ("J", [1, 2, 3], GROUND),
+    "rifle2":   ("J", [4, 2, 3], GROUND),
+    "rifleEnd": ("J", [5, 3, 6], GROUND),   # เงื้อ -> ยิง -> แตะปีกหมวก
+
+    # ---- ท่าเดินถือปืน: ใช้ตอนอยู่ในโหมดไรเฟิลแล้วเดินจริง ----
+    # ถ้าไม่มีอันนี้ เธอจะไถไปกับพื้นเพราะเฟรมท่ายิงเป็นท่ายืนนิ่ง
+    # เป็นเรื่องของการวาดล้วน ๆ ไม่แตะ sim
+    "runGun": ("I", [1, 2, 3, 4], GROUND),
 
     # ---- ชีต F: มอลอตอฟ (สกิล 2) ----
     "fire1": ("F", [1, 2, 3], GROUND),         # ควักขวด -> จุดไฟ -> ยกขึ้น
@@ -122,16 +126,39 @@ SRC_SCALE = {"clip": TARGET_CHIN / clip_chin}
 CLIP_HAT = hat_sqrt(idle_rgb, idle_mask)
 print(f"คลิป: คางถึงเท้า {clip_chin} px -> สเกล {SRC_SCALE['clip']:.4f} · หมวก {CLIP_HAT:.0f}")
 
-# ---------- อ่านชีต แล้วปรับสเกลให้เท่าคลิปด้วยขนาดหมวก ----------
+# ---------- ไม้บรรทัดสำรองสำหรับชีตที่วาดด้านข้างล้วน ----------
+# หมวกใช้เป็นไม้บรรทัดได้เพราะปกติเห็นปีกหมวกเต็มใบ (มุม 3/4) แต่ท่าเดินของชีต I
+# เป็นโปรไฟล์ด้านข้างล้วน ปีกหมวกจึงหุบเหลือแถบแบน ๆ พื้นที่หายไปเกือบครึ่ง
+# ไม้บรรทัดหมวกอ่านว่า "กล้องอยู่ไกล" แล้วขยายทั้งตัวขึ้น 30% (สูง 305 px เทียบท่ายืน 234)
+#
+# ชีตแบบนั้นวัดด้วย "ความสูงทั้งตัว" แทน ซึ่งใช้ได้เพราะเทียบกับรอบวิ่งในคลิปที่เป็น
+# วงจรเดินเหมือนกัน หัวจรดเท้าจึงคงที่ทั้งรอบ (ชีต I กระจายแค่ ±0.4%)
+HEIGHT_RULER = {"I"}
+
+
+def mask_h(m):
+    ys = np.nonzero(m.any(axis=1))[0]
+    return ys.max() - ys.min() + 1
+
+
+CLIP_RUN_H = float(np.median([mask_h(clip_cell(n)[1]) for n in range(1, 11)]))
+
+# ---------- อ่านชีต แล้วปรับสเกลให้เท่าคลิป ----------
 SHEETS = {}
-for L in "ABCDEFGH":
+for L in "ABCDEFGHIJ":
     arr, poses = extract(os.path.join(REF, "alecto_sheets", f"sheet_{L}.jpg"), *LAYOUT[L])
     assert all(p is not None for p in poses), f"ชีต {L} มีช่องว่าง"
-    hs = [hat_sqrt(arr, m) for m, _ in poses]
-    med = float(np.median([h for h in hs if h > 20]))
-    SRC_SCALE[L] = SRC_SCALE["clip"] * (CLIP_HAT / med)
+    if L in HEIGHT_RULER:
+        med = float(np.median([mask_h(m) for m, _ in poses]))
+        SRC_SCALE[L] = SRC_SCALE["clip"] * (CLIP_RUN_H / med)
+        print(f"ชีต {L}: สูงมัธยฐาน {med:.0f} -> สเกล {SRC_SCALE[L]:.4f} "
+              f"({CLIP_RUN_H/med:.3f} เท่าของคลิป · วัดด้วยความสูง)")
+    else:
+        hs = [hat_sqrt(arr, m) for m, _ in poses]
+        med = float(np.median([h for h in hs if h > 20]))
+        SRC_SCALE[L] = SRC_SCALE["clip"] * (CLIP_HAT / med)
+        print(f"ชีต {L}: หมวกมัธยฐาน {med:.0f} -> สเกล {SRC_SCALE[L]:.4f} ({CLIP_HAT/med:.3f} เท่าของคลิป)")
     SHEETS[L] = (arr, poses)
-    print(f"ชีต {L}: หมวกมัธยฐาน {med:.0f} -> สเกล {SRC_SCALE[L]:.4f} ({CLIP_HAT/med:.3f} เท่าของคลิป)")
 
 
 def source(src, n):

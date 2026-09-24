@@ -331,3 +331,45 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   for (let i = 0; i < 60; i++) g.step(inp(), inp());
   ok(g.p1.veil === 0, "จางหมดเวลาแล้วกลับมาเห็นตามปกติ");
 }
+
+// ── ท่าเดินถือปืนยาว (โหมดไรเฟิลของสกิล 2) ──
+//
+// ชีตท่าเดินวาดเป็นโปรไฟล์ด้านข้างล้วน ปีกหมวกจึงหุบจนไม้บรรทัด "พื้นที่หมวก" อ่านผิด
+// รอบแรกที่ใส่เข้ามา เธอตัวใหญ่กว่าท่ายืนอยู่ 30% (สูง 305 px เทียบ 234) โดยไม่มีอะไรจับได้
+// เทสต์นี้วัดจาก atlas ที่ build ออกมาจริง ๆ ไม่ใช่จากโค้ด — ถ้าไม้บรรทัดพังอีกจะรู้ทันที
+{
+  const fs = await import("fs");
+  const atlas = JSON.parse(fs.readFileSync(
+    new URL("../../assets/characters/scramble_alecto.json", import.meta.url), "utf8"));
+  const box = (n) => atlas.frames[n + ".png"]?.spriteSourceSize;
+
+  const idle = box("idle_1");
+  const walk = [1, 2, 3, 4].map((i) => box(`runGun_${i}`));
+  ok(walk.every(Boolean), `ท่าเดินถือปืนอยู่ใน atlas ครบ 4 เฟรม (เจอ ${walk.filter(Boolean).length})`);
+
+  for (const [i, w] of walk.entries()) {
+    const r = w.h / idle.h;
+    ok(r > 0.90 && r < 1.06, `runGun_${i + 1} สูง ${(r * 100).toFixed(0)}% ของท่ายืน — สเกลตรงกับตัวเดียวกัน`);
+    // เท้าต้องแตะเส้นพื้นเดียวกับท่าอื่น ไม่งั้นเธอจะลอยหรือจมตอนสลับเข้าโหมดไรเฟิล
+    ok(Math.abs(w.y + w.h - atlas.meta.feetY) <= 2, `runGun_${i + 1} เท้าอยู่บนเส้นพื้นเดียวกับท่าอื่น`);
+  }
+}
+
+// ── กฎการวาดท่าเดินถือปืนเป็นเรื่องของฉากล้วน ไม่แตะ sim ──
+//
+// ถ้าเผลอให้ sim รู้จักท่านี้ สองเครื่องที่ตัดสินใจ "เดินหรือยืน" คนละจังหวะจะ desync
+// ฉากอ่านจาก vx กับธง mobile ของท่าที่กำลังเล่นอยู่เท่านั้น เฟรมเดต/hitbox ยังเป็นของท่ายิงเดิม
+{
+  const fs = await import("fs");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const core = fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url), "utf8");
+
+  ok(/anims\.runGun\s*&&\s*f\.moves\[f\.moveId\]\?\.mobile/.test(scene),
+    "ฉากสลับไปท่าเดินเมื่อท่านั้นติดธง mobile เท่านั้น");
+  ok(/Math\.abs\(f\.vx\)\s*>\s*GUN_WALK_VX/.test(scene), "และต้องเคลื่อนที่อยู่จริงถึงจะย่ำเท้า");
+  ok(!/runGun/.test(core), "core.js ไม่รู้จักท่าเดินถือปืนเลย");
+
+  const rifle = CHARACTERS.alecto.moves.rifle1;
+  ok(rifle.mobile > 0, `ท่ายิงไรเฟิลยังติดธง mobile (${rifle.mobile})`);
+  ok(rifle.hb && rifle.dmg > 0, "และยังมี hitbox ของตัวเองตามเดิม — ท่าเดินไม่ได้แทนที่เฟรมเดตา");
+}

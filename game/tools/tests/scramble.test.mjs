@@ -1103,8 +1103,15 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(new Set(Object.values(strides)).size > 1, "ค่าไม่เท่ากันทุกตัว (ถ้าเท่ากันหมด แปลว่ายังไม่ได้วัดจริง)");
   for (const v of Object.values(strides)) ok(v > 40 && v < 200, `runStride ${v} อยู่ในช่วงที่สมเหตุสมผล`);
 
-  // สูตรต้องอ่านจากตัวละคร ไม่ใช่ค่าคงที่กลาง
-  ok(/art\.runStride/.test(scene), "สูตรเวลาต่อรอบของท่าวิ่งอ่านจากตัวละคร");
+  // สูตรต้องอ่านจากตัวละคร ไม่ใช่ค่าคงที่กลาง (ตอนนี้ผ่านตาราง STRIDE_FIELD)
+  ok(/art\[STRIDE_FIELD\[name\]\]/.test(scene), "สูตรเวลาต่อรอบของท่าวิ่งอ่านจากตัวละคร");
+  ok(/STRIDE_FIELD\s*=\s*\{[^}]*run:\s*'runStride'/.test(scene), "ท่าวิ่งยังผูกกับ runStride");
+
+  // ท่าเดินถือปืนก็ต้องวัดระยะก้าวของตัวเอง ใช้ค่าของท่าวิ่งไม่ได้ (เดินสองก้าวต่อรอบ ไม่ใช่ก้าวเดียว)
+  const gun = scene.match(/gunStride:\s*(\d+)/);
+  ok(gun, "มี gunStride สำหรับท่าเดินถือปืน");
+  ok(+gun[1] !== strides[Object.keys(strides).length - 1] && +gun[1] > 40 && +gun[1] < 250,
+    `gunStride ${gun?.[1]} เป็นค่าที่วัดเองไม่ใช่ลอก runStride`);
 
   // ทุกท่าที่ประกาศใน anims ต้องมีเฟรมครบใน atlas ของตัวนั้น
   for (const [id, ch] of Object.entries(CHARACTERS)) {

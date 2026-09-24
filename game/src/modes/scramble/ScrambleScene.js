@@ -76,6 +76,14 @@ const SPRITE_H = 130;
 // ใช้ค่าเดียวกันทั้งคู่ = ตัวที่ก้าวสั้นกว่าจะเล่นท่าช้าไปเมื่อเทียบกับระยะที่เคลื่อนจริง เท้าไถไปกับพื้น
 const RUN_STRIDE_DEFAULT = 102;
 
+/** ท่าที่คิดเวลาต่อรอบจาก "ระยะที่เท้าเดินได้หนึ่งรอบ" ไม่ใช่เวลาตายตัว -> ชื่อฟิลด์ใน CHAR_ART
+ *  ลงทะเบียนที่ความเร็ววิ่งเต็ม แล้วตอนวาดค่อยหรี่ด้วย anims.timeScale ตามความเร็วจริง */
+const STRIDE_FIELD = { run: 'runStride', runGun: 'gunStride' };
+
+/** ต่ำกว่านี้ถือว่ายืนอยู่กับที่ ให้ค้างท่ายิง — ไม่งั้นตอนเธอชะลอจะเห็นเท้าย่ำเชื่องช้าแปลก ๆ
+ *  (ความเร็วโหมดไรเฟิลคือ PHYS.run x mobile = 2.08 px/เฟรม ค่านี้จึงราว 17% ของความเร็วเต็มโหมด) */
+const GUN_WALK_VX = 0.35;
+
 const isTouch = (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 
 // ---------- หน้าตา (ยกจาก prototype) ----------
@@ -132,8 +140,11 @@ const CHAR_ART = {
     title: 'The Fury of the Burning Trail',
     role: 'สายคุมพื้นที่',
     tip: 'แส้ยาวที่สุดในเกม ฟาดซ้ำแล้วเจ็บขึ้นและทำให้คู่ต่อสู้เดินช้าลง',
-    anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
-      block: 1, blockstun: 1, blockcrouch: 1 },
+    // ท่าเดินถือปืนยาว: รอบเดียว = สองก้าว (ชีตเป็นวงจรเดิน 4 ท่า ย่ำสลับซ้าย-ขวา)
+    // 104 = ถ่างเท้าตอนเท้าแตะพื้น 96 px บน canvas x (SPRITE_H/standing) x 2 ก้าว
+    gunStride: 104,
+    anims: { idle: 1, run: 10, runGun: 4, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1,
+      tech: 1, block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "shot1", "shot2", "shot3", "fire1", "fire2", "rifle1", "rifle2", "rifleEnd",
       "dust1", "dust2", "hop", "roll"]),
@@ -1009,8 +1020,8 @@ class ScrambleScene extends Phaser.Scene {
         // ท่าวิ่งคิดเวลาจากความเร็วจริง ไม่ใช่ตัวเลขตายตัว: หนึ่งรอบ = หนึ่งก้าว = เท้าเคลื่อน RUN_STRIDE
         // ตั้งตายตัวแล้วเท้าจะไถไปกับพื้นทันทีที่ปรับความเร็ว (ซึ่งปรับได้จากพาเนล Tune)
         frameRate:
-          n / (name === 'run'
-            ? (art.runStride ?? RUN_STRIDE_DEFAULT) / (PHYS.run * 60)
+          n / (STRIDE_FIELD[name]
+            ? (art[STRIDE_FIELD[name]] ?? RUN_STRIDE_DEFAULT) / (PHYS.run * 60)
             : ANIM_SECONDS[name]),
         // ท่าโดนตีเล่นรอบเดียวแล้วค้างเฟรมสุดท้าย — hitstun ในเอนจิ้นยาวไม่เท่ากัน (17-38 เฟรม)
         // ถ้าวนซ้ำ ตัวจะสะบัดรับแรงซ้ำ ๆ ทั้งที่โดนตีครั้งเดียว
@@ -1082,11 +1093,22 @@ class ScrambleScene extends Phaser.Scene {
     }
     const rig = this._rigFor(f);
     const sp = rig.sprite;
+    sp.anims.timeScale = 1;   // ท่าที่หรี่ความเร็วเองจะตั้งทับทีหลัง
 
-    // ท่าโจมตี: เลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ ไม่ผ่าน animation ที่เล่นตามเวลา
-    // เพราะ animation ต้องกะ fps ให้จบพอดีกับ startup+active+recovery ซึ่งคลาดเคลื่อนได้เสมอ
-    // อ่านจาก phase() แทน = เฟรม "ฟันสุดแขน" โผล่ตรงกับช่วงที่ hitbox มีผลจริงเป๊ะทุกครั้ง
     if (f.state === 'attack' && art.attacks.has(f.moveId)) {
+      // ท่าที่ติดธง mobile (โหมดไรเฟิล) เดินไปด้วยยิงไปด้วยได้ เฟรมท่ายิงเป็นท่ายืนนิ่ง
+      // ถ้าใช้เฟรมนั้นตอนเธอเคลื่อนที่จริง เท้าจะไถไปกับพื้น -> สลับไปเล่นวงจรเดินถือปืนแทน
+      // เป็นเรื่องวาดล้วน ๆ hitbox/เฟรมเดตายังเป็นของท่ายิงเหมือนเดิม sim ไม่รู้เรื่องนี้เลย
+      if (art.anims.runGun && f.moves[f.moveId]?.mobile && f.onGround && Math.abs(f.vx) > GUN_WALK_VX) {
+        this._applyCharTransform(f);
+        // ลงทะเบียนไว้ที่ความเร็ววิ่งเต็ม จึงต้องหรี่ตามความเร็วจริง ไม่งั้นย่ำเท้าเร็วกว่าที่เคลื่อนไป
+        sp.anims.timeScale = Math.abs(f.vx) / PHYS.run;
+        if (rig.lastState !== 'gunwalk') { rig.lastState = 'gunwalk'; sp.play(art.atlasKey + '/runGun'); }
+        return true;
+      }
+      // ท่าโจมตี: เลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ ไม่ผ่าน animation ที่เล่นตามเวลา
+      // เพราะ animation ต้องกะ fps ให้จบพอดีกับ startup+active+recovery ซึ่งคลาดเคลื่อนได้เสมอ
+      // อ่านจาก phase() แทน = เฟรม "ฟันสุดแขน" โผล่ตรงกับช่วงที่ hitbox มีผลจริงเป๊ะทุกครั้ง
       const i = { startup: 1, active: 2, recovery: 3 }[f.phase()] ?? 1;
       this._applyCharTransform(f);
       sp.anims.stop();
