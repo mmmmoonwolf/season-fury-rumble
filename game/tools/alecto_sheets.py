@@ -21,7 +21,7 @@ from scipy import ndimage
 
 # ชีตไหนวางกี่แถวกี่คอลัมน์
 LAYOUT = {"A": (3, 3), "B": (3, 3), "C": (3, 3), "D": (3, 3),
-          "E": (2, 3), "F": (2, 3), "G": (2, 3)}
+          "E": (2, 3), "F": (2, 3), "G": (2, 3), "H": (2, 3)}
 
 
 def extract(path, rows, cols, bg_min=2000, part_min=1500):

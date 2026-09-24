@@ -75,9 +75,9 @@ SEQ = {
     "hail3":   ("G", [3, 4, 3], GROUND),
     "hailEnd": ("G", [5, 6, 6], GROUND),       # กวาดขึ้น -> ลดปืน แตะปีกหมวก
 
-    # ---- ท่าถอยหลัง (ใช้ท่ากระโดดกับท่ากลิ้งของชีต A ไปก่อน ยังไม่เจนชีตเฉพาะ) ----
-    "hop":  ("A", [2, 3, 5], AIR),
-    "roll": ("A", [8, 8, 8], GROUND),
+    # ---- ชีต H: ท่าถอย (กระโดดถอย 3 ท่า · กลิ้งถอย 3 ท่า) ----
+    "hop":  ("H", [1, 2, 3], GROUND),
+    "roll": ("H", [4, 5, 6], GROUND),
 }
 
 # ---------- อ่านสตริปคลิป ----------
@@ -118,7 +118,7 @@ print(f"คลิป: คางถึงเท้า {clip_chin} px -> สเก
 
 # ---------- อ่านชีต แล้วปรับสเกลให้เท่าคลิปด้วยขนาดหมวก ----------
 SHEETS = {}
-for L in "ABCDEFG":
+for L in "ABCDEFGH":
     arr, poses = extract(os.path.join(REF, "alecto_sheets", f"sheet_{L}.jpg"), *LAYOUT[L])
     assert all(p is not None for p in poses), f"ชีต {L} มีช่องว่าง"
     hs = [hat_sqrt(arr, m) for m, _ in poses]

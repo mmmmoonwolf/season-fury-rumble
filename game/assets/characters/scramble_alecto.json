@@ -1544,16 +1544,16 @@
    "frame": {
     "x": 679,
     "y": 2360,
-    "w": 210,
-    "h": 232
+    "w": 209,
+    "h": 219
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 157,
-    "y": 74,
-    "w": 210,
-    "h": 232
+    "x": 166,
+    "y": 91,
+    "w": 209,
+    "h": 219
    },
    "sourceSize": {
     "w": 678,
@@ -1562,17 +1562,17 @@
   },
   "hop_2.png": {
    "frame": {
-    "x": 891,
+    "x": 890,
     "y": 2360,
-    "w": 193,
+    "w": 251,
     "h": 205
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 167,
-    "y": 88,
-    "w": 193,
+    "x": 126,
+    "y": 105,
+    "w": 251,
     "h": 205
    },
    "sourceSize": {
@@ -1582,18 +1582,18 @@
   },
   "hop_3.png": {
    "frame": {
-    "x": 1086,
+    "x": 1143,
     "y": 2360,
-    "w": 233,
-    "h": 186
+    "w": 193,
+    "h": 248
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 133,
-    "y": 97,
-    "w": 233,
-    "h": 186
+    "x": 175,
+    "y": 62,
+    "w": 193,
+    "h": 248
    },
    "sourceSize": {
     "w": 678,
@@ -1602,18 +1602,18 @@
   },
   "roll_1.png": {
    "frame": {
-    "x": 1321,
+    "x": 1338,
     "y": 2360,
-    "w": 269,
-    "h": 168
+    "w": 215,
+    "h": 196
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 114,
-    "y": 142,
-    "w": 269,
-    "h": 168
+    "x": 142,
+    "y": 114,
+    "w": 215,
+    "h": 196
    },
    "sourceSize": {
     "w": 678,
@@ -1622,18 +1622,18 @@
   },
   "roll_2.png": {
    "frame": {
-    "x": 1592,
+    "x": 1555,
     "y": 2360,
-    "w": 269,
-    "h": 168
+    "w": 190,
+    "h": 200
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 114,
-    "y": 142,
-    "w": 269,
-    "h": 168
+    "x": 165,
+    "y": 110,
+    "w": 190,
+    "h": 200
    },
    "sourceSize": {
     "w": 678,
@@ -1642,18 +1642,18 @@
   },
   "roll_3.png": {
    "frame": {
-    "x": 2,
-    "y": 2632,
-    "w": 269,
-    "h": 168
+    "x": 1747,
+    "y": 2360,
+    "w": 214,
+    "h": 201
    },
    "rotated": false,
    "trimmed": true,
    "spriteSourceSize": {
-    "x": 114,
-    "y": 142,
-    "w": 269,
-    "h": 168
+    "x": 162,
+    "y": 109,
+    "w": 214,
+    "h": 201
    },
    "sourceSize": {
     "w": 678,
@@ -1665,7 +1665,7 @@
   "image": "scramble_alecto.png",
   "size": {
    "w": 1999,
-   "h": 2802
+   "h": 2632
   },
   "scale": "1",
   "anchorX": 269,

@@ -286,23 +286,23 @@ const ALECTO_MOVES = {
   // ---- สกิล 1 Six Shooter: ยิงลูกโม่ กดรัวได้ 3 นัด (ปุ่ม 1) ----
   // ใช้ระบบกระสุนเดิมของ Stone Curse รวมถึงรายชื่อเป้าที่โดนแล้วต่อหนึ่งชุด
   // ไม่มี anchor = ไม่มีหมุดวาร์ป (ของ Nyx) กระสุนเป็นดาเมจล้วน
-  shot1: { label: 'Six Shooter', kind: 'ground', startup: 8, active: 1, recovery: 14, dmg: 0,
+  shot1: { label: 'Six Shooter', kind: 'ground', startup: 6, active: 6, recovery: 11, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 8, shotDmg: 3, shotStun: 16, mashChain: 'shot2', mashMax: 2 },
-  shot2: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 1, recovery: 12, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 6, shotDmg: 3, shotStun: 16, mashChain: 'shot2', mashMax: 2 },
+  shot2: { label: 'Six Shooter', kind: 'ground', startup: 4, active: 5, recovery: 9, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 16, mashChain: 'shot3' },
-  shot3: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 1, recovery: 20, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 16, mashChain: 'shot3' },
+  shot3: { label: 'Six Shooter', kind: 'ground', startup: 4, active: 5, recovery: 17, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 4, shotStun: 18 },
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 4, shotStun: 18 },
 
   // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ เหลือกองไฟบนพื้น (ปุ่ม 2) ----
-  fire1: { label: 'Firewater', kind: 'ground', startup: 10, active: 0, recovery: 8, dmg: 0,
+  fire1: { label: 'Firewater', kind: 'ground', startup: 7, active: 5, recovery: 6, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'fire2' },
   // ขว้างแล้วเกิดกองไฟข้างหน้า — วิถีขวดเป็นแค่เอฟเฟค ตำแหน่งกองไฟคงที่เพื่อให้สองเครื่องตรงกัน
-  fire2: { label: 'Firewater', kind: 'ground', startup: 8, active: 0, recovery: 22, dmg: 0,
+  fire2: { label: 'Firewater', kind: 'ground', startup: 6, active: 6, recovery: 18, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    firePool: { at: 8, dx: 200 } },
+    firePool: { at: 7, dx: 200 } },
 
   // ---- สกิล 3 Last Call (อัลติ): ทอมมี่กันกราด กดรัวต่อรอบได้ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
   // ดาเมจขึ้นกับตราที่เป้ามีอยู่ (lashDmg) — สะสมด้วยแส้ แล้วมาขึ้นเงินที่ตรงนี้
@@ -319,10 +319,10 @@ const ALECTO_MOVES = {
 
   // ---- ท่าถอย: กดทิศถอยค้างไว้ตอนกดสกิล 1/2 จะถอยก่อนแล้วค่อยใช้อาวุธ ----
   // ตั้งใจไม่ใส่ iframes — ต้องสวนได้ ไม่งั้นกลายเป็นวาร์ปของ Nyx ที่ไม่มีคูลดาวน์
-  hop: { label: 'Backstep', kind: 'ground', startup: 4, active: 0, recovery: 8, dmg: 0,
+  hop: { label: 'Backstep', kind: 'ground', startup: 3, active: 5, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     imp: { f: 2, vx: -13 }, glide: true, autoChain: 'shot1' },
-  roll: { label: 'Roll Back', kind: 'ground', startup: 4, active: 0, recovery: 10, dmg: 0,
+  roll: { label: 'Roll Back', kind: 'ground', startup: 3, active: 6, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     imp: { f: 2, vx: -15 }, glide: true, autoChain: 'fire2' },
 };
