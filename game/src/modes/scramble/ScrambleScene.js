@@ -50,9 +50,12 @@ function readInput() {
  */
 const SPRITE_H = 130;
 
-// ระยะที่เท้าก้าวได้หนึ่งก้าวเมื่อสไปรท์สูง SPRITE_H — วัดจากคลิปต้นฉบับ (ระยะถ่างขาสูงสุด 490 px
-// ตอนตัวสูง 627 px) แล้วเทียบมาตามสัดส่วน ใช้กำหนดเวลาต่อรอบของท่าวิ่งให้เท้าไม่ไถไปกับพื้น
-const RUN_STRIDE = 102;
+// ระยะที่เท้าก้าวได้หนึ่งก้าวเมื่อสไปรท์สูง SPRITE_H — วัดจากคลิปต้นฉบับของแต่ละตัว
+// (ระยะถ่างขาสูงสุด หารด้วยความสูงตัว คูณ SPRITE_H) ใช้กำหนดเวลาต่อรอบของท่าวิ่งให้เท้าไม่ไถ
+//
+// เป็นค่าต่อตัวละคร ไม่ใช่ค่ากลาง: Helios ก้าวสั้นกว่า Nyx ชัดเจน (85 เทียบ 102)
+// ใช้ค่าเดียวกันทั้งคู่ = ตัวที่ก้าวสั้นกว่าจะเล่นท่าช้าไปเมื่อเทียบกับระยะที่เคลื่อนจริง เท้าไถไปกับพื้น
+const RUN_STRIDE_DEFAULT = 102;
 
 const isTouch = (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 
@@ -75,6 +78,7 @@ const CHAR_ART = {
     atlasKey: 'scnyx',
     texture: 'assets/characters/scramble_nyx.png',
     data: 'assets/characters/scramble_nyx.json',
+    runStride: 102,
     anims: { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
       block: 3, blockstun: 2, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
@@ -82,13 +86,14 @@ const CHAR_ART = {
       "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]),
     // เติมตอน _initCharSprite: meta / sprite / lastState / lastJumps
   },
-  // Helios: ตอนนี้มีแค่ท่ายืนที่อนุมัติแล้ว state อื่นยังวาดเป็นกล่อง
+  // Helios: ตอนนี้มีท่ายืนกับท่าวิ่ง state อื่นยังวาดเป็นกล่อง
   // (วิธีเดียวกับที่ Nyx เริ่ม) ได้ชีตมาเพิ่มก็ใส่ใน anims/attacks แล้ว build ใหม่
   helios: {
     atlasKey: 'schelios',
     texture: 'assets/characters/scramble_helios.png',
     data: 'assets/characters/scramble_helios.json',
-    anims: { idle: 1 },
+    runStride: 85,
+    anims: { idle: 1, run: 11 },
     attacks: new Set([]),
   },
 };
@@ -470,7 +475,7 @@ class ScrambleScene extends Phaser.Scene {
         // ตั้งตายตัวแล้วเท้าจะไถไปกับพื้นทันทีที่ปรับความเร็ว (ซึ่งปรับได้จากพาเนล Tune)
         frameRate:
           n / (name === 'run'
-            ? RUN_STRIDE / (PHYS.run * 60)
+            ? (art.runStride ?? RUN_STRIDE_DEFAULT) / (PHYS.run * 60)
             : ANIM_SECONDS[name]),
         // ท่าโดนตีเล่นรอบเดียวแล้วค้างเฟรมสุดท้าย — hitstun ในเอนจิ้นยาวไม่เท่ากัน (17-38 เฟรม)
         // ถ้าวนซ้ำ ตัวจะสะบัดรับแรงซ้ำ ๆ ทั้งที่โดนตีครั้งเดียว

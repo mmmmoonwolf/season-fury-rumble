@@ -1093,3 +1093,33 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const leaked = Object.keys(nyxMoves).filter((k) => nyxMoves[k].branch || nyxMoves[k].refresh || nyxMoves[k].mashChain);
   ok(leaked.length === 0, `กลไกของ Helios ไม่หลุดไปอยู่ในท่าของ Nyx (เจอ: ${leaked.join(", ") || "ไม่มี"})`);
 }
+
+// ── ท่าวิ่ง: ความยาวก้าวเป็นค่าต่อตัวละคร ไม่ใช่ค่ากลาง ──
+// ใช้ค่าเดียวกันทั้งเกม = ตัวที่ก้าวสั้นกว่าจะเล่นท่าช้าไปเทียบกับระยะที่เคลื่อนจริง เท้าไถไปกับพื้น
+{
+  const fs = await import("fs");
+  const { CHARACTERS } = await import(G + "/core.js");
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+
+  const strides = Object.fromEntries([...scene.matchAll(/runStride:\s*(\d+)/g)].map((m, i) => [i, +m[1]]));
+  ok(Object.keys(strides).length >= Object.keys(CHARACTERS).length,
+    `ทุกตัวละครมี runStride ของตัวเอง (เจอ ${Object.keys(strides).length} ค่า จาก ${Object.keys(CHARACTERS).length} ตัว)`);
+  ok(new Set(Object.values(strides)).size > 1, "ค่าไม่เท่ากันทุกตัว (ถ้าเท่ากันหมด แปลว่ายังไม่ได้วัดจริง)");
+  for (const v of Object.values(strides)) ok(v > 40 && v < 200, `runStride ${v} อยู่ในช่วงที่สมเหตุสมผล`);
+
+  // สูตรต้องอ่านจากตัวละคร ไม่ใช่ค่าคงที่กลาง
+  ok(/art\.runStride/.test(scene), "สูตรเวลาต่อรอบของท่าวิ่งอ่านจากตัวละคร");
+
+  // ทุกท่าที่ประกาศใน anims ต้องมีเฟรมครบใน atlas ของตัวนั้น
+  for (const id of Object.keys(CHARACTERS)) {
+    const m = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?data:\\s*'([^']+)'[\\s\\S]*?anims:\\s*\\{([^}]*)\\}`));
+    if (!m) { ok(false, `หา atlas ของ '${id}' ในฉากไม่เจอ`); continue; }
+    const atlas = JSON.parse(fs.readFileSync(new URL("../../" + m[1], import.meta.url), "utf8"));
+    const declared = [...m[2].matchAll(/(\w+):\s*(\d+)/g)].map((x) => [x[1], +x[2]]);
+    const bad = [];
+    for (const [name, n] of declared) {
+      for (let i = 1; i <= n; i++) if (!atlas.frames[`${name}_${i}.png`]) bad.push(`${name}_${i}`);
+    }
+    ok(bad.length === 0, `'${id}': เฟรมใน anims มีอยู่จริงใน atlas ครบ (ขาด: ${bad.join(", ") || "ไม่มี"})`);
+  }
+}
