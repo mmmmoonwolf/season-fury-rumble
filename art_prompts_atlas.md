@@ -261,7 +261,7 @@ Pose 6 — rising out of the landing, dragging the sword up, knees still bent.
 
 ## ชีต G — สกิล 3 อัลติ · ฟ้าถล่ม (6 ท่า · 2 แถวแถวละ 3)
 
-ทะยานเข้าขย้ำรัว ๆ ไม้จบสะเทือนออกสองข้าง · **ตอนย่อสะสมแรงติดเกราะเต็ม**
+กระโดดขึ้นปักดาบลงพื้น แรงกระแทกแผ่ออกสองข้าง · **ตอนเงื้อติดเกราะเต็ม**
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
@@ -269,21 +269,17 @@ left to right, top row first. Even spacing, no pose touching another.
 Draw NO shockwave, NO ground cracks, NO explosion, NO smoke — the game draws
 all of that. Only the character and the flame on his blade.
 
-Pose 1 — coiled low like a cat about to spring: knees deeply bent, weight
-loaded onto the back leg, sword swept back and low in the right hand, left
-hand open with claws spread, head lowered, fangs bared, roaring.
-Pose 2 — launching forward off both legs, body stretched out almost
-horizontal, left claw thrown out ahead of him, sword trailing behind.
-Pose 3 — left claw driven down and forward at chest height as if pinning
-something to the ground, right arm cocked back with the sword, head low
-between the shoulders.
-Pose 4 — tearing across to the left with the open claw, torso twisted hard,
-fangs bared, sword still cocked back.
-Pose 5 — tearing back across to the right with the same claw, torso twisted
-the other way, mouth wide open mid-roar.
-Pose 6 — the finish: both hands on the sword, ripping it down and through
-in a full-body savage tear, ending in a deep crouch with the blade low
-across his body, head down, tail flared.
+Pose 1 — planting both feet wide and raising the sword slowly overhead in
+both hands, head tilted back, chest open, roaring.
+Pose 2 — fully wound up: sword held straight up at maximum height in both
+hands, body arched back, every muscle tensed, tail rigid.
+Pose 3 — leaping straight upward, knees drawn up, sword still held overhead.
+Pose 4 — at the top, body folding forward over the sword, blade turning
+point-down beneath him.
+Pose 5 — driving the blade straight down into the ground between his feet,
+landing in a deep crouch, both hands on the hilt, head down.
+Pose 6 — holding the finish: crouched low with the sword buried point-first
+in the ground, both hands on the hilt, head raised, looking forward.
 ```
 
 ---

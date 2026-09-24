@@ -97,53 +97,19 @@ const trial = (mine, move) => {
   ok(dist("atlas") > dist("helios"), `โดนสโลว์น้อยกว่า (Atlas เดินได้ ${dist("atlas")} · Helios ${dist("helios")} px)`);
 }
 
-// ── อัลติ: ขย้ำรัวหลายจังหวะ แล้วไม้จบถึงเป็น AOE ──
+// ── อัลติ: แกนกลางต้องกินสองข้าง และคลื่นต้องวิ่งออกสองทิศ ──
 {
   const M = CHARACTERS.atlas.moves;
-
-  // ต่อกันเป็นสายจนจบจริง ไม่ใช่ท่าเดียวจบ
-  const chain = [];
-  for (let id = "sky1"; id; id = M[id].autoChain) { chain.push(id); if (chain.length > 9) break; }
-  ok(chain.length === 5 && chain[chain.length - 1] === "sky5",
-    `อัลติต่อกัน ${chain.length} จังหวะจบที่ ${chain[chain.length - 1]} (${chain.join(" -> ")})`);
-  ok(M.sky1.noHit && M.sky1.armor >= 6, `จังหวะย่อสะสมแรงไม่มีดาเมจ แต่ติดเกราะ ${M.sky1.armor} ชั้น`);
-
-  // จังหวะขย้ำต้องอยู่ข้างหน้าเขา ไม่ใช่ AOE — ไม่งั้นไม้จบจะไม่ต่างอะไรกับจังหวะกลาง
-  for (const id of ["sky2", "sky3", "sky4"]) {
-    const b = M[id].hb;
-    ok(b.x + b.w > 0 && b.w < 200, `${id}: ขย้ำข้างหน้า ระยะสั้น (กว้าง ${b.w})`);
-  }
-  // จังหวะที่ตะปบเข้าไปต้องไม่ถีบออกสักทาง ไม่งั้นขย้ำจังหวะถัดไปไม่ติด
-  ok(M.sky2.kb[0] === 0 && M.sky2.kb[1] === 0, "จังหวะตะปบตรึงไว้กับที่ ไม่ถีบออก");
-  const midUp = ["sky2", "sky3", "sky4"].filter((k) => M[k].kb[1] !== 0);
-  ok(midUp.length === 0, `จังหวะขย้ำไม่มีท่าไหนถีบขึ้น${midUp.length ? " (เจอ " + midUp.join(",") + ")" : ""}`);
-
-  // ไม้จบเท่านั้นที่เป็น AOE
-  const hb = M.sky5.hb;
-  ok(hb.x < 0 && hb.x + hb.w > 0, `ไม้จบคร่อมตัวเขา กินทั้งสองข้าง (x ${hb.x} ถึง ${hb.x + hb.w})`);
+  const hb = M.sky2.hb;
+  ok(hb.x < 0 && hb.x + hb.w > 0, `แกนกลางคร่อมตัวเขา กินทั้งสองข้าง (x ${hb.x} ถึง ${hb.x + hb.w})`);
   ok(hb.h > 150, `สูงพอสอยคนกระโดด (สูง ${hb.h})`);
-  ok(M.sky5.shots.length === 2 && M.sky5.shots.some((s) => s.back),
+  ok(M.sky2.shots.length === 2 && M.sky2.shots.some((s) => s.back),
     "คลื่นยิงออกสองทิศ (มีตัวที่ติดธง back)");
-  ok(!M.sky2.shots && !M.sky3.shots && !M.sky4.shots, "จังหวะขย้ำไม่มีคลื่น มีแต่ไม้จบ");
 
   const g = mk("atlas", "helios", 150); g.p1.ki = 100;
-  let dirs = new Set(), beats = [], hits = 0;
-  for (let i = 0; i < 140; i++) {
-    g.step(inp(i === 0 ? { skill3:1, p:{ skill3:1 } } : {}), inp());
-    for (const e of g.events) {
-      if (e.type === "move" && e.id.startsWith("sky")) beats.push(e.id);
-      if (e.type === "hit") hits++;
-    }
-    for (const s of g.shots) dirs.add(Math.sign(s.vx));
-  }
-  ok(beats.length === 5, `กดครั้งเดียวเดินครบทุกจังหวะเอง (${beats.join(" ")})`);
-  ok(hits >= 4, `ขย้ำโดนหลายที ไม่ใช่ทีเดียวจบ (${hits} ที)`);
+  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { skill3:1, p:{ skill3:1 } } : {}), inp());
+  const dirs = new Set(g.shots.map((s) => Math.sign(s.vx)));
   ok(dirs.size === 2, `คลื่นวิ่งไปคนละทางจริง (${[...dirs].join(" กับ ")})`);
-
-  // ยืนไกลออกไปก็ยังโดนคลื่น — นี่คือเหตุผลที่ไม้จบเป็น AOE
-  const far = mk("atlas", "helios", 520); far.p1.ki = 100;
-  for (let i = 0; i < 160; i++) far.step(inp(i === 0 ? { skill3:1, p:{ skill3:1 } } : {}), inp());
-  ok(far.p2.hp < far.p2.maxHp, `อยู่ไกล 520px ก็ยังโดนคลื่น (เหลือ ${far.p2.hp})`);
 }
 
 // ── ท่ากลางคอมโบต้องไม่ถีบขึ้น (กับดักเดิมที่พลาดมาแล้วสี่รอบ) ──

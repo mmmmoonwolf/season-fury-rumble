@@ -387,30 +387,16 @@ const ATLAS_MOVES = {
     hb: { x: -20, y: -110, w: 116, h: 104 }, kb: [6, -6], stun: 32,
     imp: { f: 6, vx: 13, vy: -15 }, armor: 2, untilLand: true, landLag: 16 },
 
-  // ---- สกิล 3 Skyfall (อัลติ): ทะยานเข้าขย้ำรัว 4 จังหวะ ไม้จบสะเทือนออกสองข้าง (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
-  // จังหวะแรกคือย่อสะสมแรง ไม่มีดาเมจ แต่ติดเกราะเต็มตลอด
-  // สัญชาตญาณของคนโดนคือจิ้มสกัดตอนย่อ ซึ่งใช้ไม่ได้ ต้องวิ่งหนีอย่างเดียว
+  // ---- สกิล 3 Skyfall (อัลติ): ปักดาบลงพื้น แรงกระแทกแผ่ออกสองข้าง (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  // เงื้อนาน แต่ติดเกราะเต็มตลอดช่วงเงื้อ — สัญชาตญาณคือจิ้มสกัด ซึ่งใช้ไม่ได้ ต้องวิ่งหนีอย่างเดียว
   sky1: { label: 'Skyfall', kind: 'ground', startup: 14, active: 6, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    armor: 6, faceFoe: true, autoChain: 'sky2' },
-  // จังหวะเข้า: ตะปบลงมาตรึงไว้กับที่ ไม่ถีบออกสักทาง (kb เป็นศูนย์ทั้งคู่) จังหวะขย้ำถัดไปจะได้ติด
-  sky2: { label: 'Skyfall', kind: 'ground', startup: 8, active: 5, recovery: 6, dmg: 6,
-    hb: { x: -18, y: -156, w: 132, h: 152 }, kb: [0, 0], stun: 34, armor: 3,
-    imp: { f: 6, vx: 10 }, glide: true, faceFoe: true, autoChain: 'sky3' },
-  // สองจังหวะกลางคือช่วงขย้ำ — ถีบขึ้นต้องเป็น 0 เท่านั้น
-  // ถีบขึ้นแม้นิดเดียวคู่ต่อสู้จะลอย พอตกถึงพื้นกลายเป็นท่าล้มซึ่งมี invuln ติดมา จังหวะที่เหลือจะฟันลม
-  sky3: { label: 'Skyfall', kind: 'ground', startup: 5, active: 4, recovery: 5, dmg: 5,
-    hb: { x: -18, y: -146, w: 128, h: 136 }, kb: [1.5, 0], stun: 32,
-    armor: 3, faceFoe: true, autoChain: 'sky4' },
-  sky4: { label: 'Skyfall', kind: 'ground', startup: 5, active: 4, recovery: 5, dmg: 5,
-    hb: { x: -18, y: -146, w: 128, h: 136 }, kb: [1.5, 0], stun: 32,
-    armor: 3, faceFoe: true, autoChain: 'sky5' },
-  // ไม้จบ: ขย้ำเต็มแรงจนพื้นแตก นี่คือจังหวะเดียวที่เป็น AOE
-  // hb.x ติดลบและกว้าง = กรอบคร่อมตัวเขา กินทั้งสองข้าง และสูงพอสอยคนกระโดด
+    armor: 6, autoChain: 'sky2' },
+  // แกนกลาง: hb.x ติดลบและกว้าง = กรอบคร่อมตัวเขา กินทั้งสองข้าง และสูงพอสอยคนกระโดด
   // คลื่นวิ่ง: ใช้ระบบกระสุนเดิม ยิงออกสองทิศพร้อมกัน วิ่งไปจนสุดจอ กระโดดหลบได้
-  sky5: { label: 'Skyfall', kind: 'ground', startup: 7, active: 6, recovery: 30, dmg: 11,
+  sky2: { label: 'Skyfall', kind: 'ground', startup: 8, active: 6, recovery: 30, dmg: 14,
     hb: { x: -190, y: -200, w: 380, h: 210 }, kb: [9, -13], stun: 38, armor: 2,
-    shots: [{ vy: 0 }, { vy: 0, back: true }], shotAt: 7, shotDmg: 5, shotStun: 22,
+    shots: [{ vy: 0 }, { vy: 0, back: true }], shotAt: 8, shotDmg: 5, shotStun: 22,
     shotRange: SKYFALL_RANGE, shotLow: true },
 };
 
