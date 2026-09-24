@@ -2,11 +2,17 @@
 
 ต่างจาก build script ของสามตัวก่อนสามเรื่อง:
 
-1. **ไม่มีคลิป** — สามตัวก่อนได้ท่ายืนกับท่าวิ่งจากคลิป ตัวนี้ยังไม่มี
-   ท่ายืนใช้ภาพเดี่ยวที่อนุมัติแล้ว (atlas_idle_APPROVED.jpg) ตั้งความสูงตัวเองเป็น 240
-   ไม่ผ่านไม้บรรทัดพื้นที่ เพราะภาพนี้ถ่ายคนละระยะกับชีตและดาบใหญ่กว่ามาก
+1. **ท่ายืนมาจากภาพเดี่ยว ไม่ใช่คลิป** (atlas_idle_APPROVED.jpg) ตั้งความสูงตัวเองเป็น 240
+   ไม่ผ่านไม้บรรทัดพื้นที่ เพราะถ่ายคนละระยะกับชีตและดาบใหญ่กว่ามาก
    พื้นที่จึงเทียบกันไม่ได้ แต่ "ความสูงท่ายืน" เทียบกันได้ตรง ๆ อยู่แล้ว
-   ท่าวิ่งยังยืมสองจังหวะย่างของชีต E ไปก่อน -> ได้คลิปเมื่อไหร่แก้บรรทัดเดียวใน SEQ
+   (ยืนยันแล้วว่าคลิปกับภาพนิ่งเป็น render เดียวกัน: สูง 1305 ต่อ 653 = 2.00 เท่า
+   ไม้บรรทัดพื้นที่ 857 ต่อ 432 = 1.98 เท่า ตรงกันในระดับ 1%)
+
+   **ท่าวิ่งจากคลิปล็อกจุดยึดจุดเดียวทั้งรอบ** ไม่คำนวณทีละเฟรมเหมือนท่าอื่น
+   กล้องในคลิปอยู่นิ่งและตัวละครวิ่งอยู่กับที่ พิกัดในเฟรมต้นฉบับจึงตรงกันอยู่แล้ว
+   คำนวณทีละเฟรมจะได้การแกว่งที่คนวาดไม่ได้ตั้งใจ — วัดได้ว่าแกว่ง 18 px
+   ขณะที่ตัวอื่นแกว่งแค่ 1-4.5 px · เส้นพื้นก็ล็อกจุดเดียวเหมือนกัน
+   จังหวะที่ลอยทั้งสองเท้าจึงยังลอยจริงตามที่วาด ไม่ถูกกดลงติดพื้น
 
 2. **ไม้บรรทัดวัดระยะกล้องใช้พื้นที่ตัว** ไม่ใช่ความกว้างหัว (Nyx/Helios) หรือพื้นที่หมวก (Alecto)
    วัดจริง: ความกว้างหัวกระจาย 125-377 px ในชีตเดียวกัน เพราะแถบบนสุดไปโดนดาบที่ชูขึ้น
@@ -40,8 +46,7 @@ GROUND, AIR = "ground", "air"
 
 SEQ = {
     "idle": ("solo", [1], GROUND),
-    # ---- ชั่วคราว: ยังไม่มีคลิปท่าวิ่ง ----
-    "run":  ("E", [2, 3], GROUND),
+    "run":  ("clip", list(range(1, 11)), GROUND),
 
     # ---- ชีต A: ท่าเคลื่อนไหวและท่าโดน ----
     "jump":        ("A", [2, 3, 4, 5], AIR),
@@ -95,6 +100,11 @@ for L in "ABCDEFG":
     SHEETS[L] = (arr, masks)
     RULER[L] = float(np.median([body_scale(arr, m) for m in masks]))
 
+# ---------- ท่าวิ่งจากคลิป ----------
+CLIP_DIR = os.path.join(REF, "..", "atlas_clip")
+CLIP = json.load(open(os.path.join(CLIP_DIR, "clip.json")))
+CLIP_SCALE = STANDING / CLIP["stand_h"]
+
 # ---------- ท่ายืนจากภาพเดี่ยวที่อนุมัติแล้ว ----------
 _idle_rgb = np.asarray(Image.open(os.path.join(REF, "..", "atlas_idle_APPROVED.jpg"))
                        .convert("RGB")).astype(int)
@@ -127,6 +137,9 @@ print(f"ท่ายืน {STAND_SRC[0]}{STAND_SRC[1]}: สูง {stand_h} px 
 
 def source(src, n):
     """คืน (ภาพ RGBA ครอปพอดีตัว, จุดยึดแนวนอนในภาพที่ครอปแล้ว)"""
+    if src == "clip":
+        im = Image.open(os.path.join(CLIP_DIR, f"run_{n:02d}.png")).convert("RGBA")
+        return im, CLIP["anchor"][n - 1]
     if src == "solo":
         ys, xs = np.nonzero(IDLE_MASK)
         crop = Image.fromarray(IDLE_RGBA).crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
@@ -142,12 +155,15 @@ def source(src, n):
 
 staged = {}
 for name, (src, nums, kind) in SEQ.items():
-    sc = IDLE_SCALE if src == "solo" else SRC_SCALE[src]
+    sc = {"solo": IDLE_SCALE, "clip": CLIP_SCALE}.get(src) or SRC_SCALE[src]
     for i, n in enumerate(nums, 1):
         crop, com = source(src, n)
         w, h = max(1, round(crop.width * sc)), max(1, round(crop.height * sc))
         im = crop.resize((w, h), Image.LANCZOS)
-        base = h if kind == GROUND else h / 2 + STANDING / 2
+        if src == "clip":
+            base = CLIP["base"][n - 1] * sc     # เส้นพื้นร่วมของคลิป ไม่ใช่ก้นภาพ
+        else:
+            base = h if kind == GROUND else h / 2 + STANDING / 2
         staged[f"{name}_{i}.png"] = (im, com * sc, base)
 print(f"ท่าทั้งหมด {len(staged)} เฟรม")
 
