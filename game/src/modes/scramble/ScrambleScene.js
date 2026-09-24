@@ -86,7 +86,7 @@ const CHAR_ART = {
       "fox1", "fox2", "curse1", "curse2", "ult1", "ult2", "ult3", "ult4"]),
     // เติมตอน _initCharSprite: meta / sprite / lastState / lastJumps
   },
-  // Helios: เหลือเข่าพุ่งกับอัลติที่ยังวาดเป็นกล่อง (รอชีต F/G)
+  // Helios: มีอาร์ตครบทุกท่าแล้ว
   helios: {
     atlasKey: 'schelios',
     texture: 'assets/characters/scramble_helios.png',
@@ -95,7 +95,8 @@ const CHAR_ART = {
     anims: { idle: 1, run: 11, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
-      "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD"]),
+      "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD",
+      "knee", "hh1", "hh2", "hh3", "hhEnd"]),
   },
 };
 

@@ -1,5 +1,7 @@
 # HELIOS — ตัวละครที่ 2 (สายไฟต์เตอร์ รัวหมัด-เตะ · ชุดสกิล D)
 
+**สถานะ: อาร์ตครบทุกท่าแล้ว เข้าเกมเรียบร้อย** — เก็บไฟล์นี้ไว้เผื่อเจนซ่อมหรือทำตัวถัดไป
+
 **ชื่อยังไม่ล็อก** — HELIOS (ดวงอาทิตย์ที่ไม่เคยหยุดเดิน) คู่ตรงข้าม Nyx (ราตรี)
 สำรอง: ATLAS (เหมาะกับตัวถึงยืนรับมากกว่า) / KAIROS
 
@@ -171,7 +173,7 @@ Pose 6 — landing the kicking foot down, fists coming back up into guard,
 still leaning forward and pressing in.
 ```
 
-## 7. ชีต F —  ← ทำต่อจากนี้ ·  ไม้จบสามทาง + เข่าพุ่ง (9 ท่า · 3 แถวแถวละ 3)
+## 7. ชีต F — ✅ เสร็จแล้ว ·  ไม้จบสามทาง + เข่าพุ่ง (9 ท่า · 3 แถวแถวละ 3)
 
 ไม้จบของชุดรัวแยกสามทางตามปุ่มทิศที่กดค้าง
 
@@ -194,7 +196,7 @@ Pose 9 — driving forward with one knee raised hard to chest height, both
 fists pulled down beside the knee, body lunging ahead.
 ```
 
-## 8. ชีต G — Hundred Hands ร้อยหมัด (อัลติ · 6 ท่า · 2 แถวแถวละ 3)
+## 8. ชีต G — ✅ เสร็จแล้ว · Hundred Hands ร้อยหมัด (อัลติ · 6 ท่า · 2 แถวแถวละ 3)
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read

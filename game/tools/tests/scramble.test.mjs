@@ -15,7 +15,7 @@ const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
  *  ได้อาร์ตมาเมื่อไหร่ ลบชื่อออกจากนี่ แล้วเทสต์จะบังคับให้ต่อสายเข้าฉาก + atlas ให้ครบเอง */
 const PENDING_ART_BY_CHAR = {
   nyx: new Set(),
-  helios: new Set(["knee", "hh1", "hh2", "hh3", "hhEnd"]),   // รอชีต F/G
+  helios: new Set(),
 };
 
 const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
