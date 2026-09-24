@@ -3,8 +3,10 @@
 ต่างจาก build script ของสามตัวก่อนสามเรื่อง:
 
 1. **ไม่มีคลิป** — สามตัวก่อนได้ท่ายืนกับท่าวิ่งจากคลิป ตัวนี้ยังไม่มี
-   ท่ายืนจึงยืมท่าสุดท้ายของชีต E (ยืนคุมเชิง ดาบทอดต่ำ หัวเป็นจุดสูงสุด)
-   ท่าวิ่งยืมสองจังหวะย่างของชีต E ไปก่อน -> ได้คลิปเมื่อไหร่แก้แค่สองบรรทัดใน SEQ
+   ท่ายืนใช้ภาพเดี่ยวที่อนุมัติแล้ว (atlas_idle_APPROVED.jpg) ตั้งความสูงตัวเองเป็น 240
+   ไม่ผ่านไม้บรรทัดพื้นที่ เพราะภาพนี้ถ่ายคนละระยะกับชีตและดาบใหญ่กว่ามาก
+   พื้นที่จึงเทียบกันไม่ได้ แต่ "ความสูงท่ายืน" เทียบกันได้ตรง ๆ อยู่แล้ว
+   ท่าวิ่งยังยืมสองจังหวะย่างของชีต E ไปก่อน -> ได้คลิปเมื่อไหร่แก้บรรทัดเดียวใน SEQ
 
 2. **ไม้บรรทัดวัดระยะกล้องใช้พื้นที่ตัว** ไม่ใช่ความกว้างหัว (Nyx/Helios) หรือพื้นที่หมวก (Alecto)
    วัดจริง: ความกว้างหัวกระจาย 125-377 px ในชีตเดียวกัน เพราะแถบบนสุดไปโดนดาบที่ชูขึ้น
@@ -23,7 +25,9 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from atlas_sheets import (LAYOUT, body_anchor, body_scale, extract,
+from scipy import ndimage
+
+from atlas_sheets import (LAYOUT, background, body_anchor, body_scale, extract,
                           strip_ground_fx, trim_ground_debris)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,8 +39,8 @@ STAND_SRC = ("E", 6)   # ท่าที่ใช้ตั้งสเกลส�
 GROUND, AIR = "ground", "air"
 
 SEQ = {
-    # ---- ชั่วคราว: ยังไม่มีคลิป ยืน->วิ่ง ----
-    "idle": ("E", [6], GROUND),
+    "idle": ("solo", [1], GROUND),
+    # ---- ชั่วคราว: ยังไม่มีคลิปท่าวิ่ง ----
     "run":  ("E", [2, 3], GROUND),
 
     # ---- ชีต A: ท่าเคลื่อนไหวและท่าโดน ----
@@ -91,6 +95,20 @@ for L in "ABCDEFG":
     SHEETS[L] = (arr, masks)
     RULER[L] = float(np.median([body_scale(arr, m) for m in masks]))
 
+# ---------- ท่ายืนจากภาพเดี่ยวที่อนุมัติแล้ว ----------
+_idle_rgb = np.asarray(Image.open(os.path.join(REF, "..", "atlas_idle_APPROVED.jpg"))
+                       .convert("RGB")).astype(int)
+_ibg = background(_idle_rgb)
+_il, _ik = ndimage.label(~_ibg)
+_isz = ndimage.sum(~_ibg, _il, range(1, _ik + 1))
+# เก็บทุกชิ้นที่ใหญ่พอ ไม่ใช่ชิ้นใหญ่สุดชิ้นเดียว — ปลายเปลวไฟขาดออกมาเป็นอีกชิ้น
+IDLE_MASK = np.isin(_il, [i + 1 for i in range(_ik) if _isz[i] >= 1000])
+IDLE_RGBA = np.dstack([_idle_rgb, np.where(IDLE_MASK, 255, 0)]).astype(np.uint8)
+_ir, _ig, _ib = (_idle_rgb[:, :, i] for i in range(3))
+_ifire = (_ir > 190) & ((_ir - _ib) > 70) & ((_ig - _ib) > 25)
+_iys = np.nonzero((IDLE_MASK & ~_ifire).any(axis=1))[0]
+IDLE_SCALE = STANDING / (_iys.max() - _iys.min() + 1)
+
 # ---------- ตั้งสเกล ----------
 _arr, _masks = SHEETS[STAND_SRC[0]]
 _m = _masks[STAND_SRC[1] - 1]
@@ -109,6 +127,10 @@ print(f"ท่ายืน {STAND_SRC[0]}{STAND_SRC[1]}: สูง {stand_h} px 
 
 def source(src, n):
     """คืน (ภาพ RGBA ครอปพอดีตัว, จุดยึดแนวนอนในภาพที่ครอปแล้ว)"""
+    if src == "solo":
+        ys, xs = np.nonzero(IDLE_MASK)
+        crop = Image.fromarray(IDLE_RGBA).crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
+        return crop, body_anchor(IDLE_MASK, erode=61) - xs.min()
     arr, masks = SHEETS[src]
     m = masks[n - 1]
     ys, xs = np.nonzero(m)
@@ -120,7 +142,7 @@ def source(src, n):
 
 staged = {}
 for name, (src, nums, kind) in SEQ.items():
-    sc = SRC_SCALE[src]
+    sc = IDLE_SCALE if src == "solo" else SRC_SCALE[src]
     for i, n in enumerate(nums, 1):
         crop, com = source(src, n)
         w, h = max(1, round(crop.width * sc)), max(1, round(crop.height * sc))
