@@ -179,3 +179,29 @@ def body_scale(rgba, m):
     r, g, b = (rgba[:, :, i].astype(int) for i in range(3))
     fire = (r > 190) & ((r - b) > 70) & ((g - b) > 25)
     return float(np.sqrt(np.count_nonzero(m & ~fire)))
+
+
+def trim_ground_debris(m, width_frac=0.06, max_frac=0.05):
+    """ตัดรอยแตกพื้นบาง ๆ ที่เจนมาใต้เท้าออก (ชีต G ท่า 5-6)
+
+    prompt สั่ง "no ground cracks" แต่ก็ยังเจนมาอยู่ดี เป็นเส้นบาง ๆ ยื่นต่ำกว่าพื้นรองเท้า
+    ราว 3-4% ของความสูงท่า ถ้าไม่ตัด เครื่องมือจะเข้าใจว่าพื้นรองเท้าอยู่ต่ำกว่าความจริง
+    ตัวละครจะลอยเหนือพื้นราว 8 px ในเกม
+
+    ตัดจากล่างขึ้นบน เฉพาะแถวที่แคบกว่า width_frac ของความกว้างสุดของท่า
+    และตัดได้ไม่เกิน max_frac ของความสูง — เพดานนี้กันไม่ให้กินเท้าจริงในท่ายืนขาเดียว
+    ซึ่งแถวล่างสุดก็แคบเหมือนกันแต่ยาวต่อเนื่องขึ้นไปมากกว่านั้น
+    """
+    ys, _ = np.nonzero(m)
+    y0, y1 = ys.min(), ys.max()
+    h = y1 - y0 + 1
+    widths = m.sum(axis=1)
+    thin = widths.max() * width_frac
+    cut = 0
+    while cut < int(h * max_frac) and widths[y1 - cut] < thin:
+        cut += 1
+    if cut == 0:
+        return m
+    out = m.copy()
+    out[y1 - cut + 1:y1 + 1] = False
+    return out

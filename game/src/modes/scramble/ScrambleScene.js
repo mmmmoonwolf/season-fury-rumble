@@ -141,12 +141,20 @@ const CHAR_ART = {
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
   // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
   // ลบ artPending ใน core.js กับเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
+  // Atlas: ท่ายืนกับท่าวิ่งยังยืมจากชีต E อยู่ รอคลิป ยืน->วิ่ง
   atlas: {
-    artPending: true,
+    atlasKey: 'scatlas',
+    texture: 'assets/characters/scramble_atlas.png',
+    data: 'assets/characters/scramble_atlas.json',
+    runStride: 96,
     box: 0xe6e9ee, boxAccent: 0x8a6a4a,   // ขนเสือขาว ลายน้ำตาล
     title: 'The Fury of the Unbroken',
     role: 'สายแท้งค์',
     tip: 'เลือด 130 · ท่าหนักมีเกราะ โดนตีแล้วไม่หลุดท่า เดินฝ่าเข้ามาได้',
+    anims: { idle: 1, run: 2, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
+      block: 1, blockstun: 1, blockcrouch: 1 },
+    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "ram1", "ram2", "leap", "sky1", "sky2"]),
   },
 };
 

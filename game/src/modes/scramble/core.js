@@ -426,7 +426,7 @@ const CHARACTERS = {
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
   // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
   atlas: { id: 'atlas', label: 'ATLAS', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
-    skillCd: ATLAS_SKILL_CD, hp: 130, resist: 0.5, artPending: true },
+    skillCd: ATLAS_SKILL_CD, hp: 130, resist: 0.5 },
 };
 const DEFAULT_CHAR = 'nyx';
 
