@@ -56,7 +56,7 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
-  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard,
+  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard, f.caged,
   // อาวุธที่ถืออยู่ (Alecto สลับแส้/ไรเฟิล) — ถ้าไม่เทียบ สองเครื่องถืออาวุธคนละชุด
   // แล้วปุ่มตีเดียวกันจะออกท่าคนละท่า ซึ่งเป็น desync ที่ทุกอย่างอื่นยังดูตรงกันหมด
   f.alt,

@@ -1306,6 +1306,20 @@ class ScrambleScene extends Phaser.Scene {
       fx.fillRect(d.x - 200, STAGE.groundY - 60, 400, 60);
       fx.lineStyle(2, 0xd8c9a8, 0.22 * t);
       fx.strokeRect(d.x - 200, STAGE.groundY - 150, 400, 150);
+
+      // ผนังกรง: วาดเฉพาะตอนมีคนติดอยู่จริง ไม่งั้นมันคือแถบฝุ่นเฉย ๆ
+      // ต้องเห็นว่า "เดินออกทางนี้ไม่ได้" ไม่ใช่รู้ตัวตอนเดินชนแล้วงงว่าทำไมไม่ไป
+      // ขีดตั้งสูงกว่ากรอบฝุ่น = อ่านเป็นกำแพง ไม่ใช่ขอบแถบ
+      const held = [s.p1, s.p2].some((f) => f.caged);
+      if (held) {
+        const pulse = 0.45 + 0.25 * Math.abs(Math.sin(s.frame * 0.12));
+        for (const wx of [d.x - 200, d.x + 200]) {
+          fx.fillStyle(0xd8c9a8, 0.1 * t);
+          fx.fillRect(wx - 5, STAGE.groundY - 190, 10, 190);
+          fx.fillStyle(0xffe08a, pulse * t);
+          fx.fillRect(wx - 2, STAGE.groundY - 190, 4, 190);
+        }
+      }
     }
 
     // HP bars
