@@ -5,6 +5,10 @@
 > ⚡ **สกิล 1 กับ 2 ต้องออกไว** เกมเร็วและคนใส่กันรัว ท่าที่ใช้เวลาเตรียมตัว
 > คือท่าที่ตายก่อนได้ใช้ ของใหญ่ไปอยู่ที่อัลติ (ชีต G) แทน
 
+> 📦 **มาแล้ว: ขั้น 0 · ขั้น 1 (คลิป) · ชีต A-D** — build เป็น atlas 49 เฟรมเรียบร้อย
+> **ยังขาด: ชีต E-H (สกิลทั้งหมด · หัวข้อ 7-10)** ยังใส่เข้าโรสเตอร์ไม่ได้จนกว่าจะครบสามสกิล
+> มีของแถมที่อยากได้เพิ่มอีกใบ: **หัวข้อ 11 ท่าย่อลึก** (ของที่ส่งมาย่อตื้นไป 93%)
+
 > ✅ **ขั้น 0 ผ่านแล้ว** — `art_reference/momus_idle_APPROVED.jpg`
 > วัดได้ **2.39 หัว** (ของเดิม 4.19) ตัวเลขต่ำกว่าเกณฑ์ 2.50-2.80 เพราะ **ผมหยิกฟูดันความกว้างหัวขึ้น**
 > แบบเดียวกับที่หมวกของ Alecto ทำให้เธอวัดได้ 1.81 ทั้งที่ยืนข้างคนอื่นแล้วตัวพอดี
@@ -289,3 +293,31 @@ Chibi-proportioned anime game sprite, **large head roughly one third of the tota
 ```
 
 ---
+
+---
+
+## 11. เพิ่มเติม — ท่าย่อลึก + ท่าก้มกัน (2 ท่า · แถวเดียว)
+
+ชีต A ที่ส่งมามีท่าย่ออยู่ (A5) แต่วัดได้ **93% ของความสูงท่ายืน** ซึ่งบนจอไม่อ่านว่าย่อเลย
+เกณฑ์ของโรสเตอร์คือ **75-85%** (Nyx 75 · Atlas 77 · Helios/Alecto 83)
+ตอนนี้ยืมท่ากวาดขาต่ำ (C8 · 86%) มาใช้ไปก่อน ถ้าเจนอันนี้มาจะได้ท่าย่อจริง ๆ
+**ท่าก้มกันยังไม่มีใครในโรสเตอร์มีเลย** เจนมาพร้อมกันเลยก็ดี
+
+```
+A 2-pose sprite sheet of the same character, side by side in a single row,
+read left to right. Even spacing, the two poses must not touch.
+Both poses are CROUCHED VERY LOW — this is the whole point of the sheet.
+He is squatting right down with both knees fully bent and folded up, thighs
+pressed against his chest, hips dropped almost to his heels, so that the
+whole figure is only about three quarters as tall as when he stands. Both
+feet stay flat on the ground. Do not draw him merely bending his knees a
+little — he is folded up small and close to the floor.
+
+Pose 1 — resting on his heels in that deep squat, arms hanging loosely
+between his knees, head tilted up and forward, grinning.
+Pose 2 — the same deep squat, but both forearms raised and crossed in front
+of his face and chest to guard, elbows tucked in tight, shoulders hunched,
+peering over his arms.
+
+Chibi-proportioned anime game sprite, **large head roughly one third of the total height, short stubby limbs, small body — the whole figure is about two and a half to three heads tall, NOT a realistic full-body proportion**, bold dark outlines fully closed around every part of the figure, flat cel shading, muted desaturated palette. Character: a pale, slightly sinister young clown with messy curly ginger-orange hair, hollow shadowed eyes and a small unsettling smile. He wears a ragged off-white ruffled clown costume — a big frilled collar, puffed torn sleeves, baggy bloomer trousers gathered at the calf, all of it dirty cream and grey with old stains — plus dark red pompoms on the chest, hips and boots, a cloth sash at the waist, short dark red ribbons, dirty white bandages wrapped around both forearms and both shins, and heavy scuffed dark grey boots. The hanging frills and ribbons fall close to his body and never stream far out to the side. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props, no balloons, no text, no labels, no panel borders. Full body visible from the top of the hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs.
+```
