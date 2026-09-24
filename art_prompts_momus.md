@@ -198,9 +198,9 @@ Pose 9 — airborne, legs together underneath, arms gathered, ready to land.
 
 ---
 
-## ชีต E — สกิล 1 · Jack-in-the-Box วางกล่องสปริง (6 ท่า · 2 แถวแถวละ 3)
+## ชีต E — สกิล 1 · Jack-in-the-Box วางกล่องระเบิด (6 ท่า · 2 แถวแถวละ 3)
 
-วางกล่องสปริงทิ้งไว้บนพื้น ใครเหยียบก็เด้ง **รวมทั้งตัวเขาเอง**
+วางกล่องระเบิดเวลาทิ้งไว้บนพื้น ใครเหยียบหรือครบ 5 วิก็ระเบิด **รวมทั้งตัวเขาเอง**
 **กล่องวาดได้** เพราะเป็นของที่เขาหยิบออกมาเอง ไม่ใช่ VFX
 
 ```
@@ -221,15 +221,16 @@ Pose 4 — still crouched, turning the crank handle on the side of the crate
 with one finger, the other hand flat on the lid, grinning wide.
 Pose 5 — springing back up and away from the crate with both arms thrown
 wide, body leaning back, the crate left sitting on the ground at his feet.
-Pose 6 — standing clear with both hands raised beside his head, palms out,
-head tilted, wearing an exaggerated innocent look — as if to say "not me".
+Pose 6 — standing clear and well back from it with both hands raised beside
+his head, palms out, head tilted, wearing an exaggerated innocent look — as
+if to say "not me" — while glancing sideways at the crate.
 ```
 
 ---
 
 ## ชีต F — สกิล 2 · Ta-da! สลับที่ (6 ท่า · 2 แถวแถวละ 3)
 
-โค้งคำนับแล้วสลับที่กับคู่ต่อสู้ ไม่มีดาเมจ เป็นท่ากลล้วน ๆ
+โค้งคำนับแล้วสลับที่กับคนที่ใกล้ที่สุด **ระเบิดขึ้นทั้งจุดที่ไปและจุดที่มา**
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
@@ -255,10 +256,12 @@ one leg, head tilted, smiling faintly at the viewer.
 
 ---
 
-## ชีต G — สกิล 3 อัลติ · Last Laugh หัวเราะทีหลัง (6 ท่า · 2 แถวแถวละ 3)
+## ชีต G — สกิล 3 อัลติ · **เลือกหนึ่งแบบก่อนเจน**
 
-คว้าตัวยัดใส่กล่อง ปิดฝา นั่งทับ แล้วกล่องระเบิด
-**กล่องวาดได้** เพราะเป็นของที่เขาหยิบออกมาเอง ไม่ใช่ VFX
+อัลติยังไม่ล็อก มีสองแบบให้เลือก (ดู `docs/MOMUS_KIT.md` หัวข้อ "สามทางเลือกของอัลติ")
+**เจนแค่แบบเดียว** ที่ตัดสินใจแล้ว
+
+### G-A · Last Laugh ยัดกล่อง (ของเดิม · ดาเมจเดี่ยวสูงสุด)
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
@@ -279,6 +282,30 @@ Pose 5 — sitting on the closed chest with his legs crossed and his arms
 folded, head tilted back, laughing openly.
 Pose 6 — leaping clear off the chest to the side, arms flung wide in the
 air, body turned away from it, still laughing.
+```
+
+### G-B · Full House โปรยกล่องทั้งเวที (แนะนำ · เล่นหลายคนแล้วแรงที่สุด)
+
+```
+A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+He is hurling a whole armful of small jack-in-the-box crates up into the air.
+Draw the crates he is holding and throwing, but draw NO explosion, NO smoke,
+NO confetti, NO sparks, NO springs, NO puppets — the game draws all effects.
+The crates are small closed wooden boxes with crank handles.
+
+Pose 1 — dragging a huge sack up off the ground with both hands, bent over
+under its weight, grinning up at the viewer.
+Pose 2 — swinging the open sack up and back over one shoulder, body coiled
+and twisted away, crates already spilling loose from the mouth of it.
+Pose 3 — hurling the whole armful of crates up and forward with both arms
+fully extended overhead, body arched back, head thrown back, mouth wide open.
+Pose 4 — arms still up and empty, hands spread, watching them go, spinning
+slowly on one heel with the other leg lifted.
+Pose 5 — dropping into a low crouch with both arms wrapped over his head and
+both eyes squeezed shut, bracing for what he just did.
+Pose 6 — peeking out from under one arm, still crouched, one eye open,
+grinning sideways at the viewer.
 ```
 
 ---
@@ -311,4 +338,4 @@ air, body turned away from it, still laughing.
 | กลางอากาศ | nair · sair · dair | ชีต D |
 | สกิล 1 | วางกล่องสปริง | ชีต E |
 | สกิล 2 | สลับที่ | ชีต F |
-| สกิล 3 | หัวเราะทีหลัง (อัลติ) | ชีต G |
+| สกิล 3 | อัลติ (เลือก G-A หรือ G-B) | ชีต G |
