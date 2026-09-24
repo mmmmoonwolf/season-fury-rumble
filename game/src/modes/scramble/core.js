@@ -254,6 +254,7 @@ const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% �
 // ท่าตั้งป้อมยืนยิง — กดสกิลครั้งเดียวแล้วปักหลักยิงยาวเท่านี้เฟรม
 // สกิล 1 สั้นกว่าเพราะเล่นจริงแล้ว 5 วินาทีขาตาย โดนบุกเข้ามาแล้วทำอะไรไม่ได้เลย
 // อัลติยาวกว่าได้ เพราะจ่ายหลอด ki เต็มไปแล้วและตั้งใจให้เป็นการทุ่มหมดหน้าตัก
+const RIFLE_FRAMES = 340;    // สกิล 2 ของ Alecto: ขว้างระเบิดแล้วยกไรเฟิลยิงได้ราว 5 วินาที
 const STANCE_FRAMES = 180;        // 3 วินาที (สกิล 1)
 // ---------- ระบบแพ้ชนะ ----------
 // เลือดหมดหนึ่งครั้ง = เสียหลอดหนึ่งหลอด ไม่ใช่จบเกม
@@ -305,25 +306,45 @@ const ALECTO_MOVES = {
   // ไม่มี anchor = ไม่มีหมุดวาร์ป (ของ Nyx) กระสุนเป็นดาเมจล้วน
   // กดครั้งเดียวแล้วปักหลักยิงยาว STANCE_FRAMES เฟรม ไม่ต้องกดรัว
   // ระหว่างนั้นขยับไม่ได้เลย โดนสวนเมื่อไหร่ป้อมแตกทันที = ราคาที่จ่ายสำหรับดาเมจต่อเนื่อง
-  shot1: { label: 'Six Shooter', kind: 'ground', startup: 6, active: 6, recovery: 11, dmg: 0,
+  // ---- สกิล 1 Fan the Hammer: สับไกรีวอลเวอร์เป็นชุด ดันคนออกจากหน้า (ปุ่ม 1) ----
+  //
+  // ของเดิมเป็นท่าตั้งป้อมยืนยิง 3 วินาที ซึ่งไม่ได้แก้ปัญหาของเธอเลย
+  // ยิงไปก็ยังโดนยืนกดอยู่ที่เดิม ผู้เล่นรายงานว่า "โดนรุมประจำ"
+  // เปลี่ยนเป็นชุดสั้นสามจังหวะที่ **ดันออก** แล้วกลับมาถือแส้เอง
+  // สามจังหวะแรงขึ้นเรื่อย ๆ จังหวะสุดท้ายดันแรงพอเปิดระยะได้จริง
+  shot1: { label: 'Fan the Hammer', kind: 'ground', startup: 5, active: 4, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 6, shotDmg: 2, shotStun: 14,
-    stance: STANCE_FRAMES, holdChain: 'shot2', mobile: 0.45 },
-  shot2: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 6, recovery: 15, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 12, shotKb: 4, autoChain: 'shot2' },
+  shot2: { label: 'Fan the Hammer', kind: 'ground', startup: 3, active: 4, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 14,
-    holdChain: 'shot2', autoChain: 'shot3', mobile: 0.45 },
-  shot3: { label: 'Six Shooter', kind: 'ground', startup: 4, active: 5, recovery: 17, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 3, shotDmg: 2, shotStun: 12, shotKb: 6, autoChain: 'shot3' },
+  // จังหวะจบ: กระสุนแรงสุดและดันไกลสุด · ค้างนานกว่าเพื่อนเพื่อจ่ายค่าที่เปิดระยะได้ฟรี
+  shot3: { label: 'Fan the Hammer', kind: 'ground', startup: 3, active: 5, recovery: 16, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 18 },
+    shots: [{ vy: 0 }], shotAt: 3, shotDmg: 3, shotStun: 20, shotKb: 13 },
 
-  // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ เหลือกองไฟบนพื้น (ปุ่ม 2) ----
+  // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ แล้วสับเป็นโหมดไรเฟิล (ปุ่ม 2) ----
+  //
+  // ขว้างระเบิดคือ "ตัวเปิด" ไม่ใช่ทั้งหมดของสกิล — ขว้างจบแล้วเธอยกไรเฟิลขึ้นทันที
+  // เดินยิงได้ 5 วินาที กดปุ่มตีค้างเพื่อยิงต่อ ปล่อยเมื่อไหร่ก็จบชุดเอง
+  // stance ตั้งจากท่าแรกของสกิล (fire1) ไม่ใช่ท่าที่วน — เผื่อช่วงขว้างไว้ในตัวเลขแล้ว
   fire1: { label: 'Firewater', kind: 'ground', startup: 7, active: 5, recovery: 6, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'fire2' },
-  // ขว้างแล้วเกิดกองไฟข้างหน้า — วิถีขวดเป็นแค่เอฟเฟค ตำแหน่งกองไฟคงที่เพื่อให้สองเครื่องตรงกัน
-  fire2: { label: 'Firewater', kind: 'ground', startup: 6, active: 6, recovery: 18, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    firePool: { at: 7, dx: 200 } },
+    stance: RIFLE_FRAMES, autoChain: 'fire2' },
+  // ขว้างแล้วเกิดกองไฟข้างหน้า — วิถีขวดเป็นแค่เอฟเฟค ตำแหน่งกองไฟคงที่เพื่อให้สองเครื่องตรงกัน
+  fire2: { label: 'Firewater', kind: 'ground', startup: 6, active: 6, recovery: 6, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    firePool: { at: 7, dx: 200 }, autoChain: 'rifle1' },
+  // โหมดไรเฟิล: ปุ่มตีกลายเป็นปุ่มยิง ไม่ต้องเจนท่าตีปกติชุดใหม่
+  rifle1: { label: 'Rifle', kind: 'ground', startup: 6, active: 3, recovery: 5, dmg: 1,
+    hb: { x: 10, y: -110, w: 182, h: 30 }, kb: [1.5, 0], stun: 16,
+    holdChain: 'rifle2', autoChain: 'rifleEnd', mobile: 0.4 },
+  rifle2: { label: 'Rifle', kind: 'ground', startup: 5, active: 3, recovery: 6, dmg: 1,
+    hb: { x: 10, y: -110, w: 182, h: 30 }, kb: [1.5, 0], stun: 16,
+    holdChain: 'rifle1', autoChain: 'rifleEnd', mobile: 0.4 },
+  // เก็บปืน: ดันออกหน่อยหนึ่งเพื่อไม่ให้จบชุดแล้วยืนติดหน้าคนอื่นพอดี
+  rifleEnd: { label: 'Rifle', kind: 'ground', startup: 6, active: 4, recovery: 20, dmg: 4,
+    hb: { x: 12, y: -104, w: 190, h: 40 }, kb: [12, 0], stun: 30 },
 
   // ---- สกิล 3 Last Call (อัลติ): ทอมมี่กันกราด กดรัวต่อรอบได้ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
   // ดาเมจขึ้นกับตราที่เป้ามีอยู่ (lashDmg) — สะสมด้วยแส้ แล้วมาขึ้นเงินที่ตรงนี้
@@ -419,9 +440,7 @@ const ATLAS_SKILLS = ['ram1', 'leap', 'sky1'];
 const ATLAS_SKILL_CD = [150, 180, 0];
 
 const ALECTO_SKILLS = ['shot1', 'fire1', 'hail1'];
-// คูลดาวน์ของสกิล 1 ต้องยาวกว่าเวลายืนยิง ไม่งั้นพอป้อมหมดเวลาก็ตั้งใหม่ได้ทันที
-// 300 - 180 = เหลือช่วงว่างจริง 2 วินาที เท่าเดิมกับตอนที่ยืนยิง 5 วิ
-const ALECTO_SKILL_CD = [300, 200, 0];
+const ALECTO_SKILL_CD = [180, 420, 0];   // ชุดรีวอลเวอร์สั้นลงเลยกดถี่ได้ · โหมดไรเฟิลยาวเลยคูลดาวน์ยาว
 // กดทิศถอยค้าง -> เริ่มด้วยท่าถอยแทน แล้ว autoChain เข้าสกิลเอง
 const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
 
@@ -818,7 +837,7 @@ class Game {
       const sh = {
         owner: f.id, x: f.x + dir * 30, y: f.y - (m.shotLow ? 26 : 96),
         vx: dir * SHOT_SPEED, vy: spec.vy, facing: dir,
-        dmg: m.shotDmg, stun: m.shotStun, volley, range: m.shotRange ?? SHOT_RANGE,
+        dmg: m.shotDmg, stun: m.shotStun, kb: m.shotKb ?? 2, volley, range: m.shotRange ?? SHOT_RANGE,
         anchor: !!spec.anchor, target: null, stuck: 0, travelled: 0, dead: false,
       };
       if (sh.anchor) volley.anchor = sh;
@@ -975,7 +994,9 @@ class Game {
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(sh.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');
-    d.vx = sh.facing * 2;                 // ถีบเบา ๆ ไม่ลอย จะได้ตามไปต่อคอมโบได้
+    // แรงดันมาจากท่า ไม่ใช่ค่าคงที่ — ชุดสับรีวอลเวอร์ของ Alecto ต้องดันคนออกจากหน้าได้จริง
+    // ถีบขึ้นยังเป็น 0 เสมอ กระสุนไม่ควรจับลอย (กับดักเดิมที่กัดมาสี่รอบ)
+    d.vx = sh.facing * (sh.kb ?? 2);
     d.facing = -sh.facing;
     this.gainKi(a, dmg * 1.4); this.gainKi(d, dmg * 0.9);
     this.events.push({ type: 'hit', x: sh.x, y: sh.y, dmg, heavy: false, launch: false });

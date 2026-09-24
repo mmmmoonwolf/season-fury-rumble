@@ -175,7 +175,9 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
   const closeIn = (toward) => (f) => {
     const inward = toward > 0 ? 'right' : 'left';
     return inp({ [inward]: f < 70 ? 1 : 0,
-      p: { attack: f >= 70 && f % 9 === 0 ? 1 : 0, skill2: f >= 60 && f % 60 === 0 ? 1 : 0 } });
+      p: { attack: f >= 70 && f % 9 === 0 ? 1 : 0, skill2: f === 360 ? 1 : 0 } });
+    // กดสกิล 2 ครั้งเดียวตอนท้าย ไม่ใช่รัว ๆ — ของ Alecto สกิล 2 สับเป็นโหมดไรเฟิล 5 วินาที
+    // กดถี่แล้วเธอจะไม่ได้ใช้แส้เลย ตรารอยแส้ก็ไม่ขึ้น ซึ่งคือสิ่งที่เทสต์นี้ต้องการวัด
   };
   const alecto = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'alecto', c2: 'alecto', frames: 420 });
   ok(alecto.peak.a.lash > 0, `ตรารอยแส้ติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.lash} ชั้น)`);

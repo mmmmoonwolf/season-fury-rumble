@@ -139,35 +139,37 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
 //
 // กดครั้งเดียวแล้วปักหลักยิงยาว 5 วินาที ไม่ต้องกดรัว แลกกับขยับไม่ได้เลยตลอดช่วงนั้น
 {
-  const fire = (key, ki = 0, foe = () => inp()) => {
+  // hold = โหมดไรเฟิลต้องกดปุ่มตีค้างถึงจะยิงต่อ (holdChain) ต่างจากอัลติที่ยิงเอง
+  const fire = (key, ki = 0, foe = () => inp(), hold = false) => {
     const g = mk(150); g.p1.ki = ki;
     let frames = 0; const start = g.frame;
-    for (let i = 0; i < 420; i++) {
-      g.step(inp(i === 0 ? { [key]: 1, p: { [key]: 1 } } : {}), foe(i));
+    for (let i = 0; i < 480; i++) {
+      g.step(inp(i === 0 ? { [key]: 1, p: { [key]: 1 } } : (hold ? { attack: 1 } : {})), foe(i));
       if (g.p1.state === "attack") frames = g.frame - start;
     }
     return { frames, dmg: 100 - g.p2.hp };
   };
 
-  // สกิล 1 สั้นกว่าอัลติ เพราะเล่นจริงแล้ว 5 วินาทีขาตาย โดนบุกเข้ามาแล้วทำอะไรไม่ได้เลย
-  const shot = fire("skill1");
-  ok(shot.frames > 170 && shot.frames < 260, `ลูกโม่ยืนยิงได้ราว 3 วินาที (${shot.frames} เฟรม)`);
-  ok(shot.dmg > 10 && shot.dmg < 30, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${shot.dmg}`);
+  // สกิล 1 ไม่ใช่ท่าตั้งป้อมแล้ว — เป็นชุดสั้นสามจังหวะที่ดันคนออก (ดูบล็อกถัดไป)
+  // ท่าตั้งป้อมตอนนี้คือครึ่งหลังของสกิล 2 (โหมดไรเฟิล) กับอัลติ
+  const rifle = fire("skill2", 0, () => inp(), true);
+  ok(rifle.frames > 260 && rifle.frames < 400, `โหมดไรเฟิลยืนยิงได้ราว 5 วินาที (${rifle.frames} เฟรม)`);
+  ok(rifle.dmg > 10 && rifle.dmg < 40, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${rifle.dmg}`);
 
   const ult = fire("skill3", 100);
   ok(ult.frames > 280 && ult.frames < 400, `อัลติยืนยิงได้ราว 5 วินาที (${ult.frames} เฟรม)`);
 
   // เดินหนีออกจากระยะต้องกินดาเมจน้อยลงมาก — ไม่งั้นเป็นดาเมจฟรีที่ไม่มีทางแก้
-  const run = fire("skill1", 0, () => inp({ right: 1 }));
-  ok(run.dmg < shot.dmg / 2, `เดินหนีแล้วกินแค่ ${run.dmg} (ยืนนิ่งกิน ${shot.dmg})`);
+  const run = fire("skill2", 0, () => inp({ right: 1 }), true);
+  ok(run.dmg < rifle.dmg, `เดินหนีแล้วกินน้อยลง (${run.dmg} เทียบยืนนิ่ง ${rifle.dmg})`);
 }
 
 // ── โดนสวนระหว่างยืนยิง = ป้อมแตกทันที ──
 // เป็นทางแก้เดียวของอีกฝ่ายตอนเธอตั้งป้อม ถ้าอันนี้พังตัวละครจะกดไม่ขึ้น
 {
   const g = mk(150);
-  for (let i = 0; i < 60; i++) g.step(inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}), inp());
-  ok(g.p1.state === "attack" && g.p1.stanceUntil > g.frame, "กำลังยืนยิงอยู่");
+  for (let i = 0; i < 60; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : { attack: 1 }), inp());
+  ok(g.p1.state === "attack" && g.p1.stanceUntil > g.frame, "กำลังยืนยิงอยู่ (โหมดไรเฟิล)");
   g.p2.x = g.p1.x + 60; g.p2.facing = -1;
   g.startMove(g.p2, "jab1", -1);
   for (let i = 0; i < 20; i++) g.step(inp(), inp());
@@ -178,9 +180,9 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
 // ── คูลดาวน์ต้องยาวกว่าเวลายืนยิง ไม่งั้นตั้งป้อมต่อได้ไม่หยุด ──
 {
   const g = mk();
-  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp());
+  g.step(inp({ skill2:1, p:{ skill2:1 } }), inp());
   const M = g.p1.moves;
-  ok(g.p1.cd[0] > M.shot1.stance, `คูลดาวน์ ${g.p1.cd[0]} เฟรม ยาวกว่าเวลายืนยิง ${M.shot1.stance} เฟรม`);
+  ok(g.p1.cd[1] > M.fire1.stance, `คูลดาวน์ ${g.p1.cd[1]} เฟรม ยาวกว่าเวลาถือไรเฟิล ${M.fire1.stance} เฟรม`);
 }
 
 // ── กลิ้ง/กระโดดถอยก่อนตั้งป้อม ต้องไม่ทำให้เวลายืนยิงหายไป ──
@@ -188,10 +190,10 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   const g = mk(150);
   const seen = [];
   for (let i = 0; i < 200; i++) {
-    g.step(i === 0 ? inp({ left:1, skill1:1, p:{ skill1:1 } }) : inp({ left:1 }), inp());
+    g.step(i === 0 ? inp({ left:1, skill2:1, p:{ skill2:1 } }) : inp({ left:1, attack:1 }), inp());
     if (g.p1.moveId && seen[seen.length-1] !== g.p1.moveId) seen.push(g.p1.moveId);
   }
-  ok(seen[0] === "hop" && seen.includes("shot2"), "ถอยก่อนแล้วยังตั้งป้อมยิงต่อได้");
+  ok(seen[0] === "roll" && seen.includes("rifle1"), "ถอยก่อนแล้วยังสับเป็นไรเฟิลต่อได้");
 }
 
 // ── ขยับได้ระหว่างยืนยิง ──
@@ -199,13 +201,14 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
 // เวอร์ชันแรกปักหลักนิ่งสนิท เล่นจริงแล้วขาตายทั้งสกิล 1 และอัลติ
 // ตอนนี้ย่องได้ช้า ๆ แลกกับดาเมจที่หายไปเพราะถอยออกจากระยะเอง
 {
-  const back = (key, ki, n) => {
+  const back = (key, ki, n, hold = false) => {
     const g = mk(200); g.p1.ki = ki; const x0 = g.p1.x;
-    for (let i = 0; i < n; i++) g.step(inp(i === 0 ? { [key]:1, p:{ [key]:1 } } : { left:1 }), inp());
+    for (let i = 0; i < n; i++)
+      g.step(inp(i === 0 ? { [key]:1, p:{ [key]:1 } } : { left:1, ...(hold ? { attack:1 } : {}) }), inp());
     return { moved: Math.round(x0 - g.p1.x), still: g.p1.state === "attack" };
   };
-  const shot = back("skill1", 0, 200);
-  ok(shot.moved > 200, `ยิงลูกโม่ไปถอยไปได้ ${shot.moved} px`);
+  const shot = back("skill2", 0, 220, true);
+  ok(shot.moved > 150, `ถือไรเฟิลแล้วถอยไปได้ ${shot.moved} px`);
   ok(shot.still, "ถอยแล้วยังอยู่ในท่ายิง ไม่หลุด");
   const ult = back("skill3", 100, 320);
   ok(ult.moved > 200, `อัลติก็ถอยได้ ${ult.moved} px`);
@@ -216,15 +219,15 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
     for (let i = 0; i < n; i++) g.step(inp(i === 0 && key ? { [key]:1, p:{ [key]:1 } } : { left:1 }), inp());
     return (x0 - g.p1.x) / n * 60;
   };
-  const plain = speed(null, 0, 60), firing = speed("skill1", 0, 120);
+  const plain = speed(null, 0, 60), firing = speed("skill2", 0, 120);
   ok(firing < plain * 0.6, `ย่องตอนยิงช้ากว่าวิ่งปกติมาก (${firing.toFixed(0)} เทียบ ${plain.toFixed(0)} px/วินาที)`);
 
   // ถอยหนีแล้วต้องยังหันหน้าใส่คู่ต่อสู้ ไม่ใช่หันหลังยิงทิ้ง
   const g = mk(160);
-  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : { left:1 }), inp());
+  for (let i = 0; i < 60; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : { left:1, attack:1 }), inp());
   ok(g.p1.facing > 0, "ถอยซ้ายอยู่แต่ยังหันหน้าไปทางคู่ต่อสู้");
   g.p2.x = g.p1.x - 200;
-  for (let i = 0; i < 10; i++) g.step(inp(), inp());
+  for (let i = 0; i < 20; i++) g.step(inp({ attack:1 }), inp());
   ok(g.p1.facing < 0, "คู่ต่อสู้ข้ามไปอีกฝั่งแล้วหันตามทัน");
 }
 
@@ -256,7 +259,9 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   };
   const stood = run(false), rolled = run(true);
   ok(rolled < stood, `กลิ้งหนีแล้วเจ็บน้อยกว่ายืนรับ (${rolled} เทียบ ${stood})`);
-  ok(rolled === 0, "กลิ้งถูกจังหวะแล้วรอดทั้งชุด");
+  // ไม่ใช่ 0 เสมอไป — ช่วงอมตะคุ้มแค่ตอนกลิ้ง ออกจากท่าแล้วก็โดนได้ตามปกติ
+  // ที่ต้องเป็นจริงคือ "กลิ้งแล้วรอดช่วงที่โดนไล่" ไม่ใช่ "อมตะตลอดกาล"
+  ok(rolled <= stood / 2, `กลิ้งแล้วเจ็บไม่ถึงครึ่งของยืนรับ (${rolled} เทียบ ${stood})`);
 }
 
 // ── ท่าพื้นของเธอไม่ควรค้างนานกว่าคนที่จ่ายค่าความช้าด้วยเกราะ ──

@@ -135,7 +135,7 @@ const CHAR_ART = {
     anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
-      "shot1", "shot2", "shot3", "fire1", "fire2",
+      "shot1", "shot2", "shot3", "fire1", "fire2", "rifle1", "rifle2", "rifleEnd",
       "hail1", "hail2", "hail3", "hailEnd", "hop", "roll"]),
   },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
