@@ -255,6 +255,12 @@ const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% �
 // สกิล 1 สั้นกว่าเพราะเล่นจริงแล้ว 5 วินาทีขาตาย โดนบุกเข้ามาแล้วทำอะไรไม่ได้เลย
 // อัลติยาวกว่าได้ เพราะจ่ายหลอด ki เต็มไปแล้วและตั้งใจให้เป็นการทุ่มหมดหน้าตัก
 const STANCE_FRAMES = 180;        // 3 วินาที (สกิล 1)
+// ---------- ระบบแพ้ชนะ ----------
+// เลือดหมดหนึ่งครั้ง = เสียหลอดหนึ่งหลอด ไม่ใช่จบเกม
+// เกมนี้ต่อสู้กันไวมาก ยกเดียวจบภายในไม่กี่วินาที จึงให้คนละสามหลอด
+const ROUND_BARS = 3;
+const KO_FREEZE = 110;       // แช่กี่เฟรมหลังน็อก ให้ได้เห็นท่าล้มก่อนขึ้นยกใหม่
+
 const SOLO_FRAMES = 240;     // อัลติของ Orpheus โซโล่กี่เฟรม (4 วินาที)
 const ULT_STANCE_FRAMES = 300;    // 5 วินาที (อัลติ)
 
@@ -599,7 +605,56 @@ class Game {
     this.lastMoveInfo = null;
     this.shots = [];
     this.fires = [];
+    // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
+    this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
   }
+  /** เริ่มแมตช์ใหม่ตั้งแต่ยกแรก — ล้างทั้งหลอดเลือดและจำนวนหลอดที่เหลือ */
+  startMatch() {
+    this.match = { on: true, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
+    this.resetPositions();
+    this.events.push({ type: 'roundStart', round: 1 });
+  }
+
+  /** เดินระบบแพ้ชนะ — อยู่ใน core ทั้งหมดเพราะสองเครื่องต้องคิดออกมาตรงกัน
+   *
+   * ทุกอย่างขับด้วยเลขเฟรมและอินพุตที่วิ่งผ่าน lockstep อยู่แล้ว
+   * ห้ามผูกกับเวลาจริงหรือปุ่มที่ฝ่ายเดียวกด ไม่งั้นสองเครื่องจะคนละยกกัน
+   */
+  updateMatch() {
+    const m = this.match;
+    if (!m.on) return;
+
+    if (m.winner !== null) {
+      // จบแมตช์แล้ว ใครกดตีก็เริ่มใหม่ — ปุ่มตีเดินผ่าน lockstep เหมือนปุ่มอื่น สองเครื่องจึงพร้อมกัน
+      if (this.p1.inp?.p?.attack || this.p2.inp?.p?.attack) this.startMatch();
+      return;
+    }
+
+    if (m.freeze > 0) {
+      if (--m.freeze > 0) return;
+      for (const i of m.loser) m.bars[i]--;
+      const dead = [0, 1].filter((i) => m.bars[i] <= 0);
+      if (dead.length) {
+        // ล้มพร้อมกันทั้งคู่ในยกสุดท้าย = เสมอ (-1)
+        m.winner = dead.length === 2 ? -1 : (dead[0] === 0 ? 1 : 0);
+        this.events.push({ type: 'matchEnd', winner: m.winner });
+        return;
+      }
+      m.round++;
+      this.resetPositions();
+      this.events.push({ type: 'roundStart', round: m.round });
+      return;
+    }
+
+    const out = [];
+    if (this.p1.hp <= 0) out.push(0);
+    if (this.p2.hp <= 0) out.push(1);
+    if (!out.length) return;
+    m.loser = out;
+    m.freeze = KO_FREEZE;
+    this.events.push({ type: 'ko', loser: out.slice() });
+  }
+
   resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; this.fires = []; }
 
   /**
@@ -631,9 +686,10 @@ class Game {
     this.pushApart(p, d);
     this.updateCombo(d);
     this.updateCombo(p);
+    this.updateMatch();
     this.recordMeter(p);
     // ฟื้นเลือดให้หุ่นเฉพาะโหมดซ้อม — เล่นสองคนต้องมีใครสักคนแพ้
-    if (!inp2 && this.frame - d.lastHitF > 120 && d.hp < d.maxHp && ACTIONABLE.has(d.state)) d.hp = d.maxHp;
+    if (!this.match.on && !inp2 && this.frame - d.lastHitF > 120 && d.hp < d.maxHp && ACTIONABLE.has(d.state)) d.hp = d.maxHp;
   }
 
   /** รับอินพุตของเฟรมนี้เข้าคิวของฝั่งนั้น ๆ */
@@ -1303,4 +1359,4 @@ class Game {
 // ===================== Input =====================
 const held = new Set(); let pressed = new Set();
 
-export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS, DEFAULT_CHAR, ACTIONABLE, Fighter, Game, overlap };
+export { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, DEFAULT_CHAR, ACTIONABLE, Fighter, Game, overlap };

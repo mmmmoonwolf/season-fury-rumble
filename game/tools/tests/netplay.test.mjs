@@ -60,6 +60,8 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
 ]),
   g.shots.length,
   ...g.shots.map((s) => [s.owner, Math.round(s.x * 1000), Math.round(s.y * 1000), Math.round(s.vx * 1000), s.dead ? 1 : 0].join(",")),
+  // ระบบยก: ถ้าสองเครื่องนับหลอดคนละแบบ จะกลายเป็นคนละยกกันโดยไม่มีใครรู้
+  g.match.round, g.match.freeze, g.match.winner ?? '-', g.match.bars.join(','),
   g.fires.length,
   ...g.fires.map((fi) => [fi.owner, Math.round(fi.x * 1000), fi.life, fi.t].join(",")),
 ].join("|");

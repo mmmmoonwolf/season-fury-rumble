@@ -42,7 +42,7 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
     scene.sim.dummyMode, scene.sim.dummyTech, scene.showBoxes].join("|");
   const scene = {
     versus: "net", paused: false, timeScale: 1, showBoxes: true, comboFade: 0,
-    sim: { p1: { char: "nyx" }, p2: { char: "helios" }, dummyMode: "stand", dummyTech: "off", resetPositions() { this.reset = true; } },
+    sim: { p1: { char: "nyx" }, p2: { char: "helios" }, dummyMode: "stand", dummyTech: "off", match: { on: false }, resetPositions() { this.reset = true; }, startMatch() { this.reset = true; this.match.on = true; } },
     _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
     tool: ScrambleScene.prototype.tool,
   };
@@ -112,7 +112,7 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
   const mk = (isHost) => {
     const sc = {
       isHost, versus: "net", phase: null, selSide: null, myReady: false, foeReady: false, foePick: null,
-      sim: { frame: 999, p1: { char: "nyx" }, p2: { char: "helios" }, resetPositions() { this.reset = (this.reset ?? 0) + 1; } },
+      sim: { frame: 999, p1: { char: "nyx" }, p2: { char: "helios" }, match: { on: false }, resetPositions() { this.reset = (this.reset ?? 0) + 1; }, startMatch() { this.reset = (this.reset ?? 0) + 1; this.match.on = true; } },
       out: [],
       _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
     };

@@ -1,4 +1,4 @@
-import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS, Game } from "./core.js";
+import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, Game } from "./core.js";
 import { Lockstep, packInput, HELD_MASK, PRESS_MASK } from "./netplay.js";
 import { getSession, sendNetPacket } from "../../net/session.js";
 
@@ -474,6 +474,9 @@ class ScrambleScene extends Phaser.Scene {
     this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
     this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'B เลือกตัว   T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
+    // ป้ายน็อก/ผู้ชนะ กลางจอ ตัวใหญ่ — อ่านออกจากอีกฝั่งโซฟาได้
+    this.tKo = T(W / 2, 250, '', 64, '#ffffff', 0.5).setFontStyle('700').setDepth(20);
+    this.tKoSub = T(W / 2, 330, '', 20, C.ink, 0.5).setDepth(20);
     this.tPace = T(60, 96, '', 13, '#ffd166');   // ใต้ฉายา เหนือแถบข้อมูลท้ายจอที่จะทับ
     this._initSprites();
     this._syncMatchHud();
@@ -589,7 +592,7 @@ class ScrambleScene extends Phaser.Scene {
     // ยังวนโหมดได้ครบเหมือนเดิม จึงไม่ได้เสียความสามารถอะไรไป
     if (code === 'Digit0') s.dummyMode = MODES[(MODES.indexOf(s.dummyMode) + 1) % MODES.length];
     if (code === 'Digit4') s.dummyTech = TECHS[(TECHS.indexOf(s.dummyTech) + 1) % TECHS.length];
-    if (code === 'KeyR') { s.resetPositions(); this.comboFade = 0; }
+    if (code === 'KeyR') { s.match.on ? s.startMatch() : s.resetPositions(); this.comboFade = 0; }
     if (code === 'KeyP') this.paused = !this.paused;
     if (code === 'KeyN') { this.paused = true; this.stepOnce = true; }
     // สลับโหมดสองคน — ฝั่งขวาเปลี่ยนจากหุ่นซ้อมเป็นคนเล่นจริง (ลูกศร + numpad)
@@ -624,6 +627,26 @@ class ScrambleScene extends Phaser.Scene {
     // แถวเครื่องมือซ้อมกินพื้นที่ครึ่งจอบนมือถือ และตอนต่อเน็ตก็กดไม่ได้อยู่แล้ว
     document.body.classList.toggle('sc-net', net);
     if (net) document.getElementById('sc-tune')?.classList.remove('open');
+  }
+
+  /** ป้ายกลางจอตอนน็อกและตอนจบแมตช์ — อ่านจากสถานะ ไม่ใช่จากอีเวนต์
+   *  อ่านจากสถานะเพราะเฟรมที่เพิ่งต่อเน็ตติดใหม่อาจพลาดอีเวนต์ไปแล้ว แต่สถานะยังถูกเสมอ */
+  _syncKoBanner(s) {
+    const m = s.match;
+    if (!m.on) { this.tKo.setText(''); this.tKoSub.setText(''); return; }
+    const name = (i) => CHARACTERS[i === 0 ? s.p1.char : s.p2.char].label;
+    if (m.winner !== null) {
+      this.tKo.setText(m.winner < 0 ? 'DRAW' : name(m.winner) + ' WINS');
+      this.tKoSub.setText('กดปุ่มตีเพื่อเริ่มใหม่');
+      return;
+    }
+    if (m.freeze > 0) {
+      this.tKo.setText('K.O.');
+      this.tKoSub.setText(m.loser.length === 2 ? 'ล้มพร้อมกันทั้งคู่'
+        : name(m.loser[0]) + ' เสียหนึ่งหลอด · เหลือ ' + Math.max(0, m.bars[m.loser[0]] - 1));
+      return;
+    }
+    this.tKo.setText(''); this.tKoSub.setText('');
   }
 
   syncTools() {
@@ -763,7 +786,9 @@ class ScrambleScene extends Phaser.Scene {
     this.phase = 'fight';
     document.body.classList.remove('sc-picking');
     this.selEl?.classList.remove('open');
-    this.sim.resetPositions();
+    // ซ้อมกับหุ่นไม่นับแพ้ชนะ (หุ่นฟื้นเลือดเอง) เล่นกับคนจริงถึงเปิดระบบยก
+    if (this.versus === 'solo') this.sim.resetPositions();
+    else this.sim.startMatch();
     this.comboFade = 0; this.netMsg = null;
     if (this.versus === 'net') {
       // นาฬิกาต้องเริ่มที่ศูนย์พร้อมกันทั้งสองเครื่อง — เลขเฟรมเป็นส่วนหนึ่งของเส้นเวลาที่ใช้ร่วมกัน
@@ -1236,6 +1261,20 @@ class ScrambleScene extends Phaser.Scene {
     };
     bar(60, 380, s.p1.hp, s.p1.maxHp, false);
     bar(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.p2.hp, s.p2.maxHp, true);
+    // จำนวนหลอดที่เหลือ วาดเป็นขีดใต้หลอดเลือด — ขีดที่เสียไปแล้วเหลือแต่โครง
+    if (s.match.on) {
+      const pips = (x, w, left, alignRight) => {
+        for (let i = 0; i < ROUND_BARS; i++) {
+          const pw = 26, gap = 6;
+          const px = alignRight ? x + w - (i + 1) * pw - i * gap : x + i * (pw + gap);
+          hud.fillStyle(0x0c111c, 0.7); hud.fillRect(px, 62, pw, 8);
+          if (i < left) { hud.fillStyle(0xe05a57, 1); hud.fillRect(px + 1, 63, pw - 2, 6); }
+        }
+      };
+      pips(60, 380, s.match.bars[0], false);
+      pips(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.match.bars[1], true);
+    }
+    this._syncKoBanner(s);
     // หลอด ki ของผู้เล่น — เต็มเมื่อไหร่ถึงกดอัลติได้ เต็มแล้วเปลี่ยนเป็นสีแดงให้เห็นชัด
     const ki = s.p1.ki / KI_MAX;
     hud.fillStyle(0x0c111c, 0.7); hud.fillRect(60, 64, 260, 10);
