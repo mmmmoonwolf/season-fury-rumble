@@ -565,12 +565,16 @@ class ScrambleScene extends Phaser.Scene {
     this.netPress = (this.netPress ?? 0) | (v & PRESS_MASK);
     if (this.net.pushLocal((v & HELD_MASK) | this.netPress) > 0) this.netPress = 0;
     // จำกัดจำนวนเฟรมต่อรอบ ไม่งั้นตอนไล่ตามหลังจะกระตุกเป็นก้อนแทนที่จะค่อย ๆ ตามทัน
-    let budget = 4;
+    let budget = 4, stepped = 0;
     while (budget-- > 0 && this.net.ready()) {
       const [a, b] = this.net.take();
       // อินพุตของตัวเองไปเข้าฝั่งที่ถูกต้องของทั้งสองเครื่อง
       if (this.isHost) this.sim.step(a, b); else this.sim.step(b, a);
+      stepped++;
     }
+    // ค้างเพราะรออีกฝั่งเป็นเรื่องปกติของ lockstep (เน็ตกระตุกแป๊บเดียวก็ค้างแล้ว)
+    // แต่ถ้าค้างนานกว่าครึ่งวินาทีต้องบอกผู้เล่น ไม่งั้นภาพนิ่งเฉย ๆ แยกไม่ออกจากเกมพัง
+    this.netWait = stepped > 0 ? 0 : (this.netWait ?? 0) + 1;
   }
 
   spark(x, y, size, color) { this.sparks.push({ x, y, size, color, life: 9, max: 9, rot: Math.random() * Math.PI }); }
@@ -847,7 +851,11 @@ class ScrambleScene extends Phaser.Scene {
     hud.fillStyle(0x0c111c, 0.6); hud.fillRect(mx - 4, my - 4, 150 * 5 + 8, 18);
     s.meter.forEach((ph, i) => { hud.fillStyle(C[ph], 1); hud.fillRect(mx + i * 5, my, 4, 10); });
 
-    this.tStatus.setText(this.paused ? 'Paused — N to step one frame, P to resume' : this.timeScale !== 1 ? 'Slow motion 25%' : '');
+    this.tStatus.setText(
+      this.netMsg ? this.netMsg
+      : this.versus === 'net' && this.netWait > 30 ? 'รออีกฝั่ง...'
+      : this.paused ? 'Paused — N to step one frame, P to resume'
+      : this.timeScale !== 1 ? 'Slow motion 25%' : '');
   }
 }
 

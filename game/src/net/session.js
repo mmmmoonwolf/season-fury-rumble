@@ -27,11 +27,33 @@ const session = {
   peer: null, // instance ของ Peer (PeerJS) — null ถ้ายังไม่เปิดห้อง/ยังไม่เข้าร่วม
   conn: null, // DataConnection ที่เชื่อมกับอีกฝั่ง
   roomCode: null, // รหัสห้อง 5 ตัวอักษร
-  // MainGameScene เข้ามาเซ็ต 3 ตัวนี้เองตอน create() (ตอนเปิดห้อง/เข้าร่วมยังไม่มี scene ให้ผูก)
-  onData: null,
+  // ฉากเข้ามาเซ็ต 3 ตัวนี้เองตอน create() (ตอนเปิดห้อง/เข้าร่วมยังไม่มี scene ให้ผูก)
   onClose: null,
   onError: null,
+
+  /* แพ็คเก็ตที่มาถึงก่อนฉากจะพร้อมรับ ต้องเก็บไว้ ห้ามทิ้ง
+   *
+   * สองเครื่องต่อห้องติดพร้อมกัน แต่ "ฉากพร้อมเล่น" ไม่พร้อมกัน: Phaser ต้องโหลดภาพทั้งหมดก่อน
+   * ซึ่งกินเวลาไม่เท่ากันในแต่ละเครื่อง/แต่ละความเร็วเน็ต เครื่องที่เสร็จก่อนจะเริ่มยิงอินพุต
+   * ตั้งแต่เฟรม 0 ไปเลย ถ้าอีกฝั่งทิ้งช่วงนั้นไป = ขาดอินพุตของเฟรมต้น ๆ ไปถาวร
+   * lockstep จะค้างรอเฟรมนั้นตลอดกาล ทั้งสองเครื่องขยับไม่ได้เลย และไม่มีอะไรฟ้องด้วย
+   *
+   * เพดานกันหน่วยความจำบวม: ถ้าเกินนี้แปลว่าอีกฝั่งไม่มาแล้วจริง ๆ เกมนั้นตายไปแล้ว
+   * เก็บต่อไปก็ไม่ได้ช่วยอะไร */
+  _pending: [],
+  _onData: null,
+  get onData() { return this._onData; },
+  set onData(fn) {
+    this._onData = fn;
+    if (!fn || this._pending.length === 0) return;
+    const queued = this._pending;
+    this._pending = [];
+    for (const p of queued) fn(p);   // ต้องส่งตามลำดับเดิม แพ็คเก็ตตั้งต้น (ตัวละคร/ค่าปรับจูน) มาก่อนอินพุตเสมอ
+  },
 };
+
+/** จำนวนแพ็คเก็ตสูงสุดที่ยอมเก็บรอฉาก — 60 เฟรม/วินาที คูณ 30 วินาที เผื่อเครื่องช้าโหลดนาน */
+const PENDING_MAX = 1800;
 
 export function getSession() {
   return session;
@@ -52,7 +74,10 @@ function randomRoomCode() {
  */
 function wireConnection(conn) {
   session.conn = conn;
-  conn.on("data", (packet) => session.onData?.(packet));
+  conn.on("data", (packet) => {
+    if (session._onData) session._onData(packet);
+    else if (session._pending.length < PENDING_MAX) session._pending.push(packet);
+  });
   conn.on("close", () => session.onClose?.());
   conn.on("error", (err) => session.onError?.(err));
 }
@@ -150,6 +175,7 @@ export function cancelSession() {
   session.peer = null;
   session.conn = null;
   session.roomCode = null;
+  session._pending = [];
   session.onData = null;
   session.onClose = null;
   session.onError = null;
