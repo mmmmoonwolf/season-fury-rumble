@@ -251,6 +251,9 @@ const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% �
 // เพดานเพิ่ม x1.40 ต้องเล็กกว่าเพดานลดดาเมจตามความยาวคอมโบ x0.50 เสมอ
 // ไม่งั้นคอมโบยิ่งยาวยิ่งแรง = เปิดช่องคอมโบวนไม่รู้จบที่ระบบลดดาเมจกันไว้ตั้งแต่ต้น
 
+// ท่าตั้งป้อมยืนยิง — กดสกิลครั้งเดียวแล้วปักหลักยิงยาวเท่านี้เฟรม (5 วินาที)
+const STANCE_FRAMES = 300;
+
 // กองไฟจากมอลอตอฟ
 const FIRE_LIFE = 240;       // อยู่บนพื้นกี่เฟรม (4 วินาที)
 const FIRE_HALF = 62;        // ครึ่งความกว้างของกอง
@@ -286,15 +289,19 @@ const ALECTO_MOVES = {
   // ---- สกิล 1 Six Shooter: ยิงลูกโม่ กดรัวได้ 3 นัด (ปุ่ม 1) ----
   // ใช้ระบบกระสุนเดิมของ Stone Curse รวมถึงรายชื่อเป้าที่โดนแล้วต่อหนึ่งชุด
   // ไม่มี anchor = ไม่มีหมุดวาร์ป (ของ Nyx) กระสุนเป็นดาเมจล้วน
+  // กดครั้งเดียวแล้วปักหลักยิงยาว STANCE_FRAMES เฟรม ไม่ต้องกดรัว
+  // ระหว่างนั้นขยับไม่ได้เลย โดนสวนเมื่อไหร่ป้อมแตกทันที = ราคาที่จ่ายสำหรับดาเมจต่อเนื่อง
   shot1: { label: 'Six Shooter', kind: 'ground', startup: 6, active: 6, recovery: 11, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 6, shotDmg: 3, shotStun: 16, mashChain: 'shot2', mashMax: 2 },
-  shot2: { label: 'Six Shooter', kind: 'ground', startup: 4, active: 5, recovery: 9, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 6, shotDmg: 2, shotStun: 14,
+    stance: STANCE_FRAMES, holdChain: 'shot2' },
+  shot2: { label: 'Six Shooter', kind: 'ground', startup: 5, active: 6, recovery: 15, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 16, mashChain: 'shot3' },
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 14,
+    holdChain: 'shot2', autoChain: 'shot3' },
   shot3: { label: 'Six Shooter', kind: 'ground', startup: 4, active: 5, recovery: 17, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 4, shotStun: 18 },
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 18 },
 
   // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ เหลือกองไฟบนพื้น (ปุ่ม 2) ----
   fire1: { label: 'Firewater', kind: 'ground', startup: 7, active: 5, recovery: 6, dmg: 0,
@@ -306,14 +313,15 @@ const ALECTO_MOVES = {
 
   // ---- สกิล 3 Last Call (อัลติ): ทอมมี่กันกราด กดรัวต่อรอบได้ (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
   // ดาเมจขึ้นกับตราที่เป้ามีอยู่ (lashDmg) — สะสมด้วยแส้ แล้วมาขึ้นเงินที่ตรงนี้
-  hail1: { label: 'Last Call', kind: 'ground', startup: 7, active: 3, recovery: 3, dmg: 2,
-    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 20,
-    autoChain: 'hail2', lashDmg: true, mashMax: 5 },
-  hail2: { label: 'Last Call', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 2,
-    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 20, autoChain: 'hail3', lashDmg: true },
-  hail3: { label: 'Last Call', kind: 'ground', startup: 3, active: 3, recovery: 3, dmg: 2,
-    hb: { x: 10, y: -82, w: 186, h: 34 }, kb: [0.8, 0], stun: 20,
-    mashChain: 'hail2', autoChain: 'hailEnd', lashDmg: true },
+  hail1: { label: 'Last Call', kind: 'ground', startup: 7, active: 3, recovery: 3, dmg: 1,
+    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 16,
+    stance: STANCE_FRAMES, autoChain: 'hail2', lashDmg: true },
+  hail2: { label: 'Last Call', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 1,
+    hb: { x: 10, y: -112, w: 176, h: 30 }, kb: [0.8, 0], stun: 16,
+    holdChain: 'hail3', autoChain: 'hailEnd', lashDmg: true },
+  hail3: { label: 'Last Call', kind: 'ground', startup: 4, active: 3, recovery: 4, dmg: 1,
+    hb: { x: 10, y: -82, w: 186, h: 34 }, kb: [0.8, 0], stun: 16,
+    holdChain: 'hail2', autoChain: 'hailEnd', lashDmg: true },
   hailEnd: { label: 'Last Call', kind: 'ground', startup: 7, active: 5, recovery: 26, dmg: 7,
     hb: { x: 12, y: -106, w: 198, h: 46 }, kb: [16, -6], stun: 40, lashDmg: true },
 
@@ -328,7 +336,8 @@ const ALECTO_MOVES = {
 };
 
 const ALECTO_SKILLS = ['shot1', 'fire1', 'hail1'];
-const ALECTO_SKILL_CD = [110, 200, 0];
+// คูลดาวน์ของสกิล 1 ต้องยาวกว่าเวลายืนยิง (300) ไม่งั้นพอป้อมหมดเวลาก็ตั้งใหม่ได้ทันที
+const ALECTO_SKILL_CD = [420, 200, 0];
 // กดทิศถอยค้าง -> เริ่มด้วยท่าถอยแทน แล้ว autoChain เข้าสกิลเอง
 const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
 
@@ -378,6 +387,7 @@ class Fighter {
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
+      stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
       lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
@@ -726,6 +736,8 @@ class Game {
     else f.cd[i] = f.skillCd[i];
     // โควต้า "กดรัวเพื่อต่อรอบ" เป็นของการกดสกิลหนึ่งครั้ง ตั้งตอนเริ่มชุด ไม่ใช่ตอนถึงท่าที่วน
     f.mashLeft = f.moves[f.skills[i]].mashMax ?? 0;
+    const st = f.moves[f.skills[i]].stance;
+    f.stanceUntil = st ? this.frame + st : -9999;
     // กดทิศตรงข้ามกับที่หันอยู่ค้างไว้ = ถอยก่อนแล้วค่อยใช้อาวุธ (ท่าถอย autoChain เข้าสกิลเอง)
     // อ่านจาก f.inp ของเฟรมนั้น ไม่ใช่ปุ่มที่ค้างตอนวาด — สองเครื่องต้องอ่านค่าเดียวกัน
     const back = f.backstep && f.backstep[f.skills[i]];
@@ -977,6 +989,12 @@ class Game {
           f.mashLeft--;
           this.startMove(f, m.mashChain, f.facing); return;
         }
+        // ท่าตั้งป้อม (holdChain): ปักหลักยิงเองจนหมดเวลา ไม่ต้องกดรัว
+        // ต่างจาก mashChain ตรงที่นับเป็น "เวลา" ไม่ใช่จำนวนครั้ง — กดทีเดียวแล้วยืนยิงยาว
+        // แลกกับการขยับไม่ได้ตลอดช่วงนั้น โดนตีเมื่อไหร่หลุดทันที (resolveHit ล้าง stanceUntil)
+        if (m.holdChain && f.onGround && this.frame < f.stanceUntil) {
+          this.startMove(f, m.holdChain, f.facing); return;
+        }
         // ท่าที่มี autoChain ต่อท่าถัดไปเองโดยไม่ต้องกดซ้ำ — ใช้ทำคอมโบสกิลกดครั้งเดียวจบชุด
         // ต่อเฉพาะตอนยังยืนอยู่บนพื้น ถ้าโดนตีจนหลุด state หรือตกลงมา คอมโบก็ขาดตามธรรมชาติ
         if (m.autoChain && f.onGround) { this.startMove(f, m.autoChain, f.facing); return; }
@@ -1013,6 +1031,7 @@ class Game {
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');
+    d.stanceUntil = -9999;          // ยืนยิงอยู่แล้วโดนสวน = ป้อมแตก นี่คือทางแก้ของอีกฝ่าย
     d.vx = a.facing * m.kb[0];
     if (m.kb[1] < 0 || !d.onGround) { d.vy = m.kb[1] || -2; d.onGround = false; }
     d.facing = -a.facing;

@@ -134,3 +134,61 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   ok(A.jab1.hb.w > H.jab1.hb.w * 1.4, `จิ้มของ Alecto ยาวกว่า Helios มาก (${A.jab1.hb.w} vs ${H.jab1.hb.w})`);
   ok(A.jab1.startup > H.jab1.startup, `แลกกับออกช้ากว่า (${A.jab1.startup} vs ${H.jab1.startup} เฟรม)`);
 }
+
+// ── ท่าตั้งป้อมยืนยิง (สกิล 1 และอัลติ) ──
+//
+// กดครั้งเดียวแล้วปักหลักยิงยาว 5 วินาที ไม่ต้องกดรัว แลกกับขยับไม่ได้เลยตลอดช่วงนั้น
+{
+  const fire = (key, ki = 0, foe = () => inp()) => {
+    const g = mk(150); g.p1.ki = ki;
+    let frames = 0; const start = g.frame;
+    for (let i = 0; i < 420; i++) {
+      g.step(inp(i === 0 ? { [key]: 1, p: { [key]: 1 } } : {}), foe(i));
+      if (g.p1.state === "attack") frames = g.frame - start;
+    }
+    return { frames, dmg: 100 - g.p2.hp };
+  };
+
+  const shot = fire("skill1");
+  ok(shot.frames > 280 && shot.frames < 380, `ลูกโม่ยืนยิงได้ราว 5 วินาที (${shot.frames} เฟรม)`);
+  ok(shot.dmg > 15 && shot.dmg < 40, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${shot.dmg}`);
+
+  const ult = fire("skill3", 100);
+  ok(ult.frames > 280 && ult.frames < 400, `อัลติยืนยิงได้ราว 5 วินาที (${ult.frames} เฟรม)`);
+
+  // เดินหนีออกจากระยะต้องกินดาเมจน้อยลงมาก — ไม่งั้นเป็นดาเมจฟรีที่ไม่มีทางแก้
+  const run = fire("skill1", 0, () => inp({ right: 1 }));
+  ok(run.dmg < shot.dmg / 2, `เดินหนีแล้วกินแค่ ${run.dmg} (ยืนนิ่งกิน ${shot.dmg})`);
+}
+
+// ── โดนสวนระหว่างยืนยิง = ป้อมแตกทันที ──
+// เป็นทางแก้เดียวของอีกฝ่ายตอนเธอตั้งป้อม ถ้าอันนี้พังตัวละครจะกดไม่ขึ้น
+{
+  const g = mk(150);
+  for (let i = 0; i < 60; i++) g.step(inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}), inp());
+  ok(g.p1.state === "attack" && g.p1.stanceUntil > g.frame, "กำลังยืนยิงอยู่");
+  g.p2.x = g.p1.x + 60; g.p2.facing = -1;
+  g.startMove(g.p2, "jab1", -1);
+  for (let i = 0; i < 20; i++) g.step(inp(), inp());
+  ok(g.p1.stanceUntil <= g.frame, "โดนสวนแล้วเวลายืนยิงถูกล้างทิ้ง");
+  ok(g.p1.state !== "attack", "และหลุดออกจากท่ายิงจริง");
+}
+
+// ── คูลดาวน์ต้องยาวกว่าเวลายืนยิง ไม่งั้นตั้งป้อมต่อได้ไม่หยุด ──
+{
+  const g = mk();
+  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp());
+  const M = g.p1.moves;
+  ok(g.p1.cd[0] > M.shot1.stance, `คูลดาวน์ ${g.p1.cd[0]} เฟรม ยาวกว่าเวลายืนยิง ${M.shot1.stance} เฟรม`);
+}
+
+// ── กลิ้ง/กระโดดถอยก่อนตั้งป้อม ต้องไม่ทำให้เวลายืนยิงหายไป ──
+{
+  const g = mk(150);
+  const seen = [];
+  for (let i = 0; i < 200; i++) {
+    g.step(i === 0 ? inp({ left:1, skill1:1, p:{ skill1:1 } }) : inp({ left:1 }), inp());
+    if (g.p1.moveId && seen[seen.length-1] !== g.p1.moveId) seen.push(g.p1.moveId);
+  }
+  ok(seen[0] === "hop" && seen.includes("shot2"), "ถอยก่อนแล้วยังตั้งป้อมยิงต่อได้");
+}

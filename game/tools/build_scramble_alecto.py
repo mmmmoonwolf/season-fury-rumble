@@ -109,11 +109,11 @@ def chin_y(rgb, m):
 
 
 idle_cell, idle_mask = clip_cell(0)
-idle_rgb = np.asarray(idle_cell)[:, :, :3]
+idle_rgb = np.asarray(idle_cell)[:, :, :3].astype(int)
 ys = np.nonzero(idle_mask.any(axis=1))[0]
 clip_chin = ys.max() - chin_y(idle_rgb, idle_mask)
 SRC_SCALE = {"clip": TARGET_CHIN / clip_chin}
-CLIP_HAT = hat_sqrt(idle_rgb.astype(int), idle_mask)
+CLIP_HAT = hat_sqrt(idle_rgb, idle_mask)
 print(f"คลิป: คางถึงเท้า {clip_chin} px -> สเกล {SRC_SCALE['clip']:.4f} · หมวก {CLIP_HAT:.0f}")
 
 # ---------- อ่านชีต แล้วปรับสเกลให้เท่าคลิปด้วยขนาดหมวก ----------
@@ -138,7 +138,9 @@ def source(src, n):
     arr, poses = SHEETS[src]
     m = poses[n - 1][0]
     ys, xs = np.nonzero(m)
-    rgba = np.dstack([arr.astype(np.uint8), (m * 255).astype(np.uint8)])
+    # arr ถูกตัดพื้นและถอดขอบมาแล้ว เหลือแค่กันไม่ให้พิกเซลของท่าข้าง ๆ ติดมาด้วย
+    rgba = arr.copy()
+    rgba[:, :, 3] = np.where(m, arr[:, :, 3], 0)
     crop = Image.fromarray(rgba).crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
     return crop, body_anchor(m) - xs.min()
 

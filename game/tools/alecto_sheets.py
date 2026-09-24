@@ -24,8 +24,31 @@ LAYOUT = {"A": (3, 3), "B": (3, 3), "C": (3, 3), "D": (3, 3),
           "E": (2, 3), "F": (2, 3), "G": (2, 3), "H": (2, 3)}
 
 
-def extract(path, rows, cols, bg_min=2000, part_min=1500):
-    """คืน (ภาพต้นฉบับ, ลิสต์ของ (mask, จำนวนชิ้นที่รวมกัน) เรียงซ้ายไปขวาบนลงล่าง)"""
+def soft_alpha(rgb, bg_region, soft=34.0):
+    """อัลฟาแบบนุ่ม + ถอดสีพื้นออกจากขอบ (defringe)
+
+    ขอบที่ตัวเข้ารหัสภาพเบลอไว้คือสีตัวละครผสมสีพื้นมาแล้ว (observed = a*fg + (1-a)*bg)
+    ถ้าตัดเป็น 0/1 ดื้อ ๆ พิกเซลพวกนี้จะเหลือค่าเดิมซึ่งอ่อนไปทางสีพื้น = ขอบขาวเรืองรอบตัว
+    บนเวทีมืด แก้ด้วยการให้อัลฟาตามระยะห่างจากสีพื้น แล้วถอดสมการกลับหาสีตัวจริง
+
+    @param bg_region พื้นที่ที่ตัดสินแล้วว่าเป็นพื้นหลัง (รวมรูข้างในห่วงแส้) — บังคับอัลฟา 0
+    """
+    tone = np.median(rgb[bg_region], axis=0) if bg_region.any() else np.array([255., 255., 255.])
+    dist = np.abs(rgb - tone).max(axis=2)
+    alpha = np.clip(dist / soft, 0.0, 1.0)
+    alpha[bg_region] = 0.0
+    a3 = alpha[:, :, None]
+    fg = np.where(a3 > 0.02, (rgb - (1 - a3) * tone) / np.maximum(a3, 0.02), rgb)
+    return np.clip(fg, 0, 255).astype(np.uint8), (alpha * 255).astype(np.uint8)
+
+
+def extract(path, rows, cols, bg_min=500, part_min=1500):
+    """คืน (ภาพ RGBA ที่ตัดพื้นและถอดขอบแล้ว, ลิสต์ของ (mask, จำนวนชิ้นที่รวมกัน))
+
+    bg_min ต้องต่ำพอจะตัด "รูข้างในตัวละคร" ด้วย — รูตรงกลางห่วงแส้ใหญ่ราว 1,400-4,000 px
+    ตอนแรกตั้งไว้ 2,000 ซึ่งตัดได้แค่ 2 จาก 26 รู เหลือเป็นปื้นขาวกลางห่วงแส้ทุกท่า
+    ขนาดรูจริงกับสัญญาณรบกวนมีช่องว่างชัดเจนที่ 254 -> 708 px จึงตั้ง 500 ได้ปลอดภัย
+    """
     a = np.asarray(Image.open(path).convert("RGB")).astype(int)
     H, W, _ = a.shape
     sat = a.max(axis=2) - a.min(axis=2)
@@ -52,7 +75,9 @@ def extract(path, rows, cols, bg_min=2000, part_min=1500):
         for c in range(cols):
             ms = cells.get((r, c))
             out.append((np.logical_or.reduce(ms), len(ms)) if ms else None)
-    return a, out
+
+    fg, alpha = soft_alpha(a.astype(np.float32), bg)
+    return np.dstack([fg, alpha]), out
 
 
 def body_anchor(m, erode=31):

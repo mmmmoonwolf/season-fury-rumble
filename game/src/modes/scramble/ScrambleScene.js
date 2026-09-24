@@ -1082,6 +1082,17 @@ class ScrambleScene extends Phaser.Scene {
       }
     }
 
+    // นับถอยหลังของท่าตั้งป้อมยืนยิง — ปักหลักอยู่ 5 วินาทีโดยไม่มีอะไรบอกว่าเหลือเท่าไหร่
+    // แปลว่าทั้งคนยิงและคนโดนยิงเดาไม่ถูกว่าจะจบเมื่อไหร่ ซึ่งเป็นข้อมูลที่ทั้งคู่ต้องใช้ตัดสินใจ
+    for (const f of [s.p1, s.p2]) {
+      const left = f.stanceUntil - s.frame;
+      if (left <= 0) continue;
+      const total = f.moves[f.skills[0]]?.stance ?? 300;
+      const w = 46, x = f.x - w / 2, y = f.y - 150;
+      g.fillStyle(0x0c111c, 0.7); g.fillRect(x - 1, y - 1, w + 2, 7);
+      g.fillStyle(0xffb03a, 1); g.fillRect(x, y, w * Math.min(1, left / total), 5);
+    }
+
     // กองไฟจากมอลอตอฟ — ต้องเห็นขอบเขตชัดว่าตรงไหนเข้าไม่ได้ ไม่งั้นเป็นกับดักที่มองไม่เห็น
     // เปลวไฟใช้เลขเฟรมของ sim เป็นตัวขยับ ไม่ใช่เวลาจริง ภาพสองเครื่องจึงตรงกันด้วย
     for (const fire of s.fires) {
