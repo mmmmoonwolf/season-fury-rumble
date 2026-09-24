@@ -1,0 +1,181 @@
+// ทดสอบการเล่นสองคนคนละเครื่อง (lockstep) — ทั้งหมดรันในหน่วยความจำ ไม่ต้องมีเน็ต
+//
+// ความเสี่ยงจริงของ netplay ไม่ใช่ท่อส่งข้อมูล แต่คือ "สอง sim ต้องเดินตรงกันเป๊ะ"
+// เทสต์ชุดนี้จึงสร้าง Game สองตัวแยกกัน ส่งให้กันแค่ตัวเลขปุ่มที่กด แล้วเทียบสถานะทุกเฟรม
+// ถ้าที่ไหนในแกนมีอะไรสุ่ม/อ่านเวลาจริง/ขึ้นกับลำดับที่ไม่คงที่ เทสต์นี้จะจับได้ทันที
+const G = new URL("../../src/modes/scramble", import.meta.url).href;
+const { Game } = await import(G + "/core.js");
+const { Lockstep, packInput, unpackInput, NET_DELAY, HELD_MASK, PRESS_MASK } = await import(G + "/netplay.js");
+
+const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
+
+const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
+const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
+
+// ── บีบ/คลายอินพุตต้องได้ของเดิมกลับมาครบ ──
+{
+  const all = inp({ left: 1, right: 1, up: 1, down: 1, jump: 1, attack: 1, block: 1, skill1: 1, skill2: 1, skill3: 1,
+    p: { left: 1, right: 1, jump: 1, attack: 1, block: 1, skill1: 1, skill2: 1, skill3: 1 } });
+  const back = unpackInput(packInput(all));
+  const keys = ["left","right","up","down","jump","attack","block","skill1","skill2","skill3"];
+  ok(keys.every((k) => back[k] === 1), "ปุ่มที่กดค้างครบทุกปุ่มหลังบีบ/คลาย");
+  ok(["left","right","jump","attack","block","skill1","skill2","skill3"].every((k) => back.p[k] === 1),
+    "ปุ่มที่เพิ่งกดครบทุกปุ่มหลังบีบ/คลาย");
+
+  const none = unpackInput(packInput(inp()));
+  ok(keys.every((k) => !none[k]), "ไม่กดอะไรเลยก็ได้ค่าว่างกลับมา");
+  ok(packInput(inp()) === 0, "ไม่กดอะไร = 0 (แพ็คเก็ตเล็กสุด)");
+
+  // ปุ่มแต่ละปุ่มต้องไม่ทับบิตกัน
+  const bits = new Set();
+  for (const k of keys) bits.add(packInput(inp({ [k]: 1 })));
+  ok(bits.size === keys.length, `ปุ่มค้างแต่ละปุ่มใช้บิตของตัวเอง (${bits.size}/${keys.length})`);
+}
+
+/** จำลองท่อส่งข้อมูลที่มีหน่วง — คิวแพ็คเก็ตแล้วปล่อยตามจำนวนรอบที่กำหนด */
+function link(lagA = 0, lagB = 0) {
+  const qa = [], qb = [];
+  return {
+    sendFromA: (pk) => qb.push({ pk, due: lagA }),
+    sendFromB: (pk) => qa.push({ pk, due: lagB }),
+    /** เดินเวลาไปหนึ่งรอบ คืนแพ็คเก็ตที่ถึงมือแต่ละฝั่ง — ที่ยังไม่ถึงกำหนดต้องค้างในคิวต่อ */
+    tick() {
+      const drain = (q) => {
+        const out = [], keep = [];
+        for (const e of q) (--e.due < 0 ? out : keep).push(e);
+        q.length = 0; q.push(...keep);
+        return out.map((e) => e.pk);
+      };
+      return [drain(qa), drain(qb)];
+    },
+  };
+}
+
+/** สถานะที่ต้องตรงกันทั้งสองเครื่อง — ทุกอย่างที่มองเห็นบนจอ */
+const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
+  Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
+  f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
+]), g.shots.length].join("|");
+
+/** เล่นสองเครื่องด้วยสคริปต์ปุ่มที่กำหนด แล้วคืนว่าสถานะตรงกันตลอดไหม */
+function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260 } = {}) {
+  const net = link(lagA, lagB);
+  const gA = new Game(), gB = new Game();
+  const lsA = new Lockstep(net.sendFromA);
+  const lsB = new Lockstep(net.sendFromB);
+  lsA.primeStart(); lsB.primeStart();
+
+  let mismatch = null, stepped = 0;
+  for (let t = 0; t < frames * 3 && stepped < frames; t++) {
+    lsA.pushLocal(packInput(scriptA(lsA.sent + 1)));
+    lsB.pushLocal(packInput(scriptB(lsB.sent + 1)));
+    const [toA, toB] = net.tick();
+    for (const pk of toA) lsA.onPacket(pk);
+    for (const pk of toB) lsB.onPacket(pk);
+
+    // เครื่อง A มองตัวเองเป็นฝั่งซ้าย · เครื่อง B มองอีกฝั่งเป็นฝั่งซ้าย (สลับกัน)
+    while (lsA.ready() && lsB.ready() && stepped < frames) {
+      const [a1, a2] = lsA.take();
+      const [b2, b1] = lsB.take();
+      gA.step(a1, a2);
+      gB.step(b1, b2);
+      stepped++;
+      if (!mismatch && snap(gA) !== snap(gB)) mismatch = { frame: stepped, a: snap(gA), b: snap(gB) };
+    }
+  }
+  return { mismatch, stepped, gA, gB };
+}
+
+// ── สองเครื่องต้องได้ภาพตรงกันเป๊ะ แม้หน่วงไม่เท่ากัน ──
+{
+  // สคริปต์ที่ใช้ท่าให้ครบ: เดิน กระโดด ตี กัน และสกิลทั้งสามช่อง
+  // toward = ทิศที่เดินเข้าหาอีกฝั่ง (+1 สำหรับฝั่งซ้าย, -1 สำหรับฝั่งขวา)
+  const busy = (seed, toward) => (f) => {
+    const k = (f * 7 + seed) % 23;
+    const inward = toward > 0 ? 'right' : 'left', outward = toward > 0 ? 'left' : 'right';
+    return inp({
+      [inward]: k < 6 ? 1 : 0, [outward]: k >= 6 && k < 9 ? 1 : 0,
+      up: k === 11 ? 1 : 0, down: k === 12 ? 1 : 0,
+      block: k === 13 ? 1 : 0,
+      p: { attack: k === 3 || k === 15 ? 1 : 0, jump: k === 9 ? 1 : 0,
+           skill1: k === 17 ? 1 : 0, skill2: k === 19 ? 1 : 0, skill3: k === 21 ? 1 : 0 },
+    });
+  };
+
+  for (const [name, lagA, lagB] of [["ไม่หน่วง", 0, 0], ["หน่วงเท่ากัน", 2, 2], ["หน่วงไม่เท่ากัน", 1, 4]]) {
+    const r = playApart(busy(1, 1), busy(2, -1), { lagA, lagB });
+    ok(r.stepped >= 250, `${name}: เดินได้ครบ ${r.stepped} เฟรม (ไม่ค้าง)`);
+    ok(r.mismatch === null,
+      `${name}: สองเครื่องเห็นตรงกันทุกเฟรม` + (r.mismatch ? `\n      เฟรม ${r.mismatch.frame}\n      A ${r.mismatch.a}\n      B ${r.mismatch.b}` : ""));
+  }
+
+  // ต้องมีอะไรเกิดขึ้นจริง ไม่ใช่ยืนเฉย ๆ แล้วผ่านเพราะไม่มีอะไรให้ต่าง
+  const r = playApart(busy(1, 1), busy(2, -1));
+  const moved = r.gA.p1.x !== new Game().p1.x || r.gA.p2.x !== new Game().p2.x;
+  ok(moved, "สคริปต์ทดสอบทำให้ตัวละครขยับจริง");
+  ok(r.gA.p1.hp < 100 || r.gA.p2.hp < 100, `มีการตีโดนจริงระหว่างทดสอบ (HP ${r.gA.p1.hp}/${r.gA.p2.hp})`);
+}
+
+// ── ไม่มีอินพุตของอีกฝั่ง = ต้องรอ ไม่ใช่เดินมั่ว ──
+{
+  const sent = [];
+  const ls = new Lockstep((pk) => sent.push(pk));
+  ls.primeStart();
+  ok(sent.length === NET_DELAY, `เปิดเกมส่งอินพุตล่วงหน้าไว้ ${NET_DELAY} เฟรม`);
+  ok(!ls.ready(), "ยังไม่ได้อินพุตจากอีกฝั่ง = ยังเดินไม่ได้");
+  ls.onPacket({ t: "i", f: 0, v: 0 });
+  ok(ls.ready(), "ได้อินพุตของเฟรมนั้นจากอีกฝั่งแล้วถึงเดินได้");
+  ls.take();
+  ok(!ls.ready(), "เฟรมถัดไปก็ต้องรออีกฝั่งเหมือนกัน");
+}
+
+// ── อินพุตถูกใช้ที่เฟรมในอนาคต ไม่ใช่เฟรมปัจจุบัน ──
+{
+  const sent = [];
+  const ls = new Lockstep((pk) => sent.push(pk));
+  ls.primeStart();
+  sent.length = 0;
+  ls.pushLocal(123);
+  ok(sent[0].f >= NET_DELAY, `อินพุตที่กดตอนนี้ไปใช้ที่เฟรม ${sent[0].f} (>= ${NET_DELAY}) ไม่ใช่เฟรมนี้`);
+  ok(sent[0].v === 123, "ส่งค่าปุ่มไปตรง ๆ");
+}
+
+// ── คิวเต็มแล้วกดปุ่ม ปุ่มต้องไม่หาย ──
+//
+// บั๊กจริงที่เคยเจอ: รอบวาดที่ sim ยังเดินไม่ได้ (รออีกฝั่ง) คิวอินพุตเต็มอยู่แล้ว
+// pushLocal จึงไม่ได้ส่งอะไร แต่ตัวอ่านปุ่มล้างบิต "เพิ่งกด" ไปแล้ว = กดตีแล้วไม่ออกท่า
+// ทางแก้คือ pushLocal บอกกลับว่าเข้าคิวได้กี่เฟรม ผู้เรียกเก็บบิตเพิ่งกดไว้เองจนกว่าจะเข้าคิวได้จริง
+{
+  const ls = new Lockstep(() => {});
+  ls.primeStart();
+  ls.pushLocal(0);   // รอบแรกเติมคิวจนเต็มถึง frame + delay
+  ok(ls.pushLocal(0) === 0, "คิวเต็มอยู่แล้ว pushLocal ต้องบอกว่าเข้าคิวไม่ได้ (คืน 0)");
+  ls.onPacket({ t: "i", f: 0, v: 0 });
+  ls.take();
+  ok(ls.pushLocal(0) === 1, "พอเดินไปหนึ่งเฟรม คิวว่างหนึ่งช่อง เข้าคิวได้ 1");
+}
+
+// ── เลียนแบบลูปของฉาก: กดตีตอนคิวเต็ม แล้วบิตต้องไปโผล่ในเฟรมถัดไป ──
+{
+  const sent = [];
+  const ls = new Lockstep((pk) => sent.push(pk));
+  ls.primeStart();
+  ls.pushLocal(0);   // เติมคิวให้เต็มก่อน เลียนแบบรอบวาดรอบแรก ๆ
+  sent.length = 0;
+
+  const ATTACK = packInput(inp({ p: { attack: 1 } }));
+  let sticky = 0;
+  // รอบที่ 1: กดตี แต่คิวเต็ม (ยังไม่ได้อินพุตจากอีกฝั่ง sim เลยเดินไม่ได้)
+  sticky |= ATTACK & PRESS_MASK;
+  if (ls.pushLocal((ATTACK & HELD_MASK) | sticky) > 0) sticky = 0;
+  ok(sent.length === 0, "คิวเต็ม รอบนี้ไม่มีอะไรถูกส่ง");
+  ok(sticky !== 0, "บิตเพิ่งกดถูกเก็บค้างไว้ ไม่ทิ้ง");
+
+  // รอบที่ 2: อีกฝั่งส่งมาแล้ว เดินได้หนึ่งเฟรม คิวว่าง แล้วปล่อยมือจากปุ่ม
+  ls.onPacket({ t: "i", f: 0, v: 0 });
+  ls.take();
+  if (ls.pushLocal((0 & HELD_MASK) | sticky) > 0) sticky = 0;
+  ok(sent.length === 1, "พอคิวว่างถึงส่งออกไปหนึ่งเฟรม");
+  ok((sent[0].v & PRESS_MASK) === (ATTACK & PRESS_MASK), "บิต 'เพิ่งกดตี' ตามไปด้วย ไม่หายระหว่างทาง");
+  ok(sticky === 0, "ส่งได้แล้วต้องล้างบิตที่เก็บค้าง ไม่งั้นจะออกท่าซ้ำ");
+}

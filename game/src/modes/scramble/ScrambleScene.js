@@ -1,4 +1,6 @@
 import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS, Game } from "./core.js";
+import { Lockstep, packInput, HELD_MASK, PRESS_MASK } from "./netplay.js";
+import { getSession, sendNetPacket } from "../../net/session.js";
 
 /**
  * SCRAMBLE — ฉาก Phaser: renderer แบบกล่อง (greybox) + เครื่องมือดีบัก
@@ -15,9 +17,22 @@ import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, CHARACTERS
  *  - ตัวดัก keydown/keyup ก็ถอดออกตอน shutdown ด้วย ไม่งั้นกดปุ่มในล็อบบี้แล้วจะไปโดนโหมดนี้กินไป
  */
 
-// ---------- อินพุต (ยกจาก prototype) ----------
-const GAME_KEYS = new Set(['KeyA','KeyD','KeyW','KeyS','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Space','KeyJ','KeyK','KeyL','ShiftLeft','ShiftRight','Digit1','Digit2','Digit3']);
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV']);
+// ---------- อินพุต ----------
+// ปุ่มของสองฝั่งแยกกัน: ฝั่ง 1 = WASD + JKL + 123 · ฝั่ง 2 = ลูกศร + numpad
+// เล่นคนเดียวใช้ได้ทั้งสองชุด (ฝั่ง 1 รับลูกศรด้วย) เล่นสองคนบนคีย์บอร์ดเดียวจึงแยกมือกันได้
+const BINDS = [
+  { left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'],
+    jump: ['Space', 'KeyK'], attack: ['KeyJ'], block: ['KeyL'],
+    skill1: ['Digit1', 'ShiftLeft'], skill2: ['Digit2'], skill3: ['Digit3'] },
+  { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'],
+    jump: ['Numpad0', 'Numpad2'], attack: ['Numpad1'], block: ['Numpad3'],
+    skill1: ['Numpad4'], skill2: ['Numpad5'], skill3: ['Numpad6'] },
+];
+// เล่นคนเดียว ฝั่ง 1 รับลูกศรด้วย จะได้ไม่ต้องจำว่าต้องใช้ WASD เท่านั้น
+const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
+
+const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -31,14 +46,18 @@ const onKeyDown = (e) => {
 const onKeyUp = (e) => held.delete(e.code);
 const onBlur = () => held.clear();
 
-function readInput() {
-  const h = (c) => held.has(c), any = (...c) => c.some(h), anyP = (...c) => c.some((k) => pressed.has(k));
+/** อ่านอินพุตของฝั่งที่ระบุ · solo = ฝั่ง 1 รับลูกศรเพิ่มด้วย */
+function readInput(side = 0, solo = false) {
+  const b = BINDS[side];
+  const keysOf = (k) => (solo && side === 0 && SOLO_EXTRA[k] ? b[k].concat(SOLO_EXTRA[k]) : b[k]);
+  const any = (k) => keysOf(k).some((c) => held.has(c));
+  const anyP = (k) => keysOf(k).some((c) => pressed.has(c));
   return {
-    left: any('KeyA','ArrowLeft'), right: any('KeyD','ArrowRight'), up: any('KeyW','ArrowUp'), down: any('KeyS','ArrowDown'),
-    jump: any('Space','KeyK'), attack: any('KeyJ'), block: any('KeyL'), run: 0,
-    skill1: any('Digit1','ShiftLeft','ShiftRight'), skill2: any('Digit2'), skill3: any('Digit3'),
-    p: { left: anyP('KeyA','ArrowLeft'), right: anyP('KeyD','ArrowRight'), jump: anyP('Space','KeyK'), attack: anyP('KeyJ'), block: anyP('KeyL'),
-          skill1: anyP('Digit1','ShiftLeft','ShiftRight'), skill2: anyP('Digit2'), skill3: anyP('Digit3') },
+    left: any('left'), right: any('right'), up: any('up'), down: any('down'),
+    jump: any('jump'), attack: any('attack'), block: any('block'), run: 0,
+    skill1: any('skill1'), skill2: any('skill2'), skill3: any('skill3'),
+    p: { left: anyP('left'), right: anyP('right'), jump: anyP('jump'), attack: anyP('attack'),
+         block: anyP('block'), skill1: anyP('skill1'), skill2: anyP('skill2'), skill3: anyP('skill3') },
   };
 }
 
@@ -174,6 +193,8 @@ body.sc-touch #sc-touch { display:flex; }
 /* กล่องที่ห่อปุ่มต้องปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่ม — นิ้วที่พลาดลงช่องว่างระหว่างปุ่ม
    สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
 #sc-tools, #sc-touch, #sc-touch .pad, #sc-touch .acts { touch-action:none; }
+/* ต่อเน็ตแล้วเครื่องมือซ้อมใช้ไม่ได้ (แก้ sim ข้างเดียว = หลุดกัน) ซ่อนไปเลยดีกว่าให้กดแล้วเงียบ */
+body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 #sc-touch .pad { display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(3,48px); gap:4px; pointer-events:auto; }
 #sc-touch .acts { display:grid; grid-template-columns:repeat(2,76px); gap:8px; pointer-events:auto; }
 #sc-touch .acts button { height:56px; }
@@ -195,6 +216,7 @@ const OVERLAY_HTML = `
   <button data-tool="KeyT">Tune</button>
   <button data-tool="KeyC">Char: NYX</button>
   <button data-tool="KeyV">VS: HELIOS</button>
+  <button data-tool="KeyM">2P: Off</button>
 </div>
 <div id="sc-tune"></div>
 <div id="sc-touch">
@@ -221,6 +243,10 @@ const TUNE = [
   ['gravity', 'Gravity', 0.5, 1.6, 0.05],
 ];
 const DEFAULTS = Object.fromEntries(TUNE.map(([k]) => [k, PHYS[k]]));
+/** ค่าปรับจูนปัจจุบันเป็นก้อนเดียว — ต้องส่งข้ามเน็ต เพราะ sim สองฝั่งจะเดินตรงกันได้ก็ต่อเมื่อ PHYS เท่ากัน
+ *  (แผง Tune เซฟค่าลง localStorage ใครเคยลากสไลเดอร์ไว้ เครื่องนั้นจะฟิสิกส์ต่างจากเพื่อนถาวร) */
+export const tuneSnapshot = () => Object.fromEntries(TUNE.map(([k]) => [k, PHYS[k]]));
+export const applyTune = (t) => { for (const k in DEFAULTS) if (typeof t?.[k] === 'number') PHYS[k] = t[k]; };
 try { const saved = JSON.parse(localStorage.getItem('scramble-tune') || '{}'); for (const k in saved) if (k in DEFAULTS) PHYS[k] = saved[k]; } catch (e) {}
 function buildTune() {
   const el = document.getElementById('sc-tune');
@@ -262,8 +288,17 @@ class ScrambleScene extends Phaser.Scene {
     // เวทีกว้างเท่าผืนเกม กำแพงจึงอยู่ขอบจอพอดี ไม่เหลือแถบมืดสองข้างให้ดูเหมือนเกมไม่เต็มจอ
     // ต้องตั้งก่อน new Game() เพราะจุดเกิดของทั้งสองฝั่งอ่าน STAGE ตอนสร้าง
     setStageWidth(this.sys.game.config.width);
+    this.versus = this.versus ?? 'solo';   // 'solo' = ซ้อมกับหุ่น · 'local' = สองคนคีย์บอร์ดเดียว
     this.sim = new Game();
     this._syncSkillSlots();   // ต้องหลัง new Game() — อ่านสกิลจากตัวละครของผู้เล่น
+    // ล็อบบี้ต่อห้องไว้แล้ว = เข้าโหมดข้ามเครื่องทันที · PeerJS เป็นแค่ท่อหนึ่งแบบที่เสียบเข้ามา
+    const ses = getSession();
+    if (ses.mode !== 'offline' && ses.conn) {
+      const recv = this.startNet({ isHost: ses.mode === 'host', send: sendNetPacket });
+      ses.onData = recv;
+      ses.onClose = () => this.endNet('อีกฝั่งหลุดการเชื่อมต่อ');
+      ses.onError = () => this.endNet('การเชื่อมต่อมีปัญหา');
+    }
     this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
     this.sparks = []; this.popups = []; this.comboFade = 0;
     drawBackground(this.add.graphics());
@@ -287,6 +322,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     this._initSprites();
+    this._syncMatchHud();
     this.syncTools();
   }
 
@@ -334,11 +370,17 @@ class ScrambleScene extends Phaser.Scene {
     for (const el of this._overlay ?? []) el.remove();
     this._overlay = null;
     document.body.classList.remove('sc-touch');
+    document.body.classList.remove('sc-net');
     if (activeScene === this) activeScene = null;
   }
 
+  /** เครื่องมือที่ปลอดภัยตอนต่อเน็ต: เปลี่ยนแค่สิ่งที่เห็นบนจอเครื่องนี้ ไม่แตะ sim */
+  static VIEW_ONLY = new Set(['KeyH']);
+
   tool(code) {
     const s = this.sim;
+    // reset/pause/step/slow-mo/สลับตัวละคร/2P ล้วนแก้ sim ของเครื่องเดียว อีกฝั่งไม่รู้ด้วย = ภาพหลุดกันถาวร
+    if (this.versus === 'net' && !ScrambleScene.VIEW_ONLY.has(code)) return;
     if (code === 'KeyT') document.getElementById('sc-tune').classList.toggle('open');
     if (code === 'KeyH') this.showBoxes = !this.showBoxes;
     // 1/2/3 เคยเป็นคีย์ลัดตั้งโหมดหุ่น ย้ายไปเป็นปุ่มสกิลแล้ว — ปุ่ม "Dummy" บนจอ (Digit0)
@@ -348,6 +390,8 @@ class ScrambleScene extends Phaser.Scene {
     if (code === 'KeyR') { s.resetPositions(); this.comboFade = 0; }
     if (code === 'KeyP') this.paused = !this.paused;
     if (code === 'KeyN') { this.paused = true; this.stepOnce = true; }
+    // สลับโหมดสองคน — ฝั่งขวาเปลี่ยนจากหุ่นซ้อมเป็นคนเล่นจริง (ลูกศร + numpad)
+    if (code === 'KeyM') { this.versus = this.versus === 'local' ? 'solo' : 'local'; s.resetPositions(); this._syncMatchHud(); }
     if (code === 'KeyO') this.timeScale = this.timeScale === 1 ? 0.25 : 1;
     // สลับตัวละคร — สไปรท์เป็นของฝั่ง ไม่ใช่ของตัวละคร จึงไม่มีตัวค้างบนจอให้ต้องซ่อน
     if (code === 'KeyC' || code === 'KeyV') {
@@ -355,11 +399,26 @@ class ScrambleScene extends Phaser.Scene {
       const f = code === 'KeyC' ? s.p1 : s.p2;
       f.char = ids[(ids.indexOf(f.char) + 1) % ids.length];
       this._syncSkillSlots();
+      this._syncMatchHud();
       s.resetPositions();
       this.comboFade = 0;
     }
     this.syncTools();
   }
+  /** ป้ายชื่อ/โหมดบนหัวจอ — เรียกเมื่อโหมดหรือตัวละครเปลี่ยน ไม่ใช่ทุกเฟรม */
+  _syncMatchHud() {
+    if (!this.tSub) return;
+    const name = (f) => CHARACTERS[f.char].label;
+    const net = this.versus === 'net';
+    this.tSub.setText(net ? (this.isHost ? 'Online · Host' : 'Online · Guest')
+      : this.versus === 'local' ? 'Local 2P' : 'Training');
+    this.tP1.setText(name(this.sim.p1));
+    this.tP2.setText(this.versus === 'solo' ? 'Training dummy' : name(this.sim.p2));
+    // แถวเครื่องมือซ้อมกินพื้นที่ครึ่งจอบนมือถือ และตอนต่อเน็ตก็กดไม่ได้อยู่แล้ว
+    document.body.classList.toggle('sc-net', net);
+    if (net) document.getElementById('sc-tune')?.classList.remove('open');
+  }
+
   syncTools() {
     const b = q => document.querySelector(`#sc-tools [data-tool="${q}"]`);
     if (!b('KeyH')) return;
@@ -370,6 +429,8 @@ class ScrambleScene extends Phaser.Scene {
     b('KeyT').classList.toggle('on', document.getElementById('sc-tune').classList.contains('open'));
     b('KeyC').textContent = 'Char: ' + CHARACTERS[this.sim.p1.char].label;
     b('KeyV').textContent = 'VS: ' + CHARACTERS[this.sim.p2.char].label;
+    b('KeyM').textContent = '2P: ' + (this.versus === 'local' ? 'On' : 'Off');
+    b('KeyM').classList.toggle('on', this.versus === 'local');
   }
 
   update(time, delta) {
@@ -382,8 +443,11 @@ class ScrambleScene extends Phaser.Scene {
   }
 
   tick() {
-    const inp = readInput(); pressed.clear();
-    this.sim.step(inp);
+    if (this.net) { this.tickNet(); return; }
+    const inp = readInput(0, this.versus === 'solo');
+    const inp2 = this.versus === 'local' ? readInput(1) : null;
+    pressed.clear();
+    this.sim.step(inp, inp2);
     for (const e of this.sim.events) {
       if (e.type === 'hit') {
         this.spark(e.x, e.y, e.heavy ? 14 : 9, 0xffffff);
@@ -437,6 +501,75 @@ class ScrambleScene extends Phaser.Scene {
       const ready = i === 2 ? f.ki >= KI_MAX : f.cd[i] <= 0;
       const want = ready ? '1' : '.4';
       if (b.style.opacity !== want) b.style.opacity = want;
+    }
+  }
+
+  /** เริ่มเล่นข้ามเครื่อง — โฮสต์เป็นฝั่งซ้าย (p1) ผู้เข้าร่วมเป็นฝั่งขวา (p2)
+   *
+   *  ท่อส่งข้อมูลถูกฉีดเข้ามา ไม่ได้ผูกกับ PeerJS ตายตัว: ฉากรู้แค่ "ส่งอ็อบเจกต์นี้ไปอีกฝั่ง"
+   *  จึงทดสอบได้ด้วยท่อปลอมที่ต่อสองหน้าต่างเบราว์เซอร์เข้าหากัน และเปลี่ยนไปใช้ท่าอื่น
+   *  (เช่น WebSocket ในวงแลน) ได้ทีหลังโดยไม่ต้องแตะโค้ดเกม
+   *
+   *  ทั้งสองเครื่องเดิน sim ของตัวเองด้วยอินพุตชุดเดียวกัน จึงไม่ส่งสถานะอะไรข้ามเน็ตเลย
+   *  คืนฟังก์ชันรับแพ็คเก็ต ให้ฝั่งท่อเรียกเมื่อมีข้อมูลเข้ามา
+   */
+  startNet({ isHost, send }) {
+    this.versus = 'net';
+    this.isHost = isHost;
+    this.net = new Lockstep(send);
+    this.netSend = send;
+    // โฮสต์เป็นคนตัดสินว่าใครเล่นตัวไหน ไม่งั้นสองเครื่องเดินคนละตารางท่า = ภาพหลุดกันทันที
+    if (isHost) send({ t: 'start', p1: this.sim.p1.char, p2: this.sim.p2.char, tune: tuneSnapshot() });
+    this.sim.resetPositions();
+    // นาฬิกาของ sim ต้องเริ่มที่ศูนย์พร้อมกันทั้งสองเครื่อง — เลขเฟรมเป็นส่วนหนึ่งของเส้นเวลาที่ใช้ร่วมกัน
+    // (สองเครื่องเปิดเกมคนละเวลา ฝั่งที่เปิดก่อนเดินโหมดซ้อมไปแล้วหลายร้อยเฟรมก่อนจะต่อห้องได้)
+    this.sim.frame = 0;
+    this.net.primeStart();
+    this._syncSkillSlots();
+    this._syncMatchHud();
+    this.syncTools();
+    return (pk) => this.netReceive(pk);
+  }
+
+  netReceive(pk) {
+    if (!this.net || !pk) return;
+    if (pk.t === 'start') {
+      if (this.isHost) return;                  // โฮสต์เป็นคนกำหนด ไม่รับกลับ
+      this.sim.p1.char = pk.p1; this.sim.p2.char = pk.p2;
+      applyTune(pk.tune);                       // ฟิสิกส์ต้องเป็นชุดของโฮสต์ ไม่ใช่ที่เครื่องนี้เคยลากไว้
+      this._syncSkillSlots();
+      this._syncMatchHud();
+      return;
+    }
+    this.net.onPacket(pk);
+  }
+
+  endNet(why) {
+    if (!this.net) return;
+    this.net = null;
+    this.netSend = null;
+    this.versus = 'solo';
+    this.netMsg = why ?? null;
+    this.sim.resetPositions();
+    this._syncMatchHud();
+    this.syncTools();
+  }
+
+  /** หนึ่งรอบวาดของโหมดเน็ต: ส่งปุ่มของตัวเอง แล้วเดิน sim เท่าที่มีอินพุตครบทั้งสองฝั่ง */
+  tickNet() {
+    const v = packInput(readInput(0, false));
+    pressed.clear();
+    // บิต "เพิ่งกด" ต้องเก็บค้างไว้จนกว่าจะเข้าคิวได้จริง
+    // รอบวาดที่คิวเต็มอยู่แล้วจะไม่ได้จองเฟรมใหม่ ถ้าปล่อยผ่านตรงนี้การกดปุ่มจะหายเงียบ ๆ
+    // (อาการที่เจอ: เล่นข้ามเครื่องแล้วเดินได้แต่ออกท่าไม่ได้เลย)
+    this.netPress = (this.netPress ?? 0) | (v & PRESS_MASK);
+    if (this.net.pushLocal((v & HELD_MASK) | this.netPress) > 0) this.netPress = 0;
+    // จำกัดจำนวนเฟรมต่อรอบ ไม่งั้นตอนไล่ตามหลังจะกระตุกเป็นก้อนแทนที่จะค่อย ๆ ตามทัน
+    let budget = 4;
+    while (budget-- > 0 && this.net.ready()) {
+      const [a, b] = this.net.take();
+      // อินพุตของตัวเองไปเข้าฝั่งที่ถูกต้องของทั้งสองเครื่อง
+      if (this.isHost) this.sim.step(a, b); else this.sim.step(b, a);
     }
   }
 
@@ -696,7 +829,8 @@ class ScrambleScene extends Phaser.Scene {
     hud.fillStyle(ki >= 1 ? 0xe05a57 : 0x5aa0ff, 1);
     hud.fillRect(61, 65, 258 * Math.min(1, ki), 8);
     this._syncSkillBtns();
-    this.tMode.setText('Dummy: ' + MODE_LABEL[s.dummyMode] + '    Tech: ' + TECH_LABEL[s.dummyTech]);
+    // สถานะหุ่นซ้อมไม่มีความหมายเมื่อฝั่งขวาเป็นคนจริง
+    this.tMode.setText(this.versus === 'solo' ? 'Dummy: ' + MODE_LABEL[s.dummyMode] + '    Tech: ' + TECH_LABEL[s.dummyTech] : '');
 
     // combo counter
     const live = s.p2.comboHits;

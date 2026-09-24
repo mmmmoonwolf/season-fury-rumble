@@ -115,9 +115,9 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
 
   // กดค้างแล้วเด้งเมนูคัดลอก/แชร์ขวางกลางเกม
   ok(/-webkit-touch-callout:\s*none/.test(html), "ปิดเมนูกดค้างของ iOS");
-  // เดิมมีข้อยกเว้นให้ช่องกรอกรหัสห้อง (วาง/เลือกข้อความได้) — ถอดออกพร้อมโหมดออนไลน์
-  // ตอนนี้ทั้งหน้าไม่มี <input> เลย ปิดเมนูกดค้างทั้งหน้าได้โดยไม่ต้องมีข้อยกเว้น
-  ok(!/<input/.test(html), "ไม่มีช่องกรอกข้อความในหน้าแล้ว จึงไม่ต้องมีข้อยกเว้น callout");
+  // ช่องกรอกรหัสห้องต้องยกเว้นไว้ ไม่งั้นวางรหัสที่เพื่อนส่งมาไม่ได้บน iOS
+  ok(/\.lobby-input \{[^}]*-webkit-touch-callout:\s*default/.test(html),
+    "ยกเว้นช่องกรอกรหัสห้อง ยังวาง/เลือกข้อความได้");
 
   // meta viewport: iOS เมิน แต่ Android ยังฟัง จึงยังต้องมี
   ok(/maximum-scale=1/.test(html) && /user-scalable=no/.test(html), "meta viewport ยังกันซูมฝั่ง Android ไว้");

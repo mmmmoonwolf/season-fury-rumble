@@ -278,6 +278,9 @@ class Fighter {
       onGround: true, state: 'idle', stateF: 0, jumpsLeft: 1, coyote: 0, dropT: 0,
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
+      // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
+      buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
+      lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
       comboHits: 0, comboDmg: 0, wallBounced: false, jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
     });
   }
@@ -322,49 +325,56 @@ class Game {
     this.p2 = new Fighter('p2', 'DUMMY', 860 + shift, -1, 'helios');
     this.dummyMode = 'stand';
     this.dummyTech = 'off';
-    this.lastInp = null;
+
     this.events = [];
-    this.buf = { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 };
-    this.lastTap = { dir: 0, f: -99 };
-    this.dashLatch = false;
     this.meter = []; this.meterIdle = 0;
     this.lastMoveInfo = null;
     this.shots = [];
   }
   resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; }
 
-  step(inp) {
+  /**
+   * เดินหนึ่งเฟรม — รับอินพุตสองฝั่ง
+   * inp2 = null คือโหมดซ้อม: ฝั่งขวาเดินด้วย controlDummy เหมือนเดิม
+   * ใส่ inp2 มาคือเล่นสองคน (เครื่องเดียวกันหรือคนละเครื่องผ่านเน็ตก็ได้ — sim ไม่รู้และไม่ต้องรู้)
+   */
+  step(inp1, inp2 = null) {
     this.frame++; this.events = [];
     const p = this.p1, d = this.p2;
-    if (inp.p.attack) this.buf.attack = PHYS.buffer + 1;
-    if (inp.p.jump) this.buf.jump = PHYS.buffer + 1;
-    for (let i = 1; i <= 3; i++) if (inp.p['skill' + i]) this.buf['skill' + i] = PHYS.buffer + 1;
+    this.takeInput(p, inp1);
+    if (inp2) this.takeInput(d, inp2);
 
-    this.lastInp = inp;
-    // tech input: press Block while airborne; missing the window locks you out briefly (anti-mash)
-    if (inp.p.block && !p.onGround && p.techLock === 0) { p.techBuf = PHYS.techWindow; p.techLock = PHYS.techLockout; }
-    if (p.hitstop > 0) p.hitstop--; else {
-      if (p.techBuf > 0) p.techBuf--;
-      if (p.techLock > 0) p.techLock--;
-      this.controlPlayer(p, inp); this.physics(p, inp); this.advanceMove(p, inp);
-      // input buffer only ages while the player is not frozen in hitstop
-      if (this.buf.attack > 0) this.buf.attack--;
-      if (this.buf.jump > 0) this.buf.jump--;
-      for (let i = 1; i <= 3; i++) if (this.buf['skill' + i] > 0) this.buf['skill' + i]--;
+    for (const [f, inp] of [[p, inp1], [d, inp2]]) {
+      if (f.hitstop > 0) { f.hitstop--; continue; }
+      if (!inp) { this.controlDummy(f); this.physics(f, null); this.advanceMove(f, null); continue; }
+      if (f.techBuf > 0) f.techBuf--;
+      if (f.techLock > 0) f.techLock--;
+      this.controlPlayer(f, inp); this.physics(f, inp); this.advanceMove(f, inp);
+      // อินพุตที่ค้างในคิวเดินถอยหลังเฉพาะตอนไม่ได้ถูกแช่อยู่ใน hitstop
+      for (const k of Object.keys(f.buf)) if (f.buf[k] > 0) f.buf[k]--;
     }
-    if (d.hitstop > 0) d.hitstop--; else { this.controlDummy(d); this.physics(d, null); this.advanceMove(d, null); }
 
     if (p.hitstop <= 0 && d.hitstop <= 0) this.updateShots();
     this.resolveHit(p, d);
     this.resolveHit(d, p);
     this.pushApart(p, d);
     this.updateCombo(d);
+    this.updateCombo(p);
     this.recordMeter(p);
-    if (this.frame - d.lastHitF > 120 && d.hp < d.maxHp && ACTIONABLE.has(d.state)) d.hp = d.maxHp;
+    // ฟื้นเลือดให้หุ่นเฉพาะโหมดซ้อม — เล่นสองคนต้องมีใครสักคนแพ้
+    if (!inp2 && this.frame - d.lastHitF > 120 && d.hp < d.maxHp && ACTIONABLE.has(d.state)) d.hp = d.maxHp;
   }
 
-  buffered(key) { return this.buf[key] > 0; }
-  consume(key) { this.buf[key] = 0; }
+  /** รับอินพุตของเฟรมนี้เข้าคิวของฝั่งนั้น ๆ */
+  takeInput(f, inp) {
+    f.inp = inp;
+    for (const k of Object.keys(f.buf)) if (inp.p[k]) f.buf[k] = PHYS.buffer + 1;
+    // กดปุ่มกันตอนลอยอยู่ = ขอ tech · กดพลาดช่วงแล้วโดนล็อกไว้ชั่วครู่ (กันการรัวปุ่ม)
+    if (inp.p.block && !f.onGround && f.techLock === 0) { f.techBuf = PHYS.techWindow; f.techLock = PHYS.techLockout; }
+  }
+
+  buffered(f, key) { return f.buf[key] > 0; }
+  consume(f, key) { f.buf[key] = 0; }
 
   pickMove(f, inp) {
     const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
@@ -439,10 +449,10 @@ class Game {
   /** กดปุ่มอะไรก็ได้ที่ใช้โจมตีอยู่ไหม — ใช้กับท่าที่ "กดรัวเพื่อต่อรอบ"
    *  รับทั้งปุ่มตีและปุ่มสกิลทั้งสามช่อง คนเล่นจะรัวปุ่มไหนก็ได้ ไม่ต้องจำว่าปุ่มไหนถูก */
   mashPressed(f) {
-    if (f.id !== 'p1') return false;
-    if (this.buffered('attack')) { this.consume('attack'); return true; }
+    if (!f.inp) return false;
+    if (this.buffered(f, 'attack')) { this.consume(f, 'attack'); return true; }
     for (let i = 1; i <= 3; i++) {
-      if (this.buffered('skill' + i)) { this.consume('skill' + i); return true; }
+      if (this.buffered(f, 'skill' + i)) { this.consume(f, 'skill' + i); return true; }
     }
     return false;
   }
@@ -595,10 +605,10 @@ class Game {
     // dash detection: double tap
     if (inp.p.left || inp.p.right) {
       const tapDir = inp.p.right ? 1 : -1;
-      this.dashLatch = this.lastTap.dir === tapDir && this.frame - this.lastTap.f <= PHYS.dashWindow;
-      this.lastTap = { dir: tapDir, f: this.frame };
+      f.dashLatch = f.lastTap.dir === tapDir && this.frame - f.lastTap.f <= PHYS.dashWindow;
+      f.lastTap = { dir: tapDir, f: this.frame };
     }
-    if (dir === 0) this.dashLatch = false;
+    if (dir === 0) f.dashLatch = false;
     // วิ่งเสมอ — ไม่มีปุ่มเดิน/ปุ่มวิ่งแยกแล้ว ตามที่ผู้เล่นขอ ("เกมนี้ไม่จำเป็นต้องเดิน")
     // ยังคำนวณ dashLatch ไว้ข้างบนเพราะปุ่ม dash ที่จะทำทีหลังจะมาใช้ต่อ
     const running = true;
@@ -609,25 +619,25 @@ class Game {
     if (f.state === 'attack') {
       const m = f.move;
       const afterActive = f.moveF >= m.startup + m.active;
-      if (f.hitConfirmed && m.jumpCancel && this.buffered('jump') && (f.onGround || f.jumpsLeft > 0)) {
-        this.consume('jump'); f.used.clear(); this.doJump(f, inp); return;
+      if (f.hitConfirmed && m.jumpCancel && this.buffered(f, 'jump') && (f.onGround || f.jumpsLeft > 0)) {
+        this.consume(f, 'jump'); f.used.clear(); this.doJump(f, inp); return;
       }
       // ต่อคอมโบเข้าสกิล: กดปุ่มสกิลตอนท่าปัจจุบัน "ตีโดนแล้ว" ยกเลิกท่าเข้าสกิลได้เลย
       // เงื่อนไข hitConfirmed ทำให้ยกเลิกท่าที่ตีพลาดไม่ได้ ท่าที่พลาดจึงยังมีจังหวะเสียตามเดิม
       // กินปุ่มเฉพาะตอนยกเลิกได้จริง ที่เหลือปล่อยค้างใน buffer ต่อ (เหมือนปุ่มตี)
       // ถ้ากินทิ้งตรงนี้ กดสกิลท้ายท่าที่ฟันลมจะเงียบสนิท ทั้งที่ควรออกท่าทันทีที่ท่าเดิมจบ
       for (let i = 0; i < f.skills.length; i++) {
-        if (!this.buffered('skill' + (i + 1))) continue;
+        if (!this.buffered(f, 'skill' + (i + 1))) continue;
         if (!f.hitConfirmed || !f.onGround || f.moveF < m.startup) continue;
         if (!this.skillReady(f, i)) continue;
-        this.consume('skill' + (i + 1));
+        this.consume(f, 'skill' + (i + 1));
         this.startSkill(f, i, f.facing); return;
       }
       // ชุดท่าที่ต่อกันเองอยู่แล้ว (autoChain/mashChain) ห้ามโดนปุ่มตียกเลิกกลางคัน
       // ไม่งั้นการ "กดรัวเพื่อต่อรอบ" กลายเป็นการยกเลิกอัลติทิ้งไปออกหมัดธรรมดาแทน
       // (วัดได้จริง: กดรัวตอนอัลติแล้วหลุดไป jab1 ตั้งแต่จังหวะแรก)
       if (m.autoChain || m.mashChain) return;
-      if (this.buffered('attack')) {
+      if (this.buffered(f, 'attack')) {
         const neutral = dir === 0 && !inp.up && !inp.down;
         let next = null;
         if (m.chain && neutral && (afterActive || f.hitConfirmed)) next = m.chain;
@@ -635,32 +645,32 @@ class Game {
           const cand = this.pickMove(f, inp);
           if (!f.used.has(cand) && f.moves[cand].kind === m.kind) next = cand;
         }
-        if (next) { this.consume('attack'); this.startMove(f, next, dir); return; }
+        if (next) { this.consume(f, 'attack'); this.startMove(f, next, dir); return; }
       }
       return;
     }
     if (!ACTIONABLE.has(f.state)) return;
 
     // jump / drop-through
-    if (this.buffered('jump')) {
+    if (this.buffered(f, 'jump')) {
       if (f.onGround && inp.down && f.y < STAGE.groundY) {
-        this.consume('jump'); f.dropT = 14; f.onGround = false; f.y += 2; f.setState('air'); return;
+        this.consume(f, 'jump'); f.dropT = 14; f.onGround = false; f.y += 2; f.setState('air'); return;
       }
-      if (this.doJump(f, inp)) { this.consume('jump'); return; }
+      if (this.doJump(f, inp)) { this.consume(f, 'jump'); return; }
     }
     // สกิล 1/2/3 — เริ่มได้เฉพาะตอนยืนอยู่บนพื้น (เป็นคอมโบเดินหน้า ไม่มีเวอร์ชันกลางอากาศ)
     // สล็อตที่ยังว่าง (SKILLS[i] === null) กินปุ่มทิ้งไปเฉย ๆ ไม่ค้างอยู่ใน buffer ให้ไปออกท่าทีหลัง
     for (let i = 0; i < f.skills.length; i++) {
-      if (!this.buffered('skill' + (i + 1))) continue;
-      this.consume('skill' + (i + 1));
+      if (!this.buffered(f, 'skill' + (i + 1))) continue;
+      this.consume(f, 'skill' + (i + 1));
       if (!f.onGround) continue;
       f.used.clear();                       // เริ่มคอมโบใหม่จากท่ายืน สกิลที่เคยใช้ไปแล้วกลับมาใช้ได้
       if (!this.skillReady(f, i)) continue; // ติดคูลดาวน์/ki ไม่พอ = กินปุ่มทิ้ง ไม่ค้างไว้ออกทีหลัง
       this.startSkill(f, i, dir || f.facing); return;
     }
     // attack
-    if (this.buffered('attack')) {
-      this.consume('attack'); f.used.clear();
+    if (this.buffered(f, 'attack')) {
+      this.consume(f, 'attack'); f.used.clear();
       this.startMove(f, this.pickMove(f, inp), dir); return;
     }
     if (f.onGround) {
@@ -782,10 +792,14 @@ class Game {
   }
 
   // returns null = no tech (knockdown), 0 = tech in place, -1 / 1 = tech roll direction
+  /** ฝั่งที่มีคนเล่นอยู่ตัดสินจากปุ่มที่กด · ฝั่งที่เป็นหุ่นซ้อมตัดสินจากโหมดที่ตั้งไว้
+   *  แยกด้วย "มีอินพุตไหม" ไม่ใช่ด้วยไอดี p1/p2 — เล่นสองคนแล้วทั้งสองฝั่งต้อง tech ได้เหมือนกัน
+   *  โหมดสุ่มของหุ่นใช้ Math.random ซึ่งใช้ไม่ได้ตอนเล่นข้ามเครื่อง (สองเครื่องจะสุ่มไม่ตรงกัน)
+   *  จึงถูกกันไว้ด้วยเงื่อนไข f.inp อยู่แล้ว — ฝั่งที่มีคนเล่นไม่มีทางเข้าไปถึงบรรทัดนั้น */
   techChoice(f) {
-    if (f.id === 'p1') {
+    if (f.inp) {
       if (f.techBuf <= 0) return null;
-      const i = this.lastInp || {};
+      const i = f.inp;
       return (i.right ? 1 : 0) - (i.left ? 1 : 0);
     }
     if (this.dummyTech === 'place') return 0;
@@ -802,7 +816,7 @@ class Game {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
         // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
         if (m.branch && f.onGround) {
-          const i = f.id === 'p1' ? (this.lastInp ?? {}) : {};
+          const i = f.inp ?? {};
           const pick = i.up ? 'up' : i.down ? 'down' : 'neutral';
           this.startMove(f, m.branch[pick] ?? m.branch.neutral, f.facing); return;
         }
