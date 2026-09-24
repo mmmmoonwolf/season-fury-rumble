@@ -1,6 +1,6 @@
 # ORPHEUS — prompt อาร์ตครบทุกท่า
 
-**The Fury of the Long Echo** · สายวางเสียงสะท้อน · นักดนตรีผมยาวถือกีตาร์
+**The Fury of the Final Encore** · สายไล่หวดติดไฟ · นักดนตรีผมยาวถือกีตาร์
 
 ---
 
@@ -38,6 +38,16 @@
 - ถ้าวัดแล้วจุดยึดยังเพี้ยน แผนสำรองคือหักกีตาร์ออกด้วยสี —
   ฟิงเกอร์บอร์ดเกือบดำและขอบซันเบิร์สต์แยกจากกางเกงเขียวกับสูทเทาได้
 
+### 4. ⛔ ห้ามวาดไฟในอาร์ตเด็ดขาด — ข้อที่สำคัญที่สุดของตัวนี้
+
+ไฟของตัวนี้เป็น **สถานะชั่วคราว** ไม่ใช่ส่วนหนึ่งของตัวละคร (ต่างจากดาบไฟของ Atlas
+ที่ติดไฟตลอดเวลา จึงวาดไฟลงไปในภาพได้)
+
+ท่าฟาดชุดเดียวกันต้องใช้ได้ทั้ง**ตอนกีตาร์ติดไฟ**และ**ตอนไม่ติด**
+ถ้าเจนไฟมาในภาพ จะต้องวาดท่าฟาดสองชุด = **เปลืองอาร์ตเท่าตัวโดยไม่จำเป็น**
+
+**เกมวาดไฟเองทั้งหมด** กีตาร์ในภาพเป็นกีตาร์ธรรมดาทุกท่า รวมถึงชีตสกิลไฟด้วย
+
 ---
 
 ## Style anchor — วางท้ายทุก prompt ของตัวนี้
@@ -71,7 +81,8 @@ Full body always visible, never cropped.
 ```
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-The guitar stays in his hands in every pose. Hair moves with each pose.
+The guitar stays in his hands in every pose and is a plain sunburst Les Paul
+with NO flame on it. Hair moves with each pose. No effects of any kind.
 
 Pose 1 — crouching down low, knees deeply bent, guitar pulled in across his chest.
 Pose 2 — pushing off the ground at the start of a jump, body stretching upward,
@@ -90,27 +101,35 @@ face and chest like a shield, shoulders hunched behind it.
 
 ---
 
-## ชีต B — ชุดเหวี่ยงกีตาร์ (9 ท่า · 3 แถวแถวละ 3)
+## ชีต B — Riff ไล่หวดกีตาร์ (9 ท่า · 3 แถวแถวละ 3)
 
-3 ท่าต่อหนึ่งเหวี่ยง: เงื้อ → สุดวง → ชักกลับ · นี่คือ**ท่าตีปกติ**
+**ตัวชูโรงของตัวนี้** กดรัวแล้วหวดรัว 5 จังหวะต่อเนื่อง ฟาดวงกว้าง ไม่ใช่จิ้มทีละที
+9 ท่านี้ = 5 จังหวะ + ท่าเชื่อม (บางจังหวะใช้ 2 ท่า บางจังหวะใช้ท่าเดียว)
 
 ```
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is swinging the guitar as a weapon, three poses per swing, gripping it by
-the neck with both hands like an axe. No motion lines, no slash arcs, no
-sound waves, no sparks — the game draws all effects.
+This is a fast, wild flurry of guitar swings — he is beating with the guitar,
+gripping it by the neck with both hands like a baseball bat. Every swing is
+loose and wide and reckless, hair whipping with each one. He stays roughly in
+place, turning his body into each swing rather than stepping forward.
+No motion lines, no arcs, no sparks, NO FIRE — the game draws all effects.
+The guitar is a plain sunburst Les Paul with no flame on it.
 
-Pose 1 — guitar drawn back over one shoulder by the neck, body coiled.
-Pose 2 — a wide horizontal swing fully extended across his body at chest height.
-Pose 3 — recovering from the swing, guitar swung through and low.
-Pose 4 — guitar pulled back to the other side, torso wound the opposite way.
-Pose 5 — a wide backhand swing fully extended the other direction.
-Pose 6 — guitar coming to rest, weight settling onto the front foot.
-Pose 7 — guitar raised high overhead by the neck in both hands, body stretched up.
-Pose 8 — a heavy overhead smash driven straight down in front of him, whole
-body committed, back sneaker lifted off the ground.
-Pose 9 — recovering from the smash, guitar low, knees bent, shoulders heaving.
+Pose 1 — guitar cocked back over the right shoulder, knees bent, coiled.
+Pose 2 — first swing: a fast flat swing across at waist height, arms extended.
+Pose 3 — second swing: backhand whipping the other way at chest height,
+torso already twisting back, hair thrown across.
+Pose 4 — third swing: an overhead chop coming straight down in front of him.
+Pose 5 — fourth swing: a low rising swing coming up from his knees,
+body opening up, head tilted back.
+Pose 6 — winding up the finisher: guitar hauled all the way back behind him
+with both hands, back foot planted, whole body loaded.
+Pose 7 — the finisher connecting: an enormous full-body swing at maximum reach,
+front foot stamped down, both arms straight, head snapped forward.
+Pose 8 — following through past the swing, body rotated well past square,
+guitar carried out to the far side.
+Pose 9 — recovering, guitar dropped low, shoulders heaving, hair settling.
 ```
 
 ---
@@ -120,7 +139,8 @@ Pose 9 — recovering from the smash, guitar low, knees bent, shoulders heaving.
 ```
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-No motion lines, no sound waves — the game draws all effects.
+No motion lines, no sound waves, NO FIRE — the game draws all effects.
+Plain sunburst guitar, no flame.
 
 Pose 1 — stepping forward, shoulder dropped, guitar drawn back behind him.
 Pose 2 — a long lunging thrust, driving the guitar neck straight forward like
@@ -144,6 +164,7 @@ Pose 9 — rising out of the crouch, dragging the guitar back up.
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
 Every pose is airborne — both sneakers off the ground, no ground contact.
+No effects of any kind, NO FIRE. Plain sunburst guitar, no flame.
 
 Pose 1 — airborne, knees tucked, guitar held close across his chest.
 Pose 2 — airborne spinning swing, guitar swung out horizontally to the side,
@@ -161,75 +182,84 @@ Pose 9 — airborne, legs together underneath, guitar gathered, ready to land.
 
 ---
 
-## ชีต E — สกิล 1 · คอร์ดหนัก (6 ท่า · 2 แถวแถวละ 3)
+## ชีต E — สกิล 1 · Power Slide สไลด์เข่า (6 ท่า · 2 แถวแถวละ 3)
 
-ตีคอร์ดเต็มแรงลงข้างหน้า แล้วทิ้งเสียงสะท้อนไว้
+ทิ้งตัวสไลด์เข่าไปข้างหน้า ตัวต่ำลอดกระสุน แล้วเด้งขึ้นฟาดสวน
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is PLAYING the guitar here, not swinging it — held in normal playing
-position across his body, strumming hand raised and struck down hard.
-Draw NO sound waves, NO shockwave, NO speed lines — the game draws all of that.
+This is a rock-star knee slide. No motion lines, no dust, no sparks, NO FIRE
+— the game draws all of that. Plain sunburst guitar, no flame.
 
-Pose 1 — planting both feet wide, strumming hand lifted high above the strings,
-body arched back, head down over the guitar.
-Pose 2 — the strum: hand slashed down across the strings at full force, whole
-body dropping into it, knees bending, hair thrown forward.
-Pose 3 — holding the chord, body pressed low over the guitar, strumming arm
-extended past the body, face tight.
-Pose 4 — leaning hard into it, front foot stamped forward, head thrown back.
-Pose 5 — the note ringing out, body straightening, strumming arm sweeping up.
-Pose 6 — settling back to the ready stance, hand back over the strings.
+Pose 1 — running start: leaning forward, one leg driving, guitar swung back.
+Pose 2 — dropping into the slide: throwing both knees forward and down toward
+the ground, body tipping back, guitar lifted clear of the floor.
+Pose 3 — mid slide, LOW: both knees down and skidding, torso leaned far back
+almost horizontal, head thrown back, guitar held up across his chest,
+hair streaming behind. This pose must read as very low to the ground.
+Pose 4 — still sliding, starting to gather: one knee coming up under him,
+free hand reaching down to the floor.
+Pose 5 — bursting up out of the slide with an upward swing, guitar swung from
+low to high past his own head, body fully extended upward, back heel lifted.
+Pose 6 — landing out of it, feet back under him, guitar coming down to his side.
 ```
 
 ---
 
-## ชีต F — สกิล 2 · ฟีดแบ็ก (6 ท่า · 2 แถวแถวละ 3)
+## ชีต F — สกิล 2 · Blaze จุดไฟที่กีตาร์ (6 ท่า · 2 แถวแถวละ 3)
 
-ยกกีตาร์รับ ถ้าโดนตีจะแปลงแรงนั้นกลับเป็นเสียงสะท้อน
+ท่าจุดบัฟ กดครั้งเดียวแล้วบัฟอยู่ 8 วินาที — เป็นท่าสั้น ๆ แต่ต้องอลังการ
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-Draw NO sound waves, NO glow, NO impact effects — the game draws all of that.
+He is calling something up out of the guitar. Draw NO fire, NO flame, NO glow,
+NO smoke, NO lightning — the game draws every effect. The guitar stays a plain
+sunburst Les Paul in all six poses. Only the character and his pose.
 
-Pose 1 — snapping the guitar up flat in front of his chest with both hands,
-face turned toward the threat, feet braced apart.
-Pose 2 — holding the guard: guitar held out flat like a shield, body leaning
-into it, shoulders squared, chin tucked.
-Pose 3 — absorbing a blow: body shoved back a step, arms bent taking the weight,
-guitar still up, teeth bared.
-Pose 4 — turning the guard over: guitar rotated face-out, one hand on the neck,
-the other flat against the back of the body, pushing forward.
-Pose 5 — throwing it back: shoving the guitar forward at arm's length, body
-twisting behind the push, front leg driving.
-Pose 6 — recovering, guitar swung back down to his side, breathing hard.
+Pose 1 — dropping into a wide stance, gripping the guitar neck hard with the
+fretting hand, other hand flat on the strings, head down.
+Pose 2 — dragging the strumming hand slowly down the strings, body sinking,
+shoulders rolling forward, face tightening.
+Pose 3 — head snapping up, mouth open in a shout, guitar swung up and out to
+his side at arm's length, chest thrown open.
+Pose 4 — holding the guitar straight up overhead by the neck in one hand,
+other arm flung wide, body arched back, hair thrown back, looking upward.
+Pose 5 — bringing it down and across into a ready stance, both hands back on
+the guitar, weight shifting onto the front foot.
+Pose 6 — settled into an aggressive forward stance, guitar held low and ready
+across his body, head lowered, eyes forward, shoulders squared.
 ```
 
 ---
 
-## ชีต G — สกิล 3 อัลติ · อังกอร์สุดท้าย (6 ท่า · 2 แถวแถวละ 3)
+## ชีต G — สกิล 3 อัลติ · Burn the House Down (6 ท่า · 2 แถวแถวละ 3)
 
-ตั้งท่าโซโล่ · **เดินได้ระหว่างโซโล่** ดังนั้นสองท่าสุดท้ายต้องเป็นท่าย่างเท้า
+ตั้งวงโซโล่ 4 วินาที · **เดินโซโล่ได้** ดังนั้น **สามท่าสุดท้ายต้องเป็นท่าย่างเท้า**
+ไม่ใช่ท่ายืนนิ่งทั้งหมด ไม่งั้นเวลาเดินจะเห็นตัวไถไปกับพื้น
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is playing a guitar solo. Draw NO sound waves, NO shockwave, NO glow,
-NO lightning, NO smoke — the game draws all of that. Only the character.
+He is playing a wild guitar solo. Draw NO fire, NO flame, NO glow, NO smoke,
+NO shockwave, NO sound waves — the game draws every effect. Plain sunburst
+guitar in all six poses.
 
-Pose 1 — throwing his head back and lifting the guitar neck high, mouth open,
-both feet planted wide, starting the solo.
-Pose 2 — deep in the solo: fretting hand high up the neck, strumming hand a
-blur against the strings, body bent backward, hair thrown back.
-Pose 3 — leaning far forward over the guitar, head down, hair curtaining his
-face, both hands working the neck.
-Pose 4 — dropping to one knee, guitar held up and out, face turned upward.
-Pose 5 — still playing but WALKING: mid-stride with one leg forward, guitar
-held across the body, hands still on it, weight moving forward.
-Pose 6 — still playing, the opposite stride: other leg forward, torso turned
-slightly, hands still on the guitar.
+Pose 1 — the moment it kicks off: both feet stamped wide apart, head thrown
+back, guitar neck hauled up high, mouth open in a roar.
+Pose 2 — deep in the solo standing still: fretting hand high up the neck,
+strumming arm mid-motion across the strings, body bent backward, hair flying.
+Pose 3 — bent far forward over the guitar, head down, hair curtaining his face,
+both hands working hard on the neck.
+Pose 4 — WALKING while playing: mid-stride with the left leg forward and the
+right pushing off, guitar held across the body, both hands still on it,
+torso turned into the step, hair swinging.
+Pose 5 — WALKING, the opposite stride: right leg forward, left pushing off,
+still playing, shoulders rolled the other way.
+Pose 6 — the final chord: stopped, both feet planted, strumming arm slashed
+all the way down past the guitar and out to the side, head thrown back,
+whole body arched, guitar neck angled up.
 ```
 
 ---
@@ -243,8 +273,9 @@ slightly, hands still on the guitar.
 5. **เส้นขอบดำต้องปิดครบรอบตัว โดยเฉพาะรอบรองเท้าขาว** — ถ้าขาด
    ตัวตัดพื้นหลังจะกินรองเท้าหายทั้งข้าง (วัดแล้วรองเท้าอยู่ที่ 233-236
    ส่วนพื้นหลัง 254 ห่างกันพอ แต่ต้องมีเส้นขอบกั้น)
-6. **ห้ามวาดเอฟเฟค** ไม่มีคลื่นเสียง ไม่มีเส้นความเร็ว ไม่มีประกายไฟ
-   — VFX เกมวาดเอง (บทเรียนจากชีต Stone Curse ของ Nyx)
+6. **ห้ามวาดเอฟเฟคทุกชนิด โดยเฉพาะไฟ** ไม่มีเปลวไฟ ไม่มีแสงเรือง ไม่มีควัน
+   ไม่มีเส้นความเร็ว — VFX เกมวาดเอง (บทเรียนจากชีต Stone Curse ของ Nyx)
+   **กีตาร์ต้องเป็นกีตาร์ธรรมดาทุกท่าทุกชีต** เหตุผลอยู่ในหัวข้อเตือนข้อ 4
 7. **คอกีตาร์เอียงเข้าหาตัว** ไม่ยื่นยาวออกด้านข้าง (เหตุผลเดียวกับแส้ Alecto)
 8. **ผมไม่บังหน้า** ยกเว้นท่าที่ระบุไว้ชัด (ชีต G ท่า 3)
 
@@ -256,10 +287,10 @@ slightly, hands still on the guitar.
 |---|---|---|
 | พื้นฐาน | idle · run | ขั้น 0 + คลิป |
 | เคลื่อนไหว/โดน | crouch · jump · air · fall · land · hurt · knockdown · techroll · tech · block · blockstun · blockcrouch | ชีต A |
-| ตีปกติ | jab1 · jab2 · jab3 (ท่าละ 3 เฟรม) | ชีต B |
+| ตีปกติ | Riff ไล่หวด 5 จังหวะ | ชีต B |
 | พิเศษพื้น | side (ทิ่มคอกีตาร์) · up (สอยขึ้น) · down (กวาดต่ำ) | ชีต C |
 | กลางอากาศ | nair · sair · dair | ชีต D |
-| สกิล 1 | คอร์ดหนัก | ชีต E |
-| สกิล 2 | ฟีดแบ็ก (ท่าสวนกลับ) | ชีต F |
-| สกิล 3 | อังกอร์สุดท้าย (อัลติ) | ชีต G |
+| สกิล 1 | สไลด์เข่า | ชีต E |
+| สกิล 2 | จุดไฟที่กีตาร์ (บัฟ) | ชีต F |
+| สกิล 3 | เผาเวที (อัลติ · เดินโซโล่ได้) | ชีต G |
 | ถอยหลัง | กระโดดถอย 3 ท่า | ชีต A ท่า 2-4 ใช้ซ้ำได้ ถ้าไม่พอค่อยขอเพิ่ม |
