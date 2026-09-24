@@ -1,6 +1,6 @@
 # MOMUS — prompt อาร์ตครบทุกท่า
 
-**The Fury of the Last Laugh** · สายจับ · ตัวตลกผมส้มหยิกในชุดขาดวิ่น
+**The Fury of the Last Laugh** · สายป่วนสนาม · ตัวตลกผมส้มหยิกในชุดขาดวิ่น
 
 ---
 
@@ -92,10 +92,13 @@ shadow, no ground line. Full body always visible, never cropped.
 
 ---
 
-## ชีต A — ท่าเคลื่อนไหวและท่าโดน (9 ท่า · 3 แถวแถวละ 3)
+## ชีต A — ท่าเคลื่อนไหวและท่าโดน (12 ท่า · 4 แถวแถวละ 3)
+
+12 ท่าไม่ใช่ 9 — สี่ตัวที่ทำไปแล้วขาด **ท่าบล็อกตอนนั่ง** ทุกตัว
+(ตอนนี้ใช้ท่านั่งธรรมดาแทนอยู่ ผู้เล่นสังเกตเห็นแล้ว) ตัวนี้ขอมาตั้งแต่แรกเลย
 
 ```
-A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+A 12-pose sprite sheet of the same character, arranged in 4 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
 No effects of any kind. Ruffles and ribbons stay close to the body.
 
@@ -109,8 +112,15 @@ Pose 6 — struck and recoiling, head snapped back, torso twisted away, but
 feet still planted — staggered, not thrown. The smile is gone.
 Pose 7 — knocked down, lying on his back on the ground, limbs sprawled out.
 Pose 8 — rolling sideways along the ground, body curled up tight.
-Pose 9 — bracing to block: both forearms crossed in front of his face and
-chest, shoulders hunched behind them, head tucked down.
+Pose 9 — bracing to block standing: both forearms crossed in front of his
+face and chest, shoulders hunched behind them, head tucked down.
+Pose 10 — bracing to block CROUCHED: knees deeply bent in a low crouch AND
+both forearms crossed in front of his face and chest at the same time,
+head tucked down behind them, sitting low.
+Pose 11 — taking a hit through the guard: forearms still crossed up but
+shoved back, body pushed off balance, one boot sliding back, wincing.
+Pose 12 — getting back up off the floor, one knee up and one hand pushing
+off the ground, head coming up, the smile returning.
 ```
 
 ---
@@ -188,54 +198,59 @@ Pose 9 — airborne, legs together underneath, arms gathered, ready to land.
 
 ---
 
-## ชีต E — สกิล 1 · Jack Grab จับพื้น (6 ท่า · 2 แถวแถวละ 3)
+## ชีต E — สกิล 1 · Jack-in-the-Box วางกล่องสปริง (6 ท่า · 2 แถวแถวละ 3)
 
-คว้าตัวแล้วทุ่มลงพื้น · **ต้องมีท่า "คว้าไม่โดน" ด้วย** ไม่งั้นพลาดแล้วดูเหมือนจับติด
+วางกล่องสปริงทิ้งไว้บนพื้น ใครเหยียบก็เด้ง **รวมทั้งตัวเขาเอง**
+**กล่องวาดได้** เพราะเป็นของที่เขาหยิบออกมาเอง ไม่ใช่ VFX
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is grabbing an invisible opponent — do NOT draw the opponent, draw only
-this character and his hands shaped around empty space. No effects.
+He is setting down a small jack-in-the-box toy: a little square wooden crate
+with a crank handle on the side and a closed lid. Draw the box, draw NO
+spring, NO puppet popping out, NO effects, NO sparkles — the game draws all
+of that. The box is closed in every pose.
 
-Pose 1 — lunging forward low with both arms thrown wide open, fingers
-spread, head down, mouth open in a grin — reaching to grab.
-Pose 2 — hands closed shut on something at chest height in front of him,
-arms bent, body braced, weight dropping back.
-Pose 3 — hauling it up and over: arms swung up above his head, body arched
-back, both feet planted wide, straining.
-Pose 4 — slamming it straight down in front of his feet, both arms driven
-down, body folded over, one knee dropping.
-Pose 5 — standing back up out of the slam, hands open and empty, head
-tilted, smiling.
-Pose 6 — THE MISS: arms still flung wide open and empty, over-committed and
-off balance, stumbling a step forward, head down, wide-eyed.
+Pose 1 — reaching behind his back with one hand, other hand out for balance,
+head turned to look at the ground in front of him, grinning.
+Pose 2 — pulling the little crate out from behind him and holding it up at
+chest height in both hands, looking down at it fondly.
+Pose 3 — crouching down and setting the crate on the ground in front of his
+feet with both hands, head low, tongue out in concentration.
+Pose 4 — still crouched, turning the crank handle on the side of the crate
+with one finger, the other hand flat on the lid, grinning wide.
+Pose 5 — springing back up and away from the crate with both arms thrown
+wide, body leaning back, the crate left sitting on the ground at his feet.
+Pose 6 — standing clear with both hands raised beside his head, palms out,
+head tilted, wearing an exaggerated innocent look — as if to say "not me".
 ```
 
 ---
 
-## ชีต F — สกิล 2 · Big Top สอยลงเต็นท์ (6 ท่า · 2 แถวแถวละ 3)
+## ชีต F — สกิล 2 · Ta-da! สลับที่ (6 ท่า · 2 แถวแถวละ 3)
 
-เอื้อมคว้าคนที่ลอยอยู่ลงมาฟาดพื้น
+โค้งคำนับแล้วสลับที่กับคู่ต่อสู้ ไม่มีดาเมจ เป็นท่ากลล้วน ๆ
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is snatching an invisible opponent out of the air — do NOT draw the
-opponent, draw only this character. No effects.
+This is a stage magician's flourish. Draw NO smoke, NO puff, NO sparkles,
+NO magic glow, NO cards, NO props — the game draws all effects. Only the
+character and his hands.
 
-Pose 1 — crouching and looking straight up, both arms cocked back low,
-knees deeply bent, ready to spring.
-Pose 2 — exploding upward: both arms punched straight up overhead, fingers
-spread wide, body fully extended, back heel lifted, head tipped back.
-Pose 3 — hands closed shut on something high above his head, arms straight
-up, body stretched, grinning up at it.
-Pose 4 — hauling it down: arms dragged down in front of his chest, body
-folding forward, knees bending under the weight.
-Pose 5 — smashing it into the ground at his feet, both arms driven straight
-down, dropped into a deep crouch, head down.
-Pose 6 — rising out of it, hands open and empty, one arm out to the side,
-head tilted, smiling.
+Pose 1 — snapping into a theatrical stage bow: one arm swept across his
+stomach, the other flung out to the side, upper body folded forward, head
+still turned up and forward so his grin is visible.
+Pose 2 — straightening up fast with both arms swinging wide and open,
+palms forward, chest out, head thrown back.
+Pose 3 — snapping the fingers of one raised hand up beside his head, other
+hand on his hip, head tilted, eyes narrowed, smiling.
+Pose 4 — spinning: body turned mid-rotation with arms wrapped across his
+chest, coat frills flaring out around him, head down.
+Pose 5 — coming out of the spin with both arms flung straight out to the
+sides at shoulder height, palms up, head tipped back, mouth open — "ta-da".
+Pose 6 — settling, arms dropping back down loose at his sides, weight on
+one leg, head tilted, smiling faintly at the viewer.
 ```
 
 ---
@@ -279,7 +294,9 @@ air, body turned away from it, still laughing.
 6. **ห้ามวาดเอฟเฟค** ไม่มีเส้นความเร็ว ไม่มีระเบิด ไม่มีควัน ไม่มีคอนเฟตตี
    ไม่มีลูกโป่ง — VFX เกมวาดเอง (ลูกโป่งเป็นสถานะที่เกมวาดบนตัวคู่ต่อสู้)
 7. **ระบายกับริบบิ้นตกใกล้ตัว** ไม่สะบัดยาวออกด้านข้าง (เหตุผลเดียวกับแส้ Alecto)
-8. **ห้ามวาดคู่ต่อสู้** ในชีตท่าจับ วาดแต่มือที่กำรอบที่ว่าง
+8. **ห้ามวาดคู่ต่อสู้** ในชีตอัลติ วาดแต่มือที่กำรอบที่ว่าง
+9. **กล่องวาดได้** (ชีต E และ G) เพราะเป็นของที่เขาหยิบออกมาเอง แต่สปริง ตุ๊กตา
+   ควัน ประกาย ระเบิด **ห้ามวาด** เกมวาดเอง
 
 ---
 
@@ -288,10 +305,10 @@ air, body turned away from it, still laughing.
 | กลุ่ม | ท่า | มาจาก |
 |---|---|---|
 | พื้นฐาน | idle · run | ขั้น 0 + คลิป |
-| เคลื่อนไหว/โดน | crouch · jump · air · fall · land · hurt · knockdown · techroll · tech · block · blockstun · blockcrouch | ชีต A |
+| เคลื่อนไหว/โดน | crouch · jump · air · fall · land · hurt · knockdown · techroll · tech · block · **blockcrouch** · blockstun | ชีต A (12 ท่า) |
 | ตีปกติ | jab1 · jab2 · jab3 | ชีต B |
 | พิเศษพื้น | side (พุ่งสะบัดแขน) · up (เสยขึ้น) · down (กวาดต่ำ) | ชีต C |
 | กลางอากาศ | nair · sair · dair | ชีต D |
-| สกิล 1 | จับพื้น (+ ท่าคว้าไม่โดน) | ชีต E |
-| สกิล 2 | จับอากาศ | ชีต F |
+| สกิล 1 | วางกล่องสปริง | ชีต E |
+| สกิล 2 | สลับที่ | ชีต F |
 | สกิล 3 | หัวเราะทีหลัง (อัลติ) | ชีต G |
