@@ -62,11 +62,15 @@ const { GAME_HEIGHT, gameWidthFor } = await import(G + "/config/viewport.config.
 // ── ปุ่มสัมผัสของ SCRAMBLE ต้องห่างขอบล่างพอ ──
 // มือถือมีแถบ gesture / ขีดโฮม ทับอยู่ล่างจอ ซึ่งกินการแตะไปก่อนเสมอ ปุ่มที่จมอยู่ในโซนนั้นกดไม่ติด
 //
-// ตัวเลข 13% มาจากโหมด 1v1 เดิมที่ปรับจนใช้ได้จริงบนมือถือ: ปุ่มที่ต่ำที่สุด (ปุ่มกัน)
+// พื้นล่าง 13% มาจากโหมด 1v1 เดิมที่ปรับจนใช้ได้จริงบนมือถือ: ปุ่มที่ต่ำที่สุด (ปุ่มกัน)
 // ขอบล่างห่างจากขอบผืนเกม 94 หน่วยจาก 720 = 13.06% — โหมดนั้นถูกลบไปแล้ว
 // จึงตรึงตัวเลขไว้ตรงนี้แทน พร้อมที่มา ไม่งั้นเหลือแค่ "13" ลอย ๆ ที่ไม่มีใครรู้ว่ามาจากไหน
+//
+// เป็น "อย่างน้อย" ไม่ใช่ "เท่ากับ": ผู้เล่นรายงานว่านิ้วโป้งบังตัวละครซึ่งยืนอยู่ชั้นล่างของเวที
+// จึงยกปุ่มสูงกว่าพื้นล่างนี้ได้ แต่ห้ามเกินเพดานไม่งั้นชนแถบเลือดด้านบน
 {
   const pct = 94 / GAME_HEIGHT * 100;
+  const CEIL = 28;   // มือถือแนวนอนสูง ~390 px · ฝั่งขวาสูง ~180 px · เกินนี้ชนของด้านบน
 
   const pads = [...scrambleCss.matchAll(/#sc-touch\s*\{\s*padding-bottom:\s*max\(\s*([\d.]+)(dvh|vh)/g)].map((m) => ({ pct: +m[1], unit: m[2] }));
   ok(pads.length >= 1, "#sc-touch มีกฎ padding-bottom ที่คิดจากความสูงจอ");
@@ -74,11 +78,13 @@ const { GAME_HEIGHT, gameWidthFor } = await import(G + "/config/viewport.config.
   ok(pads.some((p) => p.unit === "vh"), "มีบรรทัด vh สำรองไว้ให้เบราว์เซอร์เก่าที่ยังไม่รู้จัก dvh");
   ok(/env\(safe-area-inset-bottom/.test(scrambleCss), "เผื่อ safe-area-inset-bottom ของ iOS ไว้เป็นพื้นล่างด้วย");
   for (const p of pads) {
-    ok(
-      Math.abs(p.pct - pct) <= 3,
-      `ระยะห่างขอบล่างของ SCRAMBLE (${p.pct}${p.unit}) ตรงกับโหมดปกติ (${pct.toFixed(1)}%) ไม่หลุดจากกัน`
-    );
+    ok(p.pct >= pct - 0.1,
+      `ปุ่ม (${p.pct}${p.unit}) พ้นแถบ gesture ตามพื้นล่างของโหมดปกติ (${pct.toFixed(1)}%)`);
+    ok(p.pct <= CEIL,
+      `ปุ่ม (${p.pct}${p.unit}) ไม่สูงเกิน ${CEIL}% จนชนแถบเลือดกับปุ่มเครื่องมือด้านบน`);
   }
+  ok(new Set(pads.map((p) => p.pct)).size === 1,
+    `บรรทัด vh กับ dvh ใช้ค่าเดียวกัน (${[...new Set(pads.map((p) => p.pct))].join(" / ")})`);
 }
 
 console.log("\nMobile landscape: lobby fits and switches panels, canvas matches screen after rotation, SCRAMBLE buttons clear the gesture bar");

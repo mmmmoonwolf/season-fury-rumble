@@ -223,11 +223,20 @@ const OVERLAY_CSS = `
 #sc-touch { display:none; position:absolute; inset:auto 0 0 0; justify-content:space-between; align-items:flex-end; padding:0 calc(14px + env(safe-area-inset-right,0px)) 14px calc(14px + env(safe-area-inset-left,0px)); pointer-events:none; z-index:15; }
 /* ปุ่มล่างสุดต้องห่างขอบจอ ไม่งั้นแถบ gesture / ขีดโฮม ของมือถือกินการแตะไปก่อน = กดไม่ติด
    (เหตุผลเดียวกับ BOTTOM_SAFE ในโหมดปกติ ซึ่งพอร์ต SCRAMBLE เข้ามาทีหลังเลยยังไม่ได้ของนี้)
-   โหมดปกติเว้นไว้ 94 หน่วยเกมจาก 720 = 13% ของความสูงจอ วัดบนมือถือแนวนอนได้ราว 56 px
-   ที่นี่ DOM ไม่ได้ย่อตาม canvas จึงต้องคิดจากความสูงจอตรง ๆ ให้ได้ระยะเท่ากัน
+   โหมดปกติเว้นไว้ 94 หน่วยเกมจาก 720 = 13% ของความสูงจอ = พื้นล่างที่ห้ามต่ำกว่านี้
+
+   แต่แค่พ้นแถบ gesture ยังไม่พอสำหรับเกมต่อสู้: ตัวละครยืนอยู่ "ชั้นล่าง" ของเวที
+   ซึ่งคือแถบเดียวกับที่นิ้วโป้งทั้งสองข้างพาดอยู่พอดี เล่นจริงแล้วนิ้วบังตัวละครตลอด
+   จึงยกปุ่มขึ้น ให้นิ้วโป้งชี้ขึ้นแทนที่จะนอนราบทับล่างจอ
+
+   ยกได้แค่ไหนถูกกำหนดโดย "ฝั่งขวา" ซึ่งสูงกว่าฝั่งซ้ายเท่าตัว
+   วัดบนมือถือแนวนอน 844x390: ฝั่งขวาสูง 256 px = 66% ของจอทั้งจอ
+   ยก 24% แล้วปุ่ม Block ไปทับแถบเลือดกับแถวปุ่มเครื่องมือทันที (วัดได้ ขอบบนอยู่ที่ 40 px)
+   จึงต้อง "ย่อฝั่งขวาก่อน" (ดู media query ข้างล่าง) แล้วค่อยยก เหลือ 20%
+   ฝั่งซ้ายเป็นแป้นทิศสูงแค่ครึ่งเดียว ยกเพิ่มได้อีก จึงใส่ margin ให้ต่างหาก
    env() เป็นพื้นล่างเผื่อจอเตี้ยมาก ๆ · บรรทัด vh ไว้ให้เบราว์เซอร์เก่าที่ยังไม่รู้จัก dvh */
-#sc-touch { padding-bottom: max(13vh, calc(14px + env(safe-area-inset-bottom,0px))); }
-#sc-touch { padding-bottom: max(13dvh, calc(14px + env(safe-area-inset-bottom,0px))); }
+#sc-touch { padding-bottom: max(20vh, calc(14px + env(safe-area-inset-bottom,0px))); }
+#sc-touch { padding-bottom: max(20dvh, calc(14px + env(safe-area-inset-bottom,0px))); }
 body.sc-touch #sc-touch { display:flex; }
 /* กล่องที่ห่อปุ่มต้องปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่ม — นิ้วที่พลาดลงช่องว่างระหว่างปุ่ม
    สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
@@ -243,6 +252,19 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 #sc-touch .skills { grid-column:span 2; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; touch-action:none; }
 #sc-touch .skills button { height:46px; font-size:14px; }
 #sc-touch .skills button[disabled] { opacity:.32; }
+/* ฝั่งซ้ายเตี้ยกว่าฝั่งขวาเท่าตัว จึงยกได้สูงกว่า — ผู้เล่นบ่นเรื่องนิ้วซ้ายบังก่อนเป็นอันดับแรก */
+#sc-touch .pad { margin-bottom: 8dvh; }
+/* มือถือแนวนอนสูงราว 390 px เท่านั้น ปุ่มขนาดเดสก์ท็อปกินไปแล้ว 256 px = 66% ของจอ
+   ยกขึ้นไม่ได้เลยถ้าไม่ย่อก่อน — ย่อแล้วเหลือ ~199 px ถึงจะมีที่ให้ยก
+   ตัวเลขยังอยู่เหนือระยะแตะขั้นต่ำ 44 px ของ iOS ทุกปุ่ม ยกเว้นแถวสกิลที่กดไม่บ่อยเท่า */
+@media (max-height: 500px) {
+  #sc-touch .acts { grid-template-columns:repeat(2,72px); gap:5px; }
+  #sc-touch .acts .big { height:48px; font-size:14px; }
+  #sc-touch .acts button { height:48px; }
+  #sc-touch .skills { gap:5px; }
+  #sc-touch .skills button { height:40px; font-size:13px; }
+  #sc-touch .pad { grid-template-columns:repeat(3,52px); grid-template-rows:repeat(3,42px); gap:3px; }
+}
 
 /* ---------- หน้าเลือกตัวละคร ----------
    คุมความสูงเป็นหลัก ไม่ใช่ความกว้าง: มือถือแนวนอนสูงแค่ ~390 px ซึ่งเตี้ยกว่าจอคอมครึ่งหนึ่ง
