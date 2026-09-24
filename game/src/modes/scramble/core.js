@@ -255,6 +255,7 @@ const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% �
 // สกิล 1 สั้นกว่าเพราะเล่นจริงแล้ว 5 วินาทีขาตาย โดนบุกเข้ามาแล้วทำอะไรไม่ได้เลย
 // อัลติยาวกว่าได้ เพราะจ่ายหลอด ki เต็มไปแล้วและตั้งใจให้เป็นการทุ่มหมดหน้าตัก
 const STANCE_FRAMES = 180;        // 3 วินาที (สกิล 1)
+const SOLO_FRAMES = 240;     // อัลติของ Orpheus โซโล่กี่เฟรม (4 วินาที)
 const ULT_STANCE_FRAMES = 300;    // 5 วินาที (อัลติ)
 
 // กองไฟจากมอลอตอฟ
@@ -418,6 +419,81 @@ const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
  * ส่วนอาร์ต (atlas / animation / รายชื่อท่าที่มีอาร์ตแล้ว) อยู่ฝั่งฉากใน ScrambleScene.js
  * เพราะ core.js ตั้งใจไม่แตะ Phaser เลย จะได้เดินเทสต์ใน node ตรง ๆ ได้
  */
+// ---------- ORPHEUS ----------
+// สายไล่หวดติดไฟ · แก่นคือ "ที่ที่เขาเดินผ่าน ยังไหม้อยู่"
+//
+// ไฟของเขาต่างจาก Alecto ตรงที่ **ติดไปกับคนที่โดน** ไม่ใช่กองนิ่งอยู่กับพื้น
+// Alecto เผาที่ (ปฏิเสธพื้นที่ ยืนห่าง) · Orpheus เผาคน (ประชิด ตามไปกัด)
+const BLAZE_TIME = 480;      // บัฟกีตาร์ติดไฟอยู่กี่เฟรม (8 วินาที)
+const BURN_TIME = 120;       // ไฟติดตัวคนโดนกี่เฟรม (2 วินาที) — โดนซ้ำนับใหม่ ไม่ซ้อน
+const BURN_TICK = 20;        // ตอดเลือดทุกกี่เฟรม
+const BURN_DMG = 1;
+
+const ORPHEUS_MOVES = {
+  // ---- Riff: ไล่หวดกีตาร์ห้าจังหวะ กดรัวแล้วหวดรัว ----
+  // สี่จังหวะแรกถีบขึ้นเป็น 0 ทั้งหมด ถีบขึ้นแม้นิดเดียวคู่ต่อสู้จะลอย
+  // พอตกถึงพื้นกลายเป็นท่าล้มซึ่งมี invuln ติดมา จังหวะที่เหลือจะฟาดลม
+  // (กับดักนี้กัดมาแล้วสี่รอบ) ไม้จบค่อยถีบออก
+  jab1: { label: 'Riff', kind: 'ground', startup: 5, active: 3, recovery: 9, dmg: 3,
+    hb: { x: 8, y: -106, w: 116, h: 34 }, kb: [2, 0], stun: 15, chain: 'jab2' },
+  jab2: { label: 'Riff', kind: 'ground', startup: 4, active: 3, recovery: 9, dmg: 3,
+    hb: { x: 8, y: -96, w: 122, h: 40 }, kb: [2, 0], stun: 15, chain: 'jab3' },
+  jab3: { label: 'Riff', kind: 'ground', startup: 5, active: 3, recovery: 10, dmg: 4,
+    hb: { x: 10, y: -112, w: 128, h: 46 }, kb: [2.5, 0], stun: 17, chain: 'jab4' },
+  jab4: { label: 'Riff', kind: 'ground', startup: 5, active: 4, recovery: 10, dmg: 4,
+    hb: { x: 10, y: -100, w: 132, h: 44 }, kb: [3, 0], stun: 18, chain: 'jab5' },
+  // ไม้จบ: เหวี่ยงเต็มวง ดีดออกไกล
+  jab5: { label: 'Riff', kind: 'ground', startup: 8, active: 5, recovery: 22, dmg: 7,
+    hb: { x: 12, y: -108, w: 148, h: 58 }, kb: [14, -4], stun: 30 },
+
+  side: { label: 'Neck Jab', kind: 'ground', startup: 10, active: 5, recovery: 22, dmg: 8,
+    hb: { x: 16, y: -98, w: 150, h: 30 }, kb: [12, 0], stun: 28,
+    imp: { f: 8, vx: 10 }, glide: true },
+  up: { label: 'Upstroke', kind: 'ground', startup: 8, active: 6, recovery: 20, dmg: 7,
+    hb: { x: -12, y: -186, w: 104, h: 134 }, kb: [2, -15], stun: 34, jumpCancel: true },
+  down: { label: 'Low Chord', kind: 'ground', crouch: true, startup: 7, active: 5, recovery: 18, dmg: 6,
+    hb: { x: 8, y: -36, w: 124, h: 32 }, kb: [4, -9], stun: 26 },
+  nair: { label: 'Air Riff', kind: 'air', startup: 6, active: 8, recovery: 12, dmg: 6,
+    hb: { x: -52, y: -140, w: 122, h: 132 }, kb: [3, -6], stun: 24, jumpCancel: true },
+  sair: { label: 'Air Jab', kind: 'air', startup: 7, active: 8, recovery: 14, dmg: 7,
+    hb: { x: 12, y: -94, w: 130, h: 36 }, kb: [9, -4], stun: 28,
+    imp: { f: 6, vx: 8, vy: -1 }, floaty: true },
+  dair: { label: 'Air Chord', kind: 'air', startup: 8, active: 8, recovery: 16, dmg: 7,
+    hb: { x: -22, y: -46, w: 116, h: 88 }, kb: [5, -4], stun: 26 },
+
+  // ---- สกิล 1 Power Slide: มุดต่ำลอดกระสุน แล้วเด้งขึ้นฟาดสวน (ปุ่ม 1) ----
+  // crouch: true = กรอบตัวเตี้ยลงตลอดช่วงสไลด์ ซึ่งคือทั้งหมดของท่านี้
+  // ตัวไล่หวดไม่มีเกราะไม่มีวาร์ป ทางเข้าของเขาคือมุดลอด
+  slide1: { label: 'Power Slide', kind: 'ground', crouch: true, startup: 6, active: 12, recovery: 6, dmg: 5,
+    hb: { x: 6, y: -40, w: 126, h: 34 }, kb: [4, 0], stun: 20,
+    imp: { f: 5, vx: 16 }, glide: true, autoChain: 'slide2' },
+  slide2: { label: 'Power Slide', kind: 'ground', startup: 6, active: 6, recovery: 20, dmg: 8,
+    hb: { x: -10, y: -178, w: 106, h: 128 }, kb: [3, -14], stun: 32, jumpCancel: true },
+
+  // ---- สกิล 2 Blaze: จุดไฟที่กีตาร์ ระหว่างบัฟ ฟาดโดนแล้วติดไฟ (ปุ่ม 2) ----
+  blaze: { label: 'Blaze', kind: 'ground', startup: 10, active: 6, recovery: 18, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, blaze: BLAZE_TIME },
+
+  // ---- สกิล 3 Burn the House Down (อัลติ): โซโล่ เดินได้ ไฟติดตามรอยที่เดิน ----
+  // เดินได้ตั้งแต่แรกเพราะบทเรียน "ขาตาย" ของ Alecto — ยืนตายอยู่กับที่ไม่สนุก
+  solo1: { label: 'Burn the House Down', kind: 'ground', startup: 10, active: 5, recovery: 4, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    blaze: BLAZE_TIME, stance: SOLO_FRAMES, autoChain: 'solo2', mobile: 0.4 },
+  // trail = ทิ้งกองไฟไว้ตรงที่ยืนทุกกี่เฟรม · ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้ทั้งเวที
+  solo2: { label: 'Burn the House Down', kind: 'ground', startup: 5, active: 5, recovery: 8, dmg: 5,
+    hb: { x: -30, y: -140, w: 150, h: 130 }, kb: [2, 0], stun: 20,
+    holdChain: 'solo3', autoChain: 'soloEnd', mobile: 0.4, trail: 18 },
+  solo3: { label: 'Burn the House Down', kind: 'ground', startup: 5, active: 5, recovery: 8, dmg: 5,
+    hb: { x: -30, y: -140, w: 150, h: 130 }, kb: [2, 0], stun: 20,
+    holdChain: 'solo2', autoChain: 'soloEnd', mobile: 0.4, trail: 18 },
+  // ไม้จบ: ฟาดคอร์ดสุดท้าย ไฟระเบิดออกสองข้าง
+  soloEnd: { label: 'Burn the House Down', kind: 'ground', startup: 8, active: 6, recovery: 26, dmg: 12,
+    hb: { x: -170, y: -190, w: 340, h: 200 }, kb: [10, -12], stun: 36 },
+};
+
+const ORPHEUS_SKILLS = ['slide1', 'blaze', 'solo1'];
+const ORPHEUS_SKILL_CD = [120, 1200, 0];   // สไลด์กดถี่ได้ · บัฟคูลดาวน์ยาว 20 วินาที
+
 const CHARACTERS = {
   nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
   helios: { id: 'helios', label: 'HELIOS', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
@@ -427,6 +503,8 @@ const CHARACTERS = {
   // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
   atlas: { id: 'atlas', label: 'ATLAS', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
     skillCd: ATLAS_SKILL_CD, hp: 130, resist: 0.5 },
+  orpheus: { id: 'orpheus', label: 'ORPHEUS', moves: ORPHEUS_MOVES, skills: ORPHEUS_SKILLS,
+    skillCd: ORPHEUS_SKILL_CD },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -466,6 +544,8 @@ class Fighter {
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
+      blaze: 0,                     // บัฟกีตาร์ติดไฟของ Orpheus เหลือกี่เฟรม (อยู่ที่ "คนฟาด")
+      burn: 0, burnF: -9999,        // ไฟติดตัวจากบัฟนั้น — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
       lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
@@ -545,6 +625,7 @@ class Game {
 
     if (p.hitstop <= 0 && d.hitstop <= 0) { this.updateShots(); this.updateFires(); }
     this.decayLash(p); this.decayLash(d);
+    this.tickFlame(p); this.tickFlame(d);
     this.resolveHit(p, d);
     this.resolveHit(d, p);
     this.pushApart(p, d);
@@ -590,6 +671,7 @@ class Game {
     if (mv.refresh) for (const k of mv.refresh) f.used.delete(k);
     f.move = mv; f.moveId = id; f.moveF = 0;
     f.armorLeft = mv.armor ?? 0;
+    if (mv.blaze) f.blaze = mv.blaze;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
     this.lastMoveInfo = { id, ...f.moves[id] };
@@ -738,6 +820,25 @@ class Game {
   }
 
   /** ตราสลายเองเมื่อไม่โดนแส้ซ้ำนานพอ — เป็นเหตุผลที่ถอยออกไปตั้งหลักได้ผล */
+  /** บัฟกีตาร์ติดไฟ + ไฟที่ติดอยู่กับตัว — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง
+   *
+   * ไฟของ Orpheus ต่างจากกองไฟของ Alecto ตรงที่ **ติดไปกับคนที่โดน**
+   * หนีออกจากจุดที่โดนแล้วก็ยังไหม้ต่อ ซึ่งเป็นคนละปัญหากับ "อย่าเดินเข้าไปตรงนั้น"
+   */
+  tickFlame(f) {
+    if (f.blaze > 0) f.blaze--;
+    if (f.burn <= 0) return;
+    f.burn--;
+    if ((BURN_TIME - f.burn) % BURN_TICK) return;
+    // ไม่คูณกับตัวลดดาเมจคอมโบ เพราะตอดห่างกันเกินกว่าตัวนับคอมโบจะต่อติด
+    // ตั้งเลขดิบให้ต่ำตั้งแต่แรกแทน (บทเรียนจากท่ายืนยิงของ Alecto ที่คำนวณไว้ 19 แต่ออกจริง 46)
+    const dmg = Math.max(1, Math.round(BURN_DMG * f.resist));
+    f.hp = Math.max(0, f.hp - dmg);
+    f.lastHitF = this.frame;
+    this.gainKi(f, dmg * 0.6);
+    this.events.push({ type: 'burn', x: f.x, y: f.y - 70, dmg });
+  }
+
   decayLash(f) {
     if (f.lash <= 0) return;
     const idle = this.frame - f.lashF;
@@ -1094,6 +1195,8 @@ class Game {
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
+      // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
+      if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0 });
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
         // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
@@ -1149,6 +1252,8 @@ class Game {
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
     if (m.lash) this.addLash(d);
+    // บัฟติดอยู่ที่คนฟาด แต่ไฟไปติดที่คนโดน · โดนซ้ำนับใหม่ ไม่ซ้อนกัน
+    if (a.blaze > 0) { d.burn = BURN_TIME; this.events.push({ type: 'ignite', x: d.x, y: d.y - 90 }); }
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');

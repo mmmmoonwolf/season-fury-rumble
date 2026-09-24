@@ -156,6 +156,22 @@ const CHAR_ART = {
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "ram1", "ram2", "leap", "sky1", "sky2"]),
   },
+  // Orpheus: ไล่หวดกีตาร์ + บัฟไฟ · ชีตเจนมาตารางไม่สม่ำเสมอ ดู tools/orpheus_sheets.py
+  orpheus: {
+    atlasKey: 'scorpheus',
+    texture: 'assets/characters/scramble_orpheus.png',
+    data: 'assets/characters/scramble_orpheus.json',
+    runStride: 96,
+    box: 0x8a8f9a, boxAccent: 0xc08a3e,
+    title: 'The Fury of the Final Encore',
+    role: 'สายไล่หวดติดไฟ',
+    tip: 'กดรัวแล้วหวดรัวห้าจังหวะ · จุดไฟที่กีตาร์แล้วฟาดโดนใครคนนั้นติดไฟ',
+    anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
+      block: 1, blockstun: 1, blockcrouch: 1 },
+    attacks: new Set(["jab1", "jab2", "jab3", "jab4", "jab5", "side", "up", "down",
+      "nair", "sair", "dair", "slide1", "slide2", "blaze",
+      "solo1", "solo2", "solo3", "soloEnd"]),
+  },
 };
 
 const C = {
