@@ -57,6 +57,9 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
   f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard,
+  // อาวุธที่ถืออยู่ (Alecto สลับแส้/ไรเฟิล) — ถ้าไม่เทียบ สองเครื่องถืออาวุธคนละชุด
+  // แล้วปุ่มตีเดียวกันจะออกท่าคนละท่า ซึ่งเป็น desync ที่ทุกอย่างอื่นยังดูตรงกันหมด
+  f.alt,
 ]),
   g.shots.length,
   ...g.shots.map((s) => [s.owner, Math.round(s.x * 1000), Math.round(s.y * 1000), Math.round(s.vx * 1000), s.dead ? 1 : 0].join(",")),
@@ -177,13 +180,24 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
     const inward = toward > 0 ? 'right' : 'left';
     return inp({ [inward]: f < 70 ? 1 : 0,
       p: { attack: f >= 70 && f % 9 === 0 ? 1 : 0, skill2: f === 360 ? 1 : 0 } });
-    // กดสกิล 2 ครั้งเดียวตอนท้าย ไม่ใช่รัว ๆ — ของ Alecto สกิล 2 สับเป็นโหมดไรเฟิล 5 วินาที
+    // กดสกิล 2 ครั้งเดียวตอนท้าย ไม่ใช่รัว ๆ — สกิล 2 ขว้างระเบิดแล้วรัวลูกโม่ยาว
     // กดถี่แล้วเธอจะไม่ได้ใช้แส้เลย ตรารอยแส้ก็ไม่ขึ้น ซึ่งคือสิ่งที่เทสต์นี้ต้องการวัด
+    // และห้ามกดสกิล 1 เลย เพราะนั่นคือสลับไปถือปืน ซึ่งก็ทำให้ไม่มีตราเหมือนกัน
   };
   const alecto = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'alecto', c2: 'alecto', frames: 420 });
   ok(alecto.peak.a.lash > 0, `ตรารอยแส้ติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.lash} ชั้น)`);
   ok(alecto.peak.a.lash === alecto.peak.b.lash, "ชั้นตรารอยแส้ตรงกันสองเครื่อง");
   ok((alecto.tally.a.firepool ?? 0) > 0, `มีกองไฟเกิดจริงระหว่างทดสอบ (${alecto.tally.a.firepool} กอง)`);
+
+  // สลับอาวุธเป็นสถานะที่ "ปุ่มเดียวกันให้ผลคนละอย่าง" จึงเป็น desync ที่เนียนที่สุดเท่าที่มี
+  // สองเครื่องถืออาวุธคนละชุดแล้วกดตีพร้อมกัน จะเห็นท่าคนละท่าโดยที่ทุกค่าอื่นยังตรงกันหมด
+  // ต้องพิสูจน์ว่ามีการสลับเกิดขึ้นจริงในรอบทดสอบ ไม่งั้นผ่านเพราะไม่มีอะไรให้ต่าง
+  const swap = playApart(busy(1, 1), busy(2, -1), { lagA: 2, lagB: 5, c1: 'alecto', c2: 'alecto', frames: 420 });
+  ok((swap.tally.a.swap ?? 0) > 0, `มีการสลับอาวุธจริงระหว่างทดสอบ (${swap.tally.a.swap} ครั้ง)`);
+  ok((swap.tally.a.swap ?? 0) === (swap.tally.b.swap ?? 0), "จำนวนครั้งที่สลับตรงกันสองเครื่อง");
+  ok(swap.gA.p1.alt === swap.gB.p1.alt && swap.gA.p2.alt === swap.gB.p2.alt,
+    `จบแล้วถืออาวุธชุดเดียวกันทั้งสองเครื่อง (p1=${swap.gA.p1.alt} p2=${swap.gA.p2.alt})`);
+  ok(swap.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
 
   // Orpheus: บัฟไฟอยู่ที่คนฟาด ไฟที่ติดตัวอยู่ที่คนโดน — สองอย่างนี้เพิ่งเพิ่มเข้ามา
   const orph = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'orpheus', c2: 'orpheus', frames: 420 });

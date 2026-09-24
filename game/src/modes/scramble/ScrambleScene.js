@@ -139,15 +139,15 @@ const CHAR_ART = {
     runStride: 86,
     title: 'The Fury of the Burning Trail',
     role: 'สายคุมพื้นที่',
-    tip: 'แส้ยาวที่สุดในเกม ฟาดซ้ำแล้วเจ็บขึ้นและทำให้คู่ต่อสู้เดินช้าลง',
+    tip: 'สลับแส้กับไรเฟิลได้ — แส้เจ็บกว่าและทำให้ช้า ไรเฟิลเดินยิงข้ามเวที',
     // ท่าเดินถือปืนยาว: รอบเดียว = สองก้าว (ชีตเป็นวงจรเดิน 4 ท่า ย่ำสลับซ้าย-ขวา)
     // 104 = ถ่างเท้าตอนเท้าแตะพื้น 96 px บน canvas x (SPRITE_H/standing) x 2 ก้าว
     gunStride: 104,
-    anims: { idle: 1, run: 10, runGun: 4, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1,
-      tech: 1, block: 1, blockstun: 1, blockcrouch: 1 },
+    anims: { idle: 1, run: 10, runGun: 4, idleGun: 1, jump: 4, crouch: 1, hurt: 1, knockdown: 1,
+      techroll: 1, tech: 1, block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
-      "shot1", "shot2", "shot3", "fire1", "fire2", "rifle1", "rifle2", "rifleEnd",
-      "dust1", "dust2", "hop", "roll"]),
+      "swap1", "gjab1", "gjab2", "gjab3", "gside", "gup", "gdown",
+      "shot1", "shot2", "shot3", "fire1", "fire2", "dust1", "dust2", "hop", "roll"]),
   },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
   // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
@@ -1118,12 +1118,15 @@ class ScrambleScene extends Phaser.Scene {
     }
 
     // state ของเอนจิ้น -> ชื่อท่าที่มีอาร์ต (ที่ไม่อยู่ในตารางนี้ยังวาดเป็นกล่อง)
-    const key = {
+    let key = {
       run: 'run', walk: 'run', idle: 'idle', crouch: 'crouch',
       air: 'jump', landing: 'jump',
       hitstun: 'hurt', knockdown: 'knockdown', techroll: 'techroll', tech: 'tech',
       block: 'block', blockcrouch: 'blockcrouch', blockstun: 'blockstun',
     }[f.state] ?? null;
+    // สลับอาวุธแล้วท่ายืน/ท่าวิ่งต้องเปลี่ยนตาม ไม่งั้นเธอถือแส้ยืนอยู่แล้วยิงไรเฟิลออกมา
+    // มีเฉพาะสองท่านี้ (ท่าย่อ/กระโดดยังเป็นของแส้) — เป็นอาร์ตที่ยังไม่มี ไม่ใช่การตัดสินใจ
+    if (f.alt && art.anims[key + 'Gun']) key += 'Gun';
     if (!key || !art.anims[key]) { sp.setVisible(false); return false; }
 
     this._applyCharTransform(f);
@@ -1133,8 +1136,11 @@ class ScrambleScene extends Phaser.Scene {
     // ยกเว้นดับเบิลจัมพ์: ยังอยู่ state 'air' เหมือนเดิมแต่ควรตีลังกาใหม่ — ดูจาก jumpsLeft ที่ลดลง
     const doubleJumped = f.jumpsLeft !== rig.lastJumps;
     rig.lastJumps = f.jumpsLeft;
-    if (rig.lastState !== f.state || (key === 'jump' && doubleJumped)) {
-      rig.lastState = f.state;
+    // ผูกชื่อท่าไว้ในตัวบ่งชี้ด้วย ไม่ใช่แค่ state — สลับอาวุธตอนยืน/วิ่งอยู่ state ไม่เปลี่ยน
+    // ถ้าดูแค่ state เธอจะถือแส้ค้างอยู่จนกว่าจะเปลี่ยนท่าอย่างอื่นก่อน
+    const tag = f.state + '/' + key;
+    if (rig.lastState !== tag || (key === 'jump' && doubleJumped)) {
+      rig.lastState = tag;
       // ลงพื้น = ค้างที่เฟรมสุดท้ายของท่ากระโดด (ยืดตัวรับพื้น) ไม่ใช่เริ่มตีลังกาใหม่ตอนแตะพื้น
       if (f.state === 'landing') sp.anims.stop(), sp.setFrame(`jump_${art.anims.jump}.png`);
       else sp.play(anim);
@@ -1219,7 +1225,9 @@ class ScrambleScene extends Phaser.Scene {
     for (const f of [s.p1, s.p2]) {
       const left = f.stanceUntil - s.frame;
       if (left <= 0) continue;
-      const total = f.moves[f.skills[0]]?.stance ?? 300;
+      // หาจากสกิลที่ประกาศ stance จริง ๆ ไม่ใช่เดาว่าเป็นช่องแรกเสมอ
+      // (Alecto ไม่มีท่าตั้งป้อมแล้ว ส่วนของ Orpheus อยู่ช่อง 3 ไม่ใช่ช่อง 1)
+      const total = f.skills.map((k) => k && f.moves[k]?.stance).find(Boolean) ?? 300;
       const w = 46, x = f.x - w / 2, y = f.y - 150;
       g.fillStyle(0x0c111c, 0.7); g.fillRect(x - 1, y - 1, w + 2, 7);
       g.fillStyle(0xffb03a, 1); g.fillRect(x, y, w * Math.min(1, left / total), 5);

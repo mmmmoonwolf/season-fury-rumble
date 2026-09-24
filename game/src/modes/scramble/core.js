@@ -261,7 +261,6 @@ const DUST_LIFE = 300;       // วงฝุ่นอยู่กี่เฟร
 const DUST_DR = 0.45;        // อยู่ในวงแล้วดาเมจที่รับเหลือเท่าไหร่
 const VEIL_TIME = 45;        // ออกจากวงแล้วยังจาง ๆ ต่ออีกกี่เฟรม — ช่วงนี้คือเวลาหนี
 
-const RIFLE_FRAMES = 340;    // สกิล 2 ของ Alecto: ขว้างระเบิดแล้วยกไรเฟิลยิงได้ราว 5 วินาที
 const STANCE_FRAMES = 180;        // 3 วินาที (สกิล 1)
 // ---------- ระบบแพ้ชนะ ----------
 // เลือดหมดหนึ่งครั้ง = เสียหลอดหนึ่งหลอด ไม่ใช่จบเกม
@@ -308,16 +307,58 @@ const ALECTO_MOVES = {
   dair: { label: 'Down Lash', kind: 'air', startup: 9, active: 8, recovery: 16, dmg: 5,
     hb: { x: -20, y: -44, w: 112, h: 84 }, kb: [4, -4], stun: 26, lash: true },
 
-  // ---- สกิล 1 Six Shooter: ยิงลูกโม่ กดรัวได้ 3 นัด (ปุ่ม 1) ----
-  // ใช้ระบบกระสุนเดิมของ Stone Curse รวมถึงรายชื่อเป้าที่โดนแล้วต่อหนึ่งชุด
-  // ไม่มี anchor = ไม่มีหมุดวาร์ป (ของ Nyx) กระสุนเป็นดาเมจล้วน
-  // กดครั้งเดียวแล้วปักหลักยิงยาว STANCE_FRAMES เฟรม ไม่ต้องกดรัว
-  // ระหว่างนั้นขยับไม่ได้เลย โดนสวนเมื่อไหร่ป้อมแตกทันที = ราคาที่จ่ายสำหรับดาเมจต่อเนื่อง
-  // ---- สกิล 1 Fan the Hammer: สับไกรีวอลเวอร์เป็นชุด ดันคนออกจากหน้า (ปุ่ม 1) ----
+  // ---- สกิล 1 Gunslinger: สลับระหว่างแส้กับไรเฟิล (ปุ่ม 1) ----
+  //
+  // ของเดิมเป็นชุดรีวอลเวอร์สามนัดที่ย้ายไปอยู่ครึ่งหลังของสกิล 2 แทน
+  // ปุ่มนี้กลายเป็นสวิตช์อาวุธถาวร: กดทีสลับที กดอีกทีสลับกลับ ไม่มีตัวนับเวลา
+  //
+  // สองอาวุธนี้แก้ปัญหาคนละแบบ ไม่ใช่อันหนึ่งดีกว่าอีกอัน
+  //   แส้   = ดาเมจสูง กรอบใหญ่ ติดตรารอยแส้ (ทำให้ช้า) แต่ต้องเข้าระยะกลาง
+  //   ไรเฟิล = ดาเมจต่อนัดน้อย ไม่ติดตรา แต่ยิงข้ามเวทีได้และ **เดินยิงได้**
+  // คนเล่นที่โดนรุมกดเลือกถอยออกมายิงได้ แทนที่จะต้องยืนแลกในระยะที่เธอเสียเปรียบ
+  //
+  // คูลดาวน์สั้น (1 วินาที) เพราะนี่ไม่ใช่ท่าโจมตี แต่ต้องมีเพื่อไม่ให้กดรัวสลับหนีท่าที่กำลังจะโดน
+  swap1: { label: 'Gunslinger', kind: 'ground', startup: 5, active: 3, recovery: 8, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, toggle: true },
+
+  // ---- ท่าตีปกติชุดที่สอง: ไรเฟิล (ใช้เมื่อสลับด้วยสกิล 1 แล้ว) ----
+  //
+  // ทุกท่าเป็นกระสุนจริง ไม่ใช่กรอบโจมตียาว ๆ — ยิงข้ามเวทีได้ กันได้ และโดนวงฝุ่นลดดาเมจด้วย
+  // ทุกท่าบนพื้นติดธง mobile = ย่องไปมาระหว่างยิงได้ นี่คือ "เดินยิง" ที่คนเล่นขอ
+  // (ฝั่งวาดสลับไปเล่นวงจรเดินถือปืนให้เองเมื่อเคลื่อนที่จริง — ดู ScrambleScene)
+  //
+  // วัดแล้วรอบแรกตั้งไว้สูงไป: ประชิดแล้วปืนเจ็บกว่าแส้ (14 เทียบ 13) ทั้งที่ควรตรงข้าม
+  // เพราะท่าปืนสั้นกว่าและกระสุนถึงตัวทันทีในระยะประชิด — ปืนเลยชนะทุกระยะ สวิตช์ก็ไม่ใช่การเลือก
+  // ดาเมจรวมทั้งชุดจึงเหลือ 5 เทียบกับแส้ 13 และไม่ติดตรารอยแส้เลย
+  // ราคาของ "ปลอดภัย + ยิงได้ทั้งเวที" คือดาเมจ ไม่ใช่ความเร็ว — คนที่โดนรุมต้องได้ของที่ใช้ได้จริง
+  gjab1: { label: 'Hip Fire', kind: 'ground', startup: 5, active: 3, recovery: 8, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 1, shotStun: 12, shotKb: 2, shotRange: 520, chain: 'gjab2' },
+  gjab2: { label: 'Hip Fire', kind: 'ground', startup: 4, active: 3, recovery: 9, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 1, shotStun: 12, shotKb: 3, shotRange: 520, chain: 'gjab3' },
+  // ไม้จบ: ปักเท้ายิง (ไม่มี mobile) ดันออกแรงพอเปิดระยะได้จริง แลกกับค้างนาน
+  gjab3: { label: 'Kick Back', kind: 'ground', startup: 5, active: 4, recovery: 18, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 20, shotKb: 9, shotRange: 520 },
+  // กดทิศ = เดินยิง ขยับได้มากที่สุดในชุด เป็นท่าที่ใช้ถอยพลางยิงพลางตอนโดนไล่
+  gside: { label: 'Walking Fire', kind: 'ground', startup: 4, active: 3, recovery: 10, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.6,
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 1, shotStun: 12, shotKb: 2, shotRange: 520 },
+  // สวนคนกระโดด: กระสุนพุ่งเฉียงขึ้น ระยะสั้นกว่าเพราะลอยพ้นหัวไปเร็ว
+  gup: { label: 'Skyward Shot', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: -7 }], shotAt: 6, shotDmg: 2, shotStun: 18, shotKb: 4, shotRange: 320 },
+  // ยิงต่ำ: ตัวเตี้ยลงด้วย (crouch) จึงลอดท่าที่ตีสูงได้ไปในตัว
+  gdown: { label: 'Knee Shot', kind: 'ground', crouch: true, startup: 5, active: 3, recovery: 13, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 1, shotStun: 14, shotKb: 2, shotLow: true, shotRange: 520 },
+
+  // ---- สกิล 2 ครึ่งหลัง Fan the Hammer: สับไกรีวอลเวอร์เป็นชุด ดันคนออกจากหน้า ----
   //
   // ของเดิมเป็นท่าตั้งป้อมยืนยิง 3 วินาที ซึ่งไม่ได้แก้ปัญหาของเธอเลย
   // ยิงไปก็ยังโดนยืนกดอยู่ที่เดิม ผู้เล่นรายงานว่า "โดนรุมประจำ"
-  // เปลี่ยนเป็นชุดสั้นสามจังหวะที่ **ดันออก** แล้วกลับมาถือแส้เอง
+  // เปลี่ยนเป็นชุดสั้นสามจังหวะที่ **ดันออก** แล้วกลับมาถืออาวุธเดิมเอง
   // สามจังหวะแรงขึ้นเรื่อย ๆ จังหวะสุดท้ายดันแรงพอเปิดระยะได้จริง
   shot1: { label: 'Fan the Hammer', kind: 'ground', startup: 5, active: 4, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
@@ -330,28 +371,17 @@ const ALECTO_MOVES = {
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     shots: [{ vy: 0 }], shotAt: 3, shotDmg: 3, shotStun: 20, shotKb: 13 },
 
-  // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ แล้วสับเป็นโหมดไรเฟิล (ปุ่ม 2) ----
+  // ---- สกิล 2 Firewater: ขว้างมอลอตอฟ แล้วรัวรีวอลเวอร์ต่อ (ปุ่ม 2) ----
   //
-  // ขว้างระเบิดคือ "ตัวเปิด" ไม่ใช่ทั้งหมดของสกิล — ขว้างจบแล้วเธอยกไรเฟิลขึ้นทันที
-  // เดินยิงได้ 5 วินาที กดปุ่มตีค้างเพื่อยิงต่อ ปล่อยเมื่อไหร่ก็จบชุดเอง
-  // stance ตั้งจากท่าแรกของสกิล (fire1) ไม่ใช่ท่าที่วน — เผื่อช่วงขว้างไว้ในตัวเลขแล้ว
+  // ขว้างระเบิดคือ "ตัวเปิด" ไม่ใช่ทั้งหมดของสกิล — ขว้างจบแล้วสับไกลูกโม่ต่อทันที
+  // กองไฟกันทางไว้ข้างหน้า ชุดกระสุนดันคนออก = กดครั้งเดียวได้ทั้งกำแพงและระยะ
+  // (โหมดไรเฟิลชั่วคราวย้ายไปเป็นท่าตีปกติถาวรของสกิล 1 แล้ว ไม่ต้องมีตัวนับเวลาอีก)
   fire1: { label: 'Firewater', kind: 'ground', startup: 7, active: 5, recovery: 6, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    stance: RIFLE_FRAMES, autoChain: 'fire2' },
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'fire2' },
   // ขว้างแล้วเกิดกองไฟข้างหน้า — วิถีขวดเป็นแค่เอฟเฟค ตำแหน่งกองไฟคงที่เพื่อให้สองเครื่องตรงกัน
   fire2: { label: 'Firewater', kind: 'ground', startup: 6, active: 6, recovery: 6, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    firePool: { at: 7, dx: 200 }, autoChain: 'rifle1' },
-  // โหมดไรเฟิล: ปุ่มตีกลายเป็นปุ่มยิง ไม่ต้องเจนท่าตีปกติชุดใหม่
-  rifle1: { label: 'Rifle', kind: 'ground', startup: 6, active: 3, recovery: 5, dmg: 1,
-    hb: { x: 10, y: -110, w: 182, h: 30 }, kb: [1.5, 0], stun: 16,
-    holdChain: 'rifle2', autoChain: 'rifleEnd', mobile: 0.4 },
-  rifle2: { label: 'Rifle', kind: 'ground', startup: 5, active: 3, recovery: 6, dmg: 1,
-    hb: { x: 10, y: -110, w: 182, h: 30 }, kb: [1.5, 0], stun: 16,
-    holdChain: 'rifle1', autoChain: 'rifleEnd', mobile: 0.4 },
-  // เก็บปืน: ดันออกหน่อยหนึ่งเพื่อไม่ให้จบชุดแล้วยืนติดหน้าคนอื่นพอดี
-  rifleEnd: { label: 'Rifle', kind: 'ground', startup: 6, active: 4, recovery: 20, dmg: 4,
-    hb: { x: 12, y: -104, w: 190, h: 40 }, kb: [12, 0], stun: 30 },
+    firePool: { at: 7, dx: 200 }, autoChain: 'shot1' },
 
   // ---- สกิล 3 Dust Devil (อัลติ): ปาถุงฝุ่นลงพื้น หายเข้าไปในวง (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
   //
@@ -368,7 +398,7 @@ const ALECTO_MOVES = {
   // ตั้งใจไม่ใส่ iframes — ต้องสวนได้ ไม่งั้นกลายเป็นวาร์ปของ Nyx ที่ไม่มีคูลดาวน์
   hop: { label: 'Backstep', kind: 'ground', startup: 3, active: 5, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    imp: { f: 2, vx: -13 }, glide: true, autoChain: 'shot1' },
+    imp: { f: 2, vx: -13 }, glide: true, autoChain: 'swap1' },
   // กลิ้งถอยต้องมีช่วงอมตะ ไม่งั้นมันไม่ใช่ "ท่าหนี" — กลิ้งไปก็โดนตีอยู่ดี
   // นี่คือท่าป้องกันตัวท่าเดียวของเธอ และเดิมไม่มี iframes เลยสักเฟรม
   // เทียบ: วาร์ปของ Nyx มี iframes [0,9] และ [0,18]
@@ -443,10 +473,24 @@ const ATLAS_MOVES = {
 const ATLAS_SKILLS = ['ram1', 'leap', 'sky1'];
 const ATLAS_SKILL_CD = [150, 180, 0];
 
-const ALECTO_SKILLS = ['shot1', 'fire1', 'dust1'];
-const ALECTO_SKILL_CD = [180, 420, 0];   // ชุดรีวอลเวอร์สั้นลงเลยกดถี่ได้ · โหมดไรเฟิลยาวเลยคูลดาวน์ยาว
+const ALECTO_SKILLS = ['swap1', 'fire1', 'dust1'];
+// สลับอาวุธไม่ใช่ท่าโจมตี คูลดาวน์จึงสั้น · สกิล 2 ได้ทั้งกำแพงไฟและชุดกระสุน คูลดาวน์จึงยาว
+const ALECTO_SKILL_CD = [60, 330, 0];
 // กดทิศถอยค้าง -> เริ่มด้วยท่าถอยแทน แล้ว autoChain เข้าสกิลเอง
-const ALECTO_BACKSTEP = { shot1: 'hop', fire1: 'roll' };
+const ALECTO_BACKSTEP = { swap1: 'hop', fire1: 'roll' };
+
+/** ท่าตีปกติชุดที่สองของ Alecto — สลับเข้า/ออกด้วยสกิล 1 (swap1)
+ *
+ * ชื่อทางซ้ายคือสิ่งที่ pickMove() เลือกตามปุ่มที่กด ทางขวาคือท่าที่ได้จริงตอนถือปืน
+ * ทำเป็นตารางของตัวละครเอง pickMove() จึงยังไม่รู้ว่ากำลังเล่นตัวไหน เหมือนเดิม
+ *
+ * ท่าอากาศ (nair/sair/dair) **ตั้งใจไม่ใส่** — ลอยอยู่ก็ต้องใช้แส้เสมอ
+ * ปืนจึงเป็นอาวุธของคนที่ยืนอยู่กับพื้น ส่วนการขึ้นอากาศยังเป็นเกมของแส้
+ */
+const ALECTO_ALT = {
+  jab1: 'gjab1', jab2: 'gjab2', jab3: 'gjab3',
+  side: 'gside', up: 'gup', down: 'gdown',
+};
 
 /**
  * ทะเบียนตัวละคร (ฝั่ง sim) — ตารางท่า/สกิล/คูลดาวน์ แยกต่อตัว
@@ -545,7 +589,7 @@ const CHARACTERS = {
   nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
   helios: { id: 'helios', label: 'HELIOS', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
   alecto: { id: 'alecto', label: 'ALECTO', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
-    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP },
+    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP, altMoves: ALECTO_ALT },
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
   // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
   atlas: { id: 'atlas', label: 'ATLAS', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
@@ -578,6 +622,8 @@ class Fighter {
   get skills() { return CHARACTERS[this.char].skills; }
   get skillCd() { return CHARACTERS[this.char].skillCd; }
   get backstep() { return CHARACTERS[this.char].backstep ?? null; }
+  /** ตารางท่าตีปกติชุดที่สอง (ถ้าตัวนี้มี) — ว่างเปล่าแปลว่าไม่มีให้สลับ */
+  get altMoves() { return CHARACTERS[this.char].altMoves ?? null; }
   // เลือดเป็นค่าของตัวละคร ไม่ใช่ค่ากลาง — Atlas 130 ที่เหลือ 100
   get maxHp() { return CHARACTERS[this.char].hp ?? 100; }
   // ทนสถานะ: 1 = โดนเต็ม · 0.5 = โดนครึ่งเดียวและสลายเร็วเป็นสองเท่า
@@ -591,6 +637,8 @@ class Fighter {
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
+      alt: 0,                       // สลับไปใช้ท่าตีปกติชุดที่สองอยู่ไหม (Alecto: ถือไรเฟิลแทนแส้)
+                                    // รีเซ็ตทุกยก = เริ่มยกใหม่ถือแส้เสมอ ทั้งสองเครื่องตรงกันแน่นอน
       veil: 0, dustGuard: 0,        // อยู่ในวงฝุ่นของ Alecto / จางต่อหลังออกจากวง
       burn: 0, burnF: -9999,        // ไฟที่ติดตัวอยู่ — อยู่ที่ "คนโดน" ติดจากการแตะกองไฟของ Orpheus
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
@@ -747,6 +795,15 @@ class Game {
   consume(f, key) { f.buf[key] = 0; }
 
   pickMove(f, inp) {
+    const id = this.pickNormal(f, inp);
+    // สลับอาวุธแล้วก็ยังเลือกท่าด้วยปุ่มชุดเดิมทุกอย่าง แค่แปลชื่อท่าผ่านตารางของตัวละครอีกที
+    // ตารางเป็นของตัวละคร ไม่ใช่ของเมธอดนี้ — pickMove() จึงยังไม่รู้ว่ากำลังเล่นตัวไหน
+    // ชื่อที่ไม่อยู่ในตาราง (ท่าอากาศ) ตกลงมาใช้ชุดเดิมเอง ไม่ต้องเขียนเงื่อนไขแยก
+    return (f.alt && f.altMoves?.[id]) || id;
+  }
+
+  /** ปุ่มที่กด -> ชื่อท่าตีปกติ (ก่อนแปลตามอาวุธที่ถืออยู่) */
+  pickNormal(f, inp) {
     const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
     if (f.onGround) {
       if (inp.down) return 'down';
@@ -762,6 +819,9 @@ class Game {
   startMove(f, id, dir) {
     if (dir) f.facing = dir;
     const mv = f.moves[id];
+    // สลับอาวุธตั้งแต่เฟรมแรกของท่า ไม่ใช่ตอนจบ — คนเล่นกดแล้วเห็นผลทันที
+    // ทั้งสองเครื่องเดินถึงบรรทัดนี้ที่เฟรมเดียวกันเสมอ เพราะมาจากปุ่มที่ส่งข้ามเน็ตเหมือนกัน
+    if (mv.toggle) { f.alt = f.alt ? 0 : 1; this.events.push({ type: 'swap', alt: f.alt, x: f.x, y: f.y - 90 }); }
     if (mv.warp) this.warp(f);
     if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
@@ -1391,7 +1451,15 @@ class Game {
     this.events.push({ type: 'hit', x: fx, y: fy, dmg, heavy: m.dmg >= 6, launch: m.kb[1] < -10 });
   }
 
+  /** ดันตัวไม่ให้ซ้อนกัน — ยกเว้นตอนที่ฝ่ายใดฝ่ายหนึ่ง "มองไม่เห็นตัว"
+   *
+   *  อมตะอยู่ก็ทะลุได้อยู่แล้ว (ท่าพุ่งของ Nyx อาศัยข้อนี้)
+   *  วงฝุ่นเพิ่มอีกกรณี: ตอนจางอยู่เธอเดินผ่านคนอื่นไปได้เลย
+   *  ถ้าไม่มีข้อนี้ เธอจะเดินชนคู่ต่อสู้ออกจากวงไปด้วย = ลากคนที่ไล่ตามอยู่ออกมาพร้อมกัน
+   *  ซึ่งพังทั้งประเด็นของท่า (ต้องโดดข้ามหนีอย่างเดียว ทั้งที่ท่านี้มีไว้ให้ "หายตัว")
+   *  veil ครอบทั้งตอนอยู่ในวงและช่วงจางต่อหลังออกจากวง = จังหวะหนีก็ทะลุได้เหมือนกัน */
   pushApart(a, b) {
+    if (a.veil || b.veil) return;
     if (a.invuln || b.invuln || !a.onGround || !b.onGround) return;
     const minD = PHYS.width * 0.9, dx = b.x - a.x;
     if (Math.abs(dx) < minD && Math.abs(a.y - b.y) < 40) {

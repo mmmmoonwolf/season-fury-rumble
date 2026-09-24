@@ -71,9 +71,14 @@ const trial = (mine, move) => {
 // "พุ่งทะลุกระสุนได้" เป็นเหตุผลที่ตัวช้ามีทางเข้า ถ้ากระสุนหยุดเขาได้ก็จบ
 {
   const g = mk("atlas", "alecto", 320);
-  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp({ skill1:1, p:{ skill1:1 } }));
+  g.p2.alt = 1;                  // ให้เธอถือไรเฟิล ท่าตีปกติจะกลายเป็นกระสุนจริง
+  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp({ attack:1, p:{ attack:1 } }));
   let broke = false;
-  for (let i = 0; i < 40; i++) { g.step(inp(), inp()); if (g.p1.state !== "attack") broke = true; }
+  for (let i = 0; i < 40; i++) {
+    // ยิงสามนัดพอดีเท่าโควต้าเกราะ (กดรัวกว่านี้เกราะแตกตามที่ออกแบบไว้ ซึ่งเทสต์บนตรวจอยู่แล้ว)
+    g.step(inp(), inp(i === 0 || i === 8 ? { attack:1, p:{ attack:1 } } : {}));
+    if (g.p1.state !== "attack") broke = true;
+  }
   ok(!broke, "โดนลูกโม่ระหว่างพุ่งชนแล้วยังพุ่งต่อ");
   ok(g.p1.hp < 130, `แต่ยังเสียเลือด (${g.p1.hp}/130)`);
 }

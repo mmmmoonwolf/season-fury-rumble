@@ -89,7 +89,7 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
     if (g.p1.moveId && seen[seen.length-1] !== g.p1.moveId) seen.push(g.p1.moveId);
   }
   ok(seen[0] === "hop", `กดถอยค้าง -> ออกท่าถอยก่อน (ได้ ${seen[0]})`);
-  ok(seen.includes("shot1"), "แล้วต่อเข้าสกิลเอง");
+  ok(seen.includes("swap1"), "แล้วต่อเข้าสกิลเอง");
 
   const plain = [];
   const g2 = mk(140);
@@ -97,7 +97,7 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
     g2.step(i === 0 ? inp({ skill1:1, p:{ skill1:1 } }) : inp(), inp());
     if (g2.p1.moveId && plain[plain.length-1] !== g2.p1.moveId) plain.push(g2.p1.moveId);
   }
-  ok(plain[0] === "shot1", "ไม่กดทิศ -> ยิงเลย ไม่ถอย (ต่อคอมโบจากแส้ได้)");
+  ok(plain[0] === "swap1", "ไม่กดทิศ -> สลับอาวุธเลย ไม่ถอย");
 
   // อัลติต้องปักหลักเสมอ ถอยไม่ได้ ไม่งั้นเธอไม่ต้องรับผิดชอบอะไรทั้งเกม
   const ult = [];
@@ -122,8 +122,8 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
 {
   const g = mk();
   const M = g.p1.moves;
-  const mid = ["jab1", "jab2", "jab3", "side", "rifle1", "rifle2"];
-  const bad = mid.filter((k) => M[k].kb[1] !== 0);
+  const mid = ["jab1", "jab2", "jab3", "side", "gjab1", "gjab2", "gjab3", "gside", "gdown"];
+  const bad = mid.filter((k) => M[k].kb[1] !== 0 || (M[k].shots && M[k].shotKb === undefined));
   ok(bad.length === 0, `ท่ากลางคอมโบไม่มีท่าไหนถีบขึ้น${bad.length ? " (เจอ " + bad.join(",") + ")" : ""}`);
 }
 
@@ -135,98 +135,143 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   ok(A.jab1.startup > H.jab1.startup, `แลกกับออกช้ากว่า (${A.jab1.startup} vs ${H.jab1.startup} เฟรม)`);
 }
 
-// ── ท่าตั้งป้อมยืนยิง (สกิล 1 และอัลติ) ──
+// ── สกิล 1 Gunslinger: สลับแส้ <-> ไรเฟิล ──
 //
-// กดครั้งเดียวแล้วปักหลักยิงยาว 5 วินาที ไม่ต้องกดรัว แลกกับขยับไม่ได้เลยตลอดช่วงนั้น
-{
-  // hold = โหมดไรเฟิลต้องกดปุ่มตีค้างถึงจะยิงต่อ (holdChain) ต่างจากอัลติที่ยิงเอง
-  const fire = (key, ki = 0, foe = () => inp(), hold = false) => {
-    const g = mk(150); g.p1.ki = ki;
-    let frames = 0; const start = g.frame;
-    for (let i = 0; i < 480; i++) {
-      g.step(inp(i === 0 ? { [key]: 1, p: { [key]: 1 } } : (hold ? { attack: 1 } : {})), foe(i));
-      if (g.p1.state === "attack") frames = g.frame - start;
-    }
-    return { frames, dmg: 100 - g.p2.hp };
-  };
-
-  // สกิล 1 ไม่ใช่ท่าตั้งป้อมแล้ว — เป็นชุดสั้นสามจังหวะที่ดันคนออก (ดูบล็อกถัดไป)
-  // ท่าตั้งป้อมตอนนี้คือครึ่งหลังของสกิล 2 (โหมดไรเฟิล) กับอัลติ
-  const rifle = fire("skill2", 0, () => inp(), true);
-  ok(rifle.frames > 260 && rifle.frames < 400, `โหมดไรเฟิลยืนยิงได้ราว 5 วินาที (${rifle.frames} เฟรม)`);
-  ok(rifle.dmg > 10 && rifle.dmg < 40, `ยืนให้ยิงนิ่ง ๆ เสียเลือด ${rifle.dmg}`);
-
-
-  // เดินหนีออกจากระยะต้องกินดาเมจน้อยลงมาก — ไม่งั้นเป็นดาเมจฟรีที่ไม่มีทางแก้
-  const run = fire("skill2", 0, () => inp({ right: 1 }), true);
-  ok(run.dmg < rifle.dmg, `เดินหนีแล้วกินน้อยลง (${run.dmg} เทียบยืนนิ่ง ${rifle.dmg})`);
-}
-
-// ── โดนสวนระหว่างยืนยิง = ป้อมแตกทันที ──
-// เป็นทางแก้เดียวของอีกฝ่ายตอนเธอตั้งป้อม ถ้าอันนี้พังตัวละครจะกดไม่ขึ้น
+// นี่คือแกนของตัวละครหลังรื้อ: อาวุธสองชุดที่แก้ปัญหาคนละแบบ ไม่ใช่บัฟชั่วคราว
 {
   const g = mk(150);
-  for (let i = 0; i < 60; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : { attack: 1 }), inp());
-  ok(g.p1.state === "attack" && g.p1.stanceUntil > g.frame, "กำลังยืนยิงอยู่ (โหมดไรเฟิล)");
-  g.p2.x = g.p1.x + 60; g.p2.facing = -1;
-  g.startMove(g.p2, "jab1", -1);
-  for (let i = 0; i < 20; i++) g.step(inp(), inp());
-  ok(g.p1.stanceUntil <= g.frame, "โดนสวนแล้วเวลายืนยิงถูกล้างทิ้ง");
-  ok(g.p1.state !== "attack", "และหลุดออกจากท่ายิงจริง");
+  ok(g.p1.alt === 0, "เริ่มยกมาถือแส้เสมอ");
+  ok(g.pickMove(g.p1, inp()) === "jab1", "ถือแส้อยู่ -> ปุ่มตีได้ท่าแส้");
+
+  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp());
+  ok(g.p1.moveId === "swap1", `กดสกิล 1 แล้วออกท่าสลับอาวุธ (ได้ ${g.p1.moveId})`);
+  ok(g.p1.alt === 1, "สลับตั้งแต่เฟรมแรกของท่า ไม่ต้องรอท่าจบ");
+  ok(g.pickMove(g.p1, inp()) === "gjab1", "ถือปืนแล้ว -> ปุ่มเดิมได้ท่าปืน");
+  ok(g.pickMove(g.p1, inp({ right:1 })) === "gside", "กดทิศ -> ท่าเดินยิง");
+  ok(g.pickMove(g.p1, inp({ up:1 })) === "gup", "กดขึ้น -> ยิงสวนคนกระโดด");
+  ok(g.pickMove(g.p1, inp({ down:1 })) === "gdown", "กดลง -> ยิงต่ำ");
+
+  // ท่าอากาศตั้งใจไม่มีชุดปืน — ลอยอยู่ต้องใช้แส้เสมอ ปืนเป็นอาวุธของคนที่ยืนกับพื้น
+  g.p1.onGround = false;
+  for (const [i, want] of [[inp(), "nair"], [inp({ right:1 }), "sair"], [inp({ down:1 }), "dair"]])
+    ok(g.pickMove(g.p1, i) === want, `ลอยอยู่ยังได้ท่าแส้ (${want})`);
+  g.p1.onGround = true;
+
+  // กดอีกทีสลับกลับ — เป็นสวิตช์ ไม่ใช่ตัวนับเวลา
+  for (let i = 0; i < 90; i++) g.step(inp(), inp());
+  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp());
+  ok(g.p1.alt === 0, "กดอีกทีกลับมาถือแส้");
+
+  // คูลดาวน์ต้องมี ไม่งั้นกดรัวสลับเป็นท่าหนีฟรีที่ไม่มีราคา
+  const cd = CHARACTERS.alecto.skillCd[0];
+  ok(cd >= 30 && cd <= 120, `คูลดาวน์สลับอาวุธสั้นแต่ไม่ฟรี (${cd} เฟรม)`);
 }
 
-// ── คูลดาวน์ต้องยาวกว่าเวลายืนยิง ไม่งั้นตั้งป้อมต่อได้ไม่หยุด ──
+// ── เริ่มยกใหม่ต้องกลับมาถือแส้ ──
+// ถ้าไม่ล้าง สองเครื่องที่ต่อเน็ตกันจะเริ่มยกด้วยอาวุธคนละชุดทันทีที่มีใครแพ้หนึ่งยก
 {
-  const g = mk();
-  g.step(inp({ skill2:1, p:{ skill2:1 } }), inp());
-  const M = g.p1.moves;
-  ok(g.p1.cd[1] > M.fire1.stance, `คูลดาวน์ ${g.p1.cd[1]} เฟรม ยาวกว่าเวลาถือไรเฟิล ${M.fire1.stance} เฟรม`);
+  const g = mk(150);
+  g.step(inp({ skill1:1, p:{ skill1:1 } }), inp());
+  ok(g.p1.alt === 1, "สลับเป็นปืนแล้ว");
+  g.resetPositions();
+  ok(g.p1.alt === 0 && g.p2.alt === 0, "รีเซ็ตยกแล้วกลับมาถือแส้ทั้งคู่");
 }
 
-// ── กลิ้ง/กระโดดถอยก่อนตั้งป้อม ต้องไม่ทำให้เวลายืนยิงหายไป ──
+// ── ปืนยิงได้ไกลกว่าที่แส้เอื้อมถึงมาก ──
+//
+// นี่คือเหตุผลทั้งหมดที่ต้องมีชุดที่สอง: ตอนโดนไล่ต้อน เธอถอยออกมายิงได้
+// ถ้ากระสุนไปไม่ถึงตรงที่แส้ไปไม่ถึง ก็ไม่มีเหตุผลให้สลับ
+{
+  const reach = (alt) => {
+    const g = mk(350); g.p1.alt = alt;
+    for (let i = 0; i < 90; i++) g.step(inp(i % 30 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
+    return 100 - g.p2.hp;
+  };
+  const whip = reach(0), gun = reach(1);
+  ok(whip === 0, `ระยะ 350 px แส้เอื้อมไม่ถึงเลย (${whip} ดาเมจ)`);
+  ok(gun > 0, `แต่กระสุนถึง (${gun} ดาเมจ)`);
+}
+
+// ── แต่แส้ต้องเจ็บกว่าชัดเจนในระยะที่ตัวเองถนัด ──
+// ไม่งั้นปืนคือของที่ดีกว่าทุกทาง แล้วสวิตช์ก็ไม่ใช่การเลือก
+{
+  const chain = (alt) => {
+    const g = mk(90); g.p1.alt = alt;
+    for (let i = 0; i < 120; i++) g.step(inp(i % 14 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
+    return 100 - g.p2.hp;
+  };
+  const whip = chain(0), gun = chain(1);
+  ok(whip > gun, `ประชิดแล้วแส้เจ็บกว่าปืนชัดเจน (${whip} เทียบ ${gun})`);
+
+  const M = CHARACTERS.alecto.moves;
+  const whipSum = M.jab1.dmg + M.jab2.dmg + M.jab3.dmg;
+  const gunSum = M.gjab1.shotDmg + M.gjab2.shotDmg + M.gjab3.shotDmg;
+  ok(whipSum > gunSum * 1.5, `ดาเมจทั้งชุด: แส้ ${whipSum} เทียบปืน ${gunSum}`);
+  ok(["gjab1", "gjab2", "gjab3", "gside", "gup", "gdown"].every((k) => !M[k].lash),
+    "ท่าปืนไม่ติดตรารอยแส้เลยสักท่า — ตราเป็นของแส้อย่างเดียว");
+}
+
+// ── ท่าปืนบนพื้นต้องเดินยิงได้จริง ──
+{
+  const M = CHARACTERS.alecto.moves;
+  for (const k of ["gjab1", "gjab2", "gside"])
+    ok(M[k].mobile > 0, `${k} ขยับได้ระหว่างยิง (${M[k].mobile})`);
+  ok(!M.gjab3.mobile, "ไม้จบปักเท้ายิง ไม่ใช่เดินยิง — ดันแรงสุดต้องมีราคา");
+  ok(M.gside.mobile > M.gjab1.mobile, "ท่ากดทิศขยับได้มากที่สุดในชุด");
+
+  // วัดจริง: กดถอยพลางยิงพลางแล้วต้องถอยไปได้จริง
+  const g = mk(200); g.p1.alt = 1; const x0 = g.p1.x;
+  for (let i = 0; i < 120; i++) g.step(inp({ left:1, ...(i % 16 === 0 ? { attack:1, p:{ attack:1 } } : {}) }), inp());
+  ok(x0 - g.p1.x > 120, `ถอยพลางยิงพลางไปได้ ${Math.round(x0 - g.p1.x)} px`);
+
+  // แต่ต้องช้ากว่าวิ่งเปล่าชัดเจน ไม่งั้นเป็นวิ่งยิงฟรี
+  const g2 = mk(200); const x1 = g2.p1.x;
+  for (let i = 0; i < 120; i++) g2.step(inp({ left:1 }), inp());
+  ok((x0 - g.p1.x) < (x1 - g2.p1.x) * 0.75,
+    `ช้ากว่าวิ่งเปล่า (${Math.round(x0 - g.p1.x)} เทียบ ${Math.round(x1 - g2.p1.x)} px)`);
+}
+
+// ── สกิล 2: ขว้างมอลอตอฟแล้วรัวลูกโม่ต่อ ──
+//
+// กดครั้งเดียวได้ทั้งกำแพงไฟกันทางและชุดกระสุนดันคนออก
+{
+  const g = mk(150);
+  const seen = [], kinds = new Set();
+  for (let i = 0; i < 160; i++) {
+    g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : {}), inp());
+    if (g.p1.moveId && seen[seen.length-1] !== g.p1.moveId) seen.push(g.p1.moveId);
+    for (const e of g.events) kinds.add(e.type);
+  }
+  ok(seen[0] === "fire1", `เริ่มด้วยท่าขว้าง (ได้ ${seen[0]})`);
+  ok(kinds.has("firepool"), "เกิดกองไฟจริง");
+  ok(seen.includes("shot1") && seen.includes("shot3"), `แล้วรัวลูกโม่ต่อจนจบชุด (${seen.join(" -> ")})`);
+  ok(!seen.some((k) => k.startsWith("rifle")), "ไม่มีโหมดไรเฟิลชั่วคราวเหลืออยู่แล้ว");
+
+  // คูลดาวน์ต้องยาว เพราะกดทีเดียวได้ทั้งกำแพงและระยะ
+  const cd = CHARACTERS.alecto.skillCd[1];
+  ok(cd > 240, `คูลดาวน์สกิล 2 ยาว (${cd} เฟรม)`);
+}
+
+// ── กลิ้งถอยก่อนแล้วยังได้ทั้งกองไฟและชุดกระสุน ──
 {
   const g = mk(150);
   const seen = [];
   for (let i = 0; i < 200; i++) {
-    g.step(i === 0 ? inp({ left:1, skill2:1, p:{ skill2:1 } }) : inp({ left:1, attack:1 }), inp());
+    g.step(i === 0 ? inp({ left:1, skill2:1, p:{ skill2:1 } }) : inp({ left:1 }), inp());
     if (g.p1.moveId && seen[seen.length-1] !== g.p1.moveId) seen.push(g.p1.moveId);
   }
-  ok(seen[0] === "roll" && seen.includes("rifle1"), "ถอยก่อนแล้วยังสับเป็นไรเฟิลต่อได้");
+  ok(seen[0] === "roll", `ถอยก่อน (ได้ ${seen[0]})`);
+  ok(seen.includes("fire2") && seen.includes("shot1"), "แล้วยังได้ทั้งกองไฟและชุดกระสุน");
 }
 
-// ── ขยับได้ระหว่างยืนยิง ──
-//
-// เวอร์ชันแรกปักหลักนิ่งสนิท เล่นจริงแล้วขาตายทั้งสกิล 1 และอัลติ
-// ตอนนี้ย่องได้ช้า ๆ แลกกับดาเมจที่หายไปเพราะถอยออกจากระยะเอง
+// ── ชุดกระสุนต้องดันคนออกจากหน้าจริง ──
+// นี่คือเหตุผลที่สกิล 2 มีอยู่ — ทางออกตอนโดนยืนกดติดตัว
 {
-  const back = (key, ki, n, hold = false) => {
-    const g = mk(200); g.p1.ki = ki; const x0 = g.p1.x;
-    for (let i = 0; i < n; i++)
-      g.step(inp(i === 0 ? { [key]:1, p:{ [key]:1 } } : { left:1, ...(hold ? { attack:1 } : {}) }), inp());
-    return { moved: Math.round(x0 - g.p1.x), still: g.p1.state === "attack" };
-  };
-  const shot = back("skill2", 0, 220, true);
-  ok(shot.moved > 150, `ถือไรเฟิลแล้วถอยไปได้ ${shot.moved} px`);
-  ok(shot.still, "ถอยแล้วยังอยู่ในท่ายิง ไม่หลุด");
-
-  // ช้ากว่าวิ่งปกติชัดเจน ไม่งั้นกลายเป็นวิ่งยิงฟรี
-  const speed = (key, ki, n) => {
-    const g = mk(400); g.p1.ki = ki; const x0 = g.p1.x;
-    for (let i = 0; i < n; i++) g.step(inp(i === 0 && key ? { [key]:1, p:{ [key]:1 } } : { left:1 }), inp());
-    return (x0 - g.p1.x) / n * 60;
-  };
-  const plain = speed(null, 0, 60), firing = speed("skill2", 0, 120);
-  ok(firing < plain * 0.6, `ย่องตอนยิงช้ากว่าวิ่งปกติมาก (${firing.toFixed(0)} เทียบ ${plain.toFixed(0)} px/วินาที)`);
-
-  // ถอยหนีแล้วต้องยังหันหน้าใส่คู่ต่อสู้ ไม่ใช่หันหลังยิงทิ้ง
-  const g = mk(160);
-  for (let i = 0; i < 60; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : { left:1, attack:1 }), inp());
-  ok(g.p1.facing > 0, "ถอยซ้ายอยู่แต่ยังหันหน้าไปทางคู่ต่อสู้");
-  g.p2.x = g.p1.x - 200;
-  for (let i = 0; i < 20; i++) g.step(inp({ attack:1 }), inp());
-  ok(g.p1.facing < 0, "คู่ต่อสู้ข้ามไปอีกฝั่งแล้วหันตามทัน");
+  const g = mk(80);
+  const gap0 = g.p2.x - g.p1.x;
+  for (let i = 0; i < 120; i++) g.step(inp(i === 0 ? { skill2:1, p:{ skill2:1 } } : {}), inp());
+  ok(g.p2.x - g.p1.x > gap0, `ดันออกไกลขึ้นจริง (${Math.round(gap0)} -> ${Math.round(g.p2.x - g.p1.x)} px)`);
 }
-
 
 // ── ท่ากลิ้งถอยต้องเป็นท่าหนีจริง ไม่ใช่แค่ขยับ ──
 //
@@ -369,7 +414,48 @@ const jabs = (g, n) => { for (let i = 0; i < n; i++) g.step(inp(i % 10 === 0 ? {
   ok(/Math\.abs\(f\.vx\)\s*>\s*GUN_WALK_VX/.test(scene), "และต้องเคลื่อนที่อยู่จริงถึงจะย่ำเท้า");
   ok(!/runGun/.test(core), "core.js ไม่รู้จักท่าเดินถือปืนเลย");
 
-  const rifle = CHARACTERS.alecto.moves.rifle1;
-  ok(rifle.mobile > 0, `ท่ายิงไรเฟิลยังติดธง mobile (${rifle.mobile})`);
-  ok(rifle.hb && rifle.dmg > 0, "และยังมี hitbox ของตัวเองตามเดิม — ท่าเดินไม่ได้แทนที่เฟรมเดตา");
+  const gun = CHARACTERS.alecto.moves.gjab1;
+  ok(gun.mobile > 0, `ท่ายิงติดธง mobile (${gun.mobile})`);
+  ok(gun.shots && gun.shotDmg > 0, "และยังยิงกระสุนของตัวเองตามเดิม — ท่าเดินไม่ได้แทนที่เฟรมเดตา");
+}
+
+// ── อยู่ในหมอกแล้วเดินทะลุคนอื่นได้ ──
+//
+// ปัญหาที่เจอตอนเล่นจริง: เธอหายตัวอยู่ในวงก็จริง แต่ร่างยังชนอยู่
+// เดินหนีทีไรก็ดันคู่ต่อสู้ติดออกมาจากวงด้วย = ลากคนที่กำลังไล่ตามออกมาพร้อมกัน
+// เหลือทางหนีทางเดียวคือโดดข้าม ซึ่งพลาดประเด็นของท่าที่ชื่อว่า "หายตัว"
+{
+  const through = (withDust) => {
+    const g = mk(60);
+    if (withDust) g.dust = { x: g.p1.x, owner: "p1", life: 400 };
+    g.step(inp(), inp());                       // ให้ updateDust ตั้ง veil ก่อน
+    const foe0 = g.p2.x;
+    for (let i = 0; i < 40; i++) g.step(inp({ right: 1 }), inp());
+    return { moved: g.p2.x - foe0, passed: g.p1.x > g.p2.x };
+  };
+  const solid = through(false), ghost = through(true);
+  ok(solid.moved > 20, `ไม่มีหมอก: เดินชนคู่ต่อสู้ออกไป ${Math.round(solid.moved)} px`);
+  ok(Math.abs(ghost.moved) < 5, `อยู่ในหมอก: คู่ต่อสู้ไม่ขยับเลย (${Math.round(ghost.moved)} px)`);
+  ok(ghost.passed, "และเธอเดินผ่านทะลุไปอีกฝั่งได้จริง");
+}
+
+// ── ทะลุได้เฉพาะตอนจางอยู่ ไม่ใช่ตลอดไป ──
+// veil ครอบทั้งตอนอยู่ในวงและช่วงจางต่อหลังออกจากวง = จังหวะหนีก็ทะลุได้
+// แต่พอจางหมดต้องกลับมาชนกันตามปกติ ไม่งั้นกลายเป็นทะลุถาวรตั้งแต่ใช้อัลติครั้งแรก
+{
+  const g = mk(150);
+  g.dust = { x: g.p1.x, owner: "p1", life: 400 };
+  g.step(inp(), inp());
+  ok(g.p1.veil > 0, "ในวง: จางอยู่");
+  g.p1.x += 600;
+  g.step(inp(), inp());
+  ok(g.p1.veil > 0, "เพิ่งออกจากวง: ยังจางอยู่ (ยังทะลุได้)");
+  g.dust = null;                     // วงหมดอายุ — ไม่งั้นคู่ต่อสู้ที่ยืนอยู่ในวงก็จางไปด้วย
+  for (let i = 0; i < 60; i++) g.step(inp(), inp());
+  ok(g.p1.veil === 0 && g.p2.veil === 0, "จางหมดทั้งคู่แล้ว");
+
+  const foe0 = g.p2.x;
+  g.p1.x = g.p2.x - 60; g.p1.facing = 1;
+  for (let i = 0; i < 40; i++) g.step(inp({ right: 1 }), inp());
+  ok(g.p2.x - foe0 > 20, `กลับมาชนกันตามปกติ (ดันออกไป ${Math.round(g.p2.x - foe0)} px)`);
 }
