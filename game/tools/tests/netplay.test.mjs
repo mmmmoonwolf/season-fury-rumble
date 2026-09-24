@@ -4,7 +4,7 @@
 // เทสต์ชุดนี้จึงสร้าง Game สองตัวแยกกัน ส่งให้กันแค่ตัวเลขปุ่มที่กด แล้วเทียบสถานะทุกเฟรม
 // ถ้าที่ไหนในแกนมีอะไรสุ่ม/อ่านเวลาจริง/ขึ้นกับลำดับที่ไม่คงที่ เทสต์นี้จะจับได้ทันที
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
-const { Game } = await import(G + "/core.js");
+const { Game, CHARACTERS } = await import(G + "/core.js");
 const { Lockstep, packInput, unpackInput, NET_DELAY, HELD_MASK, PRESS_MASK } = await import(G + "/netplay.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
@@ -55,17 +55,37 @@ function link(lagA = 0, lagB = 0) {
 const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
-]), g.shots.length].join("|");
+  // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
+  f.char, f.lash, f.lashF, f.armorLeft,
+]),
+  g.shots.length,
+  ...g.shots.map((s) => [s.owner, Math.round(s.x * 1000), Math.round(s.y * 1000), Math.round(s.vx * 1000), s.dead ? 1 : 0].join(",")),
+  g.fires.length,
+  ...g.fires.map((fi) => [fi.owner, Math.round(fi.x * 1000), fi.life, fi.t].join(",")),
+].join("|");
 
 /** เล่นสองเครื่องด้วยสคริปต์ปุ่มที่กำหนด แล้วคืนว่าสถานะตรงกันตลอดไหม */
-function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260 } = {}) {
+function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = null, c2 = null } = {}) {
   const net = link(lagA, lagB);
   const gA = new Game(), gB = new Game();
+  // เลือกตัวละครเหมือนตอนกดจากหน้าเลือกตัว — ทั้งสองเครื่องตั้งค่าเดียวกันจากแพ็คเก็ต go
+  if (c1) { gA.p1.char = c1; gB.p1.char = c1; }
+  if (c2) { gA.p2.char = c2; gB.p2.char = c2; }
+  for (const g of [gA, gB]) { g.p1.hp = g.p1.maxHp; g.p2.hp = g.p2.maxHp; }
   const lsA = new Lockstep(net.sendFromA);
   const lsB = new Lockstep(net.sendFromB);
   lsA.primeStart(); lsB.primeStart();
 
   let mismatch = null, stepped = 0;
+  // นับเหตุการณ์และค่าสูงสุดของสถานะใหม่ ไว้พิสูจน์ว่ารอบทดสอบได้ใช้กลไกนั้นจริง
+  const tally = { a: {}, b: {} }, peak = { a: { lash: 0, armor: 0 }, b: { lash: 0, armor: 0 } };
+  const note = (g, side) => {
+    for (const e of g.events) tally[side][e.type] = (tally[side][e.type] ?? 0) + 1;
+    for (const f of [g.p1, g.p2]) {
+      if (f.lash > peak[side].lash) peak[side].lash = f.lash;
+      if (f.armorLeft > peak[side].armor) peak[side].armor = f.armorLeft;
+    }
+  };
   for (let t = 0; t < frames * 3 && stepped < frames; t++) {
     lsA.pushLocal(packInput(scriptA(lsA.sent + 1)));
     lsB.pushLocal(packInput(scriptB(lsB.sent + 1)));
@@ -80,10 +100,11 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260 } = {}) 
       gA.step(a1, a2);
       gB.step(b1, b2);
       stepped++;
+      note(gA, "a"); note(gB, "b");
       if (!mismatch && snap(gA) !== snap(gB)) mismatch = { frame: stepped, a: snap(gA), b: snap(gB) };
     }
   }
-  return { mismatch, stepped, gA, gB };
+  return { mismatch, stepped, gA, gB, tally, peak };
 }
 
 // ── สองเครื่องต้องได้ภาพตรงกันเป๊ะ แม้หน่วงไม่เท่ากัน ──
@@ -114,6 +135,58 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260 } = {}) 
   const moved = r.gA.p1.x !== new Game().p1.x || r.gA.p2.x !== new Game().p2.x;
   ok(moved, "สคริปต์ทดสอบทำให้ตัวละครขยับจริง");
   ok(r.gA.p1.hp < 100 || r.gA.p2.hp < 100, `มีการตีโดนจริงระหว่างทดสอบ (HP ${r.gA.p1.hp}/${r.gA.p2.hp})`);
+}
+
+// ── ทุกตัวละครต้องเดินตรงกันสองเครื่อง รวมคู่ที่ผสมกัน ──
+//
+// ตัวละครรุ่นหลังถือสถานะเพิ่มที่ต้องตรงกันด้วย: ตรารอยแส้ของ Alecto (อยู่ที่คนโดน),
+// กองไฟบนพื้น และเกราะของ Atlas ที่ตั้งใหม่ทุกครั้งที่เริ่มท่า
+{
+  const busy = (seed, toward) => (f) => {
+    const k = (f * 7 + seed) % 23;
+    const inward = toward > 0 ? 'right' : 'left', outward = toward > 0 ? 'left' : 'right';
+    return inp({
+      [inward]: k < 6 ? 1 : 0, [outward]: k >= 6 && k < 9 ? 1 : 0,
+      up: k === 11 ? 1 : 0, down: k === 12 ? 1 : 0,
+      block: k === 13 ? 1 : 0,
+      p: { attack: k === 3 || k === 15 ? 1 : 0, jump: k === 9 ? 1 : 0,
+           skill1: k === 17 ? 1 : 0, skill2: k === 19 ? 1 : 0, skill3: k === 21 ? 1 : 0 },
+    });
+  };
+
+  const ids = Object.keys(CHARACTERS);
+  const pairs = [...ids.map((id) => [id, id]), ...ids.map((id, i) => [id, ids[(i + 1) % ids.length]])];
+  for (const [c1, c2] of pairs) {
+    const r = playApart(busy(1, 1), busy(2, -1), { lagA: 1, lagB: 4, c1, c2, frames: 420 });
+    ok(r.stepped >= 400 && r.mismatch === null,
+      `${c1} vs ${c2}: สองเครื่องเห็นตรงกันทุกเฟรม (${r.stepped} เฟรม)`
+      + (r.mismatch ? `\n      เฟรม ${r.mismatch.frame}\n      A ${r.mismatch.a}\n      B ${r.mismatch.b}` : ""));
+  }
+
+  // ต้องมีของที่เพิ่งเพิ่มเข้ามาโผล่จริงในรอบทดสอบ ไม่งั้นผ่านเพราะไม่มีอะไรให้ต่าง
+  const atlas = playApart(busy(1, 1), busy(2, -1), { lagA: 1, lagB: 4, c1: 'atlas', c2: 'atlas', frames: 420 });
+  ok(atlas.peak.a.armor > 0, `Atlas ได้กางเกราะจริงระหว่างทดสอบ (สูงสุด ${atlas.peak.a.armor} ที)`);
+  ok(atlas.peak.a.armor === atlas.peak.b.armor, "เกราะที่เหลือตรงกันสองเครื่อง");
+  ok(atlas.gA.p1.maxHp === 130 && atlas.gA.p1.hp === atlas.gB.p1.hp, `Atlas เลือดเต็ม 130 และตรงกันสองเครื่อง (${atlas.gA.p1.hp})`);
+
+  // สคริปต์ของ Alecto ต้องเข้าระยะแส้จริง ไม่ใช่ยืนยิงห่าง ๆ — ตรารอยแส้ติดจากท่าตีปกติเท่านั้น
+  const closeIn = (toward) => (f) => {
+    const inward = toward > 0 ? 'right' : 'left';
+    return inp({ [inward]: f < 70 ? 1 : 0,
+      p: { attack: f >= 70 && f % 9 === 0 ? 1 : 0, skill2: f >= 100 && f % 60 === 0 ? 1 : 0 } });
+  };
+  const alecto = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'alecto', c2: 'alecto', frames: 420 });
+  ok(alecto.peak.a.lash > 0, `ตรารอยแส้ติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.lash} ชั้น)`);
+  ok(alecto.peak.a.lash === alecto.peak.b.lash, "ชั้นตรารอยแส้ตรงกันสองเครื่อง");
+  ok((alecto.tally.a.firepool ?? 0) > 0, `มีกองไฟเกิดจริงระหว่างทดสอบ (${alecto.tally.a.firepool} กอง)`);
+  ok((alecto.tally.a.firepool ?? 0) === (alecto.tally.b.firepool ?? 0), "กองไฟลุกตรงกันสองเครื่อง");
+
+  // เหตุการณ์ทุกชนิดต้องเกิดจำนวนเท่ากันทั้งสองเครื่อง ไม่ใช่แค่ตำแหน่งตรงกัน
+  for (const [name, r] of [["atlas", atlas], ["alecto", alecto]]) {
+    const keys = [...new Set([...Object.keys(r.tally.a), ...Object.keys(r.tally.b)])];
+    const same = keys.every((k) => r.tally.a[k] === r.tally.b[k]);
+    ok(same, `${name}: เหตุการณ์ทุกชนิดเกิดเท่ากันสองเครื่อง (${keys.map((k) => k + ":" + r.tally.a[k]).join(" ")})`);
+  }
 }
 
 // ── ไม่มีอินพุตของอีกฝั่ง = ต้องรอ ไม่ใช่เดินมั่ว ──

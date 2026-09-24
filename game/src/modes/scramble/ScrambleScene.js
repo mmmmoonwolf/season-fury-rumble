@@ -138,6 +138,16 @@ const CHAR_ART = {
       "shot1", "shot2", "shot3", "fire1", "fire2",
       "hail1", "hail2", "hail3", "hailEnd", "hop", "roll"]),
   },
+  // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
+  // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
+  // ลบ artPending ใน core.js กับเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
+  atlas: {
+    artPending: true,
+    box: 0xe6e9ee, boxAccent: 0x8a6a4a,   // ขนเสือขาว ลายน้ำตาล
+    title: 'The Fury of the Unbroken',
+    role: 'สายแท้งค์',
+    tip: 'เลือด 130 · ท่าหนักมีเกราะ โดนตีแล้วไม่หลุดท่า เดินฝ่าเข้ามาได้',
+  },
 };
 
 const C = {
@@ -251,7 +261,9 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 
 /* การ์ดตัวละคร — เรียงแนวนอน ล้นแล้วตัดบรรทัดเอง ใส่ตัวใหม่ใน CHARACTERS แล้วโผล่เองไม่ต้องแก้ CSS */
 #sc-select .grid { display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:8px; }
-#sc-select .card { display:flex; gap:8px; align-items:center; width:clamp(190px,40vw,260px); padding:6px 9px 6px 6px;
+/* ความกว้างต้องพอให้การ์ดทุกใบอยู่แถวเดียว ไม่งั้นแถวที่สองดันปุ่ม "เริ่ม" ตกขอบจอมือถือ
+   เผื่อไว้ถึง 5 ตัว (5 x 23vw + ช่องไฟ < 100vw) เกินกว่านั้นค่อยเปลี่ยนเป็นเลื่อนแนวนอน */
+#sc-select .card { display:flex; gap:7px; align-items:center; width:clamp(155px,23vw,230px); padding:6px 8px 6px 5px;
   border:2px solid rgba(233,227,214,.22); border-radius:12px; background:rgba(233,227,214,.07); text-align:left; }
 #sc-select .card.on { border-color:#c8323c; background:rgba(200,50,60,.2); }
 /* กรอบรูปต้อง overflow:hidden — เฟรมในอัตลาสวางติดกัน ตัวที่ผอมกว่ากรอบจะเห็นเฟรมข้าง ๆ โผล่มาด้วย
@@ -363,7 +375,10 @@ class ScrambleScene extends Phaser.Scene {
   constructor() { super('ScrambleScene'); }
 
   preload() {
-    for (const art of Object.values(CHAR_ART)) this.load.atlas(art.atlasKey, art.texture, art.data);
+    for (const art of Object.values(CHAR_ART)) {
+      if (art.artPending) continue;   // ยังไม่มีไฟล์ให้โหลด วาดเป็นกล่องไปก่อน
+      this.load.atlas(art.atlasKey, art.texture, art.data);
+    }
   }
   create() {
     activeScene = this;
@@ -759,6 +774,7 @@ class ScrambleScene extends Phaser.Scene {
   _paintPortrait(el, charId) {
     if (!el || el.dataset.painted === charId) return;
     const art = CHAR_ART[charId];
+    if (!art || art.artPending) return;
     let meta, fr;
     try {
       meta = this.textures.get(art.atlasKey).customData.meta;
@@ -898,7 +914,7 @@ class ScrambleScene extends Phaser.Scene {
    * ทำแบบนี้เพื่อให้เห็นของจริงบางส่วนก่อนโดยไม่ต้องรอครบ และเทียบได้ว่าอันไหนแทนแล้วอันไหนยัง
    */
   _initSprites() {
-    for (const id of Object.keys(CHAR_ART)) this._initCharSprite(id);
+    for (const id of Object.keys(CHAR_ART)) if (!CHAR_ART[id].artPending) this._initCharSprite(id);
   }
 
   _initCharSprite(charId) {
@@ -971,7 +987,13 @@ class ScrambleScene extends Phaser.Scene {
    *  ตัวที่ยังไม่มีอาร์ต (เช่นหุ่นซ้อม) ไม่มีใน CHAR_ART ก็ตกไปวาดเป็นกล่องเหมือนเดิม */
   _drawCharSprite(f) {
     const art = CHAR_ART[f.char];
-    if (!art) return false;
+    // ตัวที่ยังไม่มีอาร์ตต้อง "ซ่อนสไปรท์เดิมของฝั่งนั้น" ก่อนคืนค่า ไม่ใช่คืนเฉย ๆ
+    // ไม่งั้นสไปรท์ของตัวละครที่เลือกไว้ก่อนหน้าจะค้างอยู่บนเวที (เห็น Nyx ยืนคู่กับกล่อง Atlas)
+    if (!art || art.artPending) {
+      const rig = this.rigs?.[f.id];
+      if (rig) rig.sprite.setVisible(false);
+      return false;
+    }
     const rig = this._rigFor(f);
     const sp = rig.sprite;
 
@@ -1075,10 +1097,12 @@ class ScrambleScene extends Phaser.Scene {
       if (this._drawCharSprite(f)) {
         g.fillStyle(0x000000, 0.25);
         g.fillEllipse(f.x, f.onGround ? f.y + 2 : Math.min(STAGE.groundY, f.y + 200) + 2, 50, 10);
-      } else if (f === s.p1) {
-        this.drawFighter(g, f, C.nyx, C.nyxScarf, false);
       } else {
-        this.drawFighter(g, f, C.dummy, C.dummyMark, true);
+        // ตัวละครที่ยังไม่มีอาร์ตใช้สีกล่องของตัวเอง จะได้แยกออกจากหุ่นซ้อม
+        const art = CHAR_ART[f.char];
+        if (art && art.artPending) this.drawFighter(g, f, art.box, art.boxAccent, false);
+        else if (f === s.p1) this.drawFighter(g, f, C.nyx, C.nyxScarf, false);
+        else this.drawFighter(g, f, C.dummy, C.dummyMark, true);
       }
     }
 

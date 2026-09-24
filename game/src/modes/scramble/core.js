@@ -338,6 +338,71 @@ const ALECTO_MOVES = {
     imp: { f: 2, vx: -15 }, glide: true, autoChain: 'fire2' },
 };
 
+/* ================== ATLAS — สายแท้งค์ ==================
+ *
+ * เสือขาวถือดาบไฟ · เลือด 130 · ช้าที่สุด ตัวใหญ่ที่สุด ค้างท่านานที่สุด
+ * กลไกหลักคือ "เกราะทน" — โดนตีแล้วเจ็บ แต่ไม่ถูกดีดออกจากท่า (ดู docs/ATLAS_KIT.md)
+ * ไม่ได้ใส่ทุกท่า มีเฉพาะไม้จบกับสกิล ไม่งั้นกดไม่ขึ้นเลย
+ */
+const ARMOR_DMG = 0.6;      // ดาเมจที่กินตอนเกราะรับไว้
+const SKYFALL_RANGE = 900;  // คลื่นอัลติวิ่งได้ไกลแค่ไหน (เกือบสุดจอ)
+
+const ATLAS_MOVES = {
+  // ---- ท่าตีปกติ: ดาบใหญ่ ----
+  // ระยะอยู่ระหว่าง Helios (62) กับแส้ Alecto (118) · ออกช้ากว่าทั้งคู่ แต่ดาเมจต่อทีสูงสุด
+  jab1: { label: 'Cleave', kind: 'ground', startup: 8, active: 4, recovery: 16, dmg: 5,
+    hb: { x: 10, y: -106, w: 92, h: 46 }, kb: [3, 0], stun: 18, chain: 'jab2' },
+  jab2: { label: 'Backcleave', kind: 'ground', startup: 8, active: 4, recovery: 17, dmg: 5,
+    hb: { x: 10, y: -100, w: 98, h: 54 }, kb: [3, 0], stun: 19, chain: 'jab3' },
+  // ไม้จบมีเกราะ — จุดที่เขา "แลกหมัด" แล้วได้เปรียบ
+  jab3: { label: 'Overhead', kind: 'ground', startup: 11, active: 5, recovery: 24, dmg: 9,
+    hb: { x: 12, y: -112, w: 110, h: 62 }, kb: [12, 0], stun: 30, armor: 1 },
+  side: { label: 'Heavy Thrust', kind: 'ground', startup: 12, active: 6, recovery: 26, dmg: 9,
+    hb: { x: 14, y: -94, w: 130, h: 32 }, kb: [13, 0], stun: 30,
+    imp: { f: 10, vx: 11 }, glide: true, armor: 1 },
+  up: { label: 'Rising Cut', kind: 'ground', startup: 10, active: 6, recovery: 22, dmg: 8,
+    hb: { x: -14, y: -188, w: 102, h: 138 }, kb: [2, -16], stun: 36, jumpCancel: true },
+  down: { label: 'Low Sweep', kind: 'ground', crouch: true, startup: 9, active: 5, recovery: 20, dmg: 7,
+    hb: { x: 6, y: -36, w: 118, h: 32 }, kb: [4, -10], stun: 28 },
+  nair: { label: 'Air Spin', kind: 'air', startup: 7, active: 9, recovery: 14, dmg: 7,
+    hb: { x: -56, y: -142, w: 126, h: 138 }, kb: [3, -7], stun: 26, jumpCancel: true },
+  sair: { label: 'Air Thrust', kind: 'air', startup: 9, active: 9, recovery: 16, dmg: 8,
+    hb: { x: 10, y: -92, w: 122, h: 36 }, kb: [10, -5], stun: 30,
+    imp: { f: 8, vx: 9, vy: -1 }, floaty: true },
+  dair: { label: 'Air Chop', kind: 'air', startup: 10, active: 8, recovery: 18, dmg: 8,
+    hb: { x: -24, y: -46, w: 112, h: 90 }, kb: [5, -4], stun: 28 },
+
+  // ---- สกิล 1 Ironbreak: ถลาไปข้างหน้าพร้อมเกราะหนา ทะลุกระสุนได้ (ปุ่ม 1) ----
+  // เกราะ 3 ชั้นครอบทั้งช่วงพุ่ง = เดินฝ่าการจิ้มสกัดเข้ามาได้จริง ซึ่งคือทางเข้าของตัวช้า
+  ram1: { label: 'Ironbreak', kind: 'ground', startup: 8, active: 10, recovery: 8, dmg: 6,
+    hb: { x: -10, y: -112, w: 104, h: 74 }, kb: [4, 0], stun: 22,
+    armor: 3, glide: true, imp: { f: 7, vx: 15 }, autoChain: 'ram2' },
+  ram2: { label: 'Ironbreak', kind: 'ground', startup: 6, active: 5, recovery: 22, dmg: 9,
+    hb: { x: 12, y: -108, w: 114, h: 58 }, kb: [13, 0], stun: 30, imp: { f: 5, vx: 6 } },
+
+  // ---- สกิล 2 Pounce: กระโจนเป็นเส้นโค้ง ข้ามกระสุนกับท่าต่ำ ลงมาฟันจากบนหัว (ปุ่ม 2) ----
+  // ท่าเดียวจบด้วย untilLand — กรอบโจมตีเปิดค้างตลอดช่วงตก แล้วจบเองตอนแตะพื้น
+  // ตัวช้าที่มีทางเข้าทางเดียวคือตัวที่ตายแล้ว อันนี้คือทางที่สองที่แพ้คนละอย่างกับ ram
+  leap: { label: 'Pounce', kind: 'ground', startup: 7, active: 90, recovery: 0, dmg: 10,
+    hb: { x: -20, y: -110, w: 116, h: 104 }, kb: [6, -6], stun: 32,
+    imp: { f: 6, vx: 13, vy: -15 }, armor: 2, untilLand: true, landLag: 16 },
+
+  // ---- สกิล 3 Skyfall (อัลติ): ปักดาบลงพื้น แรงกระแทกแผ่ออกสองข้าง (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  // เงื้อนาน แต่ติดเกราะเต็มตลอดช่วงเงื้อ — สัญชาตญาณคือจิ้มสกัด ซึ่งใช้ไม่ได้ ต้องวิ่งหนีอย่างเดียว
+  sky1: { label: 'Skyfall', kind: 'ground', startup: 14, active: 6, recovery: 4, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    armor: 6, autoChain: 'sky2' },
+  // แกนกลาง: hb.x ติดลบและกว้าง = กรอบคร่อมตัวเขา กินทั้งสองข้าง และสูงพอสอยคนกระโดด
+  // คลื่นวิ่ง: ใช้ระบบกระสุนเดิม ยิงออกสองทิศพร้อมกัน วิ่งไปจนสุดจอ กระโดดหลบได้
+  sky2: { label: 'Skyfall', kind: 'ground', startup: 8, active: 6, recovery: 30, dmg: 14,
+    hb: { x: -190, y: -200, w: 380, h: 210 }, kb: [9, -13], stun: 38, armor: 2,
+    shots: [{ vy: 0 }, { vy: 0, back: true }], shotAt: 8, shotDmg: 5, shotStun: 22,
+    shotRange: SKYFALL_RANGE, shotLow: true },
+};
+
+const ATLAS_SKILLS = ['ram1', 'leap', 'sky1'];
+const ATLAS_SKILL_CD = [150, 180, 0];
+
 const ALECTO_SKILLS = ['shot1', 'fire1', 'hail1'];
 // คูลดาวน์ของสกิล 1 ต้องยาวกว่าเวลายืนยิง ไม่งั้นพอป้อมหมดเวลาก็ตั้งใหม่ได้ทันที
 // 300 - 180 = เหลือช่วงว่างจริง 2 วินาที เท่าเดิมกับตอนที่ยืนยิง 5 วิ
@@ -358,6 +423,10 @@ const CHARACTERS = {
   helios: { id: 'helios', label: 'HELIOS', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
   alecto: { id: 'alecto', label: 'ALECTO', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
     skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP },
+  // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
+  // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
+  atlas: { id: 'atlas', label: 'ATLAS', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
+    skillCd: ATLAS_SKILL_CD, hp: 130, resist: 0.5, artPending: true },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -377,13 +446,17 @@ class Fighter {
   constructor(id, name, x, facing, char = DEFAULT_CHAR) {
     this.id = id; this.name = name; this.spawnX = x; this.spawnFacing = facing;
     this.char = char;
-    this.maxHp = 100; this.reset();
+    this.reset();
   }
   /** ตารางท่าของตัวละครตัวนี้ — ชื่อท่าเหมือนกันทุกตัว ค่าเฟรมเดต้าเป็นของใครของมัน */
   get moves() { return CHARACTERS[this.char].moves; }
   get skills() { return CHARACTERS[this.char].skills; }
   get skillCd() { return CHARACTERS[this.char].skillCd; }
   get backstep() { return CHARACTERS[this.char].backstep ?? null; }
+  // เลือดเป็นค่าของตัวละคร ไม่ใช่ค่ากลาง — Atlas 130 ที่เหลือ 100
+  get maxHp() { return CHARACTERS[this.char].hp ?? 100; }
+  // ทนสถานะ: 1 = โดนเต็ม · 0.5 = โดนครึ่งเดียวและสลายเร็วเป็นสองเท่า
+  get resist() { return CHARACTERS[this.char].resist ?? 1; }
   reset() {
     Object.assign(this, {
       x: this.spawnX, y: STAGE.groundY, vx: 0, vy: 0, facing: this.spawnFacing,
@@ -391,6 +464,7 @@ class Fighter {
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
+      armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
@@ -515,6 +589,7 @@ class Game {
     // นี่คือสิ่งที่ทำให้ "รัวยาว" เกิดขึ้นจริง แทนที่จะจบที่ชุดเดียวเพราะติด used
     if (mv.refresh) for (const k of mv.refresh) f.used.delete(k);
     f.move = mv; f.moveId = id; f.moveF = 0;
+    f.armorLeft = mv.armor ?? 0;
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
     this.lastMoveInfo = { id, ...f.moves[id] };
@@ -584,10 +659,12 @@ class Game {
     const m = f.move;
     const volley = { hit: new Set(), anchor: null };
     for (const spec of m.shots) {
+      // back = ยิงสวนทางที่หันอยู่ ใช้ทำคลื่นที่แผ่ออกสองข้างพร้อมกัน (อัลติของ Atlas)
+      const dir = spec.back ? -f.facing : f.facing;
       const sh = {
-        owner: f.id, x: f.x + f.facing * 30, y: f.y - 96,
-        vx: f.facing * SHOT_SPEED, vy: spec.vy, facing: f.facing,
-        dmg: m.shotDmg, stun: m.shotStun, volley,
+        owner: f.id, x: f.x + dir * 30, y: f.y - (m.shotLow ? 26 : 96),
+        vx: dir * SHOT_SPEED, vy: spec.vy, facing: dir,
+        dmg: m.shotDmg, stun: m.shotStun, volley, range: m.shotRange ?? SHOT_RANGE,
         anchor: !!spec.anchor, target: null, stuck: 0, travelled: 0, dead: false,
       };
       if (sh.anchor) volley.anchor = sh;
@@ -620,7 +697,7 @@ class Game {
       const hurt = foe.hurtbox();
       const hit = sh.x > hurt.x && sh.x < hurt.x + hurt.w && sh.y > hurt.y && sh.y < hurt.y + hurt.h;
       const wall = sh.x < STAGE.wallL || sh.x > STAGE.wallR;
-      const spent = sh.travelled >= SHOT_RANGE;
+      const spent = sh.travelled >= (sh.range ?? SHOT_RANGE);
       if (!hit && !wall && !spent) continue;
 
       if (hit && foe.invuln <= 0 && !sh.volley.hit.has(foe.id)) {
@@ -639,11 +716,35 @@ class Game {
     this.shots = this.shots.filter((s) => !s.dead);
   }
 
+  /** เกราะกินหมัดนี้ไว้ไหม — ต้องอยู่ในท่าที่ประกาศเกราะ และโควต้ายังไม่หมด
+   *
+   *  เกราะไม่ใช่การกันดาเมจ แต่คือการ "ไม่ถูกดีดออกจากท่า" — เจ็บเท่าเดิมโดยประมาณ
+   *  แต่ท่าเดินต่อ ซึ่งเป็นสิ่งเดียวที่ทำให้ตัวช้าเดินฝ่าการจิ้มสกัดเข้ามาได้จริง
+   */
+  armorHolds(d) {
+    return !!(d.move && d.move.armor && d.armorLeft > 0 && d.state === 'attack');
+  }
+
+  /** กินหมัดด้วยเกราะ: เสียเลือดลดลง ไม่เข้า hitstun ท่าไม่ขาด
+   *  ไม่นับ comboHits ด้วย — คนตีไม่ได้กำลังต่อคอมโบอยู่ เขาแค่ยิงใส่กำแพง */
+  takeArmored(a, d, dmg, x, y) {
+    d.armorLeft--;
+    const real = Math.max(1, Math.round(dmg * ARMOR_DMG));
+    d.hp = Math.max(0, d.hp - real);
+    d.lastHitF = this.frame;
+    a.hitstop = d.hitstop = 5;
+    this.gainKi(a, real * 0.8); this.gainKi(d, real * 1.2);
+    this.events.push({ type: 'armor', x, y, dmg: real, left: d.armorLeft });
+  }
+
   /** ตราสลายเองเมื่อไม่โดนแส้ซ้ำนานพอ — เป็นเหตุผลที่ถอยออกไปตั้งหลักได้ผล */
   decayLash(f) {
     if (f.lash <= 0) return;
     const idle = this.frame - f.lashF;
-    if (idle >= LASH_DELAY && (idle - LASH_DELAY) % LASH_EVERY === 0) f.lash--;
+    // ตัวที่ทนสถานะ (resist < 1) สลายเร็วขึ้นตามส่วน — Atlas 0.5 = เร็วเป็นสองเท่า
+    const every = Math.max(1, Math.round(LASH_EVERY * f.resist));
+    const delay = Math.round(LASH_DELAY * f.resist);
+    if (idle >= delay && (idle - delay) % every === 0) f.lash--;
   }
 
   /** ตัวคูณดาเมจจากตราที่เป้ามีอยู่ — เพดาน x1.40 เล็กกว่าเพดานลดคอมโบ x0.50 เสมอ */
@@ -669,7 +770,7 @@ class Game {
       const d = fire.owner === 'p1' ? this.p2 : this.p1;
       if (d.invuln > 0 || !d.onGround) continue;
       if (Math.abs(d.x - fire.x) > FIRE_HALF) continue;
-      const dmg = Math.max(1, Math.round(FIRE_DMG * Math.max(0.5, 1 - 0.08 * d.comboHits)));
+      const dmg = Math.max(1, Math.round(FIRE_DMG * d.resist * Math.max(0.5, 1 - 0.08 * d.comboHits)));
       d.hp = Math.max(0, d.hp - dmg);
       d.lastHitF = this.frame;
       this.gainKi(d, dmg * 0.6);
@@ -690,6 +791,8 @@ class Game {
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
     const dmg = Math.max(1, Math.round(sh.dmg * scale));
+    // เกราะกินกระสุนด้วย ไม่งั้น "ทะลุกระสุนได้" ที่ออกแบบไว้ไม่เป็นจริง
+    if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, sh.x, sh.y); return; }
     d.hp = Math.max(0, d.hp - dmg);
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(sh.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
@@ -855,7 +958,7 @@ class Game {
       if (dir !== 0) {
         f.facing = dir;
         // ตรารอยแส้ทำให้คนโดนเดินช้าลง — เป็นตัวที่ทำให้ "หนีจากเธอไม่ออก" เป็นจริงเชิงกลไก
-        const slow = Math.max(0.4, 1 - LASH_SLOW * f.lash);
+        const slow = Math.max(0.4, 1 - LASH_SLOW * f.lash * f.resist);
         const target = dir * (running ? PHYS.run : PHYS.walk) * slow;
         f.vx += Math.sign(target - f.vx) * Math.min(PHYS.groundAccel * (running ? PHYS.runAccelMul : 1), Math.abs(target - f.vx));
         f.setState(running ? 'run' : 'walk');
@@ -1042,6 +1145,8 @@ class Game {
     // ท่าที่ติดธง lashDmg แรงขึ้นตามตราที่เป้ามีอยู่ (ท่าแส้ทุกท่า + อัลติของ Alecto)
     const lash = (m.lash || m.lashDmg) ? this.lashMul(d) : 1;
     const dmg = Math.max(1, Math.round(m.dmg * scale * lash));
+    // เกราะกินไว้: เจ็บลดลง ไม่เข้า hitstun ท่าของเขาเดินต่อ
+    if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
     if (m.lash) this.addLash(d);
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;

@@ -767,6 +767,14 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/_syncSkillBtns/.test(scene), "ฉากหรี่ปุ่มสกิลตามคูลดาวน์/ki");
 
   for (const [id, ch] of Object.entries(CHARACTERS)) {
+    // ตัวที่ยังไม่มีอาร์ต (artPending) วาดเป็นกล่องไปก่อน ข้ามการตรวจอาร์ต
+    // แต่ต้องมีคำบรรยายบนการ์ดหน้าเลือกตัวครบ ไม่งั้นเลือกไปก็ไม่รู้ว่าเล่นอะไร
+    if (ch.artPending) {
+      ok(new RegExp(`${id}:\\s*\\{[\\s\\S]*?artPending:\\s*true`).test(scene),
+        `'${id}' ยังไม่มีอาร์ต ติดธงไว้ที่ฉากด้วย`);
+      ok(new RegExp(`${id}:\\s*\\{[\\s\\S]*?tip:`).test(scene), `'${id}' มีคำบรรยายบนการ์ด`);
+      continue;
+    }
     const blk = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?attacks:\\s*new Set\\(\\[([\\s\\S]*?)\\]\\)`));
     ok(blk != null, `ฉากมีรายชื่อท่าที่มีอาร์ตของ '${id}'`);
     if (!blk) continue;
@@ -787,6 +795,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const { CHARACTERS } = await import(G + "/core.js");
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
   for (const [id, ch] of Object.entries(CHARACTERS)) {
+    if (ch.artPending) continue;
     const m = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?data:\\s*'([^']+)'`));
     if (!m) { ok(false, `หา atlas ของ '${id}' ไม่เจอ`); continue; }
     const atlas = JSON.parse(fs.readFileSync(new URL("../../" + m[1], import.meta.url), "utf8"));
@@ -1088,8 +1097,9 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
 
   const strides = Object.fromEntries([...scene.matchAll(/runStride:\s*(\d+)/g)].map((m, i) => [i, +m[1]]));
-  ok(Object.keys(strides).length >= Object.keys(CHARACTERS).length,
-    `ทุกตัวละครมี runStride ของตัวเอง (เจอ ${Object.keys(strides).length} ค่า จาก ${Object.keys(CHARACTERS).length} ตัว)`);
+  const withArt = Object.values(CHARACTERS).filter((c) => !c.artPending).length;
+  ok(Object.keys(strides).length >= withArt,
+    `ทุกตัวละครที่มีอาร์ตแล้วมี runStride ของตัวเอง (เจอ ${Object.keys(strides).length} ค่า จาก ${withArt} ตัว)`);
   ok(new Set(Object.values(strides)).size > 1, "ค่าไม่เท่ากันทุกตัว (ถ้าเท่ากันหมด แปลว่ายังไม่ได้วัดจริง)");
   for (const v of Object.values(strides)) ok(v > 40 && v < 200, `runStride ${v} อยู่ในช่วงที่สมเหตุสมผล`);
 
@@ -1097,7 +1107,8 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/art\.runStride/.test(scene), "สูตรเวลาต่อรอบของท่าวิ่งอ่านจากตัวละคร");
 
   // ทุกท่าที่ประกาศใน anims ต้องมีเฟรมครบใน atlas ของตัวนั้น
-  for (const id of Object.keys(CHARACTERS)) {
+  for (const [id, ch] of Object.entries(CHARACTERS)) {
+    if (ch.artPending) continue;
     const m = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?data:\\s*'([^']+)'[\\s\\S]*?anims:\\s*\\{([^}]*)\\}`));
     if (!m) { ok(false, `หา atlas ของ '${id}' ในฉากไม่เจอ`); continue; }
     const atlas = JSON.parse(fs.readFileSync(new URL("../../" + m[1], import.meta.url), "utf8"));
