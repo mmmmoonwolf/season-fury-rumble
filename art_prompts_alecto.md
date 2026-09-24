@@ -288,6 +288,48 @@ tipping the brim of her hat forward, body straightened, calm.
 
 ---
 
+## ชีต H — ถอยหลัง/กลิ้ง (6 ท่า · 2 แถวแถวละ 3) · **ยังไม่ต้องเจน รอดูของจริงก่อน**
+
+กดทิศถอยค้างตอนกดสกิล 1 หรือ 2 เธอจะถอยก่อนแล้วค่อยใช้อาวุธ (ดู `docs/ALECTO_KIT.md`)
+ท่าถอยทำสองหน้าที่: เป็นทางหนีของตัวคุมพื้นที่ และ**บังมือตอนสับอาวุธ**
+
+### ลองของฟรีก่อน — อาจไม่ต้องเจนเพิ่มเลย
+
+ชีต A มีท่ากระโดดครบแล้ว (ท่า 2 ดีดตัว · ท่า 3 ลอย · ท่า 5 ลงพื้น) เอามาใช้เป็นท่ากระโดดถอยได้ตรง ๆ
+และท่า 8 (กลิ้งข้าง) ใช้เป็นท่ากลิ้งถอยได้ · ส่วนการสับอาวุธมีที่บังอยู่แล้วสองจุด:
+
+- **ท่าลอยกลางอากาศ** แขนเก็บเข้าตัว มือหายไปหลังลำตัว
+- **ชีต E ท่า 1** "มือคว้าซองปืนที่สะโพก ตัวหันข้าง" — ท่าชักปืนก็บังการสับอยู่แล้วในตัว
+
+**กฎของโปรเจกต์นี้คือตัดสินท่าโจมตีจากในเกมที่วิ่งอยู่ ไม่ใช่จากชีต** (บทเรียนจาก Stone Curse ท่า 5
+ที่ผมตีตกจากชีตแล้วคุณทักว่าลองใช้ดูก่อน ปรากฏว่าในเกมอ่านออกสบาย) ประกอบด้วยของที่มีก่อน
+ถ้าเล่นแล้วดูขาด ๆ ค่อยเจนชีตนี้
+
+### ถ้าจะเจน
+
+```
+A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No weapon is visible in any pose — both hands are empty or hidden, only the
+coiled whip on her hip.
+
+Pose 1 — crouching and loading the legs to spring backward, weight dropped
+onto the back boot, arms tucked in close to her chest.
+Pose 2 — airborne travelling backward, body compact, knees drawn up, both
+arms pulled in tight against her body, braid trailing forward.
+Pose 3 — landing from the backward hop, knees absorbing, one hand reaching
+down toward her belt, body turning side-on.
+Pose 4 — diving into a backward roll, shoulder tucked, body beginning to
+curl, hat pressed to her head with one hand.
+Pose 5 — mid-roll, body fully curled into a ball, boots over her head.
+Pose 6 — coming out of the roll into a low crouch, one hand planted on the
+ground, the other reaching to her belt, ready to bring a weapon up.
+```
+
+ท่า 3 กับท่า 6 จงใจให้มือ "เอื้อมไปที่เข็มขัด" — นั่นคือเฟรมที่เกมสลับอาวุธ ดูแล้วต่อเนื่องพอดี
+
+---
+
 ## ข้อกำชับที่ใช้กับทุกชีต
 
 1. **ขนาดตัวเท่ากันทุกท่า** ระยะกล้องเดียวกัน — ข้อที่พังบ่อยที่สุด
@@ -311,3 +353,4 @@ tipping the brim of her hat forward, body straightened, calm.
 | สกิล 1 | ลูกโม่ 3 นัด + มุมบน/ล่าง | ชีต E |
 | สกิล 2 | ขว้างมอลอตอฟ | ชีต F |
 | สกิล 3 | ทอมมี่กันอัลติ | ชีต G |
+| ถอย/กลิ้ง | backhop · rollback (ใช้ตอนกดทิศถอย+สกิล) | ชีต A ก่อน · ชีต H ถ้าไม่พอ |
