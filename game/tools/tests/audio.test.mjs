@@ -111,6 +111,24 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
     "ลิงก์ออกนอกเว็บต้องมี noopener — ไม่ให้หน้าปลายทางจับ window.opener ของเกมได้");
   ok(/#credits a \{[^}]*pointer-events: auto/.test(html),
     "ลิงก์กดได้จริง แม้ทั้งบล็อกจะ pointer-events:none");
+
+  // ── เครดิต ElevenLabs — อันนี้ "บังคับ" ไม่ใช่มารยาท ──
+  //
+  // ไฟล์เสียงเอฟเฟคเจนจากแพ็กฟรี ซึ่งกำหนดให้อ้างอิง elevenlabs.io เมื่อเผยแพร่ต่อสาธารณะ
+  // ต่างจากเครดิตเพลงที่ช่องต้นทางไม่ได้บังคับรูปแบบไว้
+  //
+  // ผูกเทสต์ไว้กับ "มีไฟล์เสียงอยู่จริงไหม" ไม่ใช่เช็คลอย ๆ
+  // เอาไฟล์ออกเมื่อไหร่เครดิตก็ไม่จำเป็นอีก แต่ตราบใดที่ไฟล์ยังอยู่ เครดิตห้ามหาย
+  {
+    const hasSfx = fs.existsSync(new URL("../../assets/audio/sfx", import.meta.url))
+      && fs.readdirSync(new URL("../../assets/audio/sfx", import.meta.url)).length > 0;
+    if (hasSfx) {
+      ok(/ElevenLabs/.test(html), "มีเครดิต ElevenLabs (แพ็กฟรีบังคับให้ใส่)");
+      const l = html.match(/<a href="(https:\/\/elevenlabs\.io[^"]*)"[^>]*>/);
+      ok(l, "เครดิต ElevenLabs มีลิงก์ไป elevenlabs.io");
+      ok(l && /rel="noopener noreferrer"/.test(l[0]), "ลิงก์ ElevenLabs มี noopener");
+    }
+  }
 }
 
 
