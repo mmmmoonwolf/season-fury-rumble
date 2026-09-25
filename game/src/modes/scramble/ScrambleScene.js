@@ -146,6 +146,13 @@ const CHAR_ART = {
     // ท่าเดินถือปืนยาว: รอบเดียว = สองก้าว (ชีตเป็นวงจรเดิน 4 ท่า ย่ำสลับซ้าย-ขวา)
     // 104 = ถ่างเท้าตอนเท้าแตะพื้น 96 px บน canvas x (SPRITE_H/standing) x 2 ก้าว
     gunStride: 104,
+    // แส้ยาวกว่าอาวุธอื่นทั้งโรสเตอร์ รอยฟาดจึงต้องเป็นเส้นสะบัดยาว ไม่ใช่รอยดาบโค้ง
+    // ท่าปืนไม่ใส่รอยฟาดเลย — ปืนไม่ได้ฟาด มันยิง กระสุนเป็นตัวบอกอยู่แล้ว
+    slash: { jab1: { f: 'slashLash' }, jab2: { f: 'slashLash', rot: -14 },
+      jab3: { f: 'slashLash', rot: 10 }, side: { f: 'slashLash' },
+      up: { f: 'slashRise' }, down: { f: 'slashLash', rot: 28 },
+      nair: { f: 'slashSpin' }, sair: { f: 'slashLash', rot: 18 }, dair: { f: 'slashChop', rot: 48 },
+      gjab1: null, gjab2: null, gjab3: null, gside: null, gup: null, gdown: null },
     anims: { idle: 1, run: 10, runGun: 4, idleGun: 1, jump: 4, crouch: 1, hurt: 1, knockdown: 1,
       techroll: 1, tech: 1, block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
@@ -237,6 +244,24 @@ const MID_DROP = 120;
 
 // ความสูงของแถบมืดบน-ล่าง (พิกัดเวที) — บนบังแค่แถว HUD · ล่างบังบรรทัดบอกปุ่ม
 const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
+
+/** รอยฟาดต่อ "ชื่อท่า" ไม่ใช่ต่อตัวละคร
+ *
+ *  ทุกตัวใช้ชื่อท่าเดียวกันหมด (jab1/side/up/…) ตารางนี้จึงใช้ร่วมกันได้ทั้งโรสเตอร์
+ *  ตัวที่อาวุธต่างจริง ๆ ค่อยเขียนทับเป็นรายตัวใน CHAR_ART.slash (Alecto ใช้แส้ทุกท่า)
+ *
+ *  `rot` = องศาที่หมุนเพิ่มจากท่าเดิมของรูป · รูปทุกใบเจนมาฟาดซ้าย->ขวา
+ *  เกมพลิกตามทิศที่ตัวละครหันให้เอง จึงไม่ต้องมีรูปชุดกลับด้าน
+ */
+const SLASH_DEFAULT = {
+  jab1: { f: 'slashThin' }, jab2: { f: 'slashThin', rot: -18 }, jab3: { f: 'slashWide' },
+  jab4: { f: 'slashWide' }, jab5: { f: 'slashWide', rot: 14 }, jab6: { f: 'slashCross' },
+  side: { f: 'slashThrust' }, up: { f: 'slashRise' }, down: { f: 'slashChop', rot: 26 },
+  nair: { f: 'slashSpin' }, sair: { f: 'slashThrust', rot: 16 }, dair: { f: 'slashChop', rot: 52 },
+};
+
+/** ลูกไฟ/ประกายที่โปรยตอนหมัดเข้า — ตัวเลขทั้งหมดคูณตามน้ำหนักหมัด (hitstop) */
+const HIT_FX = { tint: 0xffe08a, spark: 0xffd166 };
 
 /** พารัลแลกซ์ — เลเยอร์หลังเลื่อนตามการต่อสู้ ไม่ใช่ตามกล้อง
  *
@@ -541,6 +566,7 @@ class ScrambleScene extends Phaser.Scene {
     this.load.image('stageGround', STAGE_ART.ground);
     for (const n of new Set(STAGE_ART.plat)) this.load.image('stage_' + n, `assets/stage/${n}.png`);
     this.load.json('stageMeta', STAGE_ART.meta);
+    this.load.atlas('vfx', 'assets/vfx/vfx.png', 'assets/vfx/vfx.json');
   }
 
   /** วางเลเยอร์เวทีตามพิกัดจริงของ sim — เรียกครั้งเดียวตอนสร้างฉาก
@@ -938,26 +964,72 @@ class ScrambleScene extends Phaser.Scene {
     this.sim.step(inp, inp2);
     for (const e of this.sim.events) {
       if (e.type === 'hit') {
-        this.spark(e.x, e.y, e.heavy ? 14 : 9, 0xffffff);
         this.popup(e.x, e.y - 30, String(e.dmg), e.heavy ? '#ffd166' : '#ffffff');
         // แรงสั่นคิดจากเวลาที่ภาพหยุดจริง ไม่ใช่สองระดับตายตัว — น้ำหนักหมัดจึงไล่เป็นสเกลเดียวกัน
         // ท่าที่จับลอยได้ hitstop เพิ่มอยู่แล้ว แรงสั่นเลยตามไปเองโดยไม่ต้องมีเงื่อนไขแยก
         const hs = e.hs ?? 5;
         if (hs >= 6) this.cameras.main.shake(40 + hs * 9, 0.0006 * hs);
+        // ทิศที่ประกายกระเด็นคือทิศที่แรงส่งไป = จากคนตีไปหาคนโดน
+        this.hitBurst(e.x, e.y, hs, this.sim.p1.x <= this.sim.p2.x ? 1 : -1);
       }
-      if (e.type === 'block') { this.spark(e.x, e.y, 8, 0x5aa0ff); this.popup(e.x, e.y - 30, 'Blocked', '#8fc0ff'); }
+      if (e.type === 'block') {
+        this.popup(e.x, e.y - 30, 'Blocked', '#8fc0ff');
+        this.emit('ring', e.x, e.y, { scale: 0.22, life: 14, grow: 1.4, tint: 0x8fc0ff });
+        this.emit('burst', e.x, e.y, { scale: 0.14, life: 9, grow: 0.7, tint: 0x5aa0ff });
+      }
       if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this.cameras.main.shake(90, 0.005); }
-      if (e.type === 'tech') { this.spark(e.x, e.y + 30, 10, 0x57e39a); this.popup(e.x, e.y, e.label, '#8ff0bd'); }
-      if (e.type === 'djump') this.spark(e.x, e.y, 6, 0x9aa3b5);
+      if (e.type === 'tech') {
+        this.popup(e.x, e.y, e.label, '#8ff0bd');
+        this.emit('ring', e.x, e.y + 20, { scale: 0.16, life: 13, grow: 1.8, tint: 0x8ff0bd });
+        this.emit('dustFlat', e.x, e.y + 6, { scale: 0.34, life: 18, grow: 0.9, alpha: 0.5,
+          tint: 0xd8c9a8, blend: Phaser.BlendModes.NORMAL, depth: 6 });
+      }
+      if (e.type === 'djump')
+        this.emit('ring', e.x, e.y - 20, { scale: 0.14, life: 12, grow: 1.6, tint: 0xcfe0ff, alpha: 0.8 });
+      // ลงพื้น: ฝุ่นฟุ้งตรงเท้า — อันนี้ไม่มีในเกมมาก่อน ทั้งที่เป็นจังหวะที่เกิดบ่อยที่สุด
+      if (e.type === 'land')
+        for (let i = 0; i < 3; i++) {
+          const d = (i - 1) * 14;
+          this.emit('dustFlat', e.x + d, e.y - 4, { scale: 0.16 + Math.random() * 0.1, life: 14, grow: 1.2,
+            vx: d * 0.08, alpha: 0.42, tint: 0xd8c9a8, blend: Phaser.BlendModes.NORMAL, depth: 6 });
+        }
       // อัลติ: ควันตอนหาย/โผล่ + จอกระพริบตอนเริ่มท่า
-      if (e.type === 'vanish') { this.spark(e.x, e.y - 60, 18, 0x2a2333); this.cameras.main.shake(60, 0.003); }
-      if (e.type === 'appear') this.spark(e.x, e.y - 60, 14, 0xb9312f);
+      if (e.type === 'vanish') {
+        this.cameras.main.shake(60, 0.003);
+        for (let i = 0; i < 4; i++)
+          this.emit('smokeCurl', e.x + (i - 1.5) * 18, e.y - 40 - Math.random() * 50,
+            { scale: 0.22, life: 22, grow: 0.9, vy: -1.4, alpha: 0.55, tint: 0x6b5f7a,
+              blend: Phaser.BlendModes.NORMAL, depth: 6 });
+      }
+      if (e.type === 'appear') {
+        this.emit('ring', e.x, e.y - 60, { scale: 0.20, life: 14, grow: 2.0, tint: 0xe05a57 });
+        this.emit('star4', e.x, e.y - 60, { scale: 0.26, life: 10, grow: 0.9, tint: 0xffb3b0 });
+      }
       if (e.type === 'throw') this.spark(e.x, e.y, 7, 0xc9a227);
       if (e.type === 'lash') this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97');
-      if (e.type === 'burn') { this.spark(e.x, e.y, 8, 0xffb03a); this.popup(e.x, e.y - 20, String(e.dmg), '#ffb03a'); }
-      if (e.type === 'firepool') { this.spark(e.x, e.y - 30, 20, 0xffb03a); this.cameras.main.shake(70, 0.004); }
+      if (e.type === 'burn') {
+        this.popup(e.x, e.y - 20, String(e.dmg), '#ffb03a');
+        this.emit('flame', e.x + (Math.random() - 0.5) * 30, e.y, { scale: 0.20, life: 20, grow: 0.5,
+          vy: -1.2, tint: 0xffb03a });
+      }
+      if (e.type === 'firepool') {
+        this.cameras.main.shake(70, 0.004);
+        for (let i = 0; i < 7; i++)
+          this.emit('flame', e.x + (i - 3) * 16, e.y, { scale: 0.18 + Math.random() * 0.14,
+            life: 16 + Math.round(Math.random() * 14), grow: 0.6, vy: -1.6 - Math.random(), tint: 0xffb03a });
+        this.emit('burst', e.x, e.y - 26, { scale: 0.42, life: 13, grow: 1.1, tint: 0xffd166 });
+      }
       if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); }
-      if (e.type === 'blast') { this.spark(e.x, e.y - 40, 24, 0xffd166); this.cameras.main.shake(110, 0.007); }
+      if (e.type === 'blast') {
+        this.cameras.main.shake(110, 0.007);
+        this.emit('burst', e.x, e.y - 40, { scale: 0.55, life: 15, grow: 1.5, tint: 0xffd166 });
+        this.emit('ring', e.x, e.y - 40, { scale: 0.30, life: 18, grow: 2.6, tint: 0xfff2d0 });
+        // ควันต้องเป็น NORMAL ไม่ใช่ ADD — ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท
+        for (let i = 0; i < 5; i++)
+          this.emit('smokeBall', e.x + (i - 2) * 26, e.y - 30 - Math.random() * 30,
+            { scale: 0.25 + Math.random() * 0.2, life: 30 + Math.round(Math.random() * 20), grow: 1.1,
+              vy: -0.7, alpha: 0.5, tint: 0x9aa3b5, blend: Phaser.BlendModes.NORMAL, depth: 6 });
+      }
       if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this.cameras.main.shake(160, 0.006); }
       if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
       if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); }
@@ -968,6 +1040,7 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'comboEnd') { this.lastCombo = { hits: e.hits, dmg: e.dmg }; this.comboFade = e.hits > 1 ? 90 : 0; }
     }
+    this._stepFx();
     for (const s of this.sparks) s.life--;
     this.sparks = this.sparks.filter(s => s.life > 0);
     for (const p of this.popups) { p.life--; p.t.y -= 0.8; p.t.setAlpha(Math.min(1, p.life / 15)); if (p.life <= 0) p.t.destroy(); }
@@ -1221,6 +1294,88 @@ class ScrambleScene extends Phaser.Scene {
   }
 
   spark(x, y, size, color) { this.sparks.push({ x, y, size, color, life: 9, max: 9, rot: Math.random() * Math.PI }); }
+
+  /** ปล่อยอนุภาคหนึ่งตัวจากแผ่นเอฟเฟค — ใช้พูลซ้ำ ไม่สร้าง/ทิ้งอ็อบเจกต์ทุกนัด
+   *
+   *  ทั้งหมดเป็นการวาดล้วน ใช้ Math.random ได้เต็มที่ ไม่กระทบ sim และไม่กระทบ netplay
+   *  (sim เดินด้วยเลขเฟรมล้วน เอฟเฟคสองเครื่องต่างกันได้ ไม่มีผลกับผลการต่อสู้)
+   *
+   *  ADD เป็นค่าเริ่มต้นเพราะของส่วนใหญ่คือแสง — ควันกับฝุ่นต้องสั่ง NORMAL เอง
+   *  ไม่งั้นควันขาวบนฟ้าสว่างจะหายสนิท
+   */
+  //  ชื่อ `fx` ใช้ไม่ได้ — `this.fx` เป็นอ็อบเจกต์ graphics ที่ตั้งไว้ใน create() อยู่แล้ว
+  //  เมธอดที่ชื่อซ้ำกับพรอเพอร์ตี้ของอินสแตนซ์จะถูกทับเงียบ ๆ แล้วพังตอนรันเท่านั้น
+  emit(frame, x, y, o = {}) {
+    if (!this.textures.exists('vfx')) return null;
+    this._fxPool ??= []; this._fxLive ??= [];
+    const img = this._fxPool.pop() ?? this.add.image(0, 0, 'vfx', frame);
+    const life = o.life ?? 16;
+    img.setTexture('vfx', frame).setVisible(true).setActive(true)
+      .setPosition(x, y).setDepth(o.depth ?? 8)
+      .setBlendMode(o.blend ?? Phaser.BlendModes.ADD)
+      .setTint(o.tint ?? 0xffffff).setRotation(o.rot ?? 0)
+      .setScale(o.scale ?? 1).setAlpha(o.alpha ?? 1).setFlipX(!!o.flipX);
+    this._fxLive.push({ img, life, max: life, a0: o.alpha ?? 1, s0: o.scale ?? 1,
+      vx: o.vx ?? 0, vy: o.vy ?? 0, g: o.g ?? 0, spin: o.spin ?? 0, grow: o.grow ?? 0,
+      drag: o.drag ?? 1 });
+    return img;
+  }
+
+  _stepFx() {
+    if (!this._fxLive?.length) return;
+    const keep = [];
+    for (const f of this._fxLive) {
+      f.life--;
+      if (f.life <= 0) { f.img.setVisible(false).setActive(false); this._fxPool.push(f.img); continue; }
+      const t = 1 - f.life / f.max;
+      f.vx *= f.drag; f.vy = f.vy * f.drag + f.g;
+      f.img.x += f.vx; f.img.y += f.vy;
+      f.img.rotation += f.spin;
+      f.img.setScale(f.s0 * (1 + f.grow * t));
+      f.img.setAlpha(f.a0 * (1 - t * t));   // ค้างสว่างตอนต้นแล้วดับเร็วตอนท้าย
+      keep.push(f);
+    }
+    this._fxLive = keep;
+  }
+
+  /** ระเบิดประกายตอนหมัดเข้า — ทุกตัวเลขคูณตามน้ำหนักหมัด (hitstop) ไม่ใช่ค่าคงที่
+   *  หมัดจิ้มกับไม้จบจึงต่างกันทั้งภาพ ไม่ใช่ต่างแค่เวลาที่ภาพหยุด */
+  hitBurst(x, y, hs, dir) {
+    const w = Math.min(2.2, hs / 5);                    // 3 เฟรม -> 0.6 · 16 เฟรม -> 2.2
+    this.emit('spike', x, y, { scale: 0.10 * w, life: 6 + Math.round(hs * 0.7), grow: 1.8,
+      alpha: 0.5, tint: HIT_FX.tint, rot: Math.random() * Math.PI });
+    this.emit('star4', x, y, { scale: 0.13 * w, life: 4 + Math.round(hs * 0.5), grow: 1.0, alpha: 0.6 });
+    for (let i = 0; i < 2 + Math.round(w * 3); i++) {
+      const ang = (Math.random() - 0.5) * 1.7 + (dir > 0 ? 0 : Math.PI);
+      const sp = (2 + Math.random() * 5) * w;
+      this.emit('streak', x, y, { scale: 0.05 + Math.random() * 0.06 * w, life: 8 + Math.round(hs * 0.8),
+        rot: ang, vx: Math.cos(ang) * sp, vy: Math.sin(ang) * sp, g: 0.35, drag: 0.94,
+        alpha: 0.75, tint: HIT_FX.spark });
+    }
+  }
+
+  /** รอยฟาดตอนท่าเข้าช่วง active — ตำแหน่งยึดกลาง hitbox จริง ไม่ใช่กลางตัวละคร
+   *  คนเล่นจึงเห็นว่า "ตรงนี้คือที่ที่โดน" ซึ่งเป็นข้อมูลที่ใช้เล่นได้จริง ไม่ใช่แค่สวย */
+  slashFor(f) {
+    const art = CHAR_ART[f.char];
+    if (!art) return;
+    const spec = art.slash && f.moveId in art.slash ? art.slash[f.moveId] : SLASH_DEFAULT[f.moveId];
+    if (!spec) return;
+    const hb = f.hitbox();
+    const x = hb ? hb.x + hb.w / 2 : f.x + f.facing * 60;
+    const y = hb ? hb.y + hb.h / 2 : f.y - 70;
+    // ขนาดรอยฟาดยึด **ความกว้างของ hitbox จริง** ไม่ใช่เลขตายตัวหรือดาเมจ
+    // รอยที่ใหญ่กว่าระยะที่โดนจริงคือการโกหกคนเล่น — เขาจะอ่านระยะผิดทุกครั้งที่เห็น
+    // และมันปรับตัวเองตามท่า: จิ้มสั้นได้รอยสั้น แส้ยาวได้รอยยาว โดยไม่ต้องจูนทีละท่า
+    const src = this.textures.get('vfx').get(spec.f + '.png');
+    const reach = hb ? hb.w : 90;
+    this.emit(spec.f, x, y, {
+      scale: (reach / (src?.width || 300)) * 1.15,
+      life: 10, grow: 0.3, alpha: 0.5, flipX: f.facing < 0,
+      rot: (spec.rot ?? 0) * Math.PI / 180 * f.facing,
+      tint: 0xfff2d0, depth: 7,
+    });
+  }
   popup(x, y, s, color) {
     const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: '20px', color, fontStyle: '700', stroke: '#0c111c', strokeThickness: 4 }).setOrigin(0.5);
     this.popups.push({ t, life: 40 });
@@ -1352,6 +1507,12 @@ class ScrambleScene extends Phaser.Scene {
     sp.anims.timeScale = 1;   // ท่าที่หรี่ความเร็วเองจะตั้งทับทีหลัง
 
     if (f.state === 'attack' && art.attacks.has(f.moveId)) {
+      // รอยฟาดปล่อยที่ "เฟรมแรกของช่วง active" เฟรมเดียว ไม่ใช่ทุกเฟรมที่ยังอยู่ในท่า
+      // ปล่อยทุกเฟรมจะซ้อนกันเป็นแผ่นทึบ และปล่อยตอนเริ่มท่าจะมาก่อนกรอบโจมตีจริง
+      // ซึ่งสอนคนเล่นผิดว่าโดนได้ตั้งแต่ตอนเงื้อ
+      const tag = f.moveId + '#' + f.move?.startup;
+      if (f.phase() === 'active' && rig.lastSlash !== tag) { rig.lastSlash = tag; this.slashFor(f); }
+      else if (f.phase() !== 'active' && rig.lastSlash === tag && f.moveF < f.move.startup) rig.lastSlash = null;
       // ท่าที่ติดธง mobile (โหมดไรเฟิล) เดินไปด้วยยิงไปด้วยได้ เฟรมท่ายิงเป็นท่ายืนนิ่ง
       // ถ้าใช้เฟรมนั้นตอนเธอเคลื่อนที่จริง เท้าจะไถไปกับพื้น -> สลับไปเล่นวงจรเดินถือปืนแทน
       // เป็นเรื่องวาดล้วน ๆ hitbox/เฟรมเดตายังเป็นของท่ายิงเหมือนเดิม sim ไม่รู้เรื่องนี้เลย
@@ -1372,6 +1533,8 @@ class ScrambleScene extends Phaser.Scene {
       rig.lastState = 'attack:' + f.moveId + i;
       return true;
     }
+
+    rig.lastSlash = null;   // ออกจากท่าแล้วล้างตัวจำ ท่าเดิมซ้ำติด ๆ กันจึงปล่อยรอยฟาดทุกครั้ง
 
     // state ของเอนจิ้น -> ชื่อท่าที่มีอาร์ต (ที่ไม่อยู่ในตารางนี้ยังวาดเป็นกล่อง)
     let key = {
