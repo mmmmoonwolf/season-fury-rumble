@@ -333,13 +333,25 @@ body.sc-touch #sc-touch { display:flex; }
 /* กล่องที่ห่อปุ่มต้องปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่ม — นิ้วที่พลาดลงช่องว่างระหว่างปุ่ม
    สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
 #sc-tools, #sc-touch, #sc-touch .stick, #sc-touch .acts { touch-action:none; }
+/* กันแว่นขยาย/เมนูคัดลอกของ iOS ทั้งแผงคุม ไม่ใช่เฉพาะตัวปุ่ม
+   ที่ว่างระหว่างปุ่มกับพื้นหลังของแผงก็เป็น element ที่นิ้วแตะค้างได้เหมือนกัน
+   ของเดิมใส่ไว้แค่ที่ <button> ซึ่งพอมีพื้นผิวที่ไม่ใช่ปุ่ม (จอยลอย) ก็หลุดทันที */
+#sc-tools, #sc-tools *, #sc-touch, #sc-touch * {
+  -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none; }
 /* ต่อเน็ตแล้วเครื่องมือซ้อมใช้ไม่ได้ (แก้ sim ข้างเดียว = หลุดกัน) ซ่อนไปเลยดีกว่าให้กดแล้วเงียบ */
 body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 /* ---------- จอยลอย (floating joystick) ----------
    แตะตรงไหนในโซนซ้ายก็ได้ วงแหวนไปโผล่ตรงนั้น — ไม่ต้องเล็งปุ่มก่อนเริ่มเดิน
    d-pad แบบเดิมบังคับให้นิ้วต้องหาปุ่มให้เจอก่อน ซึ่งบนจอที่ไม่มีสัมผัสตอบกลับคือการเดาล้วน ๆ
    โซนกินครึ่งซ้ายทั้งแถบ แต่ pointer-events อยู่ที่โซน ไม่ใช่ที่วงแหวน วงแหวนจึงไม่ขวางนิ้ว */
-#sc-touch .stick { position:absolute; left:0; bottom:0; width:48%; height:78%; pointer-events:auto; }
+/* จอยเป็น <div> ไม่ใช่ <button> — ซึ่งเป็นที่มาของอาการ "จอซูมเอง" บน iOS รอบนี้
+   นิ้วโป้งแตะค้างบน div เปล่า ๆ นาน ๆ (ซึ่งคือท่าเล่นปกติของจอย) iOS จะเปิดแว่นขยายเลือกข้อความ
+   ปุ่มเดิมไม่เคยเจอเพราะ <button> ไม่มีพฤติกรรมนี้ และกดแป๊บเดียวปล่อย
+   touch-action กันได้แค่ double-tap กับ scroll ไม่ได้กันแว่นขยาย ต้องปิด callout/selection ตรง ๆ */
+#sc-touch .stick { position:absolute; left:0; bottom:0; width:48%; height:78%; pointer-events:auto;
+  user-select:none; -webkit-user-select:none; -webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent; }
 #sc-touch .stick .ring, #sc-touch .stick .knob { position:absolute; border-radius:50%; pointer-events:none;
   opacity:0; transition:opacity .12s; transform:translate(-50%,-50%); }
 #sc-touch .stick .ring { width:132px; height:132px; border:2.5px solid rgba(242,237,227,.5);
@@ -703,6 +715,13 @@ class ScrambleScene extends Phaser.Scene {
       if (Math.abs(dx) > STICK_DEAD) held.add(dx < 0 ? CODES.left : CODES.right);
       if (Math.abs(dy) > STICK_DEADY) held.add(dy < 0 ? CODES.up : CODES.down);
     };
+
+    // iOS สร้าง pointer event จาก touch event อีกที — preventDefault ที่ pointerdown จึง "สายไปแล้ว"
+    // ต้องดักที่ touch event ตัวจริงด้วย passive:false ถึงจะห้ามพฤติกรรมของระบบได้จริง
+    // (เหตุผลเดียวกับที่ index.html ต้องดัก gesture* เอง แทนที่จะพึ่ง touch-action อย่างเดียว)
+    for (const ev of ['touchstart', 'touchmove', 'touchend']) {
+      zone.addEventListener(ev, (e) => e.preventDefault(), { passive: false });
+    }
 
     zone.addEventListener('pointerdown', (e) => {
       if (id !== null) return;

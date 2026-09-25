@@ -158,3 +158,21 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
   ok(/text-shadow/.test(btn), "ตัวอักษรมีเงา — อ่านออกทั้งบนฟ้าสว่างและบนหินเข้ม");
   ok(/border:1\.5px|border:2px/.test(btn), "ขอบหนาขึ้นให้เห็นรูปปุ่มชัด");
 }
+
+// ── จอยเป็น <div> ไม่ใช่ <button> — ต้องปิดแว่นขยายของ iOS เอง ──
+//
+// อาการที่ผู้เล่นเจอ: "จอซูมเอง" บน iOS หลังเปลี่ยนมาใช้จอยลอย
+// นิ้วโป้งแตะค้างบน div เปล่า ๆ นาน ๆ (ท่าเล่นปกติของจอย) iOS เปิดแว่นขยายเลือกข้อความ
+// ปุ่มเดิมไม่เคยเจอเพราะ <button> ไม่มีพฤติกรรมนี้ และกดแป๊บเดียวปล่อย
+// touch-action กันได้แค่ double-tap กับ scroll — ไม่ได้กันแว่นขยาย
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const css = scr.match(/#sc-touch \.stick \{([^}]*)\}/)?.[1] ?? "";
+  ok(/-webkit-touch-callout:\s*none/.test(css), "ปิด callout (แว่นขยาย) ของ iOS");
+  ok(/-webkit-user-select:\s*none/.test(css), "ปิดการเลือกข้อความ");
+  ok(/-webkit-tap-highlight-color:\s*transparent/.test(css), "ปิดไฮไลต์ตอนแตะ");
+
+  // iOS สร้าง pointer event จาก touch event อีกที preventDefault ที่ pointerdown จึงสายไปแล้ว
+  ok(/for \(const ev of \['touchstart', 'touchmove', 'touchend'\]\)[\s\S]{0,140}passive: false/.test(scr),
+    "ดัก touch event ตัวจริงด้วย passive:false ไม่ได้พึ่งแค่ pointerdown");
+}
