@@ -133,10 +133,31 @@ sky = sky.resize((1920, round(1920 * sky.height / sky.width)), Image.LANCZOS)
 sky.save(os.path.join(OUT, "sky.jpg"), quality=84, optimize=True)
 print(f"ท้องฟ้า: {sky.size}")
 
+# มิดกราวด์ต้องแยกเป็นสองชั้น ไม่ใช่ชั้นเดียว
+#
+# หน้าผาสองข้างอยู่ "ใกล้" กว่าเกาะบ้านลอยมาก อยู่ชั้นเดียวกันแล้วมันเลื่อนเท่ากัน
+# ซึ่งอ่านเป็นฉากแบนไถล ไม่ใช่ความลึก — ความลึกเกิดจากของใกล้ขยับเยอะกว่าของไกล
+#
+# แยกด้วยขนาดก้อน: หน้าผาต่อกันเป็นก้อนเดียวยาวเต็มภาพ (678k px)
+# ส่วนเกาะบ้านกับเกาะเล็ก ๆ เป็นก้อนแยกที่เล็กกว่าสิบเท่า
 mid = cut_checkerboard(os.path.join(REF, "mid.jpg"))
 mid = mid.resize((1920, round(1920 * mid.height / mid.width)), Image.LANCZOS)
-mid.save(os.path.join(OUT, "mid.png"), optimize=True)
-print(f"มิดกราวด์: {mid.size}")
+ma = np.asarray(mid).copy()
+lab, n = ndimage.label(ma[:, :, 3] > 120)
+sizes = ndimage.sum(ma[:, :, 3] > 120, lab, range(1, n + 1))
+cliff = lab == int(np.argmax(sizes)) + 1
+for name, keep in [("near", cliff), ("far", ~cliff)]:
+    out = ma.copy()
+    out[:, :, 3] = np.where(keep, ma[:, :, 3], 0)
+    # ล้างสีใต้พิกเซลโปร่งให้เป็นศูนย์ด้วย ไม่งั้น PNG ยังเก็บสีที่มองไม่เห็นไว้เต็ม ๆ
+    # (ไม่ล้าง: ไฟล์ละ 1.0 MB · ล้างแล้ว: เหลือหลักแสน) แต่ละชั้นใช้ภาพแค่ส่วนของตัวเอง
+    out[:, :, :3] = np.where(out[:, :, 3:4] > 0, out[:, :, :3], 0)
+    Image.fromarray(out, "RGBA").save(os.path.join(OUT, f"{name}.png"), optimize=True)
+    print(f"  {name}: {int(np.count_nonzero(keep & (ma[:, :, 3] > 120)))} px ทึบ")
+# mid.png ไม่ได้ใช้แล้ว ลบทิ้งไม่ให้ติดไปกับเกม
+if os.path.exists(os.path.join(OUT, "mid.png")):
+    os.remove(os.path.join(OUT, "mid.png"))
+print(f"มิดกราวด์แยกเป็นสองชั้น: {mid.size}")
 
 print("ชิ้นแพลตฟอร์ม:")
 meta = {}

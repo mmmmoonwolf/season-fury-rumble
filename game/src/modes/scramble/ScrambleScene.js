@@ -238,26 +238,37 @@ const MID_DROP = 120;
 // ความสูงของแถบมืดบน-ล่าง (พิกัดเวที) — บนบังแค่แถว HUD · ล่างบังบรรทัดบอกปุ่ม
 const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
 
-/** พารัลแลกซ์ — เลเยอร์หลังเลื่อนตามจุดกึ่งกลางของการต่อสู้ ไม่ใช่ตามกล้อง
+/** พารัลแลกซ์ — เลเยอร์หลังเลื่อนตามการต่อสู้ ไม่ใช่ตามกล้อง
  *
  *  เกมนี้กล้องนิ่งสนิท ไม่มีการแพน พารัลแลกซ์แบบคลาสสิกจึงไม่มีอะไรมาขับ
- *  ตัวขับที่ใช้คือ "จุดกึ่งกลางระหว่างสองคน" — สู้กันไปทางซ้าย ฉากหลังเลื่อนขวานิดหนึ่ง
- *  ให้ความรู้สึกว่ากล้องตามการต่อสู้อยู่ ทั้งที่จริง ๆ ไม่ได้ขยับสักพิกเซล
+ *  ตัวขับที่ใช้คือ **ตำแหน่งเฉลี่ยของสองคน** ทั้งแกนนอนและแกนตั้ง
  *
- *  ค่า k = เลื่อนกี่พิกเซลต่อหนึ่งพิกเซลที่จุดกึ่งกลางขยับ ยิ่งไกลยิ่งน้อย
- *  ฟ้า 0.018 · มิดกราวด์ 0.055 — ต่างกันสามเท่า ซึ่งคือสิ่งที่ทำให้อ่านเป็น "ความลึก"
- *  ถ้าตั้งเท่ากัน มันจะเลื่อนเป็นแผ่นเดียว = ไม่ใช่พารัลแลกซ์ แค่ฉากไถล
+ *  สามชั้นคนละอัตรา ไม่ใช่สองชั้น — หน้าผาสองข้างอยู่ใกล้กว่าเกาะบ้านลอยมาก
+ *  อยู่ชั้นเดียวกันแล้วเลื่อนเท่ากัน ซึ่งอ่านเป็นฉากแบนไถล
+ *  **ความลึกเกิดจากความต่างของอัตรา ไม่ใช่จากการขยับ**
  *
- *  drift = ลอยเรื่อย ๆ ด้วยตัวเอง (เมฆไหล) คิดจากเลขเฟรมของ sim ไม่ใช่เวลาจริง
- *  สองเครื่องที่ต่อเน็ตกันจึงเห็นเมฆอยู่ที่เดียวกันเป๊ะ
+ *  แกนตั้งสำคัญขึ้นมากตอนเวทีมีห้าชั้น — ไล่กันขึ้นไปชั้นบนสุดคือระยะ 460 px
+ *  ถ้าฉากหลังไม่ตอบสนองเลย ความสูงทั้งหมดนั้นจะไม่รู้สึกว่าสูง
+ *  เลื่อน "ลงเท่านั้น" เมื่อคนลอยสูงขึ้น (มองขึ้น = เห็นฟ้ามากขึ้น) ไม่เคยเลื่อนขึ้นเหนือเส้นฐาน
+ *  ถ้าเลื่อนขึ้นได้ ใต้หน้าผาจะโหว่ให้เห็นฟ้า ซึ่งผิดทั้งภาพและผิดทั้งตรรกะ
+ *
+ *  รอบแรกตั้งไว้เบามาก (ฟ้า 0.018 · กลาง 0.055) วัดได้ว่าสู้ซ้ายสุดถึงขวาสุด
+ *  เลเยอร์ขยับแค่ 10 กับ 31 px บนจอกว้าง 1280 — เล่นจริงแล้วมองไม่เห็นว่ามีพารัลแลกซ์อยู่
  *
  *  ทั้งหมดนี้เป็นการวาดล้วน ไม่แตะ sim — เลื่อนพลาดก็แค่ภาพเพี้ยน ไม่ทำให้สองเครื่องหลุดกัน
  */
-const PARALLAX = { sky: 0.018, mid: 0.055, drift: 0.06, lerp: 0.06 };
+const PARALLAX = {
+  sky:  { x: 0.030, y: 0.025, pad: 1.22 },   // ไกลสุด ขยับน้อยสุด
+  far:  { x: 0.100, y: 0.075, pad: 1.00 },   // เกาะบ้านลอย (ภาพโปร่งเกือบทั้งใบ ไม่ต้องเผื่อขอบ)
+  near: { x: 0.185, y: 0.150, pad: 1.28 },   // หน้าผาสองข้าง ใกล้สุด ขยับเยอะสุด
+  drift: 0.06,                                // เมฆไหลเอง ±26 px
+  lerp: 0.07,
+};
 
 const STAGE_ART = {
   sky: 'assets/stage/sky.jpg',
-  mid: 'assets/stage/mid.png',
+  far: 'assets/stage/far.png',      // เกาะบ้านลอย + เกาะเล็ก ๆ (ไกล)
+  near: 'assets/stage/near.png',    // หน้าผาสองข้าง (ใกล้)
   ground: 'assets/stage/ground.png',
   // ชั้น 4 กับ 5 ใช้รูปเดียวกัน — ชั้นกลางในอาร์ตติดกับเกาะบ้านลอยเป็นก้อนเดียว แยกไม่ขาด
   // ทั้งสองเป็นแผ่นหินแบนมีเสารูนสองข้างเหมือนกันอยู่แล้ว ยืมกันใช้จึงไม่มีใครดูออก
@@ -525,7 +536,8 @@ class ScrambleScene extends Phaser.Scene {
       this.load.atlas(art.atlasKey, art.texture, art.data);
     }
     this.load.image('stageSky', STAGE_ART.sky);
-    this.load.image('stageMid', STAGE_ART.mid);
+    this.load.image('stageFar', STAGE_ART.far);
+    this.load.image('stageNear', STAGE_ART.near);
     this.load.image('stageGround', STAGE_ART.ground);
     for (const n of new Set(STAGE_ART.plat)) this.load.image('stage_' + n, `assets/stage/${n}.png`);
     this.load.json('stageMeta', STAGE_ART.meta);
@@ -541,16 +553,20 @@ class ScrambleScene extends Phaser.Scene {
     if (!meta || !this.textures.exists('stageGround')) { drawBackground(this.add.graphics()); return false; }
     this.parallax = [];
 
-    // เผื่อความกว้างไว้ให้เลเยอร์หลังเลื่อนได้ (PARALLAX) ไม่งั้นเลื่อนแล้วเห็นขอบภาพ
+    // pad = ขยายเผื่อระยะเลื่อน ไม่งั้นเลื่อนแล้วเห็นขอบภาพ
+    // ชั้นที่เลื่อนเยอะต้องเผื่อเยอะตามส่วน (near 0.185 x 640 = 118 px ต้องมีที่ว่างเกินนั้น)
     const sky = this.add.image(STAGE.w / 2, STAGE.h / 2, 'stageSky').setDepth(-40);
-    sky.setScale(Math.max(STAGE.w / sky.width, STAGE.h / sky.height) * 1.12);
-    this.parallax.push({ img: sky, x0: sky.x, k: PARALLAX.sky, drift: PARALLAX.drift });
+    sky.setScale(Math.max(STAGE.w / sky.width, STAGE.h / sky.height) * PARALLAX.sky.pad);
+    this.parallax.push({ img: sky, x0: sky.x, y0: sky.y, k: PARALLAX.sky, drift: PARALLAX.drift });
 
-    // มิดกราวด์เกาะเส้นพื้น ไม่ใช่กึ่งกลางจอ — หน้าผาสองข้างต้องต่อกับพื้นล่างเสมอ
+    // สองชั้นนี้เกาะเส้นพื้น ไม่ใช่กึ่งกลางจอ — หน้าผาสองข้างต้องต่อกับพื้นล่างเสมอ
     // ไม่ว่าจอจะสูงเท่าไหร่ (เวทีกว้าง 1280-1920 แต่สูง 720 คงที่)
-    const mid = this.add.image(STAGE.w / 2, STAGE.groundY + MID_DROP, 'stageMid').setDepth(-30);
-    mid.setScale(STAGE.w / mid.width * 1.08).setOrigin(0.5, 1);
-    this.parallax.push({ img: mid, x0: mid.x, k: PARALLAX.mid, drift: 0 });
+    for (const [key, cfg] of [['stageFar', PARALLAX.far], ['stageNear', PARALLAX.near]]) {
+      const im = this.add.image(STAGE.w / 2, STAGE.groundY + MID_DROP, key)
+        .setDepth(key === 'stageFar' ? -32 : -28).setOrigin(0.5, 1);
+      im.setScale(STAGE.w / im.width * cfg.pad);
+      this.parallax.push({ img: im, x0: im.x, y0: im.y, k: cfg, drift: 0 });
+    }
 
     // พื้นล่างยืดเต็มความกว้างเวที ส่วนสูงคงสัดส่วนเดิมไว้ ไม่ให้หินยืดจนดูผิดรูป
     const gm = meta.ground, gs = STAGE.w / gm.w;
@@ -1426,10 +1442,15 @@ class ScrambleScene extends Phaser.Scene {
    */
   _stepParallax(s) {
     if (!this.parallax?.length) return;
-    const focus = (s.p1.x + s.p2.x) / 2 - STAGE.w / 2;
+    const fx = (s.p1.x + s.p2.x) / 2 - STAGE.w / 2;
+    // ความสูงคิดจาก "สูงกว่าพื้นเท่าไหร่" ไม่ใช่ y ดิบ — ยืนพื้น = 0 เสมอ
+    // ค่าจึงไม่เคยติดลบ เลเยอร์เลื่อนลงได้อย่างเดียว ใต้หน้าผาไม่มีวันโหว่ให้เห็นฟ้า
+    const rise = Math.max(0, STAGE.groundY - (s.p1.y + s.p2.y) / 2);
     for (const L of this.parallax) {
-      const want = L.x0 - focus * L.k + (L.drift ? Math.sin(s.frame * L.drift * 0.01) * 26 : 0);
-      L.img.x += (want - L.img.x) * PARALLAX.lerp;
+      const wx = L.x0 - fx * L.k.x + (L.drift ? Math.sin(s.frame * L.drift * 0.01) * 26 : 0);
+      const wy = L.y0 + rise * L.k.y;
+      L.img.x += (wx - L.img.x) * PARALLAX.lerp;
+      L.img.y += (wy - L.img.y) * PARALLAX.lerp;
     }
   }
 
