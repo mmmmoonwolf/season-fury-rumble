@@ -98,6 +98,18 @@
     .lobby-btn-secondary:hover { background: #334155; color: #e2e8f0; }
     .lobby-status { margin: 4px 0; min-height: 1.4em; color: #7dd3fc; font-size: 14px; }
     .lobby-hint { margin: 0 0 8px; font-size: 13px; color: #94a3b8; }
+    /* เครดิตอยู่ "นอก" การ์ด ไม่ใช่ในการ์ด — การ์ดมีประวัติว่าพอสูงเกินแล้วปุ่มบนสุดถูกดัน
+       ออกนอกจอบนมือถือแนวนอนเงียบ ๆ (ดูคอมเมนต์ที่ .lobby-card) วางไว้นอกการ์ดแล้ว
+       เพิ่มบรรทัดยาวแค่ไหนก็ไม่กระทบความสูงของการ์ดเลย
+       pointer-events:none ทั้งบล็อก ยกเว้นตัวลิงก์ — ไม่ให้ไปขวางการกดปุ่มบนจอเตี้ย */
+    #credits {
+      position: fixed; left: 0; right: 0; z-index: 11; pointer-events: none;
+      bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+      padding: 0 12px; text-align: center;
+      font: 11px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; color: #64748b;
+    }
+    #credits a { color: #94a3b8; pointer-events: auto; }
+    @media (max-height: 460px) { #credits { font-size: 10px; line-height: 1.4; } }
     .lobby-input {
       font: bold 24px monospace; letter-spacing: .18em; text-align: center; text-transform: uppercase;
       padding: 12px; border-radius: 10px; border: 1px solid #475569; background: #0f172a; color: #f1f5f9;
@@ -174,6 +186,12 @@
   </div>
 
   <button id="fs-btn" title="เต็มจอ" aria-label="เต็มจอ">&#9974;</button>
+  <!-- เครดิตเพลง: ต้นทางกำหนดให้ใส่ เกมนี้เผยแพร่สาธารณะจึงต้องใส่จริง ไม่ใช่ใช้ส่วนตัว
+       แก้ข้อความที่นี่ที่เดียว ถ้าช่องต้นทางระบุถ้อยคำหรือลิงก์แบบอื่นให้วางทับบรรทัดนี้ได้เลย -->
+  <div id="credits">
+    เพลงประกอบ: <b>&ldquo;Operatic 3&rdquo;</b> โดย <b>Vibe Mountain</b> &mdash; 8-bit / No Copyright Music
+  </div>
+
   <div id="rotate-hint"><div>หมุนจอเป็นแนวนอน<br><span style="font-size:15px;color:#94a3b8">เกมนี้เล่นแนวนอนอย่างเดียว</span></div></div>
 
   <!-- ไลบรารีเก็บไว้ในรีโป ไม่ดึงจาก CDN — ดู vendor/README.md
@@ -289,6 +307,9 @@
     /** ซ่อนล็อบบี้แล้วเริ่มเกมจริง */
     function startGame() {
       document.getElementById("lobby").style.display = "none";
+      // เครดิตอยู่นอกล็อบบี้ (ดูเหตุผลที่ #credits) จึงต้องซ่อนเองอีกที
+      // ไม่งั้นมันจะค้างทับปุ่มควบคุมมือถือที่อยู่ขอบล่างพอดี
+      document.getElementById("credits").style.display = "none";
       window.__sfrGame = new Phaser.Game(makeConfig());
     }
 

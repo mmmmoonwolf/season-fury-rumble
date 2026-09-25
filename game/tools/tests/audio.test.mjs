@@ -64,3 +64,35 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
     "ออกจากฉากแล้วหยุดและคืนหน่วยความจำ");
   ok(/if \(this\.music \|\| this\.muted\) return;/.test(scene), "กันเล่นซ้อนกันสองเพลง");
 }
+
+// ── เครดิตเพลงต้องอยู่ในหน้าเมนูจริง ──
+//
+// ต้นทางกำหนดให้ใส่เครดิต และเกมนี้เผยแพร่สาธารณะบน GitHub Pages ไม่ใช่ใช้ส่วนตัว
+// เงื่อนไขจึงต่างกัน — ถ้าเครดิตหายไปตอนไหน เท่ากับผิดเงื่อนไขทันที
+{
+  const html = read("../../index.html");
+  ok(/<div id="credits">/.test(html), "มีบล็อกเครดิตในหน้าเมนู");
+  ok(/Vibe Mountain/.test(html), "ระบุชื่อศิลปิน");
+  ok(/Operatic 3/.test(html), "ระบุชื่อเพลง");
+
+  // ต้องอยู่นอก #lobby ทั้งก้อน — การ์ดข้างในมีประวัติว่าพอสูงเกินแล้วปุ่มบนสุด
+  // ถูกดันออกนอกจอบนมือถือแนวนอนเงียบ ๆ (วัดได้ y = -87 ตอนนั้น)
+  // เดินนับความลึกของ <div> จาก <div id="lobby"> เพื่อหาว่ามันปิดตรงไหนจริง ๆ
+  {
+    const start = html.indexOf('<div id="lobby">');
+    let i = start, depth = 0, close = -1;
+    const tag = /<div\b|<\/div>/g; tag.lastIndex = start;
+    for (let m; (m = tag.exec(html)); ) {
+      depth += m[0] === '</div>' ? -1 : 1;
+      if (depth === 0) { close = m.index; break; }
+    }
+    ok(close > start && html.indexOf('<div id="credits">') > close,
+      "เครดิตอยู่นอก #lobby — เพิ่มบรรทัดแล้วไม่กระทบความสูงของการ์ด");
+  }
+
+  // ซ่อนตอนเริ่มเกม ไม่งั้นค้างทับปุ่มควบคุมมือถือที่อยู่ขอบล่างพอดี
+  ok(/getElementById\("credits"\)\.style\.display = "none"/.test(html),
+    "ซ่อนตอนเริ่มเกม — ไม่ค้างทับปุ่มควบคุมมือถือ");
+  ok(/#credits \{[^}]*pointer-events: none/.test(html),
+    "ไม่ขวางการกดปุ่ม แม้ตอนยังแสดงอยู่บนจอเตี้ย");
+}
