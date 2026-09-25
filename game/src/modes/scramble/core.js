@@ -700,7 +700,8 @@ const MOMUS_MOVES = {
   // ของใหญ่ควรอยู่ที่อัลติ ไม่ใช่สกิลที่ต้องกดกลางวงตีกัน เงื้อนานได้ไม่เป็นไร
   // ชนวนเหลื่อมกันทีละ RAIN_STEP เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่ตูมเดียวจบ
   full1: { label: 'Full House', kind: 'ground', startup: 10, active: 6, recovery: 8, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'full2' },
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    warpStage: true, iframes: [0, 14], autoChain: 'full2' },
   full2: { label: 'Full House', kind: 'ground', startup: 8, active: 6, recovery: 20, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     boxRain: { at: 8 } },
@@ -973,6 +974,7 @@ class Game {
     // ทั้งสองเครื่องเดินถึงบรรทัดนี้ที่เฟรมเดียวกันเสมอ เพราะมาจากปุ่มที่ส่งข้ามเน็ตเหมือนกัน
     if (mv.toggle) { f.alt = f.alt ? 0 : 1; this.events.push({ type: 'swap', alt: f.alt, x: f.x, y: f.y - 90 }); }
     if (mv.warp) this.warp(f);
+    if (mv.warpStage) this.warpStage(f);
     if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
     // ท่าที่ประกาศ refresh: ปลดชื่อท่าที่ระบุออกจาก used = ใช้ชุดนั้นซ้ำได้อีกรอบในคอมโบเดียว
@@ -1009,6 +1011,27 @@ class Game {
 
   // วาร์ปไปโผล่ "อีกฝั่ง" ของคู่ต่อสู้ — เรียกสองจังหวะติดกันจึงสลับข้างไปมาเอง
   // ไกลเกินระยะก็ไม่วาร์ป พุ่งไปข้างหน้าเฉย ๆ กันไม่ให้เป็นการเทเลพอร์ตข้ามเวที
+  /** วาร์ปขึ้นไปยืนบนแพลตฟอร์มที่สูงที่สุดของเวที — ใช้กับอัลติของ Momus
+   *
+   *  หาเองจาก `STAGE.platforms` ไม่ได้ฮาร์ดโค้ดเลขชั้น ถ้าวันหลังจัดเวทีใหม่
+   *  อัลติก็ยังหาชั้นบนสุดถูกโดยไม่ต้องกลับมาแก้ตรงนี้
+   *
+   *  ทำไมต้องวาร์ปก่อนโปรย: ท่านี้เงื้อ 10 เฟรมแล้วต่ออีก 8 = 18 เฟรมยืนนิ่ง
+   *  ในเกมที่เร็วขนาดนี้คือโดนสวนฟรี อัลติที่กดแล้วโดนตีหลุดคืออัลติที่ไม่มีใครกด
+   *
+   *  ไม่ได้ทำให้เขาปลอดภัย — ไหที่โปรยลงมาจุดชนวนจากคนที่ "ยืนบนพื้น" ไม่ว่าพื้นชั้นไหน
+   *  เขายืนบนชั้นบนสุดซึ่งแคบที่สุด (220 px) ก็ต้องกระโดดหลบเหมือนกัน
+   */
+  warpStage(f) {
+    let top = null;
+    for (const p of STAGE.platforms) if (!top || p.y < top.y) top = p;
+    if (!top) return;
+    this.events.push({ type: 'vanish', x: f.x, y: f.y });
+    f.x = (top.x1 + top.x2) / 2;
+    f.y = top.y; f.vx = 0; f.vy = 0; f.onGround = true;
+    this.events.push({ type: 'appear', x: f.x, y: f.y });
+  }
+
   warp(f) {
     const o = this.foe(f);
     this.events.push({ type: 'vanish', x: f.x, y: f.y });
