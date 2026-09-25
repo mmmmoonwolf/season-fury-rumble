@@ -23,7 +23,7 @@ OUT = os.path.join(HERE, "..", "assets", "stage")
 
 # ก้อนที่ตัวแยกหาเจอในใบ pieces.jpg -> ชื่อชิ้น (เรียงตามพื้นที่จากใหญ่ไปเล็ก)
 # ไม่ได้ฮาร์ดโค้ดพิกัด แต่ฮาร์ดโค้ด "ลำดับขนาด" ซึ่งคงที่กว่าและตรวจสอบได้จากที่พิมพ์ออกมา
-PIECES = ["ground", "plat_c", None, "plat_l", "plat_r"]
+PIECES = ["ground", "plat_c", None, "plat_l", "plat_r", "plat_top"]
 
 
 def cut_checkerboard(path):
@@ -66,12 +66,31 @@ def surface_row(m):
     return int(np.nonzero(w >= need)[0][0])
 
 
+def topsoil_row(rgba):
+    """เส้นยืนของแพลตฟอร์มลอย — ยึด "แถบหญ้ากับดิน" ไม่ใช่ยอดหินด้านหลัง
+
+    surface_row() ที่ยึดความกว้างไปเจอสันหินด้านหลังซึ่งสูงกว่าแถบหญ้าราว 40 px
+    เล่นจริงแล้วตัวละครลอยเหนือหินที่เห็นว่ายืนอยู่ชัดเจน (ผู้เล่นรายงานเอง)
+    แถบหญ้าเป็นเขียวอมเหลืองกับดินสีแทน หาได้ตรง ๆ จากสี
+
+    วัดได้: plat_c 58 -> 99 · plat_l 73 -> 96 · plat_r 22 -> 66
+    """
+    a = np.asarray(rgba).astype(int)
+    r, g, b, al = a[:, :, 0], a[:, :, 1], a[:, :, 2], a[:, :, 3]
+    grass = (al > 150) & (g > r + 6) & (g > b + 22) & (g > 85)
+    dirt = (al > 150) & (r > 140) & (r - b > 45) & (r >= g) & (g - b > 18)
+    w = np.count_nonzero(grass | dirt, axis=1)
+    return int(np.nonzero(w >= w.max() * 0.35)[0][0])
+
+
 def ground_surface(rgba):
     """เส้นยืนของพื้นล่าง — ยึด "ทางดินสีเหลือง" ไม่ใช่แถวบนสุดที่กว้างพอ
 
-    พื้นล่างวาดเป็นมุมเฉียง: สันหินด้านหลังสูงกว่าทางเดินด้านหน้าอยู่ราว 40 px
-    surface_row() จะไปเจอสันหินหลังก่อน แล้วตัวละครจะลอยเหนือพื้นที่เห็นว่ายืนอยู่
-    ทางดินเป็นแถบสีเหลืองอมส้มกว้างที่สุดในภาพ หาได้ตรง ๆ จากสี
+    พื้นล่างวาดเป็นมุมเฉียง: สันหินด้านหลังสูงกว่าทางเดินด้านหน้าอยู่ราว 130 px
+
+    ต่างจากแพลตฟอร์มลอยตรงที่ **ห้ามนับหญ้า** — หญ้าของพื้นล่างอยู่บนสันหินหลัง
+    ไม่ใช่บนทางเดินหน้า นับหญ้าด้วยแล้วเส้นจะเด้งขึ้นไปที่สันหลังทันที
+    (วัดบนไฟล์ที่ย่อแล้ว: ทางดินหน้า 88 · หญ้าบนสันหลัง 76)
     """
     a = np.asarray(rgba).astype(int)
     r, g, b, al = a[:, :, 0], a[:, :, 1], a[:, :, 2], a[:, :, 3]
@@ -96,12 +115,12 @@ def cut_pieces(path):
         m = lab == idx
         ys, xs = np.nonzero(m)
         if name is None:
-            print(f"  ข้าม #{rank}: x {xs.min()}-{xs.max()} y {ys.min()}-{ys.max()} (เกาะบ้านลอย ไม่ใช่แพลตฟอร์ม)")
+            print(f"  ข้าม #{rank}: x {xs.min()}-{xs.max()} y {ys.min()}-{ys.max()}"
+                  " (ชั้นกลางติดกับเกาะบ้านลอยเป็นก้อนเดียว แยกไม่ขาด — ยืมรูป plat_top ไปใช้แทน)")
             continue
         rgba = np.dstack([a, ndimage.gaussian_filter(m.astype(float), 1.0) * 255]).astype("uint8")
         crop = Image.fromarray(rgba, "RGBA").crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
-        surf = (ground_surface(crop) if name == "ground"
-                else surface_row(m[ys.min():ys.max() + 1, xs.min():xs.max() + 1]))
+        surf = ground_surface(crop) if name == "ground" else topsoil_row(crop)
         out[name] = (crop, surf)
         print(f"  {name:7s} {crop.width:5d}x{crop.height:4d} · ผิวบนอยู่แถวที่ {surf}")
     return out

@@ -7,16 +7,21 @@
  "plat_c": {
   "w": 815,
   "h": 259,
-  "surface": 58
+  "surface": 99
  },
  "plat_l": {
   "w": 480,
   "h": 244,
-  "surface": 73
+  "surface": 96
  },
  "plat_r": {
   "w": 483,
   "h": 202,
-  "surface": 22
+  "surface": 66
+ },
+ "plat_top": {
+  "w": 679,
+  "h": 168,
+  "surface": 15
  }
 }

@@ -86,6 +86,9 @@ const GUN_WALK_VX = 0.35;
 
 const isTouch = (window.matchMedia?.('(pointer: coarse)')?.matches ?? false) || 'ontouchstart' in window;
 
+// จอยลอย: รัศมีที่ลากได้สุด · เขตตายแนวนอน · เขตตายแนวตั้ง (กว้างกว่าโดยตั้งใจ)
+const STICK_R = 52, STICK_DEAD = 13, STICK_DEADY = 24;
+
 // ---------- หน้าตา (ยกจาก prototype) ----------
 /**
  * ทะเบียนอาร์ตต่อตัวละคร (ฝั่งฉาก) — คู่กับ CHARACTERS ใน core.js ที่เก็บฝั่งเฟรมเดต้า
@@ -235,11 +238,30 @@ const MID_DROP = 120;
 // ความสูงของแถบมืดบน-ล่าง (พิกัดเวที) — บนบังแค่แถว HUD · ล่างบังบรรทัดบอกปุ่ม
 const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
 
+/** พารัลแลกซ์ — เลเยอร์หลังเลื่อนตามจุดกึ่งกลางของการต่อสู้ ไม่ใช่ตามกล้อง
+ *
+ *  เกมนี้กล้องนิ่งสนิท ไม่มีการแพน พารัลแลกซ์แบบคลาสสิกจึงไม่มีอะไรมาขับ
+ *  ตัวขับที่ใช้คือ "จุดกึ่งกลางระหว่างสองคน" — สู้กันไปทางซ้าย ฉากหลังเลื่อนขวานิดหนึ่ง
+ *  ให้ความรู้สึกว่ากล้องตามการต่อสู้อยู่ ทั้งที่จริง ๆ ไม่ได้ขยับสักพิกเซล
+ *
+ *  ค่า k = เลื่อนกี่พิกเซลต่อหนึ่งพิกเซลที่จุดกึ่งกลางขยับ ยิ่งไกลยิ่งน้อย
+ *  ฟ้า 0.018 · มิดกราวด์ 0.055 — ต่างกันสามเท่า ซึ่งคือสิ่งที่ทำให้อ่านเป็น "ความลึก"
+ *  ถ้าตั้งเท่ากัน มันจะเลื่อนเป็นแผ่นเดียว = ไม่ใช่พารัลแลกซ์ แค่ฉากไถล
+ *
+ *  drift = ลอยเรื่อย ๆ ด้วยตัวเอง (เมฆไหล) คิดจากเลขเฟรมของ sim ไม่ใช่เวลาจริง
+ *  สองเครื่องที่ต่อเน็ตกันจึงเห็นเมฆอยู่ที่เดียวกันเป๊ะ
+ *
+ *  ทั้งหมดนี้เป็นการวาดล้วน ไม่แตะ sim — เลื่อนพลาดก็แค่ภาพเพี้ยน ไม่ทำให้สองเครื่องหลุดกัน
+ */
+const PARALLAX = { sky: 0.018, mid: 0.055, drift: 0.06, lerp: 0.06 };
+
 const STAGE_ART = {
   sky: 'assets/stage/sky.jpg',
   mid: 'assets/stage/mid.png',
   ground: 'assets/stage/ground.png',
-  plat: ['assets/stage/plat_c.png', 'assets/stage/plat_l.png', 'assets/stage/plat_r.png'],
+  // ชั้น 4 กับ 5 ใช้รูปเดียวกัน — ชั้นกลางในอาร์ตติดกับเกาะบ้านลอยเป็นก้อนเดียว แยกไม่ขาด
+  // ทั้งสองเป็นแผ่นหินแบนมีเสารูนสองข้างเหมือนกันอยู่แล้ว ยืมกันใช้จึงไม่มีใครดูออก
+  plat: ['plat_c', 'plat_l', 'plat_r', 'plat_top', 'plat_top'],
   meta: 'assets/stage/stage.json',
 };
 
@@ -276,16 +298,21 @@ function drawBackground(g) {
 // ---------- DOM ของโหมดนี้ (สร้างเอง/ลบเอง ไม่ฝากไว้ใน index.html) ----------
 const OVERLAY_CSS = `
 #sc-tools { position:absolute; top:calc(58px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:15; }
-#sc-tools button, #sc-touch button { font:600 13px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; background:rgba(233,227,214,.14); border:1px solid rgba(233,227,214,.28); border-radius:12px; touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+/* พื้นปุ่มเป็น "สีเข้มทึบ" ไม่ใช่ขาวโปร่ง — ฉากเปลี่ยนเป็นฟ้ากลางวันแล้วปุ่มขาวโปร่งกลืนหายไปเลย
+   ขอบสว่าง + เงาตัวอักษร + เงารอบปุ่ม ทำให้อ่านออกทั้งบนฟ้าสว่างและบนหินเข้ม */
+#sc-tools button, #sc-touch button { font:600 13px "Chakra Petch", system-ui, sans-serif; color:#f2ede3; background:rgba(12,17,28,.62); border:1.5px solid rgba(242,237,227,.55); border-radius:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); box-shadow:0 2px 10px rgba(0,0,0,.35); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
 #sc-tools button { padding:6px 10px; font-size:12px; }
-#sc-tools button.on, #sc-touch button.on { background:rgba(200,50,60,.55); }
+#sc-tools button.on, #sc-touch button.on { background:rgba(200,50,60,.82); border-color:rgba(255,200,200,.7); }
 #sc-tune { display:none; position:absolute; right:calc(12px + env(safe-area-inset-right,0px)); top:calc(100px + env(safe-area-inset-top,0px)); width:250px; max-height:60%; overflow-y:auto; background:rgba(12,17,28,.9); border:1px solid rgba(233,227,214,.25); border-radius:12px; padding:10px 12px; font:13px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; z-index:16; }
 #sc-tune.open { display:block; }
 #sc-tune label { display:flex; justify-content:space-between; margin-top:8px; }
 #sc-tune input { width:100%; accent-color:#c8323c; }
 #sc-tune .row { display:flex; gap:6px; margin-top:10px; }
 #sc-tune .row button { flex:1; font:600 12px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; background:rgba(233,227,214,.14); border:1px solid rgba(233,227,214,.28); border-radius:8px; padding:6px; }
-#sc-touch { display:none; position:absolute; inset:auto 0 0 0; justify-content:space-between; align-items:flex-end; padding:0 calc(14px + env(safe-area-inset-right,0px)) 14px calc(14px + env(safe-area-inset-left,0px)); pointer-events:none; z-index:15; }
+/* จอยลอย (.stick) เป็น position:absolute จึงหลุดออกจาก flex flow ไปแล้ว
+   เหลือ .acts เป็นลูกตัวเดียว ถ้ายังใช้ space-between มันจะไปกองอยู่ซ้ายทับจอยพอดี
+   (เจอจริงตอนเทสต์บนมือถือ: ปุ่มทั้งแถบไปอยู่ซ้าย วงแหวนจอยทับปุ่มสกิล) */
+#sc-touch { display:none; position:absolute; inset:auto 0 0 0; justify-content:flex-end; align-items:flex-end; padding:0 calc(14px + env(safe-area-inset-right,0px)) 14px calc(14px + env(safe-area-inset-left,0px)); pointer-events:none; z-index:15; }
 /* ปุ่มล่างสุดต้องห่างขอบจอ ไม่งั้นแถบ gesture / ขีดโฮม ของมือถือกินการแตะไปก่อน = กดไม่ติด
    (เหตุผลเดียวกับ BOTTOM_SAFE ในโหมดปกติ ซึ่งพอร์ต SCRAMBLE เข้ามาทีหลังเลยยังไม่ได้ของนี้)
    โหมดปกติเว้นไว้ 94 หน่วยเกมจาก 720 = 13% ของความสูงจอ = พื้นล่างที่ห้ามต่ำกว่านี้
@@ -305,10 +332,23 @@ const OVERLAY_CSS = `
 body.sc-touch #sc-touch { display:flex; }
 /* กล่องที่ห่อปุ่มต้องปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่ม — นิ้วที่พลาดลงช่องว่างระหว่างปุ่ม
    สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
-#sc-tools, #sc-touch, #sc-touch .pad, #sc-touch .acts { touch-action:none; }
+#sc-tools, #sc-touch, #sc-touch .stick, #sc-touch .acts { touch-action:none; }
 /* ต่อเน็ตแล้วเครื่องมือซ้อมใช้ไม่ได้ (แก้ sim ข้างเดียว = หลุดกัน) ซ่อนไปเลยดีกว่าให้กดแล้วเงียบ */
 body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
-#sc-touch .pad { display:grid; grid-template-columns:repeat(3,56px); grid-template-rows:repeat(3,48px); gap:4px; pointer-events:auto; }
+/* ---------- จอยลอย (floating joystick) ----------
+   แตะตรงไหนในโซนซ้ายก็ได้ วงแหวนไปโผล่ตรงนั้น — ไม่ต้องเล็งปุ่มก่อนเริ่มเดิน
+   d-pad แบบเดิมบังคับให้นิ้วต้องหาปุ่มให้เจอก่อน ซึ่งบนจอที่ไม่มีสัมผัสตอบกลับคือการเดาล้วน ๆ
+   โซนกินครึ่งซ้ายทั้งแถบ แต่ pointer-events อยู่ที่โซน ไม่ใช่ที่วงแหวน วงแหวนจึงไม่ขวางนิ้ว */
+#sc-touch .stick { position:absolute; left:0; bottom:0; width:48%; height:78%; pointer-events:auto; }
+#sc-touch .stick .ring, #sc-touch .stick .knob { position:absolute; border-radius:50%; pointer-events:none;
+  opacity:0; transition:opacity .12s; transform:translate(-50%,-50%); }
+#sc-touch .stick .ring { width:132px; height:132px; border:2.5px solid rgba(242,237,227,.5);
+  background:radial-gradient(circle, rgba(12,17,28,.42) 0%, rgba(12,17,28,.16) 70%, transparent 100%);
+  box-shadow:0 0 18px rgba(0,0,0,.45), inset 0 0 18px rgba(0,0,0,.3); }
+#sc-touch .stick .knob { width:56px; height:56px; border:2px solid rgba(242,237,227,.85);
+  background:radial-gradient(circle at 35% 30%, rgba(242,237,227,.55), rgba(12,17,28,.75));
+  box-shadow:0 0 14px rgba(0,0,0,.5); }
+#sc-touch .stick.on .ring, #sc-touch .stick.on .knob { opacity:1; }
 #sc-touch .acts { display:grid; grid-template-columns:repeat(2,76px); gap:8px; pointer-events:auto; }
 #sc-touch .acts button { height:56px; }
 #sc-touch .acts .big { grid-column:span 2; height:62px; font-size:15px; }
@@ -318,7 +358,7 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 #sc-touch .skills button { height:46px; font-size:14px; }
 #sc-touch .skills button[disabled] { opacity:.32; }
 /* ฝั่งซ้ายเตี้ยกว่าฝั่งขวาเท่าตัว จึงยกได้สูงกว่า — ผู้เล่นบ่นเรื่องนิ้วซ้ายบังก่อนเป็นอันดับแรก */
-#sc-touch .pad { margin-bottom: 8dvh; }
+
 /* มือถือแนวนอนสูงราว 390 px เท่านั้น ปุ่มขนาดเดสก์ท็อปกินไปแล้ว 256 px = 66% ของจอ
    ยกขึ้นไม่ได้เลยถ้าไม่ย่อก่อน — ย่อแล้วเหลือ ~199 px ถึงจะมีที่ให้ยก
    ตัวเลขยังอยู่เหนือระยะแตะขั้นต่ำ 44 px ของ iOS ทุกปุ่ม ยกเว้นแถวสกิลที่กดไม่บ่อยเท่า */
@@ -328,7 +368,8 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
   #sc-touch .acts button { height:48px; }
   #sc-touch .skills { gap:5px; }
   #sc-touch .skills button { height:40px; font-size:13px; }
-  #sc-touch .pad { grid-template-columns:repeat(3,52px); grid-template-rows:repeat(3,42px); gap:3px; }
+  #sc-touch .stick .ring { width:112px; height:112px; }
+  #sc-touch .stick .knob { width:48px; height:48px; }
 }
 
 /* ---------- หน้าเลือกตัวละคร ----------
@@ -416,10 +457,7 @@ const OVERLAY_HTML = `
 </div>
 <div id="sc-tune"></div>
 <div id="sc-touch">
-  <div class="pad">
-    <span></span><button data-code="KeyW">Up</button><span></span>
-    <button data-code="KeyA">Left</button><button data-code="KeyS">Down</button><button data-code="KeyD">Right</button>
-  </div>
+  <div class="stick"><div class="ring"></div><div class="knob"></div></div>
   <div class="acts">
     <button class="big" data-code="KeyL">Block</button>
     <button class="big" data-code="Space">Jump</button><button class="big" data-code="KeyJ">Attack</button>
@@ -477,7 +515,7 @@ class ScrambleScene extends Phaser.Scene {
     this.load.image('stageSky', STAGE_ART.sky);
     this.load.image('stageMid', STAGE_ART.mid);
     this.load.image('stageGround', STAGE_ART.ground);
-    STAGE_ART.plat.forEach((f, i) => this.load.image('stagePlat' + i, f));
+    for (const n of new Set(STAGE_ART.plat)) this.load.image('stage_' + n, `assets/stage/${n}.png`);
     this.load.json('stageMeta', STAGE_ART.meta);
   }
 
@@ -489,14 +527,18 @@ class ScrambleScene extends Phaser.Scene {
   _buildStage() {
     const meta = this.cache.json.get('stageMeta');
     if (!meta || !this.textures.exists('stageGround')) { drawBackground(this.add.graphics()); return false; }
+    this.parallax = [];
 
+    // เผื่อความกว้างไว้ให้เลเยอร์หลังเลื่อนได้ (PARALLAX) ไม่งั้นเลื่อนแล้วเห็นขอบภาพ
     const sky = this.add.image(STAGE.w / 2, STAGE.h / 2, 'stageSky').setDepth(-40);
-    sky.setScale(Math.max(STAGE.w / sky.width, STAGE.h / sky.height));
+    sky.setScale(Math.max(STAGE.w / sky.width, STAGE.h / sky.height) * 1.12);
+    this.parallax.push({ img: sky, x0: sky.x, k: PARALLAX.sky, drift: PARALLAX.drift });
 
     // มิดกราวด์เกาะเส้นพื้น ไม่ใช่กึ่งกลางจอ — หน้าผาสองข้างต้องต่อกับพื้นล่างเสมอ
     // ไม่ว่าจอจะสูงเท่าไหร่ (เวทีกว้าง 1280-1920 แต่สูง 720 คงที่)
     const mid = this.add.image(STAGE.w / 2, STAGE.groundY + MID_DROP, 'stageMid').setDepth(-30);
-    mid.setScale(STAGE.w / mid.width).setOrigin(0.5, 1);
+    mid.setScale(STAGE.w / mid.width * 1.08).setOrigin(0.5, 1);
+    this.parallax.push({ img: mid, x0: mid.x, k: PARALLAX.mid, drift: 0 });
 
     // พื้นล่างยืดเต็มความกว้างเวที ส่วนสูงคงสัดส่วนเดิมไว้ ไม่ให้หินยืดจนดูผิดรูป
     const gm = meta.ground, gs = STAGE.w / gm.w;
@@ -506,10 +548,10 @@ class ScrambleScene extends Phaser.Scene {
     // แพลตฟอร์ม: ย่อให้ "กว้างเท่ากรอบชนจริง" แล้ววางให้ผิวบนตรงกับ p.y เป๊ะ
     // เสาหินรูนสองข้างจึงกลายเป็นตัวบอกขอบแพลตฟอร์มพอดี — อ่านออกว่าสุดตรงไหนโดยไม่ต้องลอง
     STAGE.platforms.forEach((p, i) => {
-      const key = 'stagePlat' + i, m = meta[['plat_c', 'plat_l', 'plat_r'][i]];
-      if (!m || !this.textures.exists(key)) return;
+      const name = STAGE_ART.plat[i], m = meta[name];
+      if (!m || !this.textures.exists('stage_' + name)) return;
       const sc = (p.x2 - p.x1) / m.w;
-      this.add.image(p.x1, p.y - m.surface * sc, key).setOrigin(0, 0).setScale(sc).setDepth(-10);
+      this.add.image(p.x1, p.y - m.surface * sc, 'stage_' + name).setOrigin(0, 0).setScale(sc).setDepth(-10);
     });
 
     this._stageScrim();
@@ -629,8 +671,61 @@ class ScrambleScene extends Phaser.Scene {
       ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, up));
     });
 
+    this._wireStick(root);
     buildTune();
     this._wireSelect(root);
+  }
+
+  /** จอยลอย — แตะตรงไหนในโซนซ้ายก็ได้ วงแหวนไปโผล่ตรงนั้น
+   *
+   *  ส่งออกเป็น "โค้ดปุ่ม" ชุดเดียวกับคีย์บอร์ด (KeyA/KeyD/KeyW/KeyS) ไม่ได้ต่อเข้า sim ตรง ๆ
+   *  sim จึงไม่รู้เลยว่าอินพุตมาจากจอยหรือคีย์บอร์ด และ netplay ยังส่งแค่บิตปุ่มเหมือนเดิม
+   *
+   *  เขตตายแนวตั้งกว้างกว่าแนวนอน (STICK_DEADY เทียบ STICK_DEAD): การเดินคือสิ่งที่กดบ่อยที่สุด
+   *  ถ้าเขตตายเท่ากัน นิ้วที่เลื่อนเฉียงนิดเดียวจะสั่งย่อหรือสั่งท่าขึ้นโดยไม่ได้ตั้งใจตลอดเวลา
+   */
+  _wireStick(root) {
+    const zone = root.querySelector('#sc-touch .stick');
+    if (!zone) return;
+    const ring = zone.querySelector('.ring'), knob = zone.querySelector('.knob');
+    const CODES = { left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' };
+    let id = null, ox = 0, oy = 0;
+
+    const clear = () => { for (const c of Object.values(CODES)) held.delete(c); };
+    const place = (el, x, y) => { el.style.left = x + 'px'; el.style.top = y + 'px'; };
+
+    const aim = (x, y) => {
+      let dx = x - ox, dy = y - oy;
+      const d = Math.hypot(dx, dy);
+      if (d > STICK_R) { dx *= STICK_R / d; dy *= STICK_R / d; }
+      place(knob, ox + dx, oy + dy);
+      clear();
+      if (Math.abs(dx) > STICK_DEAD) held.add(dx < 0 ? CODES.left : CODES.right);
+      if (Math.abs(dy) > STICK_DEADY) held.add(dy < 0 ? CODES.up : CODES.down);
+    };
+
+    zone.addEventListener('pointerdown', (e) => {
+      if (id !== null) return;
+      e.preventDefault();
+      id = e.pointerId;
+      zone.setPointerCapture?.(id);
+      const r = zone.getBoundingClientRect();
+      ox = e.clientX - r.left; oy = e.clientY - r.top;
+      place(ring, ox, oy); place(knob, ox, oy);
+      zone.classList.add('on');
+    });
+    zone.addEventListener('pointermove', (e) => {
+      if (e.pointerId !== id) return;
+      e.preventDefault();
+      const r = zone.getBoundingClientRect();
+      aim(e.clientX - r.left, e.clientY - r.top);
+    });
+    for (const ev of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      zone.addEventListener(ev, (e) => {
+        if (e.pointerId !== id) return;
+        id = null; zone.classList.remove('on'); clear();
+      });
+    }
   }
 
   /** ผูกปุ่มของหน้าเลือกตัว — ทำครั้งเดียวตอน mount การ์ดสร้างจาก CHARACTERS ตรง ๆ
@@ -1305,8 +1400,23 @@ class ScrambleScene extends Phaser.Scene {
     if (ph) { g.fillStyle(C[ph], 1); g.fillRect(f.x - 14, hb.y - 14, 28, 5); }
   }
 
+  /** เลื่อนเลเยอร์หลังตามจุดกึ่งกลางของการต่อสู้ — อ่านอย่างเดียว ไม่เขียนอะไรกลับเข้า sim
+   *
+   *  ไล่เข้าหาเป้าแบบ lerp ไม่กระโดดไปตรง ๆ ไม่งั้นตอนใครโดนดีดข้ามจอ ฉากหลังจะสะบัดตาม
+   *  ซึ่งอ่านเป็น "ภาพค้าง" มากกว่าความลึก
+   */
+  _stepParallax(s) {
+    if (!this.parallax?.length) return;
+    const focus = (s.p1.x + s.p2.x) / 2 - STAGE.w / 2;
+    for (const L of this.parallax) {
+      const want = L.x0 - focus * L.k + (L.drift ? Math.sin(s.frame * L.drift * 0.01) * 26 : 0);
+      L.img.x += (want - L.img.x) * PARALLAX.lerp;
+    }
+  }
+
   draw() {
     const s = this.sim, g = this.world, fx = this.fx, hud = this.hud;
+    this._stepParallax(s);
     g.clear(); fx.clear(); hud.clear();
     // ทั้งสองฝั่งวาดด้วยเส้นทางเดียวกัน — ท่าที่ยังไม่มีอาร์ตตกไปเป็นกล่องเหมือนเดิม
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง

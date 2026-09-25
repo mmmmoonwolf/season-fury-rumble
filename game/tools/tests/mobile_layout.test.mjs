@@ -106,10 +106,10 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
   ok(/#sc-tools button, #sc-touch button \{[^}]*touch-action:none/.test(scramble), "ปุ่มของ SCRAMBLE ยังเป็น none");
 
   // กล่องที่ห่อปุ่ม — จุดที่ทำให้ซูมจริง ๆ
-  for (const sel of ["#sc-tools", "#sc-touch", "#sc-touch .pad", "#sc-touch .acts"]) {
+  for (const sel of ["#sc-tools", "#sc-touch", "#sc-touch .stick", "#sc-touch .acts"]) {
     const rule = scramble.match(new RegExp(`[^\\n]*${sel.replace(/[.#]/g, (c) => "\\" + c)}[^{\\n]*\\{([^}]*)\\}`));
     ok(rule != null && /touch-action:\s*none/.test(rule[1]) ||
-       new RegExp(`#sc-tools, #sc-touch, #sc-touch \\.pad, #sc-touch \\.acts \\{ touch-action:none`).test(scramble),
+       new RegExp(`#sc-tools, #sc-touch, #sc-touch \\.stick, #sc-touch \\.acts \\{ touch-action:none`).test(scramble),
        `กล่อง ${sel} ปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่มข้างใน`);
   }
 
@@ -127,4 +127,34 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
 
   // meta viewport: iOS เมิน แต่ Android ยังฟัง จึงยังต้องมี
   ok(/maximum-scale=1/.test(html) && /user-scalable=no/.test(html), "meta viewport ยังกันซูมฝั่ง Android ไว้");
+}
+
+// ── จอยลอย: ต้องไม่ต่อเข้า sim ตรง ๆ ──
+//
+// ส่งออกเป็นโค้ดปุ่มชุดเดียวกับคีย์บอร์ด sim จึงไม่รู้ว่าอินพุตมาจากจอยหรือคีย์บอร์ด
+// ถ้าต่อเข้า sim ตรง ๆ netplay จะต้องส่งค่าแอนะล็อกข้ามเน็ต แล้วสองเครื่องจะปัดเศษไม่ตรงกัน
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  ok(/_wireStick/.test(scr), "มีจอยลอย");
+  ok(/CODES = \{ left: 'KeyA', right: 'KeyD', up: 'KeyW', down: 'KeyS' \}/.test(scr),
+    "จอยส่งออกเป็นโค้ดปุ่มชุดเดียวกับคีย์บอร์ด");
+  ok(/held\.add\(dx < 0 \? CODES\.left : CODES\.right\)/.test(scr), "เข้าคิวผ่าน held เหมือนปุ่มอื่นทุกประการ");
+  ok(!/sim\.[a-z]+\s*=\s*.*stick/i.test(scr), "ไม่มีเส้นทางไหนที่จอยเขียนใส่ sim ตรง ๆ");
+
+  // เขตตายแนวตั้งต้องกว้างกว่าแนวนอน — การเดินคือสิ่งที่กดบ่อยที่สุด
+  // ถ้าเท่ากัน นิ้วที่เลื่อนเฉียงนิดเดียวจะสั่งย่อหรือสั่งท่าขึ้นโดยไม่ได้ตั้งใจตลอดเวลา
+  const m = scr.match(/STICK_R = (\d+), STICK_DEAD = (\d+), STICK_DEADY = (\d+)/);
+  ok(m, "มีค่าคงที่ของจอยครบสามตัว");
+  ok(+m[3] > +m[2], `เขตตายแนวตั้ง ${m?.[3]} กว้างกว่าแนวนอน ${m?.[2]}`);
+  ok(+m[1] > +m[3], `รัศมีลากสุด ${m?.[1]} ยังมากกว่าเขตตายแนวตั้ง — ไม่งั้นสั่งขึ้น/ลงไม่ได้เลย`);
+}
+
+// ── ปุ่มต้องอ่านออกบนฉากสว่าง ──
+// ฉากเปลี่ยนจากเมืองกลางคืนเป็นฟ้ากลางวัน ปุ่มพื้นขาวโปร่งแบบเดิมกลืนหายไปทันที
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const btn = scr.match(/#sc-tools button, #sc-touch button \{([^}]*)\}/)?.[1] ?? "";
+  ok(/background:rgba\(12,17,28,\.\d+\)/.test(btn), "พื้นปุ่มเป็นสีเข้มทึบ ไม่ใช่ขาวโปร่ง");
+  ok(/text-shadow/.test(btn), "ตัวอักษรมีเงา — อ่านออกทั้งบนฟ้าสว่างและบนหินเข้ม");
+  ok(/border:1\.5px|border:2px/.test(btn), "ขอบหนาขึ้นให้เห็นรูปปุ่มชัด");
 }
