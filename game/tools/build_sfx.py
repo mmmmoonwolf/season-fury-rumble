@@ -21,6 +21,7 @@
 
 รัน (จากโฟลเดอร์ game):  python3 tools/build_sfx.py
 """
+import json
 import os
 import subprocess
 import wave
@@ -44,14 +45,31 @@ TARGET_RMS = 0.085            # ระดับเป้าหมายของ
 CEILING = 10 ** (-1.0 / 20)   # เพดานพีค -1 dBFS กันคลิป
 BITRATE = "64k"               # โมโน สั้น ๆ เท่านี้เหลือเฟือ
 
-# ชื่อไฟล์ดิบ -> ชื่อที่เกมเรียกใช้ ตั้งตรงนี้ที่เดียว
-# ไฟล์ดิบเก็บชื่อเดิมที่ ElevenLabs ตั้งมาไว้ จะได้ตามกลับไปหา prompt ที่ใช้เจนได้
+# สัญญาอนุญาตที่เจอในงานเสียงฟรี — ผูกไว้กับ "ต้องทำอะไร" ไม่ใช่แค่ชื่อ
+#
+# มีสองอย่างที่ต่างกันและมักถูกสลับกัน:
+#   credit     = ต้องมีข้อความนี้ในบรรทัดเครดิต ไม่งั้นผิดเงื่อนไข
+#   commercial = เอาไปหาเงินได้ไหม — การใส่เครดิต "ไม่ได้" ปลดข้อนี้
+# CC-BY ใส่เครดิตแล้วขายได้ · ElevenLabs แพ็กฟรีใส่เครดิตแล้วก็ยังขายไม่ได้
+LICENSES = {
+    "cc0":             {"credit": None,         "commercial": True},
+    "cc-by":           {"credit": "PER_FILE",   "commercial": True},
+    "elevenlabs-free": {"credit": "ElevenLabs", "commercial": False},
+}
+
+# ชื่อไฟล์ดิบ -> ปลายทาง + ที่มา
+#
+# ที่ต้องบันทึกสัญญาอนุญาตต่อไฟล์ เพราะพอผสมหลายแหล่งแล้วจะไม่มีทางรู้ย้อนหลังเลยว่า
+# ไฟล์ไหนมาจากไหน — แล้ววันที่ต้องตอบว่า "เกมนี้ขายได้ไหม" จะตอบไม่ได้ทั้งโฟลเดอร์
+# ไฟล์ดิบเก็บชื่อเดิมที่ต้นทางตั้งมา จะได้ตามกลับไปหา prompt หรือหน้าดาวน์โหลดได้
 MAP = {
     # ทั้งสองอันมาจาก prompt "หมัดเบา" ใน art_prompts_sfx.md
     # อันแรกบางและแหลม (พลังงาน 59% อยู่เหนือ 4 kHz) อันที่สองมีเนื้อกว่า (เบส 21%)
     # ต่างกันพอให้สลับกันแล้วหูไม่จับว่าซ้ำ ซึ่งคือเหตุผลทั้งหมดของการมีหลายเวอร์ชัน
-    "d9cbd7be-Isolated_Punch_Impact.mp3": "hit_light_1",
-    "dd04de09-Flesh_and_Leather_Impact.mp3": "hit_light_2",
+    "d9cbd7be-Isolated_Punch_Impact.mp3":
+        {"out": "hit_light_1", "lic": "elevenlabs-free"},
+    "dd04de09-Flesh_and_Leather_Impact.mp3":
+        {"out": "hit_light_2", "lic": "elevenlabs-free"},
 }
 
 # ไฟล์ที่เจนมาแล้วใช้ไม่ได้ เก็บชื่อไว้กันเจนซ้ำแล้วลืมว่าเคยเจนไปแล้ว
@@ -107,7 +125,10 @@ def main():
     os.makedirs(TMP, exist_ok=True)
     os.makedirs(OUT, exist_ok=True)
     built = []
-    for src, name in sorted(MAP.items(), key=lambda kv: kv[1]):
+    for src, info in sorted(MAP.items(), key=lambda kv: kv[1]["out"]):
+        name = info["out"]
+        if info["lic"] not in LICENSES:
+            raise SystemExit(f"{src}: ไม่รู้จักสัญญาอนุญาต {info['lic']!r}")
         path = os.path.join(SRC, src)
         raw = load_mono(path)
         peak = np.abs(raw).max()
@@ -134,8 +155,39 @@ def main():
               f"(ทิ้งหัว {head*1000:5.1f} ms ท้าย {tail:4.2f} วิ) "
               f"เกน x{gain:4.2f} พีค {20*np.log10(max(np.abs(cut).max(),1e-9)):+5.1f} dBFS · "
               + " · ".join(sizes))
-        built.append(name)
-    print(f"\nเสร็จ {len(built)} เสียง: {', '.join(built)}")
+        built.append((name, src, info))
+
+    # ── บันทึกที่มาไว้ข้างไฟล์เสียง ──
+    # เกมไม่ได้อ่านไฟล์นี้ แต่เทสต์อ่าน และคนที่เปิดโฟลเดอร์มาเจอก็อ่านออกทันที
+    # ว่าไฟล์ไหนมาจากไหนและติดเงื่อนไขอะไร ไม่ต้องไปขุดจากประวัติ git
+    manifest = {
+        "note": "ที่มาและสัญญาอนุญาตของไฟล์เสียงในโฟลเดอร์นี้ สร้างโดย tools/build_sfx.py",
+        "licenses": LICENSES,
+        "files": {n: {"source": src, **info} for n, src, info in built},
+    }
+    with open(os.path.join(OUT, "SOURCES.json"), "w", encoding="utf-8") as f:
+        json.dump(manifest, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+
+    print(f"\nเสร็จ {len(built)} เสียง: {', '.join(n for n, _, _ in built)}")
+
+    # ── สรุปสิทธิ์ ──
+    # ข้อสรุปของทั้งโฟลเดอร์เท่ากับข้อที่เข้มที่สุดเสมอ ไฟล์เดียวที่ห้ามเชิงพาณิชย์
+    # ทำให้ทั้งเกมใช้เชิงพาณิชย์ไม่ได้ ไม่ใช่แค่ฉากที่เล่นเสียงนั้น
+    used = {}
+    for n, _, info in built:
+        used.setdefault(info["lic"], []).append(n)
+    print("\nสัญญาอนุญาตที่ใช้อยู่:")
+    blockers = []
+    for lic, names in sorted(used.items()):
+        L = LICENSES[lic]
+        need = "ไม่ต้องให้เครดิต" if L["credit"] is None else f"ต้องเครดิต {L['credit']!r}"
+        comm = "ใช้เชิงพาณิชย์ได้" if L["commercial"] else "ห้ามใช้เชิงพาณิชย์"
+        print(f"  {lic:16s} {len(names)} ไฟล์ · {need} · {comm}")
+        if not L["commercial"]:
+            blockers.append(lic)
+    print("เกมนี้ตอนนี้: " + ("ใช้เชิงพาณิชย์ได้ทั้งหมด" if not blockers
+          else f"ใช้เชิงพาณิชย์ไม่ได้ ติดที่ {', '.join(blockers)}"))
 
 
 if __name__ == "__main__":

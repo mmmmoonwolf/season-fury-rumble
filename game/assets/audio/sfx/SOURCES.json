@@ -1,0 +1,29 @@
+{
+  "note": "ที่มาและสัญญาอนุญาตของไฟล์เสียงในโฟลเดอร์นี้ สร้างโดย tools/build_sfx.py",
+  "licenses": {
+    "cc0": {
+      "credit": null,
+      "commercial": true
+    },
+    "cc-by": {
+      "credit": "PER_FILE",
+      "commercial": true
+    },
+    "elevenlabs-free": {
+      "credit": "ElevenLabs",
+      "commercial": false
+    }
+  },
+  "files": {
+    "hit_light_1": {
+      "source": "d9cbd7be-Isolated_Punch_Impact.mp3",
+      "out": "hit_light_1",
+      "lic": "elevenlabs-free"
+    },
+    "hit_light_2": {
+      "source": "dd04de09-Flesh_and_Leather_Impact.mp3",
+      "out": "hit_light_2",
+      "lic": "elevenlabs-free"
+    }
+  }
+}

@@ -112,24 +112,61 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
   ok(/#credits a \{[^}]*pointer-events: auto/.test(html),
     "ลิงก์กดได้จริง แม้ทั้งบล็อกจะ pointer-events:none");
 
-  // ── เครดิต ElevenLabs — อันนี้ "บังคับ" ไม่ใช่มารยาท ──
+  // ── เครดิตที่ "บังคับ" ตามสัญญาอนุญาตของไฟล์เสียง ──
   //
-  // ไฟล์เสียงเอฟเฟคเจนจากแพ็กฟรี ซึ่งกำหนดให้อ้างอิง elevenlabs.io เมื่อเผยแพร่ต่อสาธารณะ
-  // ต่างจากเครดิตเพลงที่ช่องต้นทางไม่ได้บังคับรูปแบบไว้
+  // ไม่ได้เช็คลอย ๆ ว่ามีคำว่า ElevenLabs — อ่านจาก SOURCES.json ที่ build_sfx.py เขียนไว้
+  // แล้วบังคับตามสัญญาอนุญาตของไฟล์ที่อยู่ในโฟลเดอร์จริง ณ ตอนนั้น
   //
-  // ผูกเทสต์ไว้กับ "มีไฟล์เสียงอยู่จริงไหม" ไม่ใช่เช็คลอย ๆ
-  // เอาไฟล์ออกเมื่อไหร่เครดิตก็ไม่จำเป็นอีก แต่ตราบใดที่ไฟล์ยังอยู่ เครดิตห้ามหาย
+  // แบบนี้ยังถูกต้องอยู่ถ้าวันหลังเปลี่ยนไปใช้ไฟล์ CC0 (ไม่ต้องเครดิตแล้ว เทสต์ก็ไม่บังคับ)
+  // หรือผสม CC-BY เข้ามา (ต้องเครดิตรายไฟล์ เทสต์ก็จะเริ่มบังคับเอง)
   {
-    const hasSfx = fs.existsSync(new URL("../../assets/audio/sfx", import.meta.url))
-      && fs.readdirSync(new URL("../../assets/audio/sfx", import.meta.url)).length > 0;
+    const dir = new URL("../../assets/audio/sfx/", import.meta.url);
+    const manifestPath = new URL("SOURCES.json", dir);
+    const hasSfx = fs.existsSync(dir)
+      && fs.readdirSync(dir).some((f) => f.endsWith(".ogg"));
     if (hasSfx) {
-      ok(/ElevenLabs/.test(html), "มีเครดิต ElevenLabs (แพ็กฟรีบังคับให้ใส่)");
-      const l = html.match(/<a href="(https:\/\/elevenlabs\.io[^"]*)"[^>]*>/);
-      ok(l, "เครดิต ElevenLabs มีลิงก์ไป elevenlabs.io");
-      ok(l && /rel="noopener noreferrer"/.test(l[0]), "ลิงก์ ElevenLabs มี noopener");
+      ok(fs.existsSync(manifestPath), "มีบันทึกที่มาของไฟล์เสียง (SOURCES.json)");
+      const man = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+
+      // ทุกไฟล์ที่ส่งขึ้นเกมต้องรู้ที่มา ไม่งั้นวันที่ต้องตอบว่า "เกมนี้ขายได้ไหม"
+      // จะตอบไม่ได้ทั้งโฟลเดอร์
+      const shipped = fs.readdirSync(dir).filter((f) => f.endsWith(".ogg"))
+        .map((f) => f.replace(/\.ogg$/, ""));
+      for (const n of shipped)
+        ok(man.files[n] != null, `${n} มีบันทึกที่มาและสัญญาอนุญาต`);
+
+      // สัญญาอนุญาตไหนบังคับให้เครดิต ต้องมีข้อความนั้น "ในบล็อกเครดิตที่คนเห็น"
+      //
+      // ต้องตัดคอมเมนต์ออกก่อนเทียบ ไม่งั้นคอมเมนต์ที่อธิบายว่าทำไมต้องเครดิต
+      // ก็นับเป็นการให้เครดิตไปด้วย ซึ่งคนเล่นไม่เห็นสักตัว (เทสต์นี้เคยพลาดตรงนี้มาแล้ว)
+      const visible = (html.match(/<div id="credits">[\s\S]*?<\/div>/)?.[0] ?? "")
+        .replace(/<!--[\s\S]*?-->/g, "");
+      const need = new Set();
+      for (const n of shipped) {
+        const lic = man.licenses[man.files[n]?.lic];
+        if (lic?.credit && lic.credit !== "PER_FILE") need.add(lic.credit);
+        if (lic?.credit === "PER_FILE" && man.files[n].credit) need.add(man.files[n].credit);
+      }
+      for (const c of need)
+        ok(visible.includes(c),
+          `เครดิต ${JSON.stringify(c)} อยู่ในบล็อกเครดิตที่คนเห็น (สัญญาอนุญาตบังคับ)`);
+      if (need.size === 0)
+        ok(true, "ไฟล์เสียงทั้งหมดไม่บังคับเครดิต (เช่น CC0)");
+
+      // ลิงก์ออกนอกเว็บในบรรทัดเครดิตต้องมี noopener ครบทุกอัน ไม่ใช่แค่อันแรก
+      const links = [...visible.matchAll(/<a\s[^>]*>/g)].map((m) => m[0]);
+      ok(links.length > 0 && links.every((a) => /rel="noopener noreferrer"/.test(a)),
+        `ลิงก์ในเครดิตมี noopener ครบทุกอัน (${links.length} ลิงก์)`);
+
+      // บอกไว้ให้เห็นในผลเทสต์ว่าตอนนี้เกมใช้เชิงพาณิชย์ได้หรือยัง
+      const blocked = shipped.filter((n) => man.licenses[man.files[n]?.lic]?.commercial === false);
+      console.log(blocked.length
+        ? `NOTE ใช้เชิงพาณิชย์ไม่ได้ ติดที่ ${blocked.length} ไฟล์ (${blocked.join(", ")})`
+        : "NOTE ไฟล์เสียงทั้งหมดใช้เชิงพาณิชย์ได้");
     }
   }
 }
+
 
 
 // ══ เสียงเอฟเฟค ══════════════════════════════════════════════════════════════
