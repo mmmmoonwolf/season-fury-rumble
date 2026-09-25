@@ -296,6 +296,28 @@ const HIT_FX = { tint: 0xffe08a, spark: 0xffd166 };
 const BGM = { key: 'bgmStage', files: ['assets/audio/stage.ogg', 'assets/audio/stage.m4a'],
   vol: 0.32, fadeIn: 1200, store: 'sfr.muted' };
 
+/** เสียงเอฟเฟค — ตรงข้ามกับเพลงทุกข้อ
+ *
+ *  เพลงโหลดทีหลังเพราะ 2.2 MB · ของพวกนี้รวมกันไม่ถึง 10 KB โหลดใน `preload()` ไปเลย
+ *  ถ้าโหลดทีหลังเหมือนเพลง หมัดสิบวินาทีแรกของเกมจะเงียบ ซึ่งคือช่วงที่คนตัดสินว่าเกมรู้สึกดีไหม
+ *
+ *  `jitter` คือหัวใจ — สุ่มเสียงสูงต่ำ ±90 เซนต์ทุกครั้งที่เล่น
+ *  หูจับความซ้ำจากระดับเสียงก่อนจับจากตัวเสียงเสมอ ไฟล์ 2 อันจึงฟังเหมือนมีสิบกว่าอัน
+ *  ของฟรีล้วน ๆ ไม่ต้องเจนไฟล์เพิ่มสักไฟล์
+ */
+const SFX = {
+  dir: 'assets/audio/sfx/',
+  vol: 0.5,          // เพดานรวม ปรับที่นี่ที่เดียวถ้าเสียงเอฟเฟคดังกลบเพลง
+  jitter: 90,        // เซนต์ (100 เซนต์ = ครึ่งเสียง) สุ่ม ± ค่านี้ทุกครั้งที่เล่น
+  gap: 30,           // มิลลิวินาที — กันเสียงเดียวกันซ้อนกันเองจนเกิดเสียงหวีดแบบ comb filter
+  bank: {
+    hitLight: { files: ['hit_light_1', 'hit_light_2'] },
+    // ยังไม่มีไฟล์หมัดหนักของตัวเอง ยืมหมัดเบามาถ่วงต่ำลงสองเสียงกว่า ๆ แล้วดังขึ้นแทนไปก่อน
+    // ไม่ใช่ของถาวร แต่ดีกว่าปล่อยให้ท่าหนักเงียบทั้งที่ท่าเบามีเสียง ซึ่งฟังเหมือนบั๊ก
+    hitHeavy: { files: ['hit_light_1', 'hit_light_2'], vol: 1.25, detune: -260 },
+  },
+};
+
 const PARALLAX = {
   sky:  { x: 0.030, y: 0.025, pad: 1.22 },   // ไกลสุด ขยับน้อยสุด
   far:  { x: 0.100, y: 0.075, pad: 1.00 },   // เกาะบ้านลอย (ภาพโปร่งเกือบทั้งใบ ไม่ต้องเผื่อขอบ)
@@ -584,6 +606,10 @@ class ScrambleScene extends Phaser.Scene {
       if (art.artPending) continue;   // ยังไม่มีไฟล์ให้โหลด วาดเป็นกล่องไปก่อน
       this.load.atlas(art.atlasKey, art.texture, art.data);
     }
+    for (const b of Object.values(SFX.bank))
+      for (const f of b.files)
+        if (!this.cache.audio.exists('sfx_' + f))
+          this.load.audio('sfx_' + f, [SFX.dir + f + '.ogg', SFX.dir + f + '.m4a']);
     this.load.image('stageSky', STAGE_ART.sky);
     this.load.image('stageFar', STAGE_ART.far);
     this.load.image('stageNear', STAGE_ART.near);
@@ -661,6 +687,30 @@ class ScrambleScene extends Phaser.Scene {
     else this.music.play();
     this.tweens.add({ targets: this.music, volume: BGM.vol, duration: BGM.fadeIn });
     this.events.once('shutdown', () => { this.music?.stop(); this.music?.destroy(); this.music = null; });
+  }
+
+  /** เล่นเสียงเอฟเฟคหนึ่งครั้ง — สุ่มไฟล์ สุ่มเสียงสูงต่ำ
+   *
+   *  เรียกจากฝั่งวาดเท่านั้น ห้ามเรียกจาก `core.js` เด็ดขาด — ซิมต้องไม่รู้จักเสียง
+   *  เหมือนที่มันไม่รู้จักภาพ ไม่งั้นเล่นข้ามเครื่องแล้วสองฝั่งเดินไม่ตรงกัน
+   *
+   *  `gap` กันสองเสียงเดียวกันที่ห่างกันไม่ถึงเฟรม (เช่นระเบิดโดนทั้งสองคนพร้อมกัน)
+   *  ไฟล์เดียวกันเล่นซ้อนห่างกันไม่กี่มิลลิวินาทีจะหักล้างกันเป็นเสียงหวีด ไม่ใช่ดังขึ้น
+   */
+  _sfx(name, opts) {
+    if (this.muted) return;
+    const b = SFX.bank[name];
+    if (!b) return;
+    const now = this.time.now;
+    this._sfxAt = this._sfxAt || {};
+    if (now - (this._sfxAt[name] || -1e9) < SFX.gap) return;
+    const key = 'sfx_' + b.files[(Math.random() * b.files.length) | 0];
+    if (!this.cache.audio.exists(key)) return;   // ยังไม่มีไฟล์ = เงียบ ไม่ใช่พัง
+    this._sfxAt[name] = now;
+    this.sound.play(key, {
+      volume: SFX.vol * (b.vol ?? 1) * (opts?.vol ?? 1),
+      detune: (b.detune ?? 0) + (Math.random() * 2 - 1) * SFX.jitter,
+    });
   }
 
   /** ปิด/เปิดเสียง — จำไว้ข้ามรอบเล่นด้วย localStorage
@@ -1039,6 +1089,8 @@ class ScrambleScene extends Phaser.Scene {
         // ท่าที่จับลอยได้ hitstop เพิ่มอยู่แล้ว แรงสั่นเลยตามไปเองโดยไม่ต้องมีเงื่อนไขแยก
         const hs = e.hs ?? 5;
         if (hs >= 6) this.cameras.main.shake(40 + hs * 9, 0.0006 * hs);
+        // แบ่งเบา/หนักด้วย hitstop ตัวเดียวกับที่ใช้สั่นจอ ภาพกับเสียงจึงไล่ระดับพร้อมกันเสมอ
+        this._sfx(hs >= 9 ? 'hitHeavy' : 'hitLight');
         // ทิศที่ประกายกระเด็นคือทิศที่แรงส่งไป = จากคนตีไปหาคนโดน
         this.hitBurst(e.x, e.y, hs, this.sim.p1.x <= this.sim.p2.x ? 1 : -1);
       }

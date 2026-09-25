@@ -23,7 +23,12 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
 // เพื่ออะไรที่ไม่ใช่การเล่น — วัดจริงได้ว่าเข้าฉากได้ก่อนเพลงมาถึง 3.2 วินาที
 {
   const pre = scene.match(/  preload\(\) \{([\s\S]*?)\n  \}/)?.[1] ?? "";
-  ok(!/load\.audio/.test(pre), "preload() ไม่มีการโหลดเสียง");
+  // ห้ามโหลด "เพลง" ใน preload() — ไม่ใช่ห้ามโหลดเสียงทุกชนิด
+  // เสียงเอฟเฟครวมกันไม่ถึง 10 KB โหลดตรงนี้ได้ (และต้องโหลด ไม่งั้นหมัดแรก ๆ เงียบ)
+  ok(!/load\.audio\([^)]*BGM/.test(pre) && !/stage\.(ogg|m4a)/.test(pre),
+    "preload() ไม่โหลดเพลง (2.2 MB)");
+  for (const m of pre.matchAll(/load\.audio\(\s*([^,]+),/g))
+    ok(/sfx_/.test(m[1]), `เสียงที่โหลดใน preload() เป็นเสียงเอฟเฟคเท่านั้น (${m[1].trim()})`);
   ok(/new Phaser\.Loader\.LoaderPlugin\(this\)/.test(scene), "ใช้ตัวโหลดแยกที่สั่งเริ่มเอง");
   ok(/ld\.once\('complete', \(\) => this\._playMusic\(\)\)/.test(scene), "โหลดเสร็จแล้วค่อยเริ่มเล่น");
 }
@@ -33,7 +38,8 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
   ok(/if \(this\.sound\.locked\) this\.sound\.once\('unlocked'/.test(scene),
     "ถ้าเบราว์เซอร์ยังล็อกเสียงอยู่ ให้รอปลดล็อกก่อนค่อยเล่น");
   ok(/loop: true/.test(scene), "เพลงวนซ้ำ");
-  const vol = +(scene.match(/vol: ([\d.]+)/)?.[1] ?? 1);
+  const bgmBlock = scene.match(/const BGM = \{[\s\S]*?\};/)?.[0] ?? "";
+  const vol = +(bgmBlock.match(/vol: ([\d.]+)/)?.[1] ?? 1);
   ok(vol > 0 && vol < 0.5, `ดังไม่เกินครึ่ง (${vol}) — เพลงที่กลบเสียงหมัดคือเพลงที่ตั้งดังเกินไป`);
 }
 
@@ -105,4 +111,95 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
     "ลิงก์ออกนอกเว็บต้องมี noopener — ไม่ให้หน้าปลายทางจับ window.opener ของเกมได้");
   ok(/#credits a \{[^}]*pointer-events: auto/.test(html),
     "ลิงก์กดได้จริง แม้ทั้งบล็อกจะ pointer-events:none");
+}
+
+
+// ══ เสียงเอฟเฟค ══════════════════════════════════════════════════════════════
+//
+// ตรงข้ามกับเพลงทุกข้อ: เล็กมาก โหลดใน preload() เล่นครั้งเดียวจบ ไม่วน
+// และต้องตัดสั้น — ไฟล์ดิบจาก ElevenLabs ยาว 5-7 วินาที แต่ตัวเสียงจริงยาวไม่ถึงหนึ่งในสิบนั้น
+{
+  const sfxBlock = scene.match(/const SFX = \{[\s\S]*?\n\};/)?.[0] ?? "";
+  ok(sfxBlock.length > 0, "มีบล็อกตั้งค่าเสียงเอฟเฟค");
+
+  const banks = [...sfxBlock.matchAll(/(\w+): \{ files: \[([^\]]*)\]([^}]*)\}/g)];
+  ok(banks.length > 0, `มีชุดเสียงอย่างน้อยหนึ่งชุด (${banks.length})`);
+
+  const names = new Set();
+  for (const [, bank, list] of banks)
+    for (const m of list.matchAll(/'([^']+)'/g)) names.add(m[1]);
+
+  // ── ทั้งสองฟอร์แมตต้องมีครบทุกไฟล์ ──
+  // เหตุผลเดียวกับเพลง: Safari เก่าไม่เล่น ogg · Firefox เก่าไม่เล่น m4a
+  // ขาดอันใดอันหนึ่ง = มีคนกลุ่มหนึ่งเล่นแล้วหมัดเงียบสนิท ซึ่งแยกไม่ออกจากเกมพัง
+  for (const n of names) {
+    const ogg = stat(`../../assets/audio/sfx/${n}.ogg`);
+    const m4a = stat(`../../assets/audio/sfx/${n}.m4a`);
+    ok(ogg > 500 && m4a > 500, `${n} มีครบสองฟอร์แมต (ogg ${ogg}B · m4a ${m4a}B)`);
+  }
+
+  // ── ต้องถูกตัดสั้นจริง ──
+  //
+  // อ่านความยาวจาก granule position ของหน้าสุดท้ายในไฟล์ ogg ซึ่งนับเป็นจำนวนตัวอย่าง
+  // เทสต์นี้จับกรณีที่ลืมรันสคริปต์ตัด แล้วเอาไฟล์ดิบ 6 วินาทีใส่เกมไปตรง ๆ
+  // ซึ่งดูจากขนาดไฟล์อย่างเดียวไม่แน่ เพราะความเงียบบีบแล้วเล็กมาก
+  const oggSeconds = (p) => {
+    let b;
+    try { b = fs.readFileSync(new URL(p, import.meta.url)); } catch { return -1; }
+    const last = b.lastIndexOf("OggS");
+    if (last < 0) return -1;
+    return Number(b.readBigUInt64LE(last + 6)) / 44100;
+  };
+  for (const n of names) {
+    const d = oggSeconds(`../../assets/audio/sfx/${n}.ogg`);
+    ok(d > 0.01 && d < 0.4,
+      `${n} ยาว ${(d * 1000).toFixed(0)} ms — อยู่ในช่วงที่เล่นรัวได้ (ต่ำกว่า 400 ms)`);
+  }
+
+  // ── โหลดใน preload() ──
+  // ของเล็กขนาดนี้ถ้าโหลดทีหลังเหมือนเพลง หมัดสิบวินาทีแรกของเกมจะเงียบ
+  // ซึ่งคือช่วงที่คนตัดสินว่าเกมรู้สึกดีไหมพอดี
+  {
+    const pre = scene.match(/  preload\(\) \{([\s\S]*?)\n  \}/)?.[1] ?? "";
+    ok(/SFX\.dir/.test(pre), "เสียงเอฟเฟคโหลดใน preload()");
+  }
+
+  // ── สุ่มเสียงสูงต่ำทุกครั้งที่เล่น ──
+  // หูจับความซ้ำจากระดับเสียงก่อนจับจากตัวเสียง ไฟล์ 2 อันจึงฟังเหมือนมีสิบกว่าอัน
+  ok(/jitter: \d+/.test(sfxBlock), "ตั้งค่าการสุ่มเสียงสูงต่ำไว้");
+  ok(/detune: \(b\.detune \?\? 0\) \+ \(Math\.random\(\) \* 2 - 1\) \* SFX\.jitter/.test(scene),
+    "สุ่มเสียงสูงต่ำจริงตอนเล่น ไม่ใช่ตั้งค่าไว้เฉย ๆ");
+
+  // ── กันเสียงเดียวกันซ้อนกันเอง ──
+  // ระเบิดโดนทั้งสองคนพร้อมกัน = เล่นไฟล์เดียวกันห่างกันไม่ถึงเฟรม
+  // ไฟล์เดียวกันซ้อนห่างไม่กี่มิลลิวินาทีจะหักล้างกันเป็นเสียงหวีด ไม่ใช่ดังขึ้น
+  ok(/gap: \d+/.test(sfxBlock), "ตั้งระยะห่างขั้นต่ำระหว่างเสียงเดียวกันไว้");
+  ok(/now - \(this\._sfxAt\[name\] \|\| -1e9\) < SFX\.gap/.test(scene), "เช็คระยะห่างจริงตอนเล่น");
+
+  // ── ปิดเสียงแล้วต้องเงียบทั้งหมด ไม่ใช่เงียบแค่เพลง ──
+  ok(/_sfx\(name, opts\) \{\s*\n\s*if \(this\.muted\) return;/.test(scene),
+    "ปิดเสียงแล้วเสียงเอฟเฟคเงียบด้วย");
+
+  // ── ระดับเสียงรวมต้องไม่เกิน 1 ──
+  const base = +(sfxBlock.match(/vol: ([\d.]+),\s*\/\//)?.[1] ?? 1);
+  let worst = base;
+  for (const [, , , extra] of banks) {
+    const v = +(extra.match(/vol: ([\d.]+)/)?.[1] ?? 1);
+    worst = Math.max(worst, base * v);
+  }
+  ok(worst <= 1, `ดังรวมกันไม่เกินเพดาน (สูงสุด ${worst.toFixed(2)})`);
+  ok(base < 1, `เสียงเอฟเฟคมีเพดานรวม (${base}) ปรับที่เดียวได้`);
+
+  // ── ซิมต้องไม่รู้จักเสียง ──
+  //
+  // กฎเดียวกับที่ใช้กับภาพมาตลอดโปรเจกต์ `core.js` ห้ามมี Phaser ห้ามอ่านนาฬิกาจริง
+  // ห้ามสุ่ม — เสียงเอฟเฟคสุ่มไฟล์และสุ่มระดับเสียง ถ้าหลุดเข้าไปในซิมเมื่อไหร่
+  // เล่นข้ามเครื่องจะเดินไม่ตรงกันทันที
+  const core = read("../../src/modes/scramble/core.js");
+  ok(!/_sfx|this\.sound|SFX\./.test(core), "core.js ไม่รู้จักเสียงเลย");
+
+  // ── ต่อเข้ากับอีเวนต์ตีจริง ──
+  // แบ่งเบา/หนักด้วย hitstop ตัวเดียวกับที่ใช้สั่นจอ ภาพกับเสียงจึงไล่ระดับพร้อมกัน
+  ok(/this\._sfx\(hs >= \d+ \? 'hitHeavy' : 'hitLight'\)/.test(scene),
+    "อีเวนต์ตีเล่นเสียง และแบ่งหนักเบาด้วยค่าเดียวกับที่ใช้สั่นจอ");
 }

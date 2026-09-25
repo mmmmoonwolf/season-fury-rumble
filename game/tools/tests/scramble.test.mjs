@@ -999,7 +999,10 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   // ฝั่งฉากก็ต้องมีทะเบียนอาร์ตต่อตัวเหมือนกัน และคีย์ต้องตรงกับฝั่ง sim
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
   ok(/const CHAR_ART = \{/.test(scene), "ฉากมีทะเบียนอาร์ตต่อตัวละคร");
-  const artIds = [...scene.matchAll(/^  (\w+):\s*\{\s*$/gm)].map((m) => m[1]);
+  // ต้องอ่านเฉพาะในบล็อก CHAR_ART ไม่ใช่ทั้งไฟล์ — ฉากมีตารางอื่นที่ย่อหน้าเท่ากัน
+  // (เช่นชุดเสียงเอฟเฟค) แล้วคีย์ของตารางพวกนั้นจะถูกนับเป็นชื่อตัวละครไปด้วย
+  const artBlock = scene.match(/const CHAR_ART = \{[\s\S]*?\n\};/)?.[0] ?? "";
+  const artIds = [...artBlock.matchAll(/^  (\w+):\s*\{\s*$/gm)].map((m) => m[1]);
   for (const id of artIds) {
     ok(CHARACTERS[id] != null, `ตัวละคร '${id}' ในทะเบียนอาร์ต มีระเบียนฝั่ง sim ด้วย`);
   }
