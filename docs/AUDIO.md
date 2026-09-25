@@ -3,8 +3,15 @@
 `art_reference/audio/bgm_source.mp4` → `tools/build_bgm.py` → `assets/audio/stage.{ogg,m4a}`
 
 **ที่มา:** Vibe Mountain — "Operatic 3" (8-bit / no copyright)
-ถ้าช่องต้นทางขอให้ให้เครดิต ต้องใส่เครดิตด้วย — เกมนี้เผยแพร่สาธารณะบน GitHub Pages
-ไม่ใช่ใช้ส่วนตัว เงื่อนไขจึงต่างกัน
+คลิป `Vibe Mountain - Operatic 3 ♫ NO COPYRIGHT 8-bit Music`
+ช่อง **Free Music** (<https://www.youtube.com/@freemusicc>) เผยแพร่ 28 พ.ย. 2019
+คำอธิบายใต้คลิประบุว่า *Free to use 8-bit music for you* และขอให้ติดตามช่อง
+แต่**ไม่ได้กำหนดถ้อยคำเครดิตตายตัว**
+
+ถึงไม่ได้บังคับรูปแบบ ก็ยังต้องใส่เครดิตจริง — เกมนี้เผยแพร่สาธารณะบน GitHub Pages
+ไม่ใช่ใช้ส่วนตัว เงื่อนไขจึงต่างกัน เครดิตอยู่ที่ `index.html` บล็อก `#credits`
+บรรทัดเดียว ให้ครบทั้งชื่อเพลง ชื่อศิลปิน และลิงก์กลับช่อง
+`audio.test.mjs` ล็อกไว้ว่าทั้งสามอย่างต้องไม่หายไป
 
 ## สองเรื่องที่ต้องทำกับไฟล์ ไม่งั้นวนแล้วฟังออกว่าวน
 

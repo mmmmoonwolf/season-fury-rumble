@@ -95,4 +95,14 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
     "ซ่อนตอนเริ่มเกม — ไม่ค้างทับปุ่มควบคุมมือถือ");
   ok(/#credits \{[^}]*pointer-events: none/.test(html),
     "ไม่ขวางการกดปุ่ม แม้ตอนยังแสดงอยู่บนจอเตี้ย");
+
+  // ช่องต้นทางคือ Free Music (@freemusicc) — ให้เครดิตถึงช่อง ไม่ใช่แค่ชื่อศิลปิน
+  // เพราะคนที่เห็นเกมแล้วอยากได้เพลง ต้องตามกลับไปหาต้นทางได้จริง
+  ok(/Free Music/.test(html), "ระบุชื่อช่องต้นทาง");
+  const link = html.match(/<a href="(https:\/\/www\.youtube\.com\/@freemusicc)"[^>]*>/);
+  ok(link, "มีลิงก์กลับไปช่องต้นทาง");
+  ok(link && /rel="noopener noreferrer"/.test(link[0]),
+    "ลิงก์ออกนอกเว็บต้องมี noopener — ไม่ให้หน้าปลายทางจับ window.opener ของเกมได้");
+  ok(/#credits a \{[^}]*pointer-events: auto/.test(html),
+    "ลิงก์กดได้จริง แม้ทั้งบล็อกจะ pointer-events:none");
 }
