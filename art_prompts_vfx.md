@@ -38,28 +38,58 @@ the black, clean silhouettes readable at small size. Pure black background
 (#000000) everywhere except the shapes themselves.
 ```
 
-## ถ้าอยากได้เพิ่มอีกใบ (ไม่จำเป็น แต่คุ้ม)
+## ใบที่สอง — รอยฟาด (1 ใบ · 8 ช่อง · 4x2)
+
+เจนพร้อมกับใบแรกได้เลย **ใช้กฎเดียวกันทุกข้อ** (ขาวดำ พื้นดำสนิท ช่องละรูปเดียว)
+
+ทำไมต้องมีแยก: crescent ในใบแรกเป็นอนุภาคเล็ก ๆ ไว้โปรย
+ส่วนใบนี้เป็น **รอยฟาดเต็มท่า** ที่ลากตามแนวอาวุธจริง — แส้ของ Alecto ยาวกว่าจอครึ่งหนึ่ง
+ใช้อนุภาคเล็กแทนไม่ได้
+
+> ⚠️ **ทุกรอยต้องหันทางเดียวกันหมด (ฟาดจากซ้ายไปขวา)**
+> เกมพลิกภาพเอาเองตามทิศที่ตัวละครหัน ถ้าเจนมาหันคนละทาง ต้องมาแก้ทีละช่อง
+> และพอพลิกแล้วมันจะฟาดผิดทางครึ่งหนึ่งของท่าทั้งหมด
 
 ```
 A 4x2 sprite sheet of 8 stylized weapon slash arcs, drawn in soft white and
-grey on a PURE BLACK background. Each cell contains one isolated arc, centred,
-with empty black space around it. No frames, no borders, no labels, no text.
+grey on a PURE BLACK background. Each cell contains exactly one isolated arc,
+centred, with empty black space around it. No frames, no borders, no grid
+lines, no labels, no text, no numbers.
 
 Every shape must be WHITE or GREY ONLY — absolutely no colour anywhere.
+Draw ONLY the arc itself — no weapon, no hand, no character, no sparks.
+Arcs are brightest along their leading edge and fade softly to black behind,
+so they read as motion.
 
-Cell 1 — a wide sweeping crescent arc, thick in the middle, tapering to sharp
+EVERY arc must sweep in the SAME direction: left to right, as if swung by a
+character facing right. Do not mirror or rotate any of them.
+
+Cell 1 — a wide sweeping crescent, thick in the middle, tapering to sharp
 points at both ends.
-Cell 2 — the same crescent but thinner and faster-looking.
-Cell 3 — a near-full circular swirl arc, like a spinning attack.
+Cell 2 — the same crescent but much thinner and sharper, a fast light slash.
+Cell 3 — a near-full circular swirl, like a spinning attack.
 Cell 4 — a short straight thrust streak with a bright leading tip.
-Cell 5 — a long whip-like curved lash, thin and snaking.
-Cell 6 — a downward chopping arc, heavy at the top.
-Cell 7 — an upward rising arc, heavy at the bottom.
-Cell 8 — a double crossed slash, two arcs forming an X.
+Cell 5 — a long whip-like lash, thin and snaking, stretching far to the right.
+Cell 6 — a heavy downward chopping arc, thick at the top, sweeping down.
+Cell 7 — a rising uppercut arc, thick at the bottom, sweeping up.
+Cell 8 — two crossed slashes forming an X.
 
 Hand-painted 2D game VFX style, soft airbrushed edges, clean silhouettes
 readable at small size. Pure black background (#000000).
 ```
+
+### แต่ละช่องจะไปอยู่ท่าไหน
+
+| ช่อง | ใช้กับ |
+|---|---|
+| 1 กว้างหนา | ฟันดาบของ Atlas · เหวี่ยงกีตาร์ของ Orpheus |
+| 2 บางเร็ว | จิ้มเบาของทุกตัว · ตบของ Momus |
+| 3 หมุนรอบตัว | ท่ากลางอากาศ (nair) |
+| 4 แทงตรง | ท่าแทงของ Nyx · ท่าพุ่งเข้าของทุกตัว |
+| 5 แส้ยาว | แส้ทุกท่าของ Alecto (ยาวสุดในเกม) |
+| 6 ฟันลง | ท่าลงจากอากาศ (dair) · Skyfall ของ Atlas |
+| 7 เสยขึ้น | ท่าขึ้น (up) ของทุกตัว |
+| 8 ไขว้ | ไม้จบคอมโบ |
 
 ## สิ่งที่ **ไม่ต้อง** เจน เพราะเกมวาดเองอยู่แล้ว
 
