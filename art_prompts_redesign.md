@@ -1,11 +1,97 @@
 # Alecto / Momus — เจนใหม่ (รอบออกแบบใหม่)
 
-> **ด่านกั้น: เจนแค่ "ขั้น 0 ท่ายืน" ก่อน แล้วส่งมาให้ดู**
-> อย่าเพิ่งเจนชีตท่าใด ๆ ทั้งสิ้น เพราะถ้าสัดส่วนหรือดีไซน์ไม่ผ่าน
-> ชีตทั้งหมดที่เจนไปจะต้องทิ้งทั้งใบ รอบที่แล้วเสียไปแบบนั้นหลายใบ
+> ## ผลรอบที่ 1
 >
-> ผ่านแล้วผมจะเขียนชีต A-H ให้ โดยเอา **style anchor** อันใหม่ไปแทนของเดิม
-> โครงชีตเดิมใช้ต่อได้ทั้งหมด (อยู่ใน `art_prompts_momus_READY.md` / `art_prompts_alecto.md`)
+> **✅ ALECTO ผ่าน** — `art_reference/alecto_idle_APPROVED_v2.jpg`
+> ได้ครบทั้งสี่ข้อที่ขอ และวางบนฉากจริงแล้ว**อ่านออกดีที่สุดในโรสเตอร์**
+> เสื้อกั๊กเกือบดำยึดตัว เชิ้ตครีมสว่างตัดกัน ผ้าพันคอเทอร์ควอยซ์เป็นประกายเดียวที่ตา
+> จับได้ทันที ปลายกระบอกไรเฟิลพ้นไหล่อ่านออก เปียอ่านออก หน้าเห็นชัดไม่โดนปีกหมวกบัง
+>
+> **⚠️ MOMUS — แนวคิดผ่าน แต่ค่าสีต้องแก้ก่อนเจนชีต** — `art_reference/momus_v2_draft1.jpg`
+> ดูหัวข้อ "รอบที่ 2" ข้างล่าง
+
+---
+
+## วิธีตรวจที่ใช้ และทำไมถึงเชื่อได้
+
+**ไม่ได้ดูจากภาพเต็มใบ** ภาพเต็มใบหลอกเสมอ เพราะทุกตัวดูดีหมดตอนใหญ่ ๆ บนพื้นขาว
+
+1. **เรียงทั้งโรสเตอร์ให้สูงเท่ากัน** ตัดพื้นขาวออก แล้วย่อให้สูง 520 px เท่ากันทุกตัว
+   ดูว่าหัวใหญ่เท่ากันไหม ตัวไหนหลุดกลุ่ม
+2. **วางบนฉากจริง ที่ขนาดจริงในเกม** เฟรมในเกมคือ **152×240 px** — ย่อลงเท่านั้นแล้ว
+   วางบนฟ้ากับพื้นหินของ Valhalla จริง ๆ (`art_reference/redesign_onstage_test.png`)
+
+ข้อ 2 คือข้อที่เปลี่ยนคำตัดสิน ถ้าดูแต่ภาพใหญ่ Momus ใหม่ผ่านสบาย ๆ
+พอย่อลงมาวางบนฉากจริงถึงเห็นว่ามันจมหาย
+
+**ความกว้างที่ความสูงเท่ากัน** (วัดได้จริง) — ตัวเลขนี้บอกว่าเงาแน่นแค่ไหน:
+
+| ตัว | กว้าง |
+|---|---|
+| Atlas | 824 |
+| Orpheus | 460 |
+| Alecto เก่า | 428 |
+| **Alecto ใหม่** | **346** |
+| Helios | 295 |
+| Momus เก่า | 295 |
+| **Momus ใหม่** | **276 ← แคบที่สุดในโรสเตอร์** |
+
+---
+
+# MOMUS รอบที่ 2 — แนวคิดเก็บไว้ทั้งหมด แก้แค่ค่าสีกับท่ายืน
+
+**สิ่งที่ได้มาแล้วและห้ามเปลี่ยน:** หน้ากากตลกเลื่อนไปข้างเผยหน้าจริงที่ยิ้มอยู่ข้างใต้
+(อันนี้**ดีกว่าที่ผมสั่งไว้** — ผมขอให้ครอบครึ่งบนของหน้า แต่แบบที่ได้มาเล่าได้มากกว่า
+คือเห็นทั้งมุกและคนเล่นมุกพร้อมกัน) · หน้ากากโศกห้อยสะโพก · พวงหรีดลอเรล ·
+ผมส้มแนบกะโหลก (แก้ปัญหาไม้บรรทัดได้แล้วจริง) · ชุดคลุมขาดวิ่นไหล่เปลือย · สายรัดแข้งไขว้
+
+**ปัญหาเดียวคือเขาจางเกินไป** ตอนนี้ทั้งตัวมีแต่ครีม เทาอ่อน และสีผิว
+ฟ้าของฉากก็อ่อน หินก็อ่อน พื้นดินก็สีแทน — **ท่อนล่างของเขากลืนกับพื้นสนิท**
+ของเก่ายังอ่านออกกว่า เพราะมีรองเท้าบูตสีเข้มยึดไว้กับปอมปอมแดงเป็นจุดสี
+
+## ห้าจุดที่ต้องแก้
+
+| แก้อะไร | เพราะอะไร |
+|---|---|
+| **รองเท้ารัดส้นหนังสีเข้ม** แทนรองเท้าแตะสีแทน | ท่อนล่างต้องมีของเข้มยึด ไม่งั้นขาหายไปกับพื้นดิน — ของเก่าใช้บูตเทาเข้มแล้วได้ผล |
+| **ผ้าคลุมเป็นสีน้ำตาลเทาเข้ม** ไม่ใช่เทาอ่อน | ตอนนี้ผ้าคลุมค่าสีเท่ากับ**ท้องฟ้า** ยืนบนฉากแล้วหายไปครึ่งตัว |
+| **เพิ่มสีแดงเข้มให้มากขึ้น** เชือกคาดเอวหนาขึ้น + ขลิบแดงที่ชายผ้าคลุม | เขาต้องมีสีอิ่มอย่างน้อยหนึ่งจุดที่ตาจับได้ แบบที่ผ้าพันคอเทอร์ควอยซ์ทำให้ Alecto |
+| **ชุดคลุมเป็นสีกระดูก/ข้าวโอ๊ต ไม่ใช่ขาว** | **หน้ากากต้องเป็นของที่ขาวที่สุดบนตัวเขา** ตอนนี้ชุดแย่งความสว่างกับหน้ากาก ซึ่งเป็นของชิ้นที่สำคัญที่สุด |
+| **ยืนขาถ่างกว้างขึ้นมาก** ลงน้ำหนักทั้งสองขา | เงาเขาเป็นแท่งแคบที่สุดในโรสเตอร์ (276 เทียบ Alecto 346) เกมต่อสู้ต้องอ่านออกว่า "ตั้งการ์ดอยู่" |
+
+## prompt รอบที่ 2
+
+```
+Redraw this exact character with the same design, the same face, the same
+mask arrangement and the same proportions — change only the colours, the
+footwear and the stance:
+(1) replace the pale sandals with dark brown leather strapped boots that
+    cover the ankle, keeping the crossed straps up the shins,
+(2) make the draped cloak a deep greyish brown, much darker than the tunic,
+(3) make the rope belt thicker and a stronger dark red, and add a dark red
+    border along the ragged edge of the cloak,
+(4) make the tunic a dull bone / oatmeal colour rather than white, so that
+    the white comedy mask stays the brightest single thing on the character,
+(5) widen his stance — feet planted well apart, weight on both legs, knees
+    slightly bent, like a fighter holding ready, so his silhouette is broad
+    rather than a narrow column.
+
+Keep everything else identical: the ivory comedy mask pushed to one side
+revealing his own grinning face beneath it, the laurel wreath worn askew, the
+copper-orange hair lying flat against the skull with the hairline visible, the
+bare shoulder, the small pouch, and the dark bronze tragedy mask hanging at
+his hip.
+
+Chibi-proportioned anime game sprite, **large head roughly one third of the
+total height, short stubby limbs, small body — the whole figure is about two
+and a half to three heads tall**, bold dark outlines fully closed around every
+part of the figure, flat cel shading, muted desaturated palette.
+Three-quarter view, body angled toward the viewer's right. Pure white
+background, no shadow, no ground line, no text, no labels, no panel borders.
+Full body visible from the top of the wreath to the soles of both boots — do
+not crop, do not zoom. Exactly two arms and two legs, clearly separated. No
+effects of any kind — no smoke, no sparks, no glow, no motion lines.
+```
 
 ---
 
@@ -22,7 +108,9 @@
 
 ---
 
-# MOMUS — นักล้อเลียนกรีก สวมหน้ากากละคร
+# ภาคผนวก · MOMUS — แนวคิดและ prompt รอบแรก
+
+> เก็บไว้อ้างอิงเฉย ๆ **รอบที่ 2 ข้างบนคือของที่ต้องใช้**
 
 ## แนวคิด
 
@@ -86,74 +174,16 @@ glow, no motion lines, no confetti.
 
 ---
 
-# ALECTO — คาวเกิร์ลคนเดิม แก้สามจุดที่กัดเรา
+# ALECTO — ผ่านแล้ว ✅
 
-## แนวคิด
+`art_reference/alecto_idle_APPROVED_v2.jpg` — ไม่ต้องเจนซ้ำ
 
-**ไม่ได้เปลี่ยนตัวละคร** ของเดิมดีและผ่านอนุมัติแล้ว รอบนี้แก้เฉพาะสิ่งที่มีปัญหาจริง
+ได้ครบทั้งสี่ข้อ: หมวกปีกแคบดันไปหลังเห็นหน้าผาก · เสื้อกั๊กเกือบดำตัดกับเชิ้ตครีม ·
+ไรเฟิลสะพายหลังปลายกระบอกพ้นไหล่ · สายคาดอกใส่ขวดกับชายเสื้อไหม้เกรียม
+แถมเทอร์ควอยซ์ที่ผ้าพันคอ หัวเข็มขัด ซองปืน และหินบนสายหมวก
 
-**สี่อย่างที่เปลี่ยน**
-
-1. **หมวกปีกแคบลงและดันไปหลัง** ให้เห็นหน้าผากกับไรผม — ปีกกว้างของเดิมกินเงาทั้งตัว
-   และบังกะโหลกจนไม้บรรทัดวัดสัดส่วนพังสองรอบ แว่นกันลมบนสายหมวกเก็บไว้
-2. **แยกค่าความสว่างที่ลำตัว** เสื้อกั๊กเข้มเกือบดำ เสื้อเชิ้ตครีมสว่าง —
-   **ปัญหา "ก้อนแดง" ที่ตัวเล็ก ๆ แก้ด้วยค่าความสว่าง ไม่ใช่ด้วยการเพิ่มสี**
-   แล้วค่อยเติมเทอร์ควอยซ์จุดเล็ก ๆ (ผ้าพันคอ หัวเข็มขัด หินบนสายหมวก) เป็นประกาย
-3. **สะพายไรเฟิลไว้บนหลังทุกท่า** ปลายกระบอกโผล่พ้นไหล่ — ตอนนี้เธอมีสองอาวุธแล้ว
-   แต่ดีไซน์ไม่เคยบอกเลย ท่ายืนเห็นแค่แส้
-4. **ภาษาของไฟ** ฉายาเธอคือ The Fury of the **Burning Trail** สกิลคือมอลอตอฟกับบ่อไฟ
-   แต่ดีไซน์เดิมไม่มีอะไรเกี่ยวกับไฟสักอย่าง เติม **สายคาดอกใส่ขวดแก้ว** ชายเสื้อกับชายชาพส์
-   **ไหม้เกรียมเป็นรอยด่าง** และไฮไลต์ผมออกสีถ่านแดง — **ห้ามวาดเปลวไฟจริง**
-
-## ขั้น 0 — ท่ายืน (ด่านกั้น)
-
-```
-A single full-body standing pose of this cowgirl character, redrawn with four
-specific changes to her design. Keep her identity exactly — the same red-haired
-gunslinger with the long braid, the whip, the revolver on her hip and the
-fringed chaps — but apply these changes:
-(1) her hat brim is narrower and the hat is pushed back on her head so her
-    forehead and hairline are clearly visible,
-(2) her vest is now very dark burgundy, almost black, against a bright cream
-    shirt, so the torso reads as a strong light-dark split,
-(3) a lever-action rifle is slung across her back with the barrel showing
-    above one shoulder,
-(4) a bandolier of small corked glass bottles crosses her chest, and the hem
-    of her chaps and vest are singed and scorched with dark burn marks.
-
-She stands in a loose ready stance, feet apart, whip coiled in one hand at her
-side, other hand hovering near the revolver. One character only, one pose only.
-No turnaround, no multiple views, no text, no labels, no borders.
-
-Chibi-proportioned anime game sprite, **large head roughly one third of the
-total height, short stubby limbs, small body — the whole figure is about two
-and a half to three heads tall, NOT a realistic full-body proportion**, bold
-dark outlines fully closed around every part of the figure, flat cel shading,
-muted desaturated palette. Character: a sharp-eyed young cowgirl with long
-deep-red hair worn in a thick braid over one shoulder, with darker ember-red
-highlights. She wears a **narrow-brimmed** dark red hat pushed back off her
-forehead — **the brim must not shade or cover her face, and her hairline and
-forehead must stay clearly visible** — with a leather band, a pair of brass
-goggles and small turquoise stones on it. Her vest is near-black burgundy with
-faded tooled patterns, worn over a bright cream western shirt with rolled
-sleeves; a turquoise neckerchief sits at her throat. A leather bandolier of
-small corked glass bottles crosses her chest. A heavy belt with a silver and
-turquoise buckle carries a revolver in a tooled holster. She wears dark brown
-fringed leather chaps over denim and scuffed brown boots, and the lower hem of
-the chaps and vest is scorched with dark uneven burn marks. A lever-action
-rifle is slung diagonally across her back, its barrel and stock visible past
-her shoulders. Fingerless leather gloves. All fringe and hanging leather falls
-close to her body and never streams far out to the side. Three-quarter view,
-body angled toward the viewer's right. Pure white background, no shadow, no
-ground line, no props beyond those described, no text, no labels, no panel
-borders. Full body visible from the top of the hat to the soles of both boots
-— do not crop, do not zoom. Identical camera distance and identical character
-size in every pose. Exactly two arms and two legs, clearly separated, do not
-overlap or duplicate limbs. No effects of any kind — no fire, no smoke, no
-sparks, no glow, no motion lines.
-```
-
----
+**หมายเหตุเล็กน้อย ไม่ต้องแก้** รอยไหม้มีแสงส้มเรือง ๆ อยู่นิดหน่อย ซึ่งผิดกฎ
+"ห้ามวาดเอฟเฟค" ทางเทคนิค แต่ย่อลงขนาดในเกมแล้วมองไม่เห็น ปล่อยไว้ได้
 
 ## หลังจากนี้
 
