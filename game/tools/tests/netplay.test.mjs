@@ -68,6 +68,9 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   g.match.round, g.match.freeze, g.match.winner ?? '-', g.match.bars.join(','),
   g.fires.length,
   ...g.fires.map((fi) => [fi.owner, Math.round(fi.x * 1000), fi.life, fi.t].join(",")),
+  // กล่องระเบิดของ Momus: ชนวนคลาดกันเฟรมเดียว = ระเบิดคนละจังหวะ ซึ่งเปลี่ยนผลทั้งยก
+  g.boxes.length,
+  ...g.boxes.map((b) => [b.owner, Math.round(b.x * 1000), b.fuse, b.arm].join(",")),
 ].join("|");
 
 /** เล่นสองเครื่องด้วยสคริปต์ปุ่มที่กำหนด แล้วคืนว่าสถานะตรงกันตลอดไหม */
@@ -198,6 +201,15 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
   ok(swap.gA.p1.alt === swap.gB.p1.alt && swap.gA.p2.alt === swap.gB.p2.alt,
     `จบแล้วถืออาวุธชุดเดียวกันทั้งสองเครื่อง (p1=${swap.gA.p1.alt} p2=${swap.gA.p2.alt})`);
   ok(swap.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
+
+  // Momus: กล่องระเบิดเป็นสถานะที่อยู่บนเวที ไม่ได้ติดกับตัวใคร และระเบิดใส่ทุกคน
+  // ชนวนคลาดกันเฟรมเดียวก็ระเบิดคนละจังหวะ ซึ่งเปลี่ยนผลทั้งยกได้เลย
+  const momus = playApart(busy(1, 1), busy(2, -1), { lagA: 2, lagB: 5, c1: 'momus', c2: 'momus', frames: 420 });
+  ok((momus.tally.a.box ?? 0) > 0, `มีกล่องถูกวางจริงระหว่างทดสอบ (${momus.tally.a.box} ใบ)`);
+  ok((momus.tally.a.blast ?? 0) > 0, `และมีระเบิดจริง (${momus.tally.a.blast} ครั้ง)`);
+  ok((momus.tally.a.box ?? 0) === (momus.tally.b.box ?? 0)
+    && (momus.tally.a.blast ?? 0) === (momus.tally.b.blast ?? 0), "กล่องและระเบิดตรงกันสองเครื่อง");
+  ok(momus.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
 
   // Orpheus: บัฟไฟอยู่ที่คนฟาด ไฟที่ติดตัวอยู่ที่คนโดน — สองอย่างนี้เพิ่งเพิ่มเข้ามา
   const orph = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'orpheus', c2: 'orpheus', frames: 420 });

@@ -149,6 +149,20 @@ const CHAR_ART = {
       "swap1", "gjab1", "gjab2", "gjab3", "gside", "gup", "gdown",
       "shot1", "shot2", "shot3", "fire1", "fire2", "dust1", "dust2", "hop", "roll"]),
   },
+  // Momus: ตัวป่วนสนาม — ขาสั้นเหมือน Alecto/Helios ก้าวจึงสั้นตาม (วัดจากคลิปได้ 86)
+  momus: {
+    atlasKey: 'scmomus',
+    texture: 'assets/characters/scramble_momus.png',
+    data: 'assets/characters/scramble_momus.json',
+    runStride: 86,
+    title: 'The Jester of Broken Rules',
+    role: 'สายป่วนสนาม',
+    tip: 'ระเบิดของเขาไม่เลือกข้าง โดนตัวเองด้วย — ชนะเพราะรู้ว่าระเบิดจะลงตรงไหน',
+    anims: { idle: 1, run: 10, jump: 3, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
+      block: 1, blockstun: 1, blockcrouch: 1 },
+    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "box1", "box2", "snap1", "snap2", "full1", "full2"]),
+  },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
   // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
   // ลบ artPending ใน core.js กับเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
@@ -723,6 +737,9 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'lash') this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97');
       if (e.type === 'burn') { this.spark(e.x, e.y, 8, 0xffb03a); this.popup(e.x, e.y - 20, String(e.dmg), '#ffb03a'); }
       if (e.type === 'firepool') { this.spark(e.x, e.y - 30, 20, 0xffb03a); this.cameras.main.shake(70, 0.004); }
+      if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); }
+      if (e.type === 'blast') { this.spark(e.x, e.y - 40, 24, 0xffd166); this.cameras.main.shake(110, 0.007); }
+      if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this.cameras.main.shake(160, 0.006); }
       if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
       if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); }
       if (e.type === 'ult') {
@@ -1231,6 +1248,23 @@ class ScrambleScene extends Phaser.Scene {
       const w = 46, x = f.x - w / 2, y = f.y - 150;
       g.fillStyle(0x0c111c, 0.7); g.fillRect(x - 1, y - 1, w + 2, 7);
       g.fillStyle(0xffb03a, 1); g.fillRect(x, y, w * Math.min(1, left / total), 5);
+    }
+
+    // กล่องระเบิดของ Momus — ชนวนต้องอ่านออกจากที่ไกล ๆ ไม่งั้นมันคือกับดักที่มองไม่เห็น
+    // ยิ่งใกล้ระเบิดยิ่งกะพริบถี่ขึ้น คนเล่นทั้งสองฝั่งจึงกะจังหวะหนีได้เท่ากัน
+    // (เจ้าของก็โดนระเบิดตัวเอง สัญญาณนี้จึงเป็นของทั้งสองฝ่ายจริง ๆ ไม่ใช่ของฝ่ายเดียว)
+    for (const b of s.boxes) {
+      const y = STAGE.groundY;
+      const rate = b.fuse < 40 ? 0.45 : b.fuse < 90 ? 0.2 : 0.09;
+      const hot = Math.sin(s.frame * rate) > 0;
+      fx.fillStyle(0x6b4a2a, 1); fx.fillRect(b.x - 24, y - 46, 48, 46);
+      fx.lineStyle(3, 0x3a2716, 1); fx.strokeRect(b.x - 24, y - 46, 48, 46);
+      fx.lineStyle(3, 0x8a6236, 1);
+      fx.lineBetween(b.x - 24, y - 46, b.x + 24, y);
+      fx.lineBetween(b.x + 24, y - 46, b.x - 24, y);
+      // ยังไม่ติดชนวน = ยังเหยียบผ่านได้ ต้องบอกให้รู้ ไม่งั้นคนเล่นจะเดาผิดทั้งสองทาง
+      fx.fillStyle(b.arm > 0 ? 0x9aa3b5 : (hot ? 0xffd166 : 0xc8323c), 1);
+      fx.fillCircle(b.x, y - 54, 7);
     }
 
     // กองไฟจากมอลอตอฟ — ต้องเห็นขอบเขตชัดว่าตรงไหนเข้าไม่ได้ ไม่งั้นเป็นกับดักที่มองไม่เห็น

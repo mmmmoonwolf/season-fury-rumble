@@ -1,4 +1,4 @@
-"""สร้าง atlas ของ Momus จากคลิปท่าวิ่งและชีตท่า A-D
+"""สร้าง atlas ของ Momus จากคลิปท่าวิ่งและชีตท่า A-G
 
 ต่างจาก build script ของตัวก่อน ๆ สองเรื่อง:
 
@@ -9,7 +9,10 @@
    ส่วนชีตทั้งหมดเป็นมุม 3/4 ถ้าเอาภาพเดี่ยวมาเป็นท่ายืน เขาจะหันหน้าคนละมุม
    กับทุกท่าที่เหลือ A1 เป็นท่ายืนคุมเชิงมุม 3/4 อยู่แล้ว จึงใช้อันนั้นตั้งสเกลสัมบูรณ์ด้วย
 
-⚠️ ยังไม่ครบตัว — ชีตสกิล E-H ยังไม่มา ท่าสกิลจึงยังไม่อยู่ในนี้
+3. **ต้องทิ้งกล่องที่หลุดออกจากมือ** ชีตสกิลมีกล่องไม้ลอยอยู่นอกตัว ตัวแยกนับเป็นท่าไปด้วย
+   ทิ้งได้เพราะกล่องที่ลอยเป็นกระสุนที่เกมวาดเอง (ดู momus_sheets.figures)
+
+⚠️ ยังขาดชีต H (ไม้จบยัดหีบ) — คอมโบท่าตีปกติจึงจบที่หมัดที่สามไปก่อน
 รัน (จากโฟลเดอร์ game):  python3 tools/build_scramble_momus.py
 """
 import json
@@ -21,7 +24,7 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from atlas_sheets import body_anchor
-from momus_sheets import body_sqrt, split
+from momus_sheets import body_sqrt, figures
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.join(HERE, "..", "..", "art_reference")
@@ -32,7 +35,7 @@ OUT = os.path.join(HERE, "..", "assets", "characters")
 STANDING = 240
 STAND_SRC = ("A", 1)      # ท่ายืนคุมเชิงมุม 3/4 ใช้ตั้งสเกลสัมบูรณ์ของทั้งตัว
 GROUND, AIR = "ground", "air"
-LETTERS = "ABCD"
+LETTERS = "ABCDEFG"
 
 SEQ = {
     "idle": ("A", [1], GROUND),
@@ -67,12 +70,25 @@ SEQ = {
     "nair": ("D", [1, 2, 10], AIR),         # หดตัว -> กางแขนหมุน -> หดกลับ
     "sair": ("D", [3, 5, 7], AIR),          # ชกไปข้างหน้ากลางอากาศ
     "dair": ("D", [6, 9, 8], AIR),          # เงื้อเหนือหัว -> ทิ้งลง -> หดขาเก็บ
+
+    # ---- ชีต E: สกิล 1 Jack-in-the-Box — ควักกล่อง -> หมุนลาน -> ขว้าง ----
+    # กล่องที่ลอยออกไปแล้วเกมวาดเองเป็นกระสุน ไม่ได้อยู่ในเฟรมท่า (ดู momus_sheets.figures)
+    "box1": ("E", [1, 2, 3], GROUND),
+    "box2": ("E", [5, 6, 4], GROUND),       # ยกมือบัง -> หันหลังเดินหนี -> ชูสองมือ "แล้วไง"
+
+    # ---- ชีต F: สกิล 2 Ta-da! — ดีดนิ้วแล้วสลับที่ ----
+    "snap1": ("F", [1, 2, 3], GROUND),      # ยกมือ -> ดีดนิ้ว -> หายไป
+    "snap2": ("F", [4, 5, 6], GROUND),      # โผล่ย่อ -> กาง "ต้าด้า" -> ตั้งหลัก
+
+    # ---- ชีต G: อัลติ Full House — ลากถุง -> เหวี่ยง -> กล่องถล่มทั้งเวที ----
+    "full1": ("G", [1, 2, 3], GROUND),      # ลากถุงเข้ามา -> เหวี่ยงถุง -> กล่องร่วงใส่หัวตัวเอง
+    "full2": ("G", [4, 5, 6], GROUND),      # ชูมือรับ -> กุมหัว -> ย่อหัวเราะ
 }
 
 # ---------- อ่านชีต ----------
 SHEETS, RULER = {}, {}
 for L in LETTERS:
-    arr, masks = split(os.path.join(SHEETS_DIR, f"sheet_{L}.jpg"))
+    arr, masks = figures(os.path.join(SHEETS_DIR, f"sheet_{L}.jpg"))
     assert masks, f"ชีต {L} แยกท่าไม่ออก"
     SHEETS[L] = (arr, masks)
     RULER[L] = float(np.median([body_sqrt(m) for m in masks]))

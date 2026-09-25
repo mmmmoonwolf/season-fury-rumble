@@ -582,8 +582,103 @@ const ORPHEUS_MOVES = {
     hb: { x: -170, y: -190, w: 340, h: 200 }, kb: [10, -12], stun: 36 },
 };
 
+// ---------- MOMUS: กล่องระเบิดที่ไม่เลือกข้าง ----------
+//
+// กลไกประจำตัวเขาทั้งหมดอยู่ที่กล่องนี้ และกฎเหล็กคือ **มันโดนเจ้าของด้วย**
+// เขาเป็นตัวเดียวในเกมที่สกิลตัวเองฆ่าตัวเองได้ — ไม่ได้ชนะเพราะแรงกว่า
+// แต่ชนะเพราะรู้ว่าระเบิดจะลงตรงไหน ส่วนคนอื่นไม่รู้
+const BOX_FUSE = 180;        // 3 วินาที ไม่ใช่ 5 — เกมเร็วขนาดนี้ 5 วิคือลืมไปแล้วว่าวางไว้
+const BOX_HALF = 108;        // รัศมีระเบิด
+const BOX_TRIGGER = 52;      // เดินเข้าใกล้กว่านี้ = จุดชนวนทันที ไม่ต้องรอครบเวลา
+const BOX_ARM = 24;          // เพิ่งขว้างออกไปยังไม่ติดชนวน ไม่งั้นระเบิดใส่หน้าตัวเองทุกครั้ง
+const BOX_DMG = 9;
+const BOX_STUN = 30;
+const BOX_KB = [7, -11];     // ดีดลอย — ระเบิดไม่ใช่ท่ากลางคอมโบ การจับลอยคือจุดประสงค์
+const BOX_MAX = 2;           // วางพร้อมกันได้สองกล่อง
+const RAIN_N = 7;            // อัลติโปรยกี่กล่อง
+const RAIN_STEP = 16;        // ชนวนเหลื่อมกันกี่เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่พร้อมกันทีเดียว
+const SNAP_DMG = 5;          // ระเบิดตอนสลับที่ เบากว่ากล่อง แต่ขึ้นสองจุดพร้อมกัน
+const SNAP_HALF = 92;
+const SNAP_STUN = 22;
+const SNAP_KB = [6, -8];
+
 const ORPHEUS_SKILLS = ['slide1', 'burn1', 'solo1'];
 const ORPHEUS_SKILL_CD = [120, 240, 0];   // สไลด์กดถี่ได้ · ถอยลากไฟ 4 วินาที กันกดหนีรัว
+
+/**
+ * MOMUS — ตัวป่วนสนาม (ตัวสุดท้ายของโรสเตอร์)
+ *
+ * สี่ตัวแรกทุกตัวมีสกิลที่เล็งใส่คู่ต่อสู้ ตัวนี้ไม่เล็งใคร — มันโดนทุกคนที่ยืนผิดที่
+ * ดาเมจของเขาไม่มีอะไรรับประกันเลย ระเบิดทุกลูกหลบได้ถ้าเห็นทัน
+ * ตัวอื่นกดปุ่มแล้วดาเมจออกแน่ ๆ ของเขาต้องหลอกให้คนเดินไปยืนผิดที่ก่อน
+ *
+ * ท่าตีปกติเบาแต่รัว เหมือนตัวตลกตบตี ไม่ใช่ต่อยหนักเงื้อนาน
+ * เดิมออกแบบให้ต่อยช้าหนัก ทิ้งไปแล้ว — เกมนี้เร็วและคนใส่กันรัว
+ * ท่าที่ใช้เวลาเตรียมตัวคือท่าที่ตายก่อนได้ใช้
+ */
+const MOMUS_MOVES = {
+  // ---- ท่าตีปกติ: หมัดพันผ้าเร็ว ๆ สามจังหวะ ----
+  // kb[1] ต้องเป็น 0 ทุกจังหวะที่อยู่กลางคอมโบ ถีบขึ้นแม้นิดเดียวคู่ต่อสู้จะลอย
+  // พอตกถึงพื้นกลายเป็นท่าล้มซึ่งมี invuln ติดมา จังหวะที่เหลือจะฟาดลม (กัดมาแล้วห้ารอบ)
+  jab1: { label: 'Slap', kind: 'ground', startup: 4, active: 3, recovery: 7, dmg: 2,
+    hb: { x: 8, y: -96, w: 76, h: 28 }, kb: [1.5, 0], stun: 14, chain: 'jab2' },
+  jab2: { label: 'Slap', kind: 'ground', startup: 4, active: 3, recovery: 8, dmg: 2,
+    hb: { x: 8, y: -92, w: 80, h: 30 }, kb: [1.5, 0], stun: 14, chain: 'jab3' },
+  // ไม้จบชั่วคราว — ของจริงคือ "ยัดหีบ" ที่รออาร์ตชีต H อยู่
+  jab3: { label: 'Shove', kind: 'ground', startup: 5, active: 4, recovery: 15, dmg: 5,
+    hb: { x: 10, y: -94, w: 92, h: 34 }, kb: [10, 0], stun: 24 },
+
+  // ทางเข้าหลัก: พุ่งสะบัดแขนเสื้อไปข้างหน้า มีแรงส่งตัวตาม
+  side: { label: 'Jester Rush', kind: 'ground', startup: 7, active: 5, recovery: 16, dmg: 5,
+    hb: { x: 16, y: -94, w: 104, h: 32 }, kb: [6, 0], stun: 22,
+    imp: { f: 5, vx: 11 }, glide: true },
+  up: { label: 'Pop-up', kind: 'ground', startup: 6, active: 5, recovery: 16, dmg: 5,
+    hb: { x: -4, y: -168, w: 82, h: 116 }, kb: [2, -15], stun: 30, jumpCancel: true },
+  down: { label: 'Low Sweep', kind: 'ground', crouch: true, startup: 6, active: 4, recovery: 15, dmg: 4,
+    hb: { x: 10, y: -32, w: 102, h: 28 }, kb: [3, -8], stun: 24 },
+  nair: { label: 'Spin', kind: 'air', startup: 5, active: 8, recovery: 11, dmg: 4,
+    hb: { x: -46, y: -120, w: 104, h: 104 }, kb: [3, -6], stun: 22, jumpCancel: true },
+  sair: { label: 'Air Slap', kind: 'air', startup: 6, active: 8, recovery: 13, dmg: 5,
+    hb: { x: 12, y: -96, w: 104, h: 32 }, kb: [8, -4], stun: 26,
+    imp: { f: 6, vx: 8, vy: -1 }, floaty: true },
+  dair: { label: 'Stomp', kind: 'air', startup: 7, active: 8, recovery: 14, dmg: 5,
+    hb: { x: -14, y: -40, w: 88, h: 76 }, kb: [4, -4], stun: 24 },
+
+  // ---- สกิล 1 Jack-in-the-Box: ขว้างกล่องระเบิด (ปุ่ม 1) ----
+  //
+  // ขว้างแบบสะบัดมือ ไม่ใช่ย่อลงไปวาง — ต้องกดได้กลางวงที่กำลังตีกัน
+  // กล่องระเบิดเมื่อใครแตะ หรือครบ 3 วินาที อย่างใดถึงก่อน และ **โดนเจ้าของด้วย**
+  box1: { label: 'Jack-in-the-Box', kind: 'ground', startup: 5, active: 4, recovery: 6, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    boxDrop: { at: 6, dx: 150 }, autoChain: 'box2' },
+  box2: { label: 'Jack-in-the-Box', kind: 'ground', startup: 4, active: 4, recovery: 10, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true },
+
+  // ---- สกิล 2 Ta-da!: ดีดนิ้วสลับที่ แล้วระเบิดขึ้นทั้งสองจุด (ปุ่ม 2) ----
+  //
+  // ออกไวที่สุดในเกม เป็นปุ่มหนีฉุกเฉินได้จริง
+  // โดนต้อนติดมุม -> ดีดนิ้วออกมาได้ทันที พร้อมทิ้งระเบิดไว้ให้คนที่ไล่
+  snap1: { label: 'Ta-da!', kind: 'ground', startup: 3, active: 3, recovery: 4, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    swapBlast: { at: 3 }, autoChain: 'snap2' },
+  snap2: { label: 'Ta-da!', kind: 'ground', startup: 3, active: 4, recovery: 10, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true },
+
+  // ---- สกิล 3 Full House (อัลติ): โปรยกล่องทั้งเวที (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  //
+  // ของใหญ่ควรอยู่ที่อัลติ ไม่ใช่สกิลที่ต้องกดกลางวงตีกัน เงื้อนานได้ไม่เป็นไร
+  // ชนวนเหลื่อมกันทีละ RAIN_STEP เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่ตูมเดียวจบ
+  full1: { label: 'Full House', kind: 'ground', startup: 10, active: 6, recovery: 8, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'full2' },
+  full2: { label: 'Full House', kind: 'ground', startup: 8, active: 6, recovery: 20, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    boxRain: { at: 8, n: RAIN_N } },
+};
+
+const MOMUS_SKILLS = ['box1', 'snap1', 'full1'];
+// สกิล 1 กับ 2 ต้องกดได้บ่อย — ทั้งคู่คือ "จัดสนาม" ไม่ใช่ดาเมจที่การันตี
+// สกิล 2 ถูกที่สุดเพราะเป็นปุ่มหนีด้วย แต่ก็ทิ้งระเบิดไว้สองจุดทุกครั้งที่กด
+const MOMUS_SKILL_CD = [150, 120, 0];
 
 const CHARACTERS = {
   nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
@@ -596,6 +691,8 @@ const CHARACTERS = {
     skillCd: ATLAS_SKILL_CD, hp: 130, resist: 0.5 },
   orpheus: { id: 'orpheus', label: 'ORPHEUS', moves: ORPHEUS_MOVES, skills: ORPHEUS_SKILLS,
     skillCd: ORPHEUS_SKILL_CD },
+  momus: { id: 'momus', label: 'MOMUS', moves: MOMUS_MOVES, skills: MOMUS_SKILLS,
+    skillCd: MOMUS_SKILL_CD },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -695,6 +792,7 @@ class Game {
     this.lastMoveInfo = null;
     this.shots = [];
     this.fires = [];
+    this.boxes = [];                // กล่องระเบิดของ Momus — ระเบิดใส่ทุกคนรวมเจ้าของ
     this.dust = null;               // วงฝุ่นของ Alecto — มีได้ทีละวงเดียว
     // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
     this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
@@ -746,7 +844,10 @@ class Game {
     this.events.push({ type: 'ko', loser: out.slice() });
   }
 
-  resetPositions() { this.p1.reset(); this.p2.reset(); this.meter = []; this.shots = []; this.fires = []; this.dust = null; }
+  resetPositions() {
+    this.p1.reset(); this.p2.reset();
+    this.meter = []; this.shots = []; this.fires = []; this.boxes = []; this.dust = null;
+  }
 
   /**
    * เดินหนึ่งเฟรม — รับอินพุตสองฝั่ง
@@ -769,7 +870,7 @@ class Game {
       for (const k of Object.keys(f.buf)) if (f.buf[k] > 0) f.buf[k]--;
     }
 
-    if (p.hitstop <= 0 && d.hitstop <= 0) { this.updateShots(); this.updateFires(); }
+    if (p.hitstop <= 0 && d.hitstop <= 0) { this.updateShots(); this.updateFires(); this.updateBoxes(); }
     this.decayLash(p); this.decayLash(d);
     this.tickFlame(p); this.tickFlame(d);
     this.updateDust();
@@ -1013,6 +1114,101 @@ class Game {
     d.lash = Math.min(LASH_MAX, d.lash + 1);
     d.lashF = this.frame;
     this.events.push({ type: 'lash', x: d.x, y: d.y - 110, n: d.lash });
+  }
+
+  /** วางกล่องระเบิดหนึ่งใบ — วางเกินโควต้าแล้วใบเก่าสุดหายไป ไม่ใช่วางไม่ได้
+   *
+   *  เลือกให้ใบเก่าหายเพราะ "กดแล้วไม่เกิดอะไร" เป็นความรู้สึกที่แย่ที่สุดในเกมต่อสู้
+   *  คนเล่นจะไม่รู้ว่าติดโควต้าอยู่ เห็นแค่ว่ากดสกิลแล้วเสียจังหวะไปเปล่า ๆ
+   */
+  dropBox(x, owner, fuse = BOX_FUSE) {
+    this.boxes.push({
+      x: Math.max(STAGE.wallL + 20, Math.min(STAGE.wallR - 20, x)),
+      owner, fuse, arm: BOX_ARM,
+    });
+    if (this.boxes.length > BOX_MAX) this.boxes.shift();
+    this.events.push({ type: 'box', x: this.boxes[this.boxes.length - 1].x, y: STAGE.groundY });
+  }
+
+  /** ระเบิดหนึ่งครั้งที่จุด x — **ไล่เช็กทุกคน ไม่ใช่แค่ฝ่ายตรงข้าม**
+   *
+   *  ตรงนี้คือกฎเหล็กของตัวละครทั้งตัว: เจ้าของโดนระเบิดตัวเองด้วย
+   *  กองไฟของ Alecto เขียนว่า `fire.owner === 'p1' ? this.p2 : this.p1` ซึ่งข้ามเจ้าของไป
+   *  ถ้าลอกมาตรง ๆ ตัวนี้จะกลายเป็นตัววางระเบิดที่ปลอดภัยเสมอ ซึ่งพลาดทั้งคอนเซปต์
+   */
+  blast(x, half, dmg, stun, kb) {
+    this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
+    for (const f of [this.p1, this.p2]) {
+      if (f.invuln > 0 || Math.abs(f.x - x) > half) continue;
+      const dir = f.x >= x ? 1 : -1;
+      const facingBlast = Math.sign(x - f.x) === f.facing || f.x === x;
+      if ((f.state === 'block' || f.state === 'blockcrouch') && f.onGround && facingBlast) {
+        f.lowStun = f.state === 'blockcrouch';
+        f.setState('blockstun'); f.stun = Math.ceil(stun * 0.45);
+        this.gainKi(f, dmg * 0.6);
+        this.events.push({ type: 'block', x: f.x, y: f.y - 70 });
+        continue;
+      }
+      const scale = Math.max(0.5, 1 - 0.08 * f.comboHits);
+      const real = Math.max(1, Math.round(dmg * scale * f.resist * (f.dustGuard ? DUST_DR : 1)));
+      if (this.armorHolds(f)) { this.takeArmored(f, f, real, x, f.y - 70); continue; }
+      f.hp = Math.max(0, f.hp - real);
+      f.comboHits++; f.comboDmg += real; f.lastHitF = this.frame;
+      f.stun = stun;
+      f.move = null; f.moveId = null; f.setState('hitstun');
+      f.stanceUntil = -9999;
+      f.vx = dir * kb[0]; f.vy = kb[1];
+      if (kb[1] < 0) f.onGround = false;
+      this.gainKi(f, real * 0.9);
+      this.events.push({ type: 'hit', x: f.x, y: f.y - 70, dmg: real, heavy: true, launch: kb[1] < 0 });
+    }
+  }
+
+  /** เดินกล่องทุกใบหนึ่งเฟรม — นับถอยหลังด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง */
+  updateBoxes() {
+    if (!this.boxes.length) return;
+    const live = [];
+    for (const b of this.boxes) {
+      if (b.arm > 0) b.arm--;
+      b.fuse--;
+      // ติดชนวนแล้วใครเดินเข้ามาใกล้ก็ระเบิดทันที ไม่ต้องรอครบเวลา — รวมเจ้าของ
+      const touched = b.arm === 0 && [this.p1, this.p2].some(
+        (f) => f.onGround && f.invuln <= 0 && Math.abs(f.x - b.x) <= BOX_TRIGGER);
+      if (b.fuse > 0 && !touched) { live.push(b); continue; }
+      this.blast(b.x, BOX_HALF, BOX_DMG, BOX_STUN, BOX_KB);
+    }
+    this.boxes = live;
+  }
+
+  /** ดีดนิ้วสลับที่ แล้วระเบิดขึ้นทั้งจุดที่ไปและจุดที่มา
+   *
+   *  สลับ x อย่างเดียว ห้ามแตะ y/vx/vy — สลับความเร็วด้วยจะกระตุกและคาดเดาไม่ได้
+   *  ไม่สลับถ้าอีกฝ่ายมี invuln (กำลังล้ม/กลิ้งอยู่) ไม่งั้นลากคนที่ล้มอยู่ได้ = พัง
+   *  แต่ **ระเบิดยังขึ้นทั้งสองจุดเสมอ** ต่อให้สลับไม่ได้ ไม่งั้นกดแล้วไม่เกิดอะไรเลย
+   */
+  swapBlast(f) {
+    const o = this.foe(f);
+    const mine = f.x, theirs = o.x;
+    if (o.invuln <= 0 && o.state !== 'knockdown' && o.state !== 'techroll') {
+      f.x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, theirs));
+      o.x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, mine));
+      this.events.push({ type: 'vanish', x: mine, y: f.y });
+      this.events.push({ type: 'appear', x: f.x, y: f.y });
+    }
+    this.blast(mine, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB);
+    this.blast(theirs, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB);
+  }
+
+  /** โปรยกล่องทั่วเวที ชนวนเหลื่อมกันทีละใบ = ระเบิดไล่กันเป็นทอด ๆ
+   *  ตำแหน่งคิดจากความกว้างเวทีล้วน ไม่มีสุ่ม สองเครื่องจึงได้กล่องตรงกันเป๊ะ */
+  rainBoxes(f, n) {
+    const span = STAGE.wallR - STAGE.wallL;
+    for (let i = 0; i < n; i++) {
+      const x = STAGE.wallL + span * (i + 0.5) / n;
+      // ใบที่อยู่ใกล้เขาที่สุดติดชนวนช้าที่สุด = เขาได้เปรียบเรื่องจังหวะ ไม่ใช่เรื่องความปลอดภัย
+      this.boxes.push({ x, owner: f.id, fuse: 40 + i * RAIN_STEP, arm: BOX_ARM });
+    }
+    this.events.push({ type: 'rain', x: f.x, y: f.y - 120, n });
   }
 
   /** กองไฟบนพื้น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน */
@@ -1396,6 +1592,9 @@ class Game {
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
+      if (m.boxDrop && f.moveF === m.boxDrop.at) this.dropBox(f.x + f.facing * m.boxDrop.dx, f.id);
+      if (m.swapBlast && f.moveF === m.swapBlast.at) this.swapBlast(f);
+      if (m.boxRain && f.moveF === m.boxRain.at) this.rainBoxes(f, m.boxRain.n);
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
       if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
       if (m.dustPool && f.moveF === m.dustPool.at) {
