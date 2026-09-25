@@ -198,3 +198,65 @@ const run = (g, n, a = () => inp(), b = () => inp()) => {
   g.resetPositions();
   ok(g.boxes.length === 0, "รีเซ็ตยกแล้วกล่องหายหมด");
 }
+
+// ── ไม้จบ "ยัดหีบ" — ภาพจำของตัวละคร ──
+//
+// jab4 คือ "คว้า" · jab5/jab6 ต่อเฉพาะตอนคว้าติด ไม่ใช่ autoChain
+// ท่าจับที่พลาดแล้วยังเล่นท่ายัดต่อ จะดูเหมือนจับติดทั้งที่ไม่โดน
+// คนเล่นทั้งสองฝั่งอ่านผิดพร้อมกัน — คนจับนึกว่าได้ คนโดนนึกว่าโดน แล้วตัดสินใจผิดทั้งคู่
+{
+  const chainOf = (gap) => {
+    const g = mk(gap);
+    const seen = [];
+    for (let i = 0; i < 180; i++) {
+      g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
+      if (g.p1.moveId && seen.at(-1) !== g.p1.moveId) seen.push(g.p1.moveId);
+    }
+    return seen;
+  };
+  const hit = chainOf(90), miss = chainOf(600);
+  ok(hit.slice(0, 6).join(",") === "jab1,jab2,jab3,jab4,jab5,jab6",
+    `คว้าติดแล้วต่อครบหกจังหวะ (${hit.slice(0, 6).join(" -> ")})`);
+  ok(!miss.includes("jab5") && !miss.includes("jab6"),
+    `คว้าไม่โดนก็จบแค่ท่าคว้า ไม่ยัดหีบให้อากาศ (${miss.slice(0, 4).join(" -> ")})`);
+  ok(miss.includes("jab4"), "แต่ท่าคว้ายังออกได้ตามปกติ — ไม่ใช่กดแล้วไม่มีอะไรเกิด");
+}
+
+// ── ท่าจับต้องลากเข้าหาตัว ไม่ใช่ผลักออก ──
+//
+// ตั้ง kb เป็นบวกตอนแรกแล้ววัดได้ว่าระยะห่างไต่ขึ้นทุกหมัด (90 -> 114 -> 125)
+// จน jab6 เอื้อมไม่ถึง คอมโบขาดที่จังหวะห้าทุกครั้งทั้งที่คว้าติดแล้ว
+{
+  const M = CHARACTERS.momus.moves;
+  ok(M.jab4.kb[0] < 0 && M.jab5.kb[0] < 0,
+    `สองจังหวะแรกของไม้จบลากเข้า (${M.jab4.kb[0]} / ${M.jab5.kb[0]})`);
+
+  const g = mk(90);
+  let hits = 0, last = 0;
+  for (let i = 0; i < 180; i++) {
+    g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
+    for (const e of g.events) if (e.type === "comboEnd" && e.hits > last) { hits = e.hits; last = e.hits; }
+  }
+  ok(hits >= 6, `ต่อครบหกจังหวะได้จริงตอนวัดทั้งคอมโบ (ยาวสุด ${hits} hit)`);
+}
+
+// ── ไม้จบถีบขึ้นได้ แต่จังหวะก่อนหน้าห้าม ──
+// jab6 จบคอมโบตรงนั้นพอดี จึงลอยได้ · jab4/jab5 อยู่กลางชุด ลอยเมื่อไหร่คอมโบขาด
+{
+  const M = CHARACTERS.momus.moves;
+  ok(M.jab4.kb[1] === 0 && M.jab5.kb[1] === 0, "ท่าคว้ากับท่ายัดไม่ถีบขึ้น");
+  ok(M.jab6.kb[1] < 0, `ไม้จบถีบขึ้นได้ (${M.jab6.kb[1]})`);
+}
+
+// ── ท่าจับต้องกันได้ ไม่ใช่ของที่กันไม่ได้ ──
+// ตัวนี้ไม่มีอะไรการันตีดาเมจเลย ถ้าไม้จบกันไม่ได้ก็ผิดคอนเซปต์ทั้งตัว
+{
+  const dmgOf = (block) => {
+    const g = mk(90);
+    for (let i = 0; i < 180; i++)
+      g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp(block ? { block: 1 } : {}));
+    return 100 - g.p2.hp;
+  };
+  const open = dmgOf(false), guard = dmgOf(true);
+  ok(guard < open, `กันไว้แล้วเจ็บน้อยกว่ามาก (${guard} เทียบ ${open})`);
+}

@@ -160,7 +160,8 @@ const CHAR_ART = {
     tip: 'ระเบิดของเขาไม่เลือกข้าง โดนตัวเองด้วย — ชนะเพราะรู้ว่าระเบิดจะลงตรงไหน',
     anims: { idle: 1, run: 10, jump: 3, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
-    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+    attacks: new Set(["jab1", "jab2", "jab3", "jab4", "jab5", "jab6",
+      "side", "up", "down", "nair", "sair", "dair",
       "box1", "box2", "snap1", "snap2", "full1", "full2"]),
   },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
