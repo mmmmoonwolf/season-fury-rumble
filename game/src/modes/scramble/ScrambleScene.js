@@ -1089,7 +1089,8 @@ class ScrambleScene extends Phaser.Scene {
     this.sim.step(inp, inp2);
     for (const e of this.sim.events) {
       if (e.type === 'hit') {
-        this.popup(e.x, e.y - 30, String(e.dmg), e.heavy ? '#ffd166' : '#ffffff');
+        // ระเบิดตัวเองไม่หักเลือด เลยไม่มีเลขให้เด้ง — ขึ้น "0" จะอ่านเหมือนบั๊กมากกว่ากติกา
+        if (!e.self) this.popup(e.x, e.y - 30, String(e.dmg), e.heavy ? '#ffd166' : '#ffffff');
         // แรงสั่นคิดจากเวลาที่ภาพหยุดจริง ไม่ใช่สองระดับตายตัว — น้ำหนักหมัดจึงไล่เป็นสเกลเดียวกัน
         // ท่าที่จับลอยได้ hitstop เพิ่มอยู่แล้ว แรงสั่นเลยตามไปเองโดยไม่ต้องมีเงื่อนไขแยก
         const hs = e.hs ?? 5;
@@ -1137,6 +1138,11 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'throw') this.spark(e.x, e.y, 7, 0xc9a227);
       if (e.type === 'lash') this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97');
+      // ชั้น "โรงเต็ม" ของ Momus — ต้องเห็นตอนได้ ไม่งั้นคนเล่นไม่รู้ว่าอัลติจะใหญ่แค่ไหน
+      if (e.type === 'house') {
+        this.popup(e.x, e.y, 'House \u00d7' + e.n, '#ffd166');
+        this.emit('ring', e.x, e.y + 40, { scale: 0.18, life: 14, grow: 1.5, tint: 0xffd166 });
+      }
       if (e.type === 'burn') {
         this.popup(e.x, e.y - 20, String(e.dmg), '#ffb03a');
         this.emit('flame', e.x + (Math.random() - 0.5) * 30, e.y, { scale: 0.20, life: 20, grow: 0.5,

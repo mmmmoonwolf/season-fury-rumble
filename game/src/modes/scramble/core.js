@@ -605,7 +605,9 @@ const BOX_DMG = 9;
 const BOX_STUN = 30;
 const BOX_KB = [7, -11];     // ดีดลอย — ระเบิดไม่ใช่ท่ากลางคอมโบ การจับลอยคือจุดประสงค์
 const BOX_MAX = 2;           // วางพร้อมกันได้สองกล่อง
-const RAIN_N = 7;            // อัลติโปรยกี่กล่อง
+const RAIN_BASE = 4;         // อัลติโปรยกี่ไหตอนยังไม่มีชั้นเลย
+const HOUSE_MAX = 5;         // เพดานชั้น "โรงเต็ม" — เท่าตราแส้ของ Alecto จะได้พูดภาษาเดียวกันทั้งเกม
+const SELF_STUN = 0.5;       // ระเบิดตัวเองทำให้ชะงักครึ่งเดียวของที่คนอื่นโดน
 const RAIN_STEP = 16;        // ชนวนเหลื่อมกันกี่เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่พร้อมกันทีเดียว
 const SNAP_DMG = 5;          // ระเบิดตอนสลับที่ เบากว่ากล่อง แต่ขึ้นสองจุดพร้อมกัน
 const SNAP_HALF = 92;
@@ -701,7 +703,7 @@ const MOMUS_MOVES = {
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, autoChain: 'full2' },
   full2: { label: 'Full House', kind: 'ground', startup: 8, active: 6, recovery: 20, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    boxRain: { at: 8, n: RAIN_N } },
+    boxRain: { at: 8 } },
 };
 
 const MOMUS_SKILLS = ['box1', 'snap1', 'full1'];
@@ -775,6 +777,9 @@ class Fighter {
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
+      house: 0,                     // "โรงเต็มแค่ไหน" ของ Momus — อยู่ที่ "คนวาง" ไม่ใช่คนโดน
+                                    // ได้ชั้นเมื่อไหของเขาระเบิดโดนคู่ต่อสู้ ใช้ขยายอัลติ
+                                    // รีเซ็ตทุกยก เพราะเป็นของที่สะสมเพื่อจังหวะเดียว ไม่ใช่สถานะถาวร
       armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
       alt: 0,                       // สลับไปใช้ท่าตีปกติชุดที่สองอยู่ไหม (Alecto: ถือไรเฟิลแทนแส้)
@@ -1179,11 +1184,34 @@ class Game {
    *  กองไฟของ Alecto เขียนว่า `fire.owner === 'p1' ? this.p2 : this.p1` ซึ่งข้ามเจ้าของไป
    *  ถ้าลอกมาตรง ๆ ตัวนี้จะกลายเป็นตัววางระเบิดที่ปลอดภัยเสมอ ซึ่งพลาดทั้งคอนเซปต์
    */
-  blast(x, half, dmg, stun, kb) {
+  /** ระเบิดวงกลม — คืนจำนวน "คู่ต่อสู้" ที่โดนจริง (ไม่นับเจ้าของ)
+   *
+   *  เจ้าของระเบิด **โดนแรงกระแทกแต่ไม่เสียเลือด**
+   *  เดิมไม่มีการเช็คเจ้าของเลย ระเบิดจึงหักเลือดใครก็ได้ที่ยืนอยู่ในวง รวมคนวางเอง
+   *
+   *  ที่ยังให้โดนแรงกระแทกอยู่ เพราะถ้าเอาออกหมดจะกลายเป็นของฟรี — ระเบิดวางทิ้งไว้ได้
+   *  โดยไม่ต้องคิดว่าตัวเองยืนตรงไหน และที่แย่กว่านั้นคือ **เอาระเบิดตัวเองดีดหนี**ได้
+   *  โดนดีดลอยกลางวงคือเสียตำแหน่งและโดนสวนได้ ซึ่งเป็นราคาที่จ่ายจริง แค่ไม่ใช่เลือด
+   *
+   *  ชะงักครึ่งเดียว (`SELF_STUN`) ไม่ใช่เต็ม — อัลติโปรยได้ถึง 9 ไห ถ้าชะงักเต็มทุกใบ
+   *  เขาจะถูกล็อกด้วยท่าตัวเองจนคู่ต่อสู้เดินเล่นได้สบาย
+   */
+  blast(x, half, dmg, stun, kb, owner = null) {
     this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
+    let hitFoes = 0;
     for (const f of [this.p1, this.p2]) {
       if (f.invuln > 0 || Math.abs(f.x - x) > half) continue;
       const dir = f.x >= x ? 1 : -1;
+      if (owner !== null && f.id === owner) {
+        f.stun = Math.max(f.stun, Math.round(stun * SELF_STUN));
+        f.move = null; f.moveId = null; f.setState('hitstun');
+        f.stanceUntil = -9999;
+        f.vx = dir * kb[0]; f.vy = kb[1];
+        if (kb[1] < 0) f.onGround = false;
+        f.hitstop = 3;
+        this.events.push({ type: 'hit', x: f.x, y: f.y - 70, dmg: 0, self: true, launch: kb[1] < 0 });
+        continue;
+      }
       const facingBlast = Math.sign(x - f.x) === f.facing || f.x === x;
       if ((f.state === 'block' || f.state === 'blockcrouch') && f.onGround && facingBlast) {
         f.lowStun = f.state === 'blockcrouch';
@@ -1205,8 +1233,18 @@ class Game {
       // ระเบิดแช่เฉพาะคนที่โดน ไม่แช่ทั้งจอ — ระเบิดลูกเดียวอาจโดนสองคนคนละจังหวะ
       f.hitstop = Math.round(dmg * 0.8) + 3;
       this.gainKi(f, real * 0.9);
+      hitFoes++;
       this.events.push({ type: 'hit', x: f.x, y: f.y - 70, dmg: real, heavy: true, launch: kb[1] < 0 });
     }
+    return hitFoes;
+  }
+
+  /** ได้ชั้น "โรงเต็ม" หนึ่งชั้น — เรียกเฉพาะตอนไหระเบิดโดนคู่ต่อสู้จริง ๆ */
+  gainHouse(ownerId) {
+    const f = ownerId === this.p1.id ? this.p1 : ownerId === this.p2.id ? this.p2 : null;
+    if (!f || f.house >= HOUSE_MAX) return;
+    f.house++;
+    this.events.push({ type: 'house', x: f.x, y: f.y - 130, n: f.house });
   }
 
   /** เดินกล่องทุกใบหนึ่งเฟรม — นับถอยหลังด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง */
@@ -1220,7 +1258,9 @@ class Game {
       const touched = b.arm === 0 && [this.p1, this.p2].some(
         (f) => f.onGround && f.invuln <= 0 && Math.abs(f.x - b.x) <= BOX_TRIGGER);
       if (b.fuse > 0 && !touched) { live.push(b); continue; }
-      this.blast(b.x, BOX_HALF, BOX_DMG, BOX_STUN, BOX_KB);
+      // ได้ชั้นเฉพาะตอน "ไหโดนคู่ต่อสู้" — ไหคือกับดัก คนมีสายตาจะไม่เดินเข้าไปเอง
+      // ต้องต้อนเขาเข้าไปด้วยท่าปกติ นั่นคือที่มาของความยาก และเป็นความยากที่มาจากการอ่านเกม
+      if (this.blast(b.x, BOX_HALF, BOX_DMG, BOX_STUN, BOX_KB, b.owner) > 0) this.gainHouse(b.owner);
     }
     this.boxes = live;
   }
@@ -1240,8 +1280,8 @@ class Game {
       this.events.push({ type: 'vanish', x: mine, y: f.y });
       this.events.push({ type: 'appear', x: f.x, y: f.y });
     }
-    this.blast(mine, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB);
-    this.blast(theirs, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB);
+    this.blast(mine, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB, f.id);
+    this.blast(theirs, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB, f.id);
   }
 
   /** โปรยกล่องทั่วเวที ชนวนเหลื่อมกันทีละใบ = ระเบิดไล่กันเป็นทอด ๆ
@@ -1254,6 +1294,7 @@ class Game {
       this.boxes.push({ x, owner: f.id, fuse: 40 + i * RAIN_STEP, arm: BOX_ARM });
     }
     this.events.push({ type: 'rain', x: f.x, y: f.y - 120, n });
+    f.house = 0;                     // จบการแสดงแล้ว โรงก็ว่าง เริ่มเก็บใหม่
   }
 
   /** กองไฟบนพื้น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน */
@@ -1641,7 +1682,10 @@ class Game {
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
       if (m.boxDrop && f.moveF === m.boxDrop.at) this.dropBox(f.x + f.facing * m.boxDrop.dx, f.id);
       if (m.swapBlast && f.moveF === m.swapBlast.at) this.swapBlast(f);
-      if (m.boxRain && f.moveF === m.boxRain.at) this.rainBoxes(f, m.boxRain.n);
+      // จำนวนไหคิดตอนใช้จริง ไม่ใช่เลขตายตัวในตารางท่า — ki บอกว่า "ใช้ได้ไหม"
+      // ส่วนชั้นที่สะสมไว้บอกว่า "ใหญ่แค่ไหน" คนที่โดนไล่ตีทั้งยกจึงยังได้ใช้อัลติ แค่ได้โรงว่าง
+      if (m.boxRain && f.moveF === m.boxRain.at)
+        this.rainBoxes(f, Math.min(RAIN_BASE + f.house, RAIN_BASE + HOUSE_MAX));
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
       if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
       if (m.dustPool && f.moveF === m.dustPool.at) {
