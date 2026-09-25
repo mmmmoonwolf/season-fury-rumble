@@ -1174,3 +1174,56 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   run(k, 20, {});
   ok(k.p2.hp < hp2, "สลับตัวละครของหุ่นแล้วยังตีโดนเหมือนเดิม");
 }
+
+// ── น้ำหนักหมัด: hitstop ต้องไล่เป็นสเกลกว้างพอจะรู้สึก ──
+//
+// ของเดิม 4 + dmg*0.6 ให้ช่วงแค่ 5-9 เฟรม = จิ้มเบากับไม้จบต่างกัน 1.8 เท่า
+// ผลคือสองด้าน: จิ้มเบาหนืดจนรัวไม่ลื่น และไม้จบไม่หนักพอจะรู้สึกว่าจบ
+{
+  const { CHARACTERS } = await import(G + "/core.js");
+  const all = Object.values(CHARACTERS).flatMap((c) => Object.values(c.moves)).filter((m) => m.dmg > 0);
+  const hs = (m) => Math.round(m.dmg * 1.43) + (m.kb[1] < -10 ? 3 : 0);
+  const light = Math.min(...all.map(hs)), heavy = Math.max(...all.map(hs));
+  ok(light <= 4, `หมัดเบาที่สุดหยุดภาพแค่ ${light} เฟรม — รัวได้ลื่น`);
+  ok(heavy >= 12, `ไม้จบหนักที่สุดหยุด ${heavy} เฟรม — รู้สึกว่าจบจริง`);
+  ok(heavy / light >= 4, `ช่วงกว้าง ${(heavy / light).toFixed(1)} เท่า (ของเดิม 1.8)`);
+
+  // ท่าที่จับลอยต้องกระแทกกว่าท่าที่ดาเมจเท่ากันแต่ไม่ลอย
+  const pair = all.filter((m) => m.kb[1] < -10);
+  ok(pair.length > 0 && pair.every((m) => hs(m) > Math.round(m.dmg * 1.43)),
+    `ท่าจับลอยได้ hitstop เพิ่มทุกท่า (${pair.length} ท่า)`);
+}
+
+// ── hitstop ยาวขึ้นแล้วคอมโบต้องไม่ขาด ──
+//
+// hitstop แช่ทั้งสองฝ่ายเท่ากัน และ stun ไม่เดินระหว่างนั้น จังหวะคอมโบจึงไม่ควรเปลี่ยน
+// ถ้าข้อนี้พัง แปลว่ามีเส้นทางไหนสักเส้นที่ข้าม hitstop ไปเดินเวลาต่อ
+{
+  const { Game } = await import(G + "/core.js");
+  const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
+  const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
+  for (const ch of ["nyx", "helios", "alecto", "atlas", "orpheus", "momus"]) {
+    const g = new Game(); g.p1.char = ch; g.p2.char = "helios";
+    g.resetPositions(); g.p1.x = g.p2.x - 90;
+    let best = 0;
+    for (let i = 0; i < 200; i++) {
+      g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
+      for (const e of g.events) if (e.type === "comboEnd") best = Math.max(best, e.hits);
+    }
+    ok(best >= 3, `${ch}: ต่อคอมโบได้อย่างน้อยสามจังหวะหลังยืด hitstop (ยาวสุด ${best} hit)`);
+  }
+}
+
+// ── แฟลชตอนโดนตีต้องใช้กับสไปรท์ด้วย ไม่ใช่แค่กล่อง ──
+//
+// ของเดิมมีแต่ใน drawFighter ซึ่งเป็นเส้นทางของกล่อง ตัวที่มีอาร์ตจริงจึงไม่เคยแฟลชเลย
+// เป็นของที่หายไปโดยไม่ได้ตั้งใจตอนเปลี่ยนมาใช้สไปรท์ ไม่ใช่การตัดสินใจ
+{
+  const fs = await import("fs");
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  ok(/_hitFlash\(f, sp\)/.test(scr), "เส้นทางสไปรท์เรียกแฟลชด้วย");
+  // setTint เป็นการคูณสี คูณด้วยขาวแล้วไม่มีอะไรเปลี่ยน ต้องเป็น setTintFill
+  ok(/setTintFill\(0xffffff\)/.test(scr), "ใช้ setTintFill ไม่ใช่ setTint (คูณขาวแล้วไม่เห็นอะไร)");
+  ok(/setTintFill\(0xffc24a\)/.test(scr), "เกราะแฟลชคนละสี — โดนแล้วแต่ท่าไม่ขาด เป็นคนละเรื่องกับโดนแล้วเซ");
+  ok(/if \(f\.hitstop <= 0\) \{ sp\.clearTint\(\); return; \}/.test(scr), "หมด hitstop แล้วล้างสีคืน ไม่ค้างขาว");
+}

@@ -735,6 +735,20 @@ const ULT_REACH = 340, ULT_GAP = 56, ULT_DASH = 190;
 // ที่ต้องแยกเพราะเวลาเล่นหลายคน หมุดค้างที่เดิมแปลว่าวาร์ปไปโผล่ที่ว่าง หรือแย่กว่านั้นคือกลางวง
 const SHOT_RANGE = 430, SHOT_SPEED = 13, ANCHOR_HOLD = 70, MARK_HOLD = 300;
 
+/** ภาพหยุดกี่เฟรมตอนหมัดเข้า — "น้ำหนัก" ของหมัดคนเล่นอ่านจากตรงนี้ มากกว่าจากประกายไฟ
+ *
+ *  ของเดิมเป็น `4 + dmg*0.6` ซึ่งให้ช่วงแค่ 5-9 เฟรม = จิ้มเบากับไม้จบต่างกัน 1.8 เท่า
+ *  ผลคือสองด้าน: จิ้มเบาหนืดจนรัวไม่ลื่น และไม้จบไม่หนักพอจะรู้สึกว่าจบ
+ *  ตอนนี้ 3-16 เฟรม = ต่างกัน 5 เท่า ซึ่งคือช่วงที่เกมต่อสู้ทั่วไปใช้
+ *
+ *  ท่าที่จับลอย (kb ขึ้นแรง) ได้เพิ่มอีก เพราะจังหวะที่คนลอยขึ้นคือจังหวะที่ต้องกระแทกที่สุด
+ *
+ *  hitstop แช่ทั้งสองฝ่ายเท่ากัน และ `stun` ไม่เดินระหว่างนั้น จังหวะคอมโบจึงไม่เปลี่ยน
+ *  ยาวขึ้นแล้วคอมโบไม่ขาด — ทั้งคนตีและคนโดนถูกหยุดพร้อมกันเป๊ะ
+ */
+const HITSTOP_PER_DMG = 1.43, HITSTOP_LAUNCH = 3;
+const hitstopFor = (m) => Math.round(m.dmg * HITSTOP_PER_DMG) + (m.kb[1] < -10 ? HITSTOP_LAUNCH : 0);
+
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
 class Fighter {
@@ -1188,6 +1202,8 @@ class Game {
       f.stanceUntil = -9999;
       f.vx = dir * kb[0]; f.vy = kb[1];
       if (kb[1] < 0) f.onGround = false;
+      // ระเบิดแช่เฉพาะคนที่โดน ไม่แช่ทั้งจอ — ระเบิดลูกเดียวอาจโดนสองคนคนละจังหวะ
+      f.hitstop = Math.round(dmg * 0.8) + 3;
       this.gainKi(f, real * 0.9);
       this.events.push({ type: 'hit', x: f.x, y: f.y - 70, dmg: real, heavy: true, launch: kb[1] < 0 });
     }
@@ -1326,6 +1342,8 @@ class Game {
     // ถีบขึ้นยังเป็น 0 เสมอ กระสุนไม่ควรจับลอย (กับดักเดิมที่กัดมาสี่รอบ)
     d.vx = sh.facing * (sh.kb ?? 2);
     d.facing = -sh.facing;
+    // กระสุนเดิมไม่มี hitstop เลย ยิงโดนแล้วไม่รู้สึกว่าโดน — สั้นกว่าท่าประชิดเพราะยิงรัวได้
+    a.hitstop = d.hitstop = Math.max(2, Math.round(sh.dmg * 0.9));
     this.gainKi(a, dmg * 1.4); this.gainKi(d, dmg * 0.9);
     this.events.push({ type: 'hit', x: sh.x, y: sh.y, dmg, heavy: false, launch: false });
   }
@@ -1697,12 +1715,12 @@ class Game {
     d.vx = a.facing * m.kb[0];
     if (m.kb[1] < 0 || !d.onGround) { d.vy = m.kb[1] || -2; d.onGround = false; }
     d.facing = -a.facing;
-    const hs = Math.round(4 + m.dmg * 0.6);
+    const hs = hitstopFor(m);
     a.hitstop = d.hitstop = hs;
     if (m.pogo) { a.vy = m.pogo; a.move = null; a.moveId = null; a.setState('air'); a.jumpsLeft = 1; }
     // หลอดอัลติเติมจากทั้งฝั่งที่ตีและฝั่งที่โดน — ฝั่งที่โดนรัวจึงมีทางสวนกลับ ไม่ใช่แพ้ทางอย่างเดียว
     this.gainKi(a, dmg * 1.4); this.gainKi(d, dmg * 0.9);
-    this.events.push({ type: 'hit', x: fx, y: fy, dmg, heavy: m.dmg >= 6, launch: m.kb[1] < -10 });
+    this.events.push({ type: 'hit', x: fx, y: fy, dmg, heavy: m.dmg >= 6, launch: m.kb[1] < -10, hs });
   }
 
   /** ดันตัวไม่ให้ซ้อนกัน — ยกเว้นตอนที่ฝ่ายใดฝ่ายหนึ่ง "มองไม่เห็นตัว"

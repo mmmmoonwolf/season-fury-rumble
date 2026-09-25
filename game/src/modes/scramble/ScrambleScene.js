@@ -940,7 +940,10 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'hit') {
         this.spark(e.x, e.y, e.heavy ? 14 : 9, 0xffffff);
         this.popup(e.x, e.y - 30, String(e.dmg), e.heavy ? '#ffd166' : '#ffffff');
-        if (e.launch) this.cameras.main.shake(110, 0.006); else if (e.heavy) this.cameras.main.shake(80, 0.004);
+        // แรงสั่นคิดจากเวลาที่ภาพหยุดจริง ไม่ใช่สองระดับตายตัว — น้ำหนักหมัดจึงไล่เป็นสเกลเดียวกัน
+        // ท่าที่จับลอยได้ hitstop เพิ่มอยู่แล้ว แรงสั่นเลยตามไปเองโดยไม่ต้องมีเงื่อนไขแยก
+        const hs = e.hs ?? 5;
+        if (hs >= 6) this.cameras.main.shake(40 + hs * 9, 0.0006 * hs);
       }
       if (e.type === 'block') { this.spark(e.x, e.y, 8, 0x5aa0ff); this.popup(e.x, e.y - 30, 'Blocked', '#8fc0ff'); }
       if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this.cameras.main.shake(90, 0.005); }
@@ -1296,10 +1299,30 @@ class ScrambleScene extends Phaser.Scene {
     sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
     sp.setPosition(f.x, f.y);
     sp.setAlpha(this._veilAlpha(f, f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1));
+    this._hitFlash(f, sp);
   }
 
   /** วาดตัวละครด้วยสไปรท์ถ้าตัวนั้นมีอาร์ตของ state นั้นแล้ว — คืน true ถ้าวาดให้แล้ว
    *  ตัวที่ยังไม่มีอาร์ต (เช่นหุ่นซ้อม) ไม่มีใน CHAR_ART ก็ตกไปวาดเป็นกล่องเหมือนเดิม */
+  /** แฟลชตอนโดนตี — ของเดิมมีแต่ในเส้นทางที่วาดเป็นกล่อง (drawFighter)
+   *
+   *  ตัวละครที่มีอาร์ตจริงจึง **ไม่เคยแฟลชเลยสักครั้ง** ตั้งแต่เปลี่ยนมาใช้สไปรท์
+   *  ซึ่งเป็นของที่หายไปโดยไม่ได้ตั้งใจ ไม่ใช่การตัดสินใจ — และมันคือสัญญาณ "โดนแล้ว"
+   *  ที่อ่านเร็วที่สุดในเกมต่อสู้ เร็วกว่าหลอดเลือดและเร็วกว่าตัวเลขดาเมจ
+   *
+   *  ใช้ setTintFill ไม่ใช่ setTint — setTint เป็นการ "คูณสี" ซึ่งคูณด้วยขาวแล้วไม่มีอะไรเปลี่ยน
+   *  setTintFill ทับทั้งตัวเป็นสีเดียว = เห็นเป็นเงาดำ/ขาวของท่านั้น ซึ่งคือลุคที่ต้องการ
+   *
+   *  เกราะของ Atlas แฟลชสีเหลืองอำพันแทน: โดนแล้วแต่ท่าไม่ขาด เป็นคนละเรื่องกับโดนแล้วเซ
+   *  ถ้าแฟลชสีเดียวกัน คนตีจะอ่านว่า "เข้าแล้ว" ทั้งที่จริง ๆ อีกฝ่ายกำลังเดินหน้าใส่ต่อ
+   */
+  _hitFlash(f, sp) {
+    if (f.hitstop <= 0) { sp.clearTint(); return; }
+    if (f.state === 'hitstun') sp.setTintFill(0xffffff);
+    else if (f.state === 'attack' && f.move?.armor && f.armorLeft >= 0) sp.setTintFill(0xffc24a);
+    else sp.clearTint();
+  }
+
   /** ความจางตอนอยู่ในวงฝุ่น
    *
    * ข้อจำกัดจริง: เล่นสองคนเครื่องเดียวกันมองจอเดียวกัน ถ้าซ่อนสนิทคนเล่นเธอก็มองไม่เห็นตัวเอง
