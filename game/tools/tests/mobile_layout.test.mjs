@@ -103,7 +103,7 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
 
   // กฎเจาะจงต้องยังชนะ * (specificity 0) — canvas กับปุ่มเกมต้องเป็น none ไม่ใช่ manipulation
   ok(/canvas\s*\{[^}]*touch-action:\s*none/.test(html), "canvas ยังเป็น touch-action: none ตามเดิม");
-  ok(/#sc-tools button, #sc-touch button \{[^}]*touch-action:none/.test(scramble), "ปุ่มของ SCRAMBLE ยังเป็น none");
+  ok(/#sc-tools button, #sc-touch button, #sc-mute \{[^}]*touch-action:none/.test(scramble), "ปุ่มของ SCRAMBLE ยังเป็น none");
 
   // กล่องที่ห่อปุ่ม — จุดที่ทำให้ซูมจริง ๆ
   for (const sel of ["#sc-tools", "#sc-touch", "#sc-touch .stick", "#sc-touch .acts"]) {
@@ -153,7 +153,7 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
 // ฉากเปลี่ยนจากเมืองกลางคืนเป็นฟ้ากลางวัน ปุ่มพื้นขาวโปร่งแบบเดิมกลืนหายไปทันที
 {
   const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
-  const btn = scr.match(/#sc-tools button, #sc-touch button \{([^}]*)\}/)?.[1] ?? "";
+  const btn = scr.match(/#sc-tools button, #sc-touch button, #sc-mute \{([^}]*)\}/)?.[1] ?? "";
   ok(/background:rgba\(12,17,28,\.\d+\)/.test(btn), "พื้นปุ่มเป็นสีเข้มทึบ ไม่ใช่ขาวโปร่ง");
   ok(/text-shadow/.test(btn), "ตัวอักษรมีเงา — อ่านออกทั้งบนฟ้าสว่างและบนหินเข้ม");
   ok(/border:1\.5px|border:2px/.test(btn), "ขอบหนาขึ้นให้เห็นรูปปุ่มชัด");

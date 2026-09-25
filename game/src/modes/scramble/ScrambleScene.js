@@ -282,6 +282,20 @@ const HIT_FX = { tint: 0xffe08a, spark: 0xffd166 };
  *
  *  ทั้งหมดนี้เป็นการวาดล้วน ไม่แตะ sim — เลื่อนพลาดก็แค่ภาพเพี้ยน ไม่ทำให้สองเครื่องหลุดกัน
  */
+/** เพลงประกอบเวที
+ *
+ *  **โหลดทีหลัง ไม่ใช่ใน preload()** — ไฟล์ 2.2 MB ถ้ารอให้โหลดเสร็จก่อนเข้าฉาก
+ *  คนเล่นจะนั่งมองจอโหลดเพิ่มอีกหลายวินาทีเพื่ออะไรที่ไม่ใช่การเล่น
+ *  เข้าเกมได้ก่อน แล้วเพลงค่อยเฟดเข้ามาเมื่อพร้อม
+ *
+ *  สองฟอร์แมตเพราะ Safari รุ่นเก่าไม่เล่น ogg ส่วน Firefox รุ่นเก่าไม่เล่น m4a
+ *  Phaser เลือกอันที่เบราว์เซอร์นั้นเล่นได้ให้เอง
+ *
+ *  ดังไม่เท่าเสียงเอฟเฟค — เพลงประกอบที่กลบเสียงหมัดคือเพลงประกอบที่ตั้งดังเกินไป
+ */
+const BGM = { key: 'bgmStage', files: ['assets/audio/stage.ogg', 'assets/audio/stage.m4a'],
+  vol: 0.32, fadeIn: 1200, store: 'sfr.muted' };
+
 const PARALLAX = {
   sky:  { x: 0.030, y: 0.025, pad: 1.22 },   // ไกลสุด ขยับน้อยสุด
   far:  { x: 0.100, y: 0.075, pad: 1.00 },   // เกาะบ้านลอย (ภาพโปร่งเกือบทั้งใบ ไม่ต้องเผื่อขอบ)
@@ -336,9 +350,18 @@ const OVERLAY_CSS = `
 #sc-tools { position:absolute; top:calc(58px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:15; }
 /* พื้นปุ่มเป็น "สีเข้มทึบ" ไม่ใช่ขาวโปร่ง — ฉากเปลี่ยนเป็นฟ้ากลางวันแล้วปุ่มขาวโปร่งกลืนหายไปเลย
    ขอบสว่าง + เงาตัวอักษร + เงารอบปุ่ม ทำให้อ่านออกทั้งบนฟ้าสว่างและบนหินเข้ม */
-#sc-tools button, #sc-touch button { font:600 13px "Chakra Petch", system-ui, sans-serif; color:#f2ede3; background:rgba(12,17,28,.62); border:1.5px solid rgba(242,237,227,.55); border-radius:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); box-shadow:0 2px 10px rgba(0,0,0,.35); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+#sc-tools button, #sc-touch button, #sc-mute { font:600 13px "Chakra Petch", system-ui, sans-serif; color:#f2ede3; background:rgba(12,17,28,.62); border:1.5px solid rgba(242,237,227,.55); border-radius:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); box-shadow:0 2px 10px rgba(0,0,0,.35); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
 #sc-tools button { padding:6px 10px; font-size:12px; }
-#sc-tools button.on, #sc-touch button.on { background:rgba(200,50,60,.82); border-color:rgba(255,200,200,.7); }
+#sc-tools button.on, #sc-touch button.on, #sc-mute.on { background:rgba(200,50,60,.82); border-color:rgba(255,200,200,.7); }
+/* ปุ่มปิดเสียงอยู่นอกแถวเครื่องมือ เพราะแถวนั้นถูกซ่อนตอนต่อเน็ต
+   คนที่ปิดเสียงเพราะอยู่ที่สาธารณะต้องปิดได้ทุกโหมด ไม่ใช่เฉพาะตอนซ้อม
+   วางชิดซ้ายบนใต้แถบเลือด — มุมขวาบนมีปุ่มเต็มจอของเกมอยู่แล้ว */
+/* z-index สูงกว่าแผงเลือกตัว (30) โดยตั้งใจ — เพลงเริ่มเล่นตั้งแต่อยู่หน้าเลือกตัว
+   ถ้าปุ่มอยู่ใต้แผง คนเล่นจะปิดเสียงไม่ได้จนกว่าจะเลือกตัวเสร็จ ซึ่งสายไปแล้ว */
+#sc-mute { position:absolute; z-index:31; left:calc(10px + env(safe-area-inset-left,0px));
+  top:calc(96px + env(safe-area-inset-top,0px)); width:38px; height:38px; border-radius:10px;
+  display:grid; place-items:center; font-size:17px; line-height:1; padding:0; }
+body.sc-net #sc-mute { top:calc(60px + env(safe-area-inset-top,0px)); }
 #sc-tune { display:none; position:absolute; right:calc(12px + env(safe-area-inset-right,0px)); top:calc(100px + env(safe-area-inset-top,0px)); width:250px; max-height:60%; overflow-y:auto; background:rgba(12,17,28,.9); border:1px solid rgba(233,227,214,.25); border-radius:12px; padding:10px 12px; font:13px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; z-index:16; }
 #sc-tune.open { display:block; }
 #sc-tune label { display:flex; justify-content:space-between; margin-top:8px; }
@@ -372,7 +395,7 @@ body.sc-touch #sc-touch { display:flex; }
 /* กันแว่นขยาย/เมนูคัดลอกของ iOS ทั้งแผงคุม ไม่ใช่เฉพาะตัวปุ่ม
    ที่ว่างระหว่างปุ่มกับพื้นหลังของแผงก็เป็น element ที่นิ้วแตะค้างได้เหมือนกัน
    ของเดิมใส่ไว้แค่ที่ <button> ซึ่งพอมีพื้นผิวที่ไม่ใช่ปุ่ม (จอยลอย) ก็หลุดทันที */
-#sc-tools, #sc-tools *, #sc-touch, #sc-touch * {
+#sc-tools, #sc-tools *, #sc-touch, #sc-touch *, #sc-mute {
   -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
   user-select:none; -webkit-user-select:none; }
 /* ต่อเน็ตแล้วเครื่องมือซ้อมใช้ไม่ได้ (แก้ sim ข้างเดียว = หลุดกัน) ซ่อนไปเลยดีกว่าให้กดแล้วเงียบ */
@@ -475,6 +498,7 @@ body.sc-picking #sc-touch, body.sc-picking #sc-tools, body.sc-picking #sc-tune {
 `;
 
 const OVERLAY_HTML = `
+<button id="sc-mute" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">♫</button>
 <div id="sc-tools">
   <button data-tool="KeyH">Hitboxes</button>
   <button data-tool="Digit0">Dummy: Stand</button>
@@ -612,6 +636,43 @@ class ScrambleScene extends Phaser.Scene {
     return true;
   }
 
+  /** โหลดเพลงแบบเบื้องหลังแล้วเริ่มเล่นเมื่อพร้อม
+   *
+   *  ไม่ใช้ this.load ของฉาก เพราะนั่นคือคิวที่ฉากรอให้เสร็จก่อนเริ่ม
+   *  ใช้ตัวโหลดแยกที่สั่งเริ่มเอง ฉากจึงเดินต่อได้ทันทีโดยไม่ต้องรอไฟล์ 2.2 MB
+   *
+   *  เบราว์เซอร์มือถือห้ามเล่นเสียงจนกว่าจะมีการแตะจากคนจริง ๆ
+   *  ตรงนี้ผ่านแล้วเพราะเข้าฉากนี้ได้ต้องกดปุ่มจากเมนูมาก่อน แต่ยังเช็คซ้ำเผื่อ autoplay policy
+   */
+  _startMusic() {
+    if (localStorage.getItem(BGM.store) === '1') { this.muted = true; return; }
+    if (this.cache.audio.exists(BGM.key)) { this._playMusic(); return; }
+    const ld = new Phaser.Loader.LoaderPlugin(this);
+    ld.audio(BGM.key, BGM.files);
+    ld.once('complete', () => this._playMusic());
+    ld.start();
+  }
+
+  _playMusic() {
+    if (this.music || this.muted) return;
+    this.music = this.sound.add(BGM.key, { loop: true, volume: 0 });
+    // ปลดล็อกเสียงตอนแตะครั้งแรก ถ้าเบราว์เซอร์ยังล็อกอยู่ (นโยบาย autoplay)
+    if (this.sound.locked) this.sound.once('unlocked', () => this.music?.play());
+    else this.music.play();
+    this.tweens.add({ targets: this.music, volume: BGM.vol, duration: BGM.fadeIn });
+    this.events.once('shutdown', () => { this.music?.stop(); this.music?.destroy(); this.music = null; });
+  }
+
+  /** ปิด/เปิดเสียง — จำไว้ข้ามรอบเล่นด้วย localStorage
+   *  คนที่ปิดเสียงเพราะอยู่บนรถเมล์ ไม่ควรต้องปิดใหม่ทุกครั้งที่เข้าเกม */
+  toggleMute() {
+    this.muted = !this.muted;
+    localStorage.setItem(BGM.store, this.muted ? '1' : '0');
+    if (this.muted) { this.music?.stop(); this.music?.destroy(); this.music = null; }
+    else this._startMusic();
+    return this.muted;
+  }
+
   /** แถบมืดบน-ล่าง ให้ตัวหนังสือ HUD อ่านออกบนฟ้าสว่าง
    *
    *  HUD ทั้งชุดออกแบบไว้ตอนฉากหลังเป็นเมืองกลางคืน พอเปลี่ยนเป็นฟ้ากลางวัน
@@ -659,6 +720,7 @@ class ScrambleScene extends Phaser.Scene {
     this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
     this.sparks = []; this.popups = []; this.comboFade = 0;
     this._buildStage();
+    this._startMusic();
     this.world = this.add.graphics();
     this.fx = this.add.graphics();
     this.hud = this.add.graphics();
@@ -725,6 +787,14 @@ class ScrambleScene extends Phaser.Scene {
       ['pointerup', 'pointercancel', 'lostpointercapture'].forEach((ev) => b.addEventListener(ev, up));
     });
 
+    const mute = root.querySelector('#sc-mute');
+    if (mute) {
+      const paint = () => { mute.textContent = this.muted ? '\u266b\u0338' : '\u266b';
+        mute.classList.toggle('on', !!this.muted); };
+      mute.addEventListener('pointerdown', (e) => { e.preventDefault(); this.toggleMute(); paint(); });
+      this.muted = localStorage.getItem(BGM.store) === '1';
+      paint();
+    }
     this._wireStick(root);
     buildTune();
     this._wireSelect(root);
