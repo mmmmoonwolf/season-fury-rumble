@@ -15,15 +15,125 @@
     }
   },
   "files": {
+    "block_1": {
+      "source": "impactMetal_light_000.ogg",
+      "out": "block_1",
+      "lic": "cc0"
+    },
+    "block_2": {
+      "source": "impactMetal_light_001.ogg",
+      "out": "block_2",
+      "lic": "cc0"
+    },
+    "block_3": {
+      "source": "impactMetal_light_004.ogg",
+      "out": "block_3",
+      "lic": "cc0"
+    },
+    "hit_heavy_1": {
+      "source": "impactPunch_heavy_000.ogg",
+      "out": "hit_heavy_1",
+      "lic": "cc0"
+    },
+    "hit_heavy_2": {
+      "source": "impactPunch_heavy_001.ogg",
+      "out": "hit_heavy_2",
+      "lic": "cc0"
+    },
+    "hit_heavy_3": {
+      "source": "impactPunch_heavy_002.ogg",
+      "out": "hit_heavy_3",
+      "lic": "cc0"
+    },
+    "hit_heavy_4": {
+      "source": "impactPunch_heavy_003.ogg",
+      "out": "hit_heavy_4",
+      "lic": "cc0"
+    },
     "hit_light_1": {
-      "source": "d9cbd7be-Isolated_Punch_Impact.mp3",
+      "source": "impactPunch_medium_000.ogg",
       "out": "hit_light_1",
-      "lic": "elevenlabs-free"
+      "lic": "cc0"
     },
     "hit_light_2": {
-      "source": "dd04de09-Flesh_and_Leather_Impact.mp3",
+      "source": "impactPunch_medium_001.ogg",
       "out": "hit_light_2",
-      "lic": "elevenlabs-free"
+      "lic": "cc0"
+    },
+    "hit_light_3": {
+      "source": "impactPunch_medium_002.ogg",
+      "out": "hit_light_3",
+      "lic": "cc0"
+    },
+    "hit_light_4": {
+      "source": "impactPunch_medium_003.ogg",
+      "out": "hit_light_4",
+      "lic": "cc0"
+    },
+    "hit_light_5": {
+      "source": "impactPunch_medium_004.ogg",
+      "out": "hit_light_5",
+      "lic": "cc0"
+    },
+    "land_hard_1": {
+      "source": "impactPlank_medium_001.ogg",
+      "out": "land_hard_1",
+      "lic": "cc0"
+    },
+    "land_hard_2": {
+      "source": "impactPlank_medium_002.ogg",
+      "out": "land_hard_2",
+      "lic": "cc0"
+    },
+    "land_hard_3": {
+      "source": "impactPlank_medium_003.ogg",
+      "out": "land_hard_3",
+      "lic": "cc0"
+    },
+    "land_soft_1": {
+      "source": "footstep_grass_000.ogg",
+      "out": "land_soft_1",
+      "lic": "cc0"
+    },
+    "land_soft_2": {
+      "source": "footstep_grass_001.ogg",
+      "out": "land_soft_2",
+      "lic": "cc0"
+    },
+    "land_soft_3": {
+      "source": "footstep_grass_002.ogg",
+      "out": "land_soft_3",
+      "lic": "cc0"
+    },
+    "swing_1": {
+      "source": "cloth1.ogg",
+      "out": "swing_1",
+      "lic": "cc0",
+      "max_ms": 150
+    },
+    "swing_2": {
+      "source": "cloth2.ogg",
+      "out": "swing_2",
+      "lic": "cc0",
+      "max_ms": 150
+    },
+    "swing_3": {
+      "source": "cloth3.ogg",
+      "out": "swing_3",
+      "lic": "cc0",
+      "max_ms": 150
+    },
+    "whip_1": {
+      "source": "knifeSlice2.ogg",
+      "out": "whip_1",
+      "lic": "cc0",
+      "max_ms": 180
+    },
+    "whip_2": {
+      "source": "knifeSlice.ogg",
+      "out": "whip_2",
+      "lic": "cc0",
+      "max_ms": 180
     }
   }
 }

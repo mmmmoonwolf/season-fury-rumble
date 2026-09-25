@@ -63,14 +63,62 @@ LICENSES = {
 # ไฟล์ไหนมาจากไหน — แล้ววันที่ต้องตอบว่า "เกมนี้ขายได้ไหม" จะตอบไม่ได้ทั้งโฟลเดอร์
 # ไฟล์ดิบเก็บชื่อเดิมที่ต้นทางตั้งมา จะได้ตามกลับไปหา prompt หรือหน้าดาวน์โหลดได้
 MAP = {
-    # ทั้งสองอันมาจาก prompt "หมัดเบา" ใน art_prompts_sfx.md
-    # อันแรกบางและแหลม (พลังงาน 59% อยู่เหนือ 4 kHz) อันที่สองมีเนื้อกว่า (เบส 21%)
-    # ต่างกันพอให้สลับกันแล้วหูไม่จับว่าซ้ำ ซึ่งคือเหตุผลทั้งหมดของการมีหลายเวอร์ชัน
-    "d9cbd7be-Isolated_Punch_Impact.mp3":
-        {"out": "hit_light_1", "lic": "elevenlabs-free"},
-    "dd04de09-Flesh_and_Leather_Impact.mp3":
-        {"out": "hit_light_2", "lic": "elevenlabs-free"},
+    # ── หมัด ── ชุดเดียวกันทั้งเบาและหนัก จงใจ
+    #
+    # Kenney ทำสองชุดนี้เป็นคู่กันมาแต่แรก เบากับหนักจึงฟังเป็นตัวละครเดียวกัน
+    # ต่างกันที่น้ำหนัก ไม่ใช่ต่างกันที่ "คนละโลก"
+    # ก่อนหน้านี้ใช้ของ ElevenLabs เป็นหมัดเบา แต่ของนั้นพลังงาน 59% อยู่เหนือ 4 kHz
+    # ส่วนหมัดหนักของ Kenney มีแค่ 2% เอามาอยู่ด้วยกันแล้วเหมือนคนละเกม
+    "impactPunch_medium_000.ogg": {"out": "hit_light_1", "lic": "cc0"},
+    "impactPunch_medium_001.ogg": {"out": "hit_light_2", "lic": "cc0"},
+    "impactPunch_medium_002.ogg": {"out": "hit_light_3", "lic": "cc0"},
+    "impactPunch_medium_003.ogg": {"out": "hit_light_4", "lic": "cc0"},
+    "impactPunch_medium_004.ogg": {"out": "hit_light_5", "lic": "cc0"},
+    "impactPunch_heavy_000.ogg": {"out": "hit_heavy_1", "lic": "cc0"},
+    "impactPunch_heavy_001.ogg": {"out": "hit_heavy_2", "lic": "cc0"},
+    "impactPunch_heavy_002.ogg": {"out": "hit_heavy_3", "lic": "cc0"},
+    "impactPunch_heavy_003.ogg": {"out": "hit_heavy_4", "lic": "cc0"},
+
+    # ── บล็อก ── โลหะเบา เบสแทบเป็นศูนย์ (0.5-1%)
+    # ตั้งใจเลือกให้ไม่มีเบส เพราะบล็อกเกิดพร้อม ๆ กับหมัดที่เบสหนัก
+    # ถ้าสองอย่างแย่งย่านเดียวกัน จะกลายเป็นก้อนเดียวแยกไม่ออกว่าโดนหรือกัน
+    "impactMetal_light_000.ogg": {"out": "block_1", "lic": "cc0"},
+    "impactMetal_light_001.ogg": {"out": "block_2", "lic": "cc0"},
+    "impactMetal_light_004.ogg": {"out": "block_3", "lic": "cc0"},
+
+    # ── ลงพื้นเบา ── เสียงเหยียบหญ้า ตรงกับพื้นเวทีที่เป็นหญ้ากับดิน
+    "footstep_grass_000.ogg": {"out": "land_soft_1", "lic": "cc0"},
+    "footstep_grass_001.ogg": {"out": "land_soft_2", "lic": "cc0"},
+    "footstep_grass_002.ogg": {"out": "land_soft_3", "lic": "cc0"},
+
+    # ── ลงพื้นแรง ── เลือก impactPlank ไม่ใช่ impactSoft_heavy ที่ชื่อตรงกว่า
+    #
+    # impactSoft_heavy พลังงาน 95% อยู่ต่ำกว่า 200 Hz ซึ่งลำโพงมือถือแทบไม่มีเลย
+    # เกมนี้เล่นบนมือถือเป็นหลัก เสียงนั้นจะหายไปเฉย ๆ ทั้งที่ในหูฟังดังมาก
+    # impactPlank มีเบส 44-50% แต่ที่เหลืออยู่ย่าน 800-1000 Hz ซึ่งมือถือส่งออกได้
+    "impactPlank_medium_001.ogg": {"out": "land_hard_1", "lic": "cc0"},
+    "impactPlank_medium_002.ogg": {"out": "land_hard_2", "lic": "cc0"},
+    "impactPlank_medium_003.ogg": {"out": "land_hard_3", "lic": "cc0"},
+
+    # ── หวดลม ── เสียงผ้าสะบัด คือเสียงแขนเหวี่ยงผ่านอากาศจริง ๆ
+    # ต้นฉบับยาว 260-420 ms ซึ่งยาวกว่าจังหวะแย็บ (ราว 200 ms) ต้องตัดเพดาน
+    "cloth1.ogg": {"out": "swing_1", "lic": "cc0", "max_ms": 150},
+    "cloth2.ogg": {"out": "swing_2", "lic": "cc0", "max_ms": 150},
+    "cloth3.ogg": {"out": "swing_3", "lic": "cc0", "max_ms": 150},
+
+    # ── แส้ของ Alecto ── เสียงเฉือน ตัดเพดานให้เหลือแต่หัวเสียงกับหางสั้น ๆ
+    "knifeSlice2.ogg": {"out": "whip_1", "lic": "cc0", "max_ms": 180},
+    "knifeSlice.ogg": {"out": "whip_2", "lic": "cc0", "max_ms": 180},
 }
+
+# ── เก็บไว้เผื่อย้อนกลับ ──
+# หมัดเบาเคยเป็นของ ElevenLabs แพ็กฟรี 2 ไฟล์ ยังอยู่ใน art_reference/audio/sfx_raw/
+#   d9cbd7be-Isolated_Punch_Impact.mp3   -> hit_light_1 (เดิม)
+#   dd04de09-Flesh_and_Leather_Impact.mp3 -> hit_light_2 (เดิม)
+# ถอดออกเพราะสองเหตุผล ไม่ใช่เพราะมันไม่ดี:
+#   1. โทนไม่เข้ากับหมัดหนักของ Kenney (แหลม 59% กับ 2%) อยู่ในเกมเดียวกันแล้วขัดกัน
+#   2. แพ็กฟรีห้ามใช้เชิงพาณิชย์ ไฟล์เดียวก็ทำให้ทั้งเกมติดข้อนั้น
+# อยากกลับไปใช้ แค่ย้ายสองบรรทัดกลับเข้า MAP แล้วรันใหม่
 
 # ไฟล์ที่เจนมาแล้วใช้ไม่ได้ เก็บชื่อไว้กันเจนซ้ำแล้วลืมว่าเคยเจนไปแล้ว
 # 34811d6b-Sharp_Strike.mp3 และ af393040-The_Sudden_Hit.mp3
@@ -137,6 +185,11 @@ def main():
             raise SystemExit(
                 f"{src}: ไฟล์เงียบทั้งอัน (พีค {peak:.6f}) — ElevenLabs เจนพลาด ต้องเจนใหม่")
         cut, head, tail = trim(raw)
+        # เพดานความยาว: ไลบรารีเสียงทั่วไปไม่ได้ทำมาให้จังหวะเกมต่อสู้
+        # เสียงหวดลมที่ยาวกว่าช่วงห่างระหว่างหมัด จะค้างทับหมัดถัดไปของตัวเอง
+        cap = info.get("max_ms")
+        if cap and len(cut) > cap * SR // 1000:
+            cut = cut[:cap * SR // 1000]
         cut, gain = shape(cut)
 
         wav = os.path.join(TMP, name + ".wav")

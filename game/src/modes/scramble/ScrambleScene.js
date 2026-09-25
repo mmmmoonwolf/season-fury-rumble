@@ -311,10 +311,15 @@ const SFX = {
   jitter: 90,        // เซนต์ (100 เซนต์ = ครึ่งเสียง) สุ่ม ± ค่านี้ทุกครั้งที่เล่น
   gap: 30,           // มิลลิวินาที — กันเสียงเดียวกันซ้อนกันเองจนเกิดเสียงหวีดแบบ comb filter
   bank: {
-    hitLight: { files: ['hit_light_1', 'hit_light_2'] },
-    // ยังไม่มีไฟล์หมัดหนักของตัวเอง ยืมหมัดเบามาถ่วงต่ำลงสองเสียงกว่า ๆ แล้วดังขึ้นแทนไปก่อน
-    // ไม่ใช่ของถาวร แต่ดีกว่าปล่อยให้ท่าหนักเงียบทั้งที่ท่าเบามีเสียง ซึ่งฟังเหมือนบั๊ก
-    hitHeavy: { files: ['hit_light_1', 'hit_light_2'], vol: 1.25, detune: -260 },
+    hitLight: { files: ['hit_light_1', 'hit_light_2', 'hit_light_3', 'hit_light_4', 'hit_light_5'] },
+    hitHeavy: { files: ['hit_heavy_1', 'hit_heavy_2', 'hit_heavy_3', 'hit_heavy_4'], vol: 1.15 },
+    block:    { files: ['block_1', 'block_2', 'block_3'], vol: 0.85 },
+    landSoft: { files: ['land_soft_1', 'land_soft_2', 'land_soft_3'], vol: 0.55 },
+    landHard: { files: ['land_hard_1', 'land_hard_2', 'land_hard_3'], vol: 0.85 },
+    // หวดลมต้องเบา — มันดังทุกครั้งที่กดปุ่ม ดังกว่านี้แล้วจะกลบเสียงหมัดที่เข้าจริง
+    // ซึ่งกลับหัวกลับหางความหมาย: ตีโดนต้องดังกว่าตีพลาดเสมอ
+    swing:    { files: ['swing_1', 'swing_2', 'swing_3'], vol: 0.42 },
+    whip:     { files: ['whip_1', 'whip_2'], vol: 0.55 },
   },
 };
 
@@ -1096,6 +1101,7 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'block') {
         this.popup(e.x, e.y - 30, 'Blocked', '#8fc0ff');
+        this._sfx('block');
         this.emit('ring', e.x, e.y, { scale: 0.22, life: 14, grow: 1.4, tint: 0x8fc0ff });
         this.emit('burst', e.x, e.y, { scale: 0.14, life: 9, grow: 0.7, tint: 0x5aa0ff });
       }
@@ -1109,12 +1115,14 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'djump')
         this.emit('ring', e.x, e.y - 20, { scale: 0.14, life: 12, grow: 1.6, tint: 0xcfe0ff, alpha: 0.8 });
       // ลงพื้น: ฝุ่นฟุ้งตรงเท้า — อันนี้ไม่มีในเกมมาก่อน ทั้งที่เป็นจังหวะที่เกิดบ่อยที่สุด
-      if (e.type === 'land')
+      if (e.type === 'land') {
+        this._sfx(e.hard ? 'landHard' : 'landSoft');
         for (let i = 0; i < 3; i++) {
           const d = (i - 1) * 14;
           this.emit('dustFlat', e.x + d, e.y - 4, { scale: 0.16 + Math.random() * 0.1, life: 14, grow: 1.2,
             vx: d * 0.08, alpha: 0.42, tint: 0xd8c9a8, blend: Phaser.BlendModes.NORMAL, depth: 6 });
         }
+      }
       // อัลติ: ควันตอนหาย/โผล่ + จอกระพริบตอนเริ่มท่า
       if (e.type === 'vanish') {
         this.cameras.main.shake(60, 0.003);
@@ -1478,6 +1486,22 @@ class ScrambleScene extends Phaser.Scene {
 
   /** รอยฟาดตอนท่าเข้าช่วง active — ตำแหน่งยึดกลาง hitbox จริง ไม่ใช่กลางตัวละคร
    *  คนเล่นจึงเห็นว่า "ตรงนี้คือที่ที่โดน" ซึ่งเป็นข้อมูลที่ใช้เล่นได้จริง ไม่ใช่แค่สวย */
+  /** เสียงหวดลมของท่านี้ — ใช้ตารางเดียวกับรอยฟาด ไม่ตั้งตารางใหม่
+   *
+   *  ตารางรอยฟาดรู้อยู่แล้วว่าท่าไหน "เหวี่ยงอะไรบางอย่าง" และท่าไหนไม่ใช่
+   *  ท่าปืนของ Alecto ตั้งไว้เป็น null อยู่แล้วเพราะไม่มีรอยฟาด — จึงไม่มีเสียงหวดด้วยโดยอัตโนมัติ
+   *  (ยิงปืนต้องใช้เสียงปืน ซึ่งยังไม่มีไฟล์ ปล่อยเงียบดีกว่าใส่เสียงหวดลมให้กระสุน)
+   *
+   *  ตั้งตารางแยกเมื่อไหร่ วันหนึ่งสองตารางจะไม่ตรงกัน แล้วจะมีท่าที่มีเสียงแต่ไม่มีรอย
+   */
+  _swingFor(f) {
+    const art = CHAR_ART[f.char];
+    if (!art) return;
+    const spec = art.slash && f.moveId in art.slash ? art.slash[f.moveId] : SLASH_DEFAULT[f.moveId];
+    if (!spec) return;
+    this._sfx(spec.f === 'slashLash' ? 'whip' : 'swing');
+  }
+
   slashFor(f) {
     const art = CHAR_ART[f.char];
     if (!art) return;
@@ -1633,6 +1657,11 @@ class ScrambleScene extends Phaser.Scene {
       // ปล่อยทุกเฟรมจะซ้อนกันเป็นแผ่นทึบ และปล่อยตอนเริ่มท่าจะมาก่อนกรอบโจมตีจริง
       // ซึ่งสอนคนเล่นผิดว่าโดนได้ตั้งแต่ตอนเงื้อ
       const tag = f.moveId + '#' + f.move?.startup;
+      // เสียงหวดลมออกตอน "เริ่มท่า" ไม่ใช่ตอน active เหมือนรอยฟาด — ตั้งใจให้ต่างกัน
+      // รอยฟาดต้องตรงกับกรอบโจมตีจริง ไม่งั้นสอนคนเล่นผิดว่าโดนได้ตั้งแต่ตอนเงื้อ
+      // แต่เสียงต้องมาก่อน เพราะถ้าออกพร้อม active เสียงหวดกับเสียงหมัดจะห่างกันเฟรมเดียว
+      // แล้วหักล้างกันเป็นเสียงเดียวขุ่น ๆ แทนที่จะเป็นเงื้อ-แล้ว-โดน
+      if (rig.lastSwing !== tag) { rig.lastSwing = tag; this._swingFor(f); }
       if (f.phase() === 'active' && rig.lastSlash !== tag) { rig.lastSlash = tag; this.slashFor(f); }
       else if (f.phase() !== 'active' && rig.lastSlash === tag && f.moveF < f.move.startup) rig.lastSlash = null;
       // ท่าที่ติดธง mobile (โหมดไรเฟิล) เดินไปด้วยยิงไปด้วยได้ เฟรมท่ายิงเป็นท่ายืนนิ่ง
