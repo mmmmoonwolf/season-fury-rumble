@@ -220,6 +220,29 @@ function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483
  *   แต่ผืนเกมกว้างตามสัดส่วนจอ (ดู index.html) บนมือถือจึงกว้างกว่าเวที
  *   วาดพื้นหลังเลยออกไปให้เต็มจอ แล้วเลื่อนกล้องให้เวทีอยู่กลาง (ดู create())
  */
+/** เวที Valhalla — อาร์ตวาดมือ ตัดเป็นเลเยอร์กับชิ้นแพลตฟอร์มไว้แล้ว (tools/build_stage_valhalla.py)
+ *
+ *  ตัดเป็นชิ้นแทนที่จะแปะภาพประกอบเสร็จทั้งใบ เพราะตำแหน่งแพลตฟอร์มในเกมผ่าน playtest มาแล้ว
+ *  ถ้าใช้ภาพที่วาดแพลตฟอร์มติดมาด้วย กรอบชนกับรูปจะไม่ตรงกัน
+ *  คนเล่นจะเห็นหินตรงหนึ่งแต่ยืนได้อีกตรงหนึ่ง ซึ่งเป็นความผิดพลาดที่ให้อภัยไม่ได้ในเกมแพลตฟอร์ม
+ *
+ *  `surface` = ระยะจากขอบบนของรูปถึง "เส้นที่ยืนได้" — ไม่ใช่ขอบบนของรูป
+ *  เสาหินรูนสูงกว่าตัวแพลตฟอร์ม และพื้นล่างวาดเป็นมุมเฉียงจนสันหินหลังสูงกว่าทางเดินหน้า
+ */
+// มิดกราวด์ยื่นลงใต้เส้นพื้นเท่านี้ — หน้าผาสองข้างต้องจมใต้พื้นล่าง ไม่ใช่ลอยอยู่เหนือมัน
+const MID_DROP = 120;
+
+// ความสูงของแถบมืดบน-ล่าง (พิกัดเวที) — บนบังแค่แถว HUD · ล่างบังบรรทัดบอกปุ่ม
+const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
+
+const STAGE_ART = {
+  sky: 'assets/stage/sky.jpg',
+  mid: 'assets/stage/mid.png',
+  ground: 'assets/stage/ground.png',
+  plat: ['assets/stage/plat_c.png', 'assets/stage/plat_l.png', 'assets/stage/plat_r.png'],
+  meta: 'assets/stage/stage.json',
+};
+
 function drawBackground(g) {
   g.fillGradientStyle(C.skyTop, C.skyTop, C.skyBot, C.skyBot, 1);
   g.fillRect(0, 0, STAGE.w, STAGE.groundY);
@@ -451,6 +474,68 @@ class ScrambleScene extends Phaser.Scene {
       if (art.artPending) continue;   // ยังไม่มีไฟล์ให้โหลด วาดเป็นกล่องไปก่อน
       this.load.atlas(art.atlasKey, art.texture, art.data);
     }
+    this.load.image('stageSky', STAGE_ART.sky);
+    this.load.image('stageMid', STAGE_ART.mid);
+    this.load.image('stageGround', STAGE_ART.ground);
+    STAGE_ART.plat.forEach((f, i) => this.load.image('stagePlat' + i, f));
+    this.load.json('stageMeta', STAGE_ART.meta);
+  }
+
+  /** วางเลเยอร์เวทีตามพิกัดจริงของ sim — เรียกครั้งเดียวตอนสร้างฉาก
+   *
+   *  ถ้าไฟล์เวทีโหลดไม่ขึ้น (เน็ตหลุดกลางทาง / ยังไม่ได้ build) ให้ตกกลับไปวาดฉากเมืองแบบเดิม
+   *  ดีกว่าปล่อยจอว่างเปล่าแล้วคนเล่นไม่รู้ว่าพื้นอยู่ตรงไหน
+   */
+  _buildStage() {
+    const meta = this.cache.json.get('stageMeta');
+    if (!meta || !this.textures.exists('stageGround')) { drawBackground(this.add.graphics()); return false; }
+
+    const sky = this.add.image(STAGE.w / 2, STAGE.h / 2, 'stageSky').setDepth(-40);
+    sky.setScale(Math.max(STAGE.w / sky.width, STAGE.h / sky.height));
+
+    // มิดกราวด์เกาะเส้นพื้น ไม่ใช่กึ่งกลางจอ — หน้าผาสองข้างต้องต่อกับพื้นล่างเสมอ
+    // ไม่ว่าจอจะสูงเท่าไหร่ (เวทีกว้าง 1280-1920 แต่สูง 720 คงที่)
+    const mid = this.add.image(STAGE.w / 2, STAGE.groundY + MID_DROP, 'stageMid').setDepth(-30);
+    mid.setScale(STAGE.w / mid.width).setOrigin(0.5, 1);
+
+    // พื้นล่างยืดเต็มความกว้างเวที ส่วนสูงคงสัดส่วนเดิมไว้ ไม่ให้หินยืดจนดูผิดรูป
+    const gm = meta.ground, gs = STAGE.w / gm.w;
+    this.add.image(0, STAGE.groundY - gm.surface * gs, 'stageGround')
+      .setOrigin(0, 0).setScale(gs).setDepth(-10);
+
+    // แพลตฟอร์ม: ย่อให้ "กว้างเท่ากรอบชนจริง" แล้ววางให้ผิวบนตรงกับ p.y เป๊ะ
+    // เสาหินรูนสองข้างจึงกลายเป็นตัวบอกขอบแพลตฟอร์มพอดี — อ่านออกว่าสุดตรงไหนโดยไม่ต้องลอง
+    STAGE.platforms.forEach((p, i) => {
+      const key = 'stagePlat' + i, m = meta[['plat_c', 'plat_l', 'plat_r'][i]];
+      if (!m || !this.textures.exists(key)) return;
+      const sc = (p.x2 - p.x1) / m.w;
+      this.add.image(p.x1, p.y - m.surface * sc, key).setOrigin(0, 0).setScale(sc).setDepth(-10);
+    });
+
+    this._stageScrim();
+    return true;
+  }
+
+  /** แถบมืดบน-ล่าง ให้ตัวหนังสือ HUD อ่านออกบนฟ้าสว่าง
+   *
+   *  HUD ทั้งชุดออกแบบไว้ตอนฉากหลังเป็นเมืองกลางคืน พอเปลี่ยนเป็นฟ้ากลางวัน
+   *  ชื่อตัวละคร หลอดเลือด ปุ่มเครื่องมือ และบรรทัดบอกปุ่มด้านล่าง จมหายไปกับพื้นหลังทันที
+   *  ไล่ไล่ระดับให้จางหายตรงกลางจอ พื้นที่เล่นจริงจึงยังสว่างเต็มที่ ไม่ได้มืดลงทั้งจอ
+   */
+  _stageScrim() {
+    const g = this.add.graphics().setDepth(-5);
+    const dark = 0x0c111c;
+    // ทึบคงที่ตลอดแถว HUD ก่อน แล้วค่อยไล่จางลงด้านล่าง
+    // ถ้าไล่จางตั้งแต่ขอบบน บรรทัดคำบรรยายตัวละคร (y=78) จะได้ความทึบแค่ 0.27 ซึ่งยังอ่านไม่ออก
+    for (let i = 0; i < SCRIM_TOP; i += 4) {
+      const t = Math.max(0, (i - SCRIM_SOLID) / (SCRIM_TOP - SCRIM_SOLID));
+      g.fillStyle(dark, 0.62 * (1 - t));
+      g.fillRect(0, i, STAGE.w, 4);
+    }
+    for (let i = 0; i < SCRIM_BOT; i += 4) {
+      g.fillStyle(dark, 0.55 * (i / SCRIM_BOT));
+      g.fillRect(0, STAGE.h - SCRIM_BOT + i, STAGE.w, 4);
+    }
   }
   create() {
     activeScene = this;
@@ -477,7 +562,7 @@ class ScrambleScene extends Phaser.Scene {
     }
     this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
     this.sparks = []; this.popups = []; this.comboFade = 0;
-    drawBackground(this.add.graphics());
+    this._buildStage();
     this.world = this.add.graphics();
     this.fx = this.add.graphics();
     this.hud = this.add.graphics();
