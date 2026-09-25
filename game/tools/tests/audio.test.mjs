@@ -258,3 +258,34 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
   ok(/this\._sfx\(hs >= \d+ \? 'hitHeavy' : 'hitLight'\)/.test(scene),
     "อีเวนต์ตีเล่นเสียง และแบ่งหนักเบาด้วยค่าเดียวกับที่ใช้สั่นจอ");
 }
+
+// ══ ตัวเตือน: อีเวนต์ไหนยังไม่มีเสียง ══════════════════════════════════════════
+//
+// ไม่ใช่เทสต์ที่แดงได้ เพราะ "ยังไม่มีไฟล์" ไม่ใช่ความผิด — เป็นรายการที่พิมพ์ทุกครั้งที่รัน
+//
+// เขียนเป็นการ "อ่านจากโค้ดจริงสองฝั่งมาเทียบกัน" ไม่ใช่รายการที่พิมพ์ไว้ตายตัว
+// รายการที่พิมพ์ไว้เองจะค้างอยู่อย่างนั้นตลอดกาล แล้วอีกสามเดือนจะไม่มีใครเชื่อมันอีก
+// แบบนี้มันหดเองทุกครั้งที่ต่อเสียงเพิ่ม และยาวขึ้นเองถ้ามีอีเวนต์ใหม่ในซิม
+{
+  const core = read("../../src/modes/scramble/core.js");
+  const inSim = [...new Set([...core.matchAll(/type: *'(\w+)'/g)].map((m) => m[1]))];
+
+  // หาบล็อกของแต่ละอีเวนต์ในฉาก แล้วดูว่าข้างในเรียกเสียงหรือยัง
+  const marks = [...scene.matchAll(/if \(e\.type === '(\w+)'\)/g)];
+  const wired = new Set();
+  marks.forEach((m, i) => {
+    const body = scene.slice(m.index, i + 1 < marks.length ? marks[i + 1].index : m.index + 1200);
+    if (/_sfx\(/.test(body)) wired.add(m[1]);
+  });
+  // หวดลมไม่ได้ต่อในลูปอีเวนต์ แต่ต่อที่ตัววาดตัวละคร (ดู _swingFor)
+  if (/_swingFor\(f\)/.test(scene)) wired.add("move");
+
+  const quiet = inSim.filter((t) => !wired.has(t) && t !== "comboEnd").sort();
+  console.log(`NOTE เสียงที่ต่อแล้ว ${[...wired].sort().join(", ")}`);
+  console.log(`NOTE ยังเงียบอยู่ ${quiet.length} อีเวนต์: ${quiet.join(", ")}`);
+  // ปุ่มเมนูเป็น DOM ไม่ใช่อีเวนต์ในซิม จึงไม่โผล่ในรายการบน ต้องเตือนแยก
+  const menuWired = /sfx|sound|Audio/i.test(read("../../index.html").match(/function startGame[\s\S]{0,800}/)?.[0] ?? "");
+  console.log(`NOTE ปุ่มเมนู (DOM ไม่ใช่อีเวนต์ในซิม) ${menuWired ? "ต่อแล้ว" : "ยังไม่ได้ต่อ"}`
+    + " — ไฟล์คัดไว้แล้วที่ art_reference/audio/sfx_ui_pending/ (ดู README ที่นั่น)");
+  ok(true, `รายการเสียงที่ยังขาด พิมพ์ไว้ข้างบนแล้ว (${quiet.length} อีเวนต์)`);
+}
