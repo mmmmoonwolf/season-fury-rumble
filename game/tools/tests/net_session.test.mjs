@@ -119,7 +119,8 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
       out: [],
       _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
     };
-    sc.net = new Lockstep((pk) => sc.out.push(pk));
+    // ที่นั่งตามของจริง: โฮสต์ 0 แขก 1 — ถ้าตั้งเหมือนกันทั้งคู่ เทสต์จะไม่เหมือนที่ฉากทำ
+    sc.net = new Lockstep((pk) => sc.out.push(pk), { seat: isHost ? 0 : 1 });
     sc.netSend = (pk) => sc.out.push(pk);
     for (const m of ["openSelect", "_pickChar", "_selectGo", "_maybeStartNetMatch", "beginMatch", "netReceive"])
       sc[m] = ScrambleScene.prototype[m];

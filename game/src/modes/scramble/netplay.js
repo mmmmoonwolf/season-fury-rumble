@@ -40,18 +40,34 @@ export function unpackInput(v) {
 }
 
 /**
- * คิวอินพุตสองฝั่ง — บอกว่าเฟรมถัดไปเดินได้หรือยัง
+ * คิวอินพุตของทุกที่นั่ง — บอกว่าเฟรมถัดไปเดินได้หรือยัง
  * ไม่รู้จัก WebRTC เลย รับแค่ฟังก์ชันส่ง จึงเทสต์ได้ด้วยท่อปลอมในหน่วยความจำ
+ *
+ * **ที่นั่ง (seat) = ตำแหน่งในลิสต์ `fighters` ไม่ใช่ "ฉัน/อีกฝั่ง"**
+ * นี่คือจุดที่ต่างจากของเดิม: เดิมเก็บเป็น local/remote แล้วผู้เรียกต้องสลับลำดับเอง
+ * ตอนเป็นแขก (`isHost ? step(a, b) : step(b, a)`) ซึ่งพอมี 4 ที่นั่งจะสลับไม่ถูกแล้ว
+ * ตอนนี้ `take()` คืนอินพุตเรียงตามที่นั่งเสมอ ทุกเครื่องจึงส่งเข้า `step()` ตรง ๆ เหมือนกันหมด
  */
 export class Lockstep {
-  constructor(send, { delay = NET_DELAY } = {}) {
+  constructor(send, { delay = NET_DELAY, seats = 2, seat = 0 } = {}) {
     this.send = send;
     this.delay = delay;
+    this.seats = seats;
+    this.seat = seat;        // ที่นั่งของเครื่องนี้
     this.frame = 0;          // เฟรมถัดไปที่จะเดิน
-    this.local = new Map();
-    this.remote = new Map();
+    this.q = Array.from({ length: seats }, () => new Map());
     this.sent = -1;
     this.stalls = 0;         // นับไว้ดูว่ารออีกฝั่งบ่อยแค่ไหน (โชว์บนจอตอนดีบั๊ก)
+  }
+
+  /** คิวของเครื่องนี้ */
+  get local() { return this.q[this.seat]; }
+
+  /** คิวของอีกฝั่ง — มีความหมายเฉพาะตอนเล่นสองคน
+   *  สี่คนไม่มี "อีกฝั่ง" ที่เป็นเอกพจน์ ต้องอ่าน `q[seat]` ให้ตรงที่นั่ง */
+  get remote() {
+    if (this.seats !== 2) throw new Error('remote ใช้ได้เฉพาะตอนสองที่นั่ง — สี่คนให้อ่าน q[seat]');
+    return this.q[1 - this.seat];
   }
 
   /** เรียกทุกรอบวาด — จองอินพุตของตัวเองไว้ล่วงหน้าให้ครบ delay เฟรมเสมอ
@@ -64,7 +80,7 @@ export class Lockstep {
     while (this.sent < this.frame + this.delay) {
       this.sent++;
       this.local.set(this.sent, v);
-      this.send({ t: 'i', f: this.sent, v });
+      this.send({ t: 'i', s: this.seat, f: this.sent, v });
       queued++;
     }
     return queued;   // 0 = คิวเต็มอยู่แล้ว ผู้เรียกต้องเก็บปุ่มที่เพิ่งกดไว้ส่งรอบหน้า ไม่งั้นหาย
@@ -73,31 +89,58 @@ export class Lockstep {
   /** เติมเฟรมเปิดเกมให้ครบ delay แรก — ไม่งั้นเฟรม 0..delay-1 ไม่มีใครส่งให้ */
   primeStart() {
     for (let f = 0; f < this.delay; f++) {
-      if (!this.local.has(f)) { this.local.set(f, 0); this.send({ t: 'i', f, v: 0 }); }
+      if (!this.local.has(f)) { this.local.set(f, 0); this.send({ t: 'i', s: this.seat, f, v: 0 }); }
     }
     this.sent = Math.max(this.sent, this.delay - 1);
   }
 
+  /** รับแพ็คเก็ตเข้าคิวของที่นั่งที่ส่งมา
+   *
+   *  แพ็คเก็ตที่ไม่มีเลขที่นั่งมาจากบิลด์เก่า (โปรโตคอลสองคนเดิมไม่มีฟิลด์ `s`)
+   *  สองที่นั่งเดาได้แน่นอนว่ามาจากที่นั่งอีกอันเพราะมีอยู่อันเดียว — แท็บเก่าจึงยังเล่นกับแท็บใหม่ได้
+   *  **แต่สี่ที่นั่งเดาไม่ได้ ต้องทิ้ง** เดาผิดแล้วอินพุตไปลงที่นั่งคนอื่น
+   *  = สองเครื่องเดินคนละอินพุตโดยไม่มีอะไรฟ้อง ซึ่งแย่กว่าค้างรอไปเลย
+   */
   onPacket(pk) {
-    if (pk && pk.t === 'i') this.remote.set(pk.f, pk.v);
+    if (!pk || pk.t !== 'i') return;
+    const seat = typeof pk.s === 'number' ? pk.s
+      : this.seats === 2 ? 1 - this.seat
+      : -1;
+    if (seat < 0 || seat >= this.seats) return;
+    this.q[seat].set(pk.f, pk.v);
   }
 
-  ready() { return this.local.has(this.frame) && this.remote.has(this.frame); }
+  ready() { return this.q.every((m) => m.has(this.frame)); }
 
-  /** คืนอินพุตของเฟรมนี้แล้วเดินตัวนับ — เรียกได้เฉพาะตอน ready() */
+  /** ที่นั่งที่ยังไม่ส่งอินพุตของเฟรมนี้มา — ใช้บอกผู้เล่นว่ากำลังรอใคร */
+  waitingOn() {
+    const out = [];
+    for (let i = 0; i < this.seats; i++) if (!this.q[i].has(this.frame)) out.push(i);
+    return out;
+  }
+
+  /** คืนอินพุตของเฟรมนี้ **เรียงตามที่นั่ง** แล้วเดินตัวนับ — เรียกได้เฉพาะตอน ready()
+   *  เรียงตามที่นั่งเสมอ ผู้เรียกจึงไม่ต้องรู้ว่าตัวเองนั่งที่ไหน ส่งเข้า step() ตรง ๆ ได้เลย */
   take() {
-    const a = this.local.get(this.frame);
-    const b = this.remote.get(this.frame);
-    this.local.delete(this.frame);
-    this.remote.delete(this.frame);
+    const out = this.q.map((m) => {
+      const v = m.get(this.frame);
+      m.delete(this.frame);
+      return unpackInput(v);
+    });
     this.frame++;
-    return [unpackInput(a), unpackInput(b)];
+    return out;
   }
 
-  /** จำนวนเฟรมที่อีกฝั่งส่งมาแล้วแต่เรายังเดินไม่ถึง — มากแปลว่าเราตามหลัง */
+  /** จำนวนเฟรมที่คนอื่นส่งมาแล้วแต่เรายังเดินไม่ถึง — มากแปลว่าเราตามหลัง
+   *  เอาค่ามากสุดของทุกที่นั่ง ไม่ใช่ผลรวม ตัวเลขจะได้ยังอ่านเป็น "ตามหลังกี่เฟรม" เหมือนเดิม */
   get behind() {
-    let n = 0;
-    for (const f of this.remote.keys()) if (f >= this.frame) n++;
-    return n;
+    let most = 0;
+    for (let i = 0; i < this.seats; i++) {
+      if (i === this.seat) continue;
+      let n = 0;
+      for (const f of this.q[i].keys()) if (f >= this.frame) n++;
+      if (n > most) most = n;
+    }
+    return most;
   }
 }

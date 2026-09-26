@@ -52,7 +52,7 @@ function link(lagA = 0, lagB = 0) {
 }
 
 /** สถานะที่ต้องตรงกันทั้งสองเครื่อง — ทุกอย่างที่มองเห็นบนจอ */
-const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
+const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
@@ -83,8 +83,9 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
   if (c1) { gA.p1.char = c1; gB.p1.char = c1; }
   if (c2) { gA.p2.char = c2; gB.p2.char = c2; }
   for (const g of [gA, gB]) { g.p1.hp = g.p1.maxHp; g.p2.hp = g.p2.maxHp; }
-  const lsA = new Lockstep(net.sendFromA);
-  const lsB = new Lockstep(net.sendFromB);
+  // A นั่งที่นั่ง 0 (โฮสต์) · B นั่งที่นั่ง 1 (แขก) — เหมือนที่ฉากตั้งให้จริง
+  const lsA = new Lockstep(net.sendFromA, { seat: 0 });
+  const lsB = new Lockstep(net.sendFromB, { seat: 1 });
   lsA.primeStart(); lsB.primeStart();
 
   let mismatch = null, stepped = 0;
@@ -104,12 +105,11 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
     for (const pk of toA) lsA.onPacket(pk);
     for (const pk of toB) lsB.onPacket(pk);
 
-    // เครื่อง A มองตัวเองเป็นฝั่งซ้าย · เครื่อง B มองอีกฝั่งเป็นฝั่งซ้าย (สลับกัน)
+    // take() คืนอินพุตเรียงตามที่นั่ง ทั้งสองเครื่องจึงส่งเข้า step() เหมือนกันเป๊ะ ไม่มีสลับลำดับ
     while (lsA.ready() && lsB.ready() && stepped < frames) {
-      const [a1, a2] = lsA.take();
-      const [b2, b1] = lsB.take();
-      gA.step(a1, a2);
-      gB.step(b1, b2);
+      const a = lsA.take(), b = lsB.take();
+      gA.step(...a);
+      gB.step(...b);
       stepped++;
       note(gA, "a"); note(gB, "b");
       if (!mismatch && snap(gA) !== snap(gB)) mismatch = { frame: stepped, a: snap(gA), b: snap(gB) };
@@ -291,4 +291,175 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
   ok(sent.length === 1, "พอคิวว่างถึงส่งออกไปหนึ่งเฟรม");
   ok((sent[0].v & PRESS_MASK) === (ATTACK & PRESS_MASK), "บิต 'เพิ่งกดตี' ตามไปด้วย ไม่หายระหว่างทาง");
   ok(sticky === 0, "ส่งได้แล้วต้องล้างบิตที่เก็บค้าง ไม่งั้นจะออกท่าซ้ำ");
+}
+
+// ══ A · lockstep สี่ที่นั่ง ════════════════════════════════════════════════════
+//
+// ที่นั่ง = ตำแหน่งใน fighters ไม่ใช่ "ฉัน/อีกฝั่ง"
+// ของเดิมเก็บเป็น local/remote แล้วผู้เรียกสลับลำดับเองตอนเป็นแขก
+// ซึ่งเป็นวิธีที่ใช้ต่อไม่ได้เลยเมื่อมีที่นั่งที่สาม — "สลับ" ไม่มีความหมายแล้ว
+
+// ── เลขที่นั่งติดไปกับแพ็คเก็ต ──
+{
+  const sent = [];
+  const ls = new Lockstep((pk) => sent.push(pk), { seats: 4, seat: 2 });
+  ls.primeStart();
+  ls.pushLocal(7);
+  ok(sent.length > 0 && sent.every((pk) => pk.s === 2), `ทุกแพ็คเก็ตบอกว่ามาจากที่นั่ง 2 (${sent.map((p) => p.s).join()})`);
+}
+
+// ── อินพุตเข้าคิวของที่นั่งที่ส่งมา ไม่ใช่ "อีกฝั่ง" ──
+{
+  const ls = new Lockstep(() => {}, { seats: 4, seat: 0 });
+  ls.primeStart();
+  ok(!ls.ready(), "ขาดใครสักคนก็ยังเดินไม่ได้");
+  ok(ls.waitingOn().join() === '1,2,3', `บอกได้ว่ารอใครอยู่ (${ls.waitingOn().join()})`);
+  ls.onPacket({ t: "i", s: 3, f: 0, v: 11 });
+  ok(ls.waitingOn().join() === '1,2', "ได้ของที่นั่ง 3 แล้วเหลือรอสองคน");
+  ls.onPacket({ t: "i", s: 1, f: 0, v: 22 });
+  ls.onPacket({ t: "i", s: 2, f: 0, v: 33 });
+  ok(ls.ready() && ls.waitingOn().length === 0, "ครบทุกที่นั่งถึงเดินได้");
+  const got = ls.take();
+  ok(got.length === 4, `คืนอินพุตครบสี่ช่อง (${got.length})`);
+  // v=11 = บิต 0,1,3 = left | right | down  (ลำดับบิตคือลำดับใน HELD)
+  ok(got[3].left === 1 && got[3].right === 1 && got[3].down === 1 && got[3].up === 0,
+    "อินพุตของที่นั่ง 3 ไปอยู่ช่องที่ 3 จริง ไม่ใช่ช่องอื่น");
+  // v=22 = บิต 1,2,4 = right | up | jump
+  ok(got[1].right === 1 && got[1].up === 1 && got[1].jump === 1 && got[1].left === 0,
+    "และของที่นั่ง 1 ก็อยู่ช่องของตัวเอง");
+}
+
+// ── แพ็คเก็ตที่นั่งเกินจำนวน หรือไม่มีเลขที่นั่งเลย ต้องทิ้ง ไม่ใช่เดา ──
+//
+// เดาผิดแล้วอินพุตไปลงที่นั่งคนอื่น = สองเครื่องเดินคนละอินพุตโดยไม่มีอะไรฟ้อง
+// ซึ่งแย่กว่าค้างรอไปเลย เพราะ desync ไม่มีอาการให้เห็นจนกว่าจะเลือดไม่เท่ากัน
+{
+  const ls = new Lockstep(() => {}, { seats: 4, seat: 0 });
+  ls.primeStart();
+  ls.onPacket({ t: "i", f: 0, v: 99 });          // ไม่บอกที่นั่ง
+  ls.onPacket({ t: "i", s: 9, f: 0, v: 99 });    // ที่นั่งไม่มีจริง
+  ls.onPacket({ t: "i", s: -1, f: 0, v: 99 });
+  ok(ls.waitingOn().join() === '1,2,3', `ทิ้งทั้งสามแพ็คเก็ต ยังรอครบสามคนเหมือนเดิม (${ls.waitingOn().join()})`);
+}
+
+// ── สองที่นั่งยังรับแพ็คเก็ตแบบเก่าที่ไม่มีเลขที่นั่งได้ ──
+//
+// แท็บที่เปิดค้างไว้ก่อนอัปเดตยังส่งโปรโตคอลเดิม ถ้าไม่รับ คนที่ไม่รีเฟรชจะเล่นไม่ได้
+// สองที่นั่งเดาได้แน่นอนเพราะมี "อีกฝั่ง" อยู่อันเดียว
+{
+  const ls = new Lockstep(() => {}, { seats: 2, seat: 1 });
+  ls.primeStart();
+  ls.onPacket({ t: "i", f: 0, v: 5 });
+  ok(ls.ready(), "แพ็คเก็ตไม่มีเลขที่นั่งถูกนับเป็นของอีกฝั่ง");
+  // v=5 = บิต 0,2 = left | up
+  const got = ls.take();
+  ok(got[0].left === 1 && got[0].up === 1, "และไปลงที่นั่ง 0 ซึ่งเป็นอีกฝั่งของเรา");
+}
+
+// ── remote ใช้กับสี่ที่นั่งไม่ได้ ต้องฟ้องดัง ๆ ไม่ใช่คืนค่าผิด ──
+{
+  const ls = new Lockstep(() => {}, { seats: 4, seat: 0 });
+  let threw = false;
+  try { ls.remote; } catch (e) { threw = true; }
+  ok(threw, "อ่าน .remote ตอนสี่ที่นั่งแล้ว error ทันที ไม่ใช่คืนคิวผิดตัวเงียบ ๆ");
+  const two = new Lockstep(() => {}, { seats: 2, seat: 0 });
+  ok(two.remote === two.q[1] && two.local === two.q[0], "สองที่นั่งยังอ่าน local/remote ได้เหมือนเดิม");
+}
+
+/** ท่อแบบดาว: ทุกคนส่งถึงกันหมด หน่วงต่อคนไม่เท่ากันได้ */
+function hub(seats, lags = []) {
+  const q = Array.from({ length: seats }, () => []);
+  return {
+    sendFrom: (from) => (pk) => {
+      for (let to = 0; to < seats; to++) if (to !== from) q[to].push({ pk, due: lags[from] ?? 0 });
+    },
+    tick() {
+      return q.map((one) => {
+        const out = [], keep = [];
+        for (const e of one) (--e.due < 0 ? out : keep).push(e);
+        one.length = 0; one.push(...keep);
+        return out.map((e) => e.pk);
+      });
+    },
+  };
+}
+
+// ══ สี่เครื่องเดิน 2v2 แล้วต้องเห็นตรงกันเป๊ะทุกเฟรม ═══════════════════════════
+//
+// นี่คือข้อที่มีความหมายจริง: ที่เหลือเทสต์คิวกับโปรโตคอล ข้อนี้เทสต์ว่า **sim สี่ตัวเดินตรงกัน**
+// หน่วงตั้งไม่เท่ากันทั้งสี่คน เพื่อให้ลำดับที่แพ็คเก็ตมาถึงต่างกันทุกเครื่อง
+// ถ้าที่ไหนในแกนตัดสินจากลำดับที่ของมาถึง (ไม่ใช่ลำดับในลิสต์) ข้อนี้จะจับได้
+{
+  const SEATS = 4, chars = ['nyx', 'helios', 'momus', 'alecto'];
+  const net = hub(SEATS, [0, 1, 3, 2]);
+  const games = [], ls = [];
+  for (let i = 0; i < SEATS; i++) {
+    const g = new Game();
+    g.setRoster(4);
+    g.fighters.forEach((f, n) => { f.char = chars[n]; f.hp = f.maxHp; });
+    g.startMatch();
+    games.push(g);
+    const l = new Lockstep(net.sendFrom(i), { seats: SEATS, seat: i });
+    l.primeStart();
+    ls.push(l);
+  }
+
+  // สคริปต์ปุ่มคนละชุดต่อที่นั่ง ใช้ท่าให้ครบทั้งเดิน กระโดด ตี กัน และสกิลสามช่อง
+  const script = (seed) => (f) => {
+    const k = (f * 7 + seed * 5) % 23;
+    return inp({
+      left: k < 4 ? 1 : 0, right: k >= 4 && k < 8 ? 1 : 0,
+      up: k === 11 ? 1 : 0, down: k === 12 ? 1 : 0, block: k === 13 ? 1 : 0,
+      p: { attack: k === 3 || k === 15 ? 1 : 0, jump: k === 9 ? 1 : 0,
+           skill1: k === 17 ? 1 : 0, skill2: k === 19 ? 1 : 0, skill3: k === 21 ? 1 : 0 },
+    });
+  };
+  const scripts = [0, 1, 2, 3].map((i) => script(i + 1));
+
+  let mismatch = null, stepped = 0;
+  const FRAMES = 260;
+  for (let t = 0; t < FRAMES * 4 && stepped < FRAMES; t++) {
+    for (let i = 0; i < SEATS; i++) ls[i].pushLocal(packInput(scripts[i](ls[i].sent + 1)));
+    const arrived = net.tick();
+    for (let i = 0; i < SEATS; i++) for (const pk of arrived[i]) ls[i].onPacket(pk);
+
+    while (ls.every((l) => l.ready()) && stepped < FRAMES) {
+      for (let i = 0; i < SEATS; i++) games[i].step(...ls[i].take());
+      stepped++;
+      const base = snap(games[0]);
+      for (let i = 1; i < SEATS && !mismatch; i++)
+        if (snap(games[i]) !== base) mismatch = { frame: stepped, seat: i, a: base, b: snap(games[i]) };
+    }
+  }
+
+  ok(stepped === FRAMES, `เดินครบ ${FRAMES} เฟรมโดยไม่ค้าง (เดินได้ ${stepped})`);
+  ok(!mismatch, mismatch
+    ? `สี่เครื่องเห็นตรงกัน — หลุดที่เฟรม ${mismatch.frame} ที่นั่ง ${mismatch.seat}\n  ที่นั่ง 0: ${mismatch.a}\n  ที่นั่ง ${mismatch.seat}: ${mismatch.b}`
+    : `สี่เครื่องเห็นตรงกันทุกเฟรม (${stepped} เฟรม)`);
+  // พิสูจน์ว่ารอบทดสอบได้ใช้กลไกจริง ไม่ใช่ทุกคนยืนเฉย ๆ แล้วผ่านเพราะไม่มีอะไรเกิด
+  const hurt = games[0].fighters.filter((f) => f.hp < f.maxHp).length;
+  ok(hurt >= 2, `มีคนเจ็บจริงระหว่างทดสอบ (${hurt}/4 คน)`);
+  ok(games[0].frame === FRAMES, `นาฬิกาเฟรมตรงกับจำนวนที่เดิน (${games[0].frame})`);
+}
+
+// ── ที่นั่งเดียวขาดหาย ทุกเครื่องต้องค้างพร้อมกัน ไม่ใช่เดินต่อโดยเดาอินพุตแทน ──
+//
+// เดินต่อโดยเดาคือ desync ที่เงียบที่สุดที่เป็นไปได้ — ทุกเครื่องเดาไม่เหมือนกัน
+{
+  const SEATS = 4;
+  const net = hub(SEATS);
+  const ls = [];
+  for (let i = 0; i < SEATS; i++) {
+    const l = new Lockstep(i === 2 ? () => {} : net.sendFrom(i), { seats: SEATS, seat: i });
+    l.primeStart();
+    ls.push(l);
+  }
+  for (let t = 0; t < 20; t++) {
+    for (const l of ls) l.pushLocal(0);
+    const arrived = net.tick();
+    for (let i = 0; i < SEATS; i++) for (const pk of arrived[i]) ls[i].onPacket(pk);
+  }
+  ok(!ls[0].ready() && !ls[1].ready() && !ls[3].ready(), "ที่นั่ง 2 เงียบ ทุกเครื่องค้างรอ ไม่มีใครเดินต่อ");
+  ok(ls.every((l) => l.frame === 0), "และไม่มีเครื่องไหนเดินเฟรมไปเลยสักเฟรม");
+  ok(ls[0].waitingOn().join() === '2', `บอกได้ตรงตัวว่ารอที่นั่ง 2 (${ls[0].waitingOn().join()})`);
 }

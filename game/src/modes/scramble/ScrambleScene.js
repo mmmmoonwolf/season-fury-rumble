@@ -1417,7 +1417,8 @@ class ScrambleScene extends Phaser.Scene {
     // ต้องสร้าง Lockstep ตั้งแต่ตอนนี้ ไม่ใช่ตอนเริ่มแมตช์
     // อีกฝั่งอาจกดพร้อมและเริ่มยิงอินพุตก่อนเราจะเลือกตัวเสร็จ ถ้ายังไม่มีที่รับ แพ็คเก็ตพวกนั้นหาย
     // แล้วค้างรอเฟรมที่ไม่มีวันมาถึง (บั๊กเดียวกับตอนที่ฉากโหลดช้ากว่าอีกฝั่ง)
-    this.net = new Lockstep(send);
+    // โฮสต์นั่งที่นั่ง 0 แขกนั่งที่นั่ง 1 — ที่นั่งคือตำแหน่งใน fighters ตรง ๆ
+    this.net = new Lockstep(send, { seat: isHost ? 0 : 1 });
     this.netSend = send;
     this.foePick = null;
     this._syncSkillSlots();
@@ -1474,9 +1475,9 @@ class ScrambleScene extends Phaser.Scene {
     // จำกัดจำนวนเฟรมต่อรอบ ไม่งั้นตอนไล่ตามหลังจะกระตุกเป็นก้อนแทนที่จะค่อย ๆ ตามทัน
     let budget = 4, stepped = 0;
     while (budget-- > 0 && this.net.ready()) {
-      const [a, b] = this.net.take();
-      // อินพุตของตัวเองไปเข้าฝั่งที่ถูกต้องของทั้งสองเครื่อง
-      if (this.isHost) this.sim.step(a, b); else this.sim.step(b, a);
+      // take() คืนอินพุตเรียงตามที่นั่งแล้ว ทั้งสองเครื่องจึงส่งเข้า step() เหมือนกันเป๊ะ
+      // เดิมต้องสลับลำดับเองตอนเป็นแขก ซึ่งเป็นบั๊กรอเกิดทันทีที่มีที่นั่งที่สาม
+      this.sim.step(...this.net.take());
       stepped++;
     }
     // ค้างเพราะรออีกฝั่งเป็นเรื่องปกติของ lockstep (เน็ตกระตุกแป๊บเดียวก็ค้างแล้ว)
