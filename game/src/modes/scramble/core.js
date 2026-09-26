@@ -881,6 +881,9 @@ class Game {
 
   /** อยู่ทีมเดียวกันไหม (รวมตัวเอง) — ใช้ตัดสินว่าท่าของใครทำร้ายใครได้ */
   sameTeam(a, b) { return a.team === b.team; }
+
+  /** เลขทีมทั้งหมดที่มีอยู่จริง เรียงจากน้อยไปมาก — ไม่ฮาร์ดโค้ด [0, 1] */
+  teams() { return [...new Set(this.fighters.map((f) => f.team))].sort((x, y) => x - y); }
   /** เริ่มแมตช์ใหม่ตั้งแต่ยกแรก — ล้างทั้งหลอดเลือดและจำนวนหลอดที่เหลือ */
   startMatch() {
     this.match = { on: true, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
@@ -899,7 +902,7 @@ class Game {
 
     if (m.winner !== null) {
       // จบแมตช์แล้ว ใครกดตีก็เริ่มใหม่ — ปุ่มตีเดินผ่าน lockstep เหมือนปุ่มอื่น สองเครื่องจึงพร้อมกัน
-      if (this.p1.inp?.p?.attack || this.p2.inp?.p?.attack) this.startMatch();
+      if (this.fighters.some((f) => f.inp?.p?.attack)) this.startMatch();
       return;
     }
 
@@ -919,9 +922,14 @@ class Game {
       return;
     }
 
+    // ทีมจะเสียหลอดเมื่อ **ล้มครบทุกคนในทีม** ไม่ใช่ล้มคนเดียว
+    // 1v1 คือทีมละคน จึงได้ผลเหมือนเดิมเป๊ะ
+    // และทำให้ "เหลือคนเดียวสู้สองคน" เป็นสถานการณ์จริงที่พลิกได้ ซึ่งคือช่วงที่สนุกที่สุดของเกมทีม
     const out = [];
-    if (this.p1.hp <= 0) out.push(0);
-    if (this.p2.hp <= 0) out.push(1);
+    for (const t of this.teams()) {
+      const mates = this.fighters.filter((f) => f.team === t);
+      if (mates.length && mates.every((f) => f.hp <= 0)) out.push(t);
+    }
     if (!out.length) return;
     m.loser = out;
     m.freeze = KO_FREEZE;
@@ -939,13 +947,14 @@ class Game {
    * inp2 = null คือโหมดซ้อม: ฝั่งขวาเดินด้วย controlDummy เหมือนเดิม
    * ใส่ inp2 มาคือเล่นสองคน (เครื่องเดียวกันหรือคนละเครื่องผ่านเน็ตก็ได้ — sim ไม่รู้และไม่ต้องรู้)
    */
-  step(inp1, inp2 = null) {
+  step(...inputs) {
     this.frame++; this.events = [];
     const p = this.p1, d = this.p2;
-    this.takeInput(p, inp1);
-    if (inp2) this.takeInput(d, inp2);
+    // อินพุตเรียงตามลำดับเดียวกับ `fighters` · ตัวไหนได้ null เดินด้วย AI (โหมดซ้อม/ช่องที่ยังไม่มีคน)
+    const inps = this.fighters.map((_, i) => inputs[i] ?? null);
+    this.fighters.forEach((f, i) => { if (inps[i]) this.takeInput(f, inps[i]); });
 
-    for (const [f, inp] of [[p, inp1], [d, inp2]]) {
+    for (const [f, inp] of this.fighters.map((f, i) => [f, inps[i]])) {
       if (f.hitstop > 0) { f.hitstop--; continue; }
       if (!inp) { this.controlDummy(f); this.physics(f, null); this.advanceMove(f, null); continue; }
       if (f.techBuf > 0) f.techBuf--;
@@ -955,22 +964,25 @@ class Game {
       for (const k of Object.keys(f.buf)) if (f.buf[k] > 0) f.buf[k]--;
     }
 
-    if (p.hitstop <= 0 && d.hitstop <= 0) { this.updateShots(); this.updateFires(); this.updateBoxes(); }
-    this.decayLash(p); this.decayLash(d);
-    this.tickFlame(p); this.tickFlame(d);
+    // ของบนเวทีหยุดเดินตอนมีใครถูกแช่อยู่ ไม่งั้นระเบิดเดินต่อขณะภาพนิ่ง = จังหวะเพี้ยน
+    if (this.fighters.every((f) => f.hitstop <= 0)) {
+      this.updateShots(); this.updateFires(); this.updateBoxes();
+    }
+    for (const f of this.fighters) { this.decayLash(f); this.tickFlame(f); }
     this.updateDust();
     this.updateDecoy();
     // ตีโดนหุ่นตัดสินก่อนตีโดนตัวจริง — ระเบิดจะได้ขัดท่าที่กำลังออกอยู่
-    this.hitDecoy(p); this.hitDecoy(d);
-    this.resolveHit(p, d);
-    this.resolveHit(d, p);
-    this.pushApart(p, d);
-    this.updateCombo(d);
-    this.updateCombo(p);
+    for (const f of this.fighters) this.hitDecoy(f);
+    // ทุกคู่ที่เป็นไปได้ ทั้งสองทิศ — 2 คนได้ 2 คู่เหมือนเดิม 4 คนได้ 12 คู่
+    // เรียงตามลำดับในลิสต์เสมอ ไม่ใช่ตามใครตีก่อน สองเครื่องจึงตัดสินลำดับเดียวกัน
+    for (const a of this.fighters) for (const b of this.fighters) if (a !== b) this.resolveHit(a, b);
+    for (let i = 0; i < this.fighters.length; i++)
+      for (let j = i + 1; j < this.fighters.length; j++) this.pushApart(this.fighters[i], this.fighters[j]);
+    for (const f of this.fighters) this.updateCombo(f);
     this.updateMatch();
     this.recordMeter(p);
     // ฟื้นเลือดให้หุ่นเฉพาะโหมดซ้อม — เล่นสองคนต้องมีใครสักคนแพ้
-    if (!this.match.on && !inp2 && this.frame - d.lastHitF > 120 && d.hp < d.maxHp && ACTIONABLE.has(d.state)) d.hp = d.maxHp;
+    if (!this.match.on && !inps[1] && this.frame - d.lastHitF > 120 && d.hp < d.maxHp && ACTIONABLE.has(d.state)) d.hp = d.maxHp;
   }
 
   /** รับอินพุตของเฟรมนี้เข้าคิวของฝั่งนั้น ๆ */
@@ -1159,9 +1171,16 @@ class Game {
       }
       sh.x += sh.vx; sh.y += sh.vy; sh.travelled += Math.abs(sh.vx);
 
-      const foe = sh.owner === 'p1' ? this.p2 : this.p1;
-      const hurt = foe.hurtbox();
-      const hit = sh.x > hurt.x && sh.x < hurt.x + hurt.w && sh.y > hurt.y && sh.y < hurt.y + hurt.h;
+      // เดิมเขียนว่า "อีกคนนึง" ซึ่งพอมีสี่คนจะเล็งผิดตัวทั้งหมด
+      // หาศัตรูคนแรกในลิสต์ที่กระสุนทะลุตัวอยู่จริง — เรียงตามลิสต์ สองเครื่องจึงได้คนเดียวกัน
+      const owner = this.fighterById(sh.owner);
+      const inside = (t) => {
+        const h = t.hurtbox();
+        return sh.x > h.x && sh.x < h.x + h.w && sh.y > h.y && sh.y < h.y + h.h;
+      };
+      const foe = this.fighters.find((t) => (!owner || t.team !== owner.team) && inside(t))
+        ?? this.fighters.find((t) => !owner || t.team !== owner.team);
+      const hit = !!foe && inside(foe);
       const wall = sh.x < STAGE.wallL || sh.x > STAGE.wallR;
       const spent = sh.travelled >= (sh.range ?? SHOT_RANGE);
       if (!hit && !wall && !spent) continue;
@@ -1274,11 +1293,14 @@ class Game {
    */
   blast(x, half, dmg, stun, kb, owner = null) {
     this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
+    // ทั้งทีมของเจ้าของโดนแรงกระแทกแต่ไม่เสียเลือด ไม่ใช่แค่ตัวเจ้าของ
+    // เขายังเขี่ยเพื่อนตกเวทีด้วยระเบิดตัวเองได้ แค่ไม่ได้ฆ่าเขา
+    const ownerTeam = owner === null ? null : (this.fighterById(owner)?.team ?? null);
     let hitFoes = 0;
     for (const f of this.fighters) {
       if (f.invuln > 0 || Math.abs(f.x - x) > half) continue;
       const dir = f.x >= x ? 1 : -1;
-      if (owner !== null && f.id === owner) {
+      if (owner !== null && ownerTeam !== null && f.team === ownerTeam) {
         f.stun = Math.max(f.stun, Math.round(stun * SELF_STUN));
         f.move = null; f.moveId = null; f.setState('hitstun');
         f.stanceUntil = -9999;
@@ -1442,7 +1464,10 @@ class Game {
     for (const fire of this.fires) {
       fire.life--; fire.t++;
       if (fire.t % FIRE_TICK) continue;
-      const d = fire.owner === 'p1' ? this.p2 : this.p1;
+      // กองไฟตอดทุกศัตรูที่ยืนอยู่ในนั้น ไม่ใช่แค่คนเดียว — เดิมเขียนว่า "อีกคนนึง"
+      const fo = this.fighterById(fire.owner);
+      for (const d of this.fighters) {
+      if (fo && d.team === fo.team) continue;          // ไฟของเราไม่ไหม้พวกเรา
       if (d.invuln > 0 || !d.onGround) continue;
       if (Math.abs(d.x - fire.x) > FIRE_HALF) continue;
       const dmg = Math.max(1, Math.round(FIRE_DMG * d.resist * Math.max(0.5, 1 - 0.08 * d.comboHits)));
@@ -1456,6 +1481,7 @@ class Game {
       // เพราะตอดทีละ 1 อยู่แล้ว ครึ่งหนึ่งยังปัดเป็น 1 เหมือนเดิม resist เลยหายไปเฉย ๆ
       // (วิธีเดียวกับที่ตรารอยแส้ของ Alecto สลายเร็วขึ้นตาม resist)
       if (fire.burns && !d.dustGuard) d.burn = Math.round(BURN_TIME * d.resist);
+      }
     }
     this.fires = this.fires.filter((fi) => fi.life > 0);
   }
@@ -1829,6 +1855,9 @@ class Game {
   }
 
   resolveHit(a, d) {
+    // ท่าที่เล็งใส่คนทะลุเพื่อนร่วมทีมไปเลย — แย็บพลาดแล้วไปขัดคอมโบเพื่อน
+    // คือความทรมานที่ไม่ได้เพิ่มอะไรให้เกม ต่างจากของที่วางไว้ในโลกซึ่งผลักทุกคน
+    if (this.sameTeam(a, d)) return;
     const hb = a.hitbox(); if (!hb || a.hitList.has(d.id) || d.invuln > 0) return;
     const hurt = d.hurtbox(); if (!overlap(hb, hurt)) return;
     const m = a.move; a.hitList.add(d.id); a.hitConfirmed = true;

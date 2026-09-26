@@ -101,6 +101,102 @@ function make2v2(xs = [200, 400, 600, 800]) {
   for (const f of g.fighters) f.hp = f.maxHp;
   g.blast(530, 200, 10, 20, [5, -5], 'p1');
   const hurt = g.fighters.filter((f) => f.hp < f.maxHp);
-  ok(hurt.length === 3, `ระเบิดโดนสามคน — ทุกคนยกเว้นเจ้าของ (โดน ${hurt.length})`);
-  ok(g.fighters[0].hp === g.fighters[0].maxHp, "เจ้าของไม่เสียเลือดตามกติกาที่ตกลงไว้");
+  ok(hurt.length === 2, `ระเบิดหักเลือดเฉพาะศัตรูสองคน (โดน ${hurt.length})`);
+  ok(hurt.every((f) => f.team === 1), "และเป็นทีมตรงข้ามทั้งคู่");
+  // ทั้งทีมของเจ้าของไม่เสียเลือด แต่ยังโดนแรงกระแทก — เขายังเขี่ยเพื่อนตกเวทีได้ แค่ไม่ได้ฆ่าเขา
+  ok(g.fighters[0].hp === g.fighters[0].maxHp, "เจ้าของไม่เสียเลือด");
+  ok(g.fighters[2].hp === g.fighters[2].maxHp, "เพื่อนร่วมทีมก็ไม่เสียเลือด");
+  ok(g.fighters[2].state === 'hitstun', "แต่เพื่อนโดนแรงกระแทกจริง ไม่ได้ยืนเฉย");
+}
+
+// ══ C2 · ยกจบเมื่อ "ทั้งทีม" ล้ม ไม่ใช่คนเดียวล้ม ══════════════════════════════
+//
+// นี่คือสิ่งที่ทำให้ "เหลือคนเดียวสู้สองคน" เป็นสถานการณ์จริงที่พลิกได้
+// ซึ่งมักเป็นช่วงที่สนุกที่สุดของเกมทีม ถ้าล้มคนเดียวแล้วจบยก ช่วงนั้นจะไม่มีวันเกิด
+const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
+const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
+{
+  const g = make2v2();
+  g.startMatch();
+  const barsBefore = g.match.bars.slice();
+
+  g.fighters[1].hp = 0;                       // ทีม 1 ล้มไปคนเดียว
+  g.step(); g.step();
+  ok(g.match.freeze === 0, "ล้มคนเดียวยังไม่จบยก");
+  ok(g.match.bars[1] === barsBefore[1], `ทีม 1 ยังไม่เสียหลอด (${g.match.bars[1]})`);
+
+  g.fighters[3].hp = 0;                       // ล้มครบทีม
+  g.step();
+  ok(g.match.freeze > 0, "ล้มครบทีมแล้วจบยก");
+  ok(g.match.loser.includes(1), `ทีม 1 เป็นฝ่ายเสียหลอด (${JSON.stringify(g.match.loser)})`);
+  for (let i = 0; i < 200; i++) g.step();
+  ok(g.match.bars[1] === barsBefore[1] - 1, `เสียหนึ่งหลอดพอดี (${g.match.bars[1]})`);
+  ok(g.match.bars[0] === barsBefore[0], "ทีมที่ชนะไม่เสียหลอด");
+}
+
+// ── 1v1 ต้องเหมือนเดิมเป๊ะ: ล้มคนเดียว = จบยกทันที เพราะทีมละคน ──
+{
+  const g = new Game();
+  g.startMatch();
+  g.p2.hp = 0;
+  g.step();
+  ok(g.match.freeze > 0 && g.match.loser.includes(1), "1v1 ล้มคนเดียวก็คือล้มทั้งทีม จบยกทันทีเหมือนเดิม");
+}
+
+// ══ C4 · ท่าที่เล็งใส่คน ทะลุเพื่อนร่วมทีม ══════════════════════════════════════
+{
+  const g = make2v2([500, 1100, 560, 1160]);  // A กับ C (ทีม 0) ยืนประชิดกัน
+  const [a, , c] = g.fighters;
+  const hp = c.hp;
+  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
+  ok(c.hp === hp, `ต่อยเพื่อนร่วมทีมแล้วเขาไม่เจ็บ (${c.hp}/${c.maxHp})`);
+  ok(c.state !== 'hitstun', "และไม่โดนขัดจังหวะด้วย — คอมโบเพื่อนไม่ขาด");
+  ok(a.hitConfirmed === false, "นับเป็นตีพลาด ไม่ใช่ตีโดน");
+}
+
+// ── แต่ศัตรูที่ยืนตรงนั้นยังโดนตามปกติ ──
+{
+  const g = make2v2([500, 560, 1100, 1160]);  // A (ทีม 0) ประชิด B (ทีม 1)
+  const b = g.fighters[1];
+  const hp = b.hp;
+  for (let i = 0; i < 40; i++) g.step(inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
+  ok(b.hp < hp, `ศัตรูยังโดนเหมือนเดิม (${hp} -> ${b.hp})`);
+}
+
+// ══ C4 · กองไฟไม่ไหม้พวกเดียวกัน ══════════════════════════════════════════════
+{
+  const g = make2v2([500, 520, 540, 560]);    // ยืนกองกันหมดในกองไฟเดียว
+  for (const f of g.fighters) f.hp = f.maxHp;
+  g.fires.push({ x: 530, owner: 'p1', life: 300, t: 0, burns: false });
+  for (let i = 0; i < 60; i++) g.step();
+  const burned = g.fighters.filter((f) => f.hp < f.maxHp);
+  ok(burned.length === 2, `ไฟตอดเฉพาะศัตรูสองคน (ตอด ${burned.length})`);
+  ok(burned.every((f) => f.team === 1), "และเป็นทีมตรงข้ามทั้งคู่");
+}
+
+// ══ กระสุนเล็งศัตรู ไม่ใช่ "อีกคนนึง" ══════════════════════════════════════════
+//
+// เดิมเขียนว่า `sh.owner === 'p1' ? this.p2 : this.p1` ซึ่งพอมีสี่คนจะเล็งผิดตัวทั้งหมด
+// เคสที่จับได้ยากที่สุดคือกระสุนของคนที่สาม ซึ่งเดิมจะไปเล็ง p1 เสมอ แม้ p1 จะเป็นพวกเดียวกัน
+{
+  const g = make2v2([200, 400, 600, 800]);
+  const c = g.fighters[2];                    // คนที่สาม อยู่ทีม 0
+  const a = g.fighters[0];                    // เพื่อนร่วมทีมของเขา
+  const hpA = a.hp;
+  g.shots.push({ x: a.x, y: a.y - 70, vx: 0, vy: 0, owner: c.id, travelled: 0, range: 900,
+    dmg: 5, kb: [3, 0], stun: 10, volley: { hit: new Set() } });
+  for (let i = 0; i < 10; i++) g.step();
+  ok(a.hp === hpA, `กระสุนของคนที่สามไม่โดนเพื่อนร่วมทีม (${a.hp}/${a.maxHp})`);
+}
+
+// ══ ตีกันทุกคู่จริง ไม่ใช่แค่สองคนแรก ══════════════════════════════════════════
+//
+// step() เคยตัดสินแค่ resolveHit(p, d) กับ resolveHit(d, p) ถ้าลืมแก้
+// คนที่สามกับสี่จะตีใครไม่โดนเลยและไม่มีใครตีเขาโดน ซึ่งดูเหมือนเกมค้างมากกว่าบั๊ก
+{
+  const g = make2v2([200, 1100, 600, 660]);   // C (ทีม 0) ประชิด D (ทีม 1)
+  const d = g.fighters[3];
+  const hp = d.hp;
+  for (let i = 0; i < 40; i++) g.step(null, null, inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
+  ok(d.hp < hp, `คนที่สามตีคนที่สี่โดนจริง (${hp} -> ${d.hp})`);
 }
