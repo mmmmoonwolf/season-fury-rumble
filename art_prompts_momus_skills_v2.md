@@ -1,14 +1,19 @@
-# MOMUS — เปลี่ยนสกิลให้เข้ากับดีไซน์ใหม่
+# MOMUS — prompt ชีตสกิล (ธีมกรีก · กลไกใหม่เข้าเกมแล้ว)
 
-> **กลไกไม่เปลี่ยนสักอย่าง** เปลี่ยนแค่ชื่อ เรื่องเล่า และของที่เขาหยิบออกมา
+> ## ⚙️ กลไกทั้งสามสกิลเขียนโค้ดเสร็จและเข้าเกมแล้ว
 >
-> ที่ทำแบบนี้เพราะกลไกของเขาคือตัวตน — **ทุกอย่างไม่เลือกข้าง ระเบิดโดนตัวเองด้วย
-> เขาชนะเพราะรู้ว่าระเบิดจะลงตรงไหน ส่วนคนอื่นไม่รู้** อันนั้นเขียนโค้ดและเทสต์ไว้หมดแล้ว
-> และบาลานซ์ผ่านมาแล้ว เปลี่ยนธีมราคาถูก เปลี่ยนกลไกคือรื้อใหม่ทั้งชุดพร้อมจูนบาลานซ์ใหม่
+> ที่ยังขาดคือ **อาร์ต** — สามชีตในไฟล์นี้ (E · F · G)
+> แนบ `art_reference/momus_idle_APPROVED_v2.jpg` ไปกับทุก prompt
 >
-> ถ้าอยากเปลี่ยน**กลไก**จริง ๆ บอกได้ แต่เป็นคนละงานกันและควรคุยก่อนว่าจะเปลี่ยนเป็นอะไร
-
----
+> | สกิล | กลไกที่ทำไปแล้ว |
+> |---|---|
+> | 1 · ขว้างไห | สะบัดมือขว้าง ไหระเบิดเมื่อใครแตะหรือครบ 3 วิ · **ไม่หักเลือดเจ้าของแล้ว** เหลือแรงกระแทก · **ไหโดนคู่ต่อสู้ = ได้ชั้น House** |
+> | 2 · Understudy | ทิ้งหุ่นหน้าเหมือนตัวเองไว้ ตัวจริงหลุดถอย 120 px · คู่ต่อสู้ตีหุ่นแล้วระเบิดขัดท่าเขา |
+> | 3 · อัลติ | **กดปุ๊บวาร์ปขึ้นชั้นบนสุดทันที** แล้วเรียกฝนไหลงมา 4-9 ใบตามชั้นที่เก็บไว้ |
+>
+> **ชื่อสกิลในเกมยังเป็นของเดิม** (Jack-in-the-Box / Understudy / Full House)
+> จะเปลี่ยนเป็นธีมกรีกพร้อมกันตอนอาร์ตเข้า ไม่งั้นเกมจะขึ้นคำว่า Pandora
+> ทั้งที่ Momus ยังเป็นตัวตลกอยู่ ซึ่งดูเหมือนบั๊กมากกว่างานระหว่างทาง
 
 ## ชื่อใหม่ทั้งสามสกิล
 
@@ -112,35 +117,41 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 
 ---
 
-## ชีต G — สกิล 3 อัลติ · Full House (6 ท่า · 2 แถวแถวละ 3)
+## ชีต G — สกิล 3 อัลติ (6 ท่า · 2 แถวแถวละ 3)
 
-**กลไกเปลี่ยนแล้ว: กดปุ๊บวาร์ปขึ้นชั้นบนสุดทันที แล้วเรียกฝนลงมา**
-ท่าจึงต้องเป็น "ขึ้นไปยืนบนที่สูงแล้วเรียกโรงละคร" ไม่ใช่ยืนกับพื้นโปรยเอง
+**ลำดับในเกมจริง: กด → หายไปทันที → ไปโผล่บนแพลตฟอร์มสูงสุด → เรียกฝน → ก้มหลบ**
 
-**เงื้อนานได้ ไม่เป็นไร** startup 10 เฟรมแล้วต่อเป็น 8 อีกท่อน เพราะเป็นอัลติที่ใช้หลอดเต็ม
-เรื่องเล่าใหม่: **โรงละครที่เต็มคนดู กำลังปาของลงมาใส่เวที**
-เขาไม่ได้โปรยเอง เขา**เชิญคนดูให้ปา**
+วาร์ปเกิดที่**เฟรมแรกสุด** ไม่ใช่หลังเงื้อ เพราะท่านี้เงื้อรวม 18 เฟรม
+ถ้ายืนเงื้ออยู่กับพื้นก็โดนสวนฟรี — **อัลติที่กดแล้วโดนตีหลุดคืออัลติที่ไม่มีใครกด**
+
+**ท่อนสุดท้ายต้องเป็นท่าก้มหลบ ไม่ใช่ท่าโพสชนะ** เพราะฝนไหลงทุกชั้นรวมชั้นที่เขายืน
+เขาต้องหลบของตัวเองเหมือนกัน (โดนดีดแต่ไม่เสียเลือด)
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is calling down a rain of clay jars from an unseen audience above — he is
-not throwing them himself, he is inviting the crowd to throw. Build from a
-small mocking gesture to both arms thrown wide open overhead. Draw NO jars
-falling, NO smoke, NO explosion, NO effects — the game draws all of that.
 
-Pose 1 — crouched low with his weight down and both feet wide, one finger
-raised to his lips as if asking for quiet, looking sideways at the viewer.
-Pose 2 — straightening up, one arm sweeping slowly upward and outward, palm
-turned up toward the sky, head tilting back.
-Pose 3 — both arms rising out to the sides, head tipped fully back, face and
-mask turned up toward the sky, mouth open in a laugh.
-Pose 4 — at full stretch: both arms flung wide open overhead in a V, chest
-thrown forward, standing on the balls of his feet, cloak lifted.
-Pose 5 — bringing both arms sharply down and across his chest in an X, head
-ducking down between his shoulders, knees bent deep, bracing.
-Pose 6 — crouched low and compact behind his crossed arms, feet planted wide,
-peering up past his own elbow with a delighted grin.
+The sequence is: he vanishes from the ground, reappears standing high above,
+calls a rain of clay jars down on the whole theatre, then ducks because it is
+falling on him too. Draw NO jars, NO smoke, NO sparks, NO glow, NO motion
+lines — the game draws every effect itself.
+
+Pose 1 — coiled low on the ground, knees deep, one arm sweeping upward across
+his body, chin lifting, eyes already looking up.
+Pose 2 — stretched tall on the balls of both feet, both arms reaching straight
+up overhead, body long and thin, head thrown back — the instant before he is
+gone.
+Pose 3 — landing from above in a deep crouch, both feet planted wide, one hand
+touching down in front of him, cloak still settling around him, head up and
+looking down past the viewer.
+Pose 4 — rising to full height with both arms opening outward to the sides,
+palms turned up, face and mask tipped back toward the sky, mouth open in a
+laugh.
+Pose 5 — at full stretch: both arms flung wide overhead in a V, chest thrown
+forward, feet apart, cloak lifted behind him.
+Pose 6 — snapping both arms down and crossed over his head, knees bent deep,
+shoulders hunched, ducking hard — peering up past his own elbow, still
+grinning.
 
 Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small mischievous Greek trickster. An ivory-white Greek comedy mask with a wide grinning mouth is pushed to one side of his face, revealing his own grinning face beneath it — the mask stays in that same pushed-aside position in every pose and is always the brightest single thing on him. He wears a laurel wreath askew, and his copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a ragged bone / oatmeal Greek tunic with a torn uneven hem and one bare shoulder, a thick dark red rope belt, and a dark greyish-brown tattered cloak with a dark red border along its ragged edge draped over one shoulder. Dark brown leather wrappings and straps cover both shins above open sandals. A small drawstring pouch hangs at one hip, and a dark bronze Greek tragedy mask with a downturned mouth hangs from a dark red cord at the other hip, clearly visible in silhouette. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of the wreath to the soles of both sandals — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. All cloth and cords fall close to his body and never stream far out to the side. No effects of any kind — no smoke, no sparks, no glow, no motion lines, no confetti.
 ```
