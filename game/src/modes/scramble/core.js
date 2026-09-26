@@ -768,8 +768,11 @@ const hitstopFor = (m) => Math.round(m.dmg * HITSTOP_PER_DMG) + (m.kb[1] < -10 ?
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
 class Fighter {
-  constructor(id, name, x, facing, char = DEFAULT_CHAR) {
+  constructor(id, name, x, facing, char = DEFAULT_CHAR, team = (id === 'p1' ? 0 : 1)) {
     this.id = id; this.name = name; this.spawnX = x; this.spawnFacing = facing;
+    // ทีม: 0 กับ 1 — 1v1 คือทีมละคน ส่วน 2v2 คือทีมละสองคน กติกาทุกข้อคิดจากทีม ไม่ใช่จากไอดี
+    // ตั้งค่าเริ่มต้นจากไอดีเพื่อให้โหมดเดิม (p1 vs p2) ได้ทีมคนละทีมเองโดยไม่ต้องแก้ที่เรียก
+    this.team = team;
     this.char = char;
     this.reset();
   }
@@ -843,9 +846,16 @@ class Game {
     // จุดเกิดเลื่อนตามเวทีที่กว้างขึ้นเหมือนแพลตฟอร์ม ไม่งั้นทั้งคู่ไปกองอยู่ค่อนซ้ายของจอ
     // ระยะห่างระหว่างสองฝั่ง (440) คงเดิม = ระยะเข้าปะทะที่ playtest ไว้ไม่เปลี่ยน
     const shift = (STAGE.w - STAGE_BASE_W) / 2;
-    this.p1 = new Fighter('p1', 'NYX', 420 + shift, 1, 'nyx');
-    // หุ่นซ้อมเป็นตัวละครจริงตัวหนึ่ง ไม่ใช่กล่องอีกแล้ว — ตั้งเป็นคนละตัวกับผู้เล่นจะได้เห็นทั้งสองตัวพร้อมกัน
-    this.p2 = new Fighter('p2', 'DUMMY', 860 + shift, -1, 'helios');
+    // ── เก็บเป็นลิสต์ ไม่ใช่ p1/p2 สองตัวแปร ──
+    //
+    // ขั้นแรกของการรองรับ 4 คน (2v2) ตอนนี้ยังมีสองคนเหมือนเดิมทุกอย่าง
+    // `p1`/`p2` ยังเรียกได้ผ่าน getter ข้างล่าง โค้ดเดิมกว่าร้อยจุดจึงไม่ต้องแก้พร้อมกันทีเดียว
+    // ซึ่งเป็นวิธีเดียวที่รีแฟคเตอร์ขนาดนี้จะตรวจสอบได้ว่าไม่ได้เปลี่ยนพฤติกรรมอะไรเลย
+    this.fighters = [
+      new Fighter('p1', 'NYX', 420 + shift, 1, 'nyx', 0),
+      // หุ่นซ้อมเป็นตัวละครจริงตัวหนึ่ง ไม่ใช่กล่องอีกแล้ว — ตั้งเป็นคนละตัวกับผู้เล่นจะได้เห็นทั้งสองตัวพร้อมกัน
+      new Fighter('p2', 'DUMMY', 860 + shift, -1, 'helios', 1),
+    ];
     this.dummyMode = 'stand';
     this.dummyTech = 'off';
 
@@ -860,6 +870,17 @@ class Game {
     // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
     this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
   }
+
+  /** สองตัวแรกของลิสต์ — โค้ดเดิมทั้งหมดยังเรียก p1/p2 ได้เหมือนเดิม
+   *  จะเลิกใช้ทีละจุดตอนแก้ HUD กับระบบยกให้รองรับ 4 คน ไม่ใช่รื้อทีเดียวทั้งหมด */
+  get p1() { return this.fighters[0]; }
+  get p2() { return this.fighters[1]; }
+
+  /** ทุกคนที่ไม่ได้อยู่ทีมเดียวกัน — 1v1 ก็คืออีกคนเดียวเหมือนเดิม */
+  foes(f) { return this.fighters.filter((o) => o.team !== f.team); }
+
+  /** อยู่ทีมเดียวกันไหม (รวมตัวเอง) — ใช้ตัดสินว่าท่าของใครทำร้ายใครได้ */
+  sameTeam(a, b) { return a.team === b.team; }
   /** เริ่มแมตช์ใหม่ตั้งแต่ยกแรก — ล้างทั้งหลอดเลือดและจำนวนหลอดที่เหลือ */
   startMatch() {
     this.match = { on: true, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
@@ -908,7 +929,7 @@ class Game {
   }
 
   resetPositions() {
-    this.p1.reset(); this.p2.reset();
+    for (const f of this.fighters) f.reset();
     this.meter = []; this.shots = []; this.fires = []; this.boxes = []; this.dust = null;
     this.decoy = null;
   }
@@ -1006,10 +1027,24 @@ class Game {
     this.events.push({ type: 'move', id });
   }
 
-  foe(f) { return f === this.p1 ? this.p2 : this.p1; }
+  /** ศัตรูที่ใกล้ที่สุด — นิยามนี้ใช้ได้ทั้ง 1v1 และ 2v2 โดยไม่ต้องแยกเคส
+   *
+   *  **คิดจากระยะล้วน ไม่มีสุ่ม** สองเครื่องจึงเลือกเป้าเดียวกันเสมอ ซึ่งจำเป็นสำหรับ netplay
+   *  ตัดสินเสมอด้วยลำดับในลิสต์ (คนที่มาก่อนชนะ) ไม่ใช่ปล่อยให้ sort ตัดสินเอง
+   *  เพราะ `Array.prototype.sort` ไม่รับประกันความเสถียรเท่ากันทุกเอนจิ้น
+   */
+  foe(f) {
+    let best = null, bestD = Infinity;
+    for (const o of this.fighters) {
+      if (o.team === f.team) continue;
+      const d = Math.abs(o.x - f.x);
+      if (d < bestD) { best = o; bestD = d; }
+    }
+    return best;
+  }
 
   /** หาตัวละครจากไอดี — แยกเป็นเมธอดเพื่อให้รองรับเกินสองคนได้ตอนทำโหมดหลายคน */
-  fighterById(id) { return id === 'p1' ? this.p1 : id === 'p2' ? this.p2 : null; }
+  fighterById(id) { return this.fighters.find((f) => f.id === id) ?? null; }
 
   /** ขว้างโดนใคร = หมายหัวคนนั้น หมุดย้ายไปเกาะตัวเขาแล้วนับถอยหลัง MARK_HOLD
    *  เล่มไหนในชุดโดนก็ได้ ไม่จำเป็นต้องเป็นเล่มกลาง — คนเล่นเห็นว่า "มีดโดน" ก็ควรได้หมุด */
@@ -1240,7 +1275,7 @@ class Game {
   blast(x, half, dmg, stun, kb, owner = null) {
     this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
     let hitFoes = 0;
-    for (const f of [this.p1, this.p2]) {
+    for (const f of this.fighters) {
       if (f.invuln > 0 || Math.abs(f.x - x) > half) continue;
       const dir = f.x >= x ? 1 : -1;
       if (owner !== null && f.id === owner) {
@@ -1296,7 +1331,7 @@ class Game {
       if (b.arm > 0) b.arm--;
       b.fuse--;
       // ติดชนวนแล้วใครเดินเข้ามาใกล้ก็ระเบิดทันที ไม่ต้องรอครบเวลา — รวมเจ้าของ
-      const touched = b.arm === 0 && [this.p1, this.p2].some(
+      const touched = b.arm === 0 && this.fighters.some(
         (f) => f.onGround && f.invuln <= 0 && Math.abs(f.x - b.x) <= BOX_TRIGGER);
       if (b.fuse > 0 && !touched) { live.push(b); continue; }
       // ได้ชั้นเฉพาะตอน "ไหโดนคู่ต่อสู้" — ไหคือกับดัก คนมีสายตาจะไม่เดินเข้าไปเอง
