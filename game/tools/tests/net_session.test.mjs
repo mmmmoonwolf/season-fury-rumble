@@ -110,9 +110,12 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
     getElementById: () => null, querySelector: () => null };
 
   const mk = (isHost) => {
+    // sim ปลอมต้องมีรูปร่างเหมือนของจริง: fighters เป็นลิสต์ ส่วน p1/p2 คือสองตัวแรกของลิสต์นั้น
+    // ถ้าปล่อยให้เป็นคนละก้อน เทสต์จะผ่านทั้งที่โค้ดจริงอ่าน fighters แล้วพัง
+    const fighters = [{ char: "nyx", team: 0 }, { char: "helios", team: 1 }];
     const sc = {
       isHost, versus: "net", phase: null, selSide: null, myReady: false, foeReady: false, foePick: null,
-      sim: { frame: 999, p1: { char: "nyx" }, p2: { char: "helios" }, match: { on: false }, resetPositions() { this.reset = (this.reset ?? 0) + 1; }, startMatch() { this.reset = (this.reset ?? 0) + 1; this.match.on = true; } },
+      sim: { frame: 999, fighters, get p1() { return fighters[0]; }, get p2() { return fighters[1]; }, match: { on: false }, resetPositions() { this.reset = (this.reset ?? 0) + 1; }, startMatch() { this.reset = (this.reset ?? 0) + 1; this.match.on = true; } },
       out: [],
       _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
     };

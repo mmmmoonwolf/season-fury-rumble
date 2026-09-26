@@ -1149,13 +1149,19 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(!/\bart\.lastState\b/.test(scene) && !/\bart\.lastJumps\b/.test(scene),
     "สถานะที่ใช้ตัดสินการเล่นท่าใหม่ก็แยกต่อฝั่งด้วย");
 
-  // ทั้งสองฝั่งต้องวาดด้วยเส้นทางเดียวกัน ไม่ใช่ p2 ถูกบังคับเป็นกล่องเสมอ
-  ok(/for \(const f of \[s\.p2, s\.p1\]\)/.test(scene), "วาดทั้งสองฝั่งด้วยลูปเดียวกัน");
+  // ทุกคนต้องวาดด้วยเส้นทางเดียวกัน ไม่ใช่ p2 ถูกบังคับเป็นกล่องเสมอ
+  // และต้องวนทั้ง roster ไม่ใช่สองคนแรก ไม่งั้น 2v2 คนที่สามกับสี่จะล่องหน
+  ok(/for \(const f of \[\.\.\.s\.fighters\]\.reverse\(\)\)/.test(scene),
+    "วาดทุกคนด้วยลูปเดียวกัน เรียงจากหลังมาหน้า");
   ok(!/drawFighter\(g, s\.p2, [^)]*\);\s*\n\s*\/\//.test(scene), "ไม่มีการบังคับวาดหุ่นเป็นกล่องก่อนเข้าลูป");
 
   // หน้าเลือกตัวละคร — เลือกได้ทั้งสองฝั่ง และการ์ดสร้างจาก CHARACTERS ไม่ใช่รายชื่อตายตัว
   ok(/id="sc-select"/.test(scene), "มีหน้าเลือกตัวละคร");
-  ok(/data-side="0"/.test(scene) && /data-side="1"/.test(scene), "เลือกได้ทั้งสองฝั่ง");
+  ok(/data-team="0"/.test(scene) && /data-team="1"/.test(scene), "แผงเลือกตัวแบ่งเป็นสองฝั่งตามทีม");
+  // ช่องเลือกตัวสร้างจาก roster จริง 2 คนได้ 2 ช่อง 4 คนได้ 4 ช่อง ไม่ใช่สองช่องตายตัวใน HTML
+  ok(/_syncSelectSlots\(\)\s*\{[\s\S]{0,400}?this\.sim\.fighters/.test(scene),
+    "จำนวนช่องเลือกตัวมาจาก fighters ไม่ใช่เลขตายตัว");
+  ok(/data-mode="team"/.test(scene), "มีโหมด 2v2 เครื่องเดียวให้เลือก");
   ok(/for \(const id of Object\.keys\(CHARACTERS\)\)/.test(scene),
     "การ์ดสร้างจาก CHARACTERS — เพิ่มตัวละครแล้วโผล่เอง ไม่ต้องแก้หน้าเลือกตัว");
   ok(/'KeyC','KeyV'\]/.test(scene) || /'KeyC',\s*'KeyV'/.test(scene), "ปุ่มทั้งสองลงทะเบียนเป็นคีย์เครื่องมือ");

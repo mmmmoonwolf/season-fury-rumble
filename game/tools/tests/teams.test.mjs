@@ -200,3 +200,105 @@ const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
   for (let i = 0; i < 40; i++) g.step(null, null, inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
   ok(d.hp < hp, `คนที่สามตีคนที่สี่โดนจริง (${hp} -> ${d.hp})`);
 }
+
+// ══ C5 · ระบบยกนับเป็น "ทีม" ไม่ใช่ "คน" ══════════════════════════════════════
+//
+// นี่คือหัวใจของ 2v2: ทีมจะเสียหลอดก็ต่อเมื่อล้มครบทุกคน
+// ถ้าเผลอนับทีละคน เกมจะจบตั้งแต่คนแรกล้ม ซึ่งฆ่าช่วงที่สนุกที่สุด (เหลือคนเดียวสู้สอง) ทิ้งไปเลย
+{
+  const g = make2v2();
+  g.startMatch();
+  const bars = g.match.bars.slice();
+  g.fighters[1].hp = 0;                       // ล้มคนเดียวของทีม 1
+  g.updateMatch();
+  ok(g.match.freeze === 0, "ล้มคนเดียว ยังไม่จบยก");
+  ok(g.match.bars.join() === bars.join(), "และยังไม่เสียหลอด");
+
+  g.fighters[3].hp = 0;                       // ล้มครบทั้งทีม
+  g.updateMatch();
+  ok(g.match.freeze > 0, "ล้มครบทีมถึงจบยก");
+  ok(g.match.loser.join() === '1', `ทีมที่แพ้คือทีม 1 (${g.match.loser.join()})`);
+}
+
+// ── เดินจนจบ freeze แล้วหลอดของทีมที่แพ้ต้องลด ทีมที่ชนะต้องไม่ลด ──
+{
+  const g = make2v2();
+  g.startMatch();
+  const before = g.match.bars.slice();
+  g.fighters[1].hp = 0; g.fighters[3].hp = 0;
+  for (let i = 0; i < 200 && g.match.round === 1; i++) g.step();
+  ok(g.match.bars[1] === before[1] - 1, `ทีมที่ล้มเสียหนึ่งหลอด (${before[1]} -> ${g.match.bars[1]})`);
+  ok(g.match.bars[0] === before[0], "ทีมที่ยืนอยู่ไม่เสียหลอด");
+  ok(g.match.round === 2, "ขึ้นยกใหม่");
+  ok(g.fighters.every((f) => f.hp === f.maxHp), "ทุกคนเลือดเต็มตอนเริ่มยกใหม่ รวมคนที่ไม่ได้ล้ม");
+}
+
+// ── เสียหลอดจนหมด = ทีมตรงข้ามชนะทั้งแมตช์ ──
+{
+  const g = make2v2();
+  g.startMatch();
+  g.match.bars = [2, 1];
+  g.fighters[1].hp = 0; g.fighters[3].hp = 0;
+  for (let i = 0; i < 200 && g.match.winner === null; i++) g.step();
+  ok(g.match.winner === 0, `ทีม 0 ชนะแมตช์ (winner=${g.match.winner})`);
+}
+
+// ── ล้มพร้อมกันทั้งสองทีมในหลอดสุดท้าย = เสมอ ──
+{
+  const g = make2v2();
+  g.startMatch();
+  g.match.bars = [1, 1];
+  for (const f of g.fighters) f.hp = 0;
+  for (let i = 0; i < 200 && g.match.winner === null; i++) g.step();
+  ok(g.match.winner === -1, `ล้มพร้อมกันหมดในหลอดสุดท้าย = เสมอ (winner=${g.match.winner})`);
+}
+
+// ══ setRoster: สลับ 2 ↔ 4 คนได้ และไม่ทำตัวละครที่เลือกไว้หาย ═══════════════════
+//
+// ผู้เล่นเลือกตัวเสร็จแล้วค่อยกดเปลี่ยนโหมด เป็นลำดับที่เกิดขึ้นจริงทุกครั้ง
+// ถ้า setRoster ล้างตัวละครทิ้ง คนเล่นจะต้องเลือกใหม่ทุกรอบโดยไม่รู้ว่าทำไม
+{
+  const g = new Game();
+  g.p1.char = 'atlas'; g.p2.char = 'orpheus';
+  const four = g.setRoster(4);
+  ok(four.length === 4 && g.fighters.length === 4, `สั่ง 4 ได้สี่คน (${g.fighters.length})`);
+  ok(g.fighters.map((f) => f.team).join() === '0,1,0,1', `ทีมสลับกันข้างละสอง (${g.fighters.map((f) => f.team).join()})`);
+  ok(g.fighters[0].char === 'atlas' && g.fighters[1].char === 'orpheus', "ตัวละครที่เลือกไว้ยังอยู่");
+  ok(g.match.bars.length === 2, `หลอดนับตามจำนวนทีม ไม่ใช่จำนวนคน (${g.match.bars.length})`);
+  ok(g.fighters.map((f) => f.id).join() === 'p1,p2,p3,p4', "id เรียงต่อกันไม่ซ้ำ");
+
+  const two = g.setRoster(2);
+  ok(two.length === 2 && g.fighters.length === 2, "สลับกลับเป็นสองคนได้");
+  ok(g.fighters[0].char === 'atlas' && g.fighters[1].char === 'orpheus', "และตัวละครยังอยู่เหมือนเดิม");
+  ok(g.p1 === g.fighters[0] && g.p2 === g.fighters[1], "p1/p2 ชี้เข้าลิสต์ชุดใหม่ ไม่ใช่ค้างที่ชุดเก่า");
+}
+
+// ── สลับ roster แล้วเดินต่อได้ ไม่ค้างเพราะของเก่าอ้างถึงคนที่ไม่มีแล้ว ──
+{
+  const g = new Game();
+  g.setRoster(4);
+  g.startMatch();
+  for (let i = 0; i < 90; i++) g.step(null, null, null, null);
+  ok(g.fighters.every((f) => Number.isFinite(f.x) && Number.isFinite(f.y)), "เดิน 90 เฟรมแล้วทุกคนยังอยู่ในโลกจริง");
+  ok(g.fighters.every((f) => f.y <= STAGE.groundY + 1), "ไม่มีใครตกทะลุพื้น");
+}
+
+// ══ AI หันเข้าหาศัตรูที่ใกล้ที่สุด ไม่ใช่ p1 ตายตัว ═══════════════════════════
+//
+// เพื่อน AI ในทีม 2v2 ใช้ทางเดินเดียวกับหุ่นซ้อม ถ้ายังล็อกไว้ที่ p1
+// เพื่อน AI ของทีม 0 จะยืนหันหลังให้ศัตรูตลอดเกม
+{
+  const g = make2v2([200, 1000, 400, 300]);   // D (ทีม 1) อยู่ซ้ายของ C (ทีม 0)
+  const c = g.fighters[2];
+  for (let i = 0; i < 30; i++) g.step(null, null, null, null);
+  ok(c.facing === -1, `C หันไปทางศัตรูที่ใกล้ที่สุด (facing=${c.facing})`);
+  ok(g.fighters[0].facing === 1, "และ A ยังหันไปทางศัตรูฝั่งขวาของตัวเอง");
+}
+
+// ── โหมดซ้อม 1v1 ต้องได้พฤติกรรมเดิมเป๊ะ ──
+{
+  const g = new Game();
+  g.p1.x = g.p2.x + 200;                      // ผู้เล่นย้ายไปยืนขวาของหุ่น
+  for (let i = 0; i < 20; i++) g.step(null);
+  ok(g.p2.facing === 1, "หุ่นยังหันตามผู้เล่นเหมือนเดิม");
+}

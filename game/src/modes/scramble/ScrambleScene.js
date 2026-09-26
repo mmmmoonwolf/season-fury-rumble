@@ -484,6 +484,7 @@ body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
 
 /* แถบสองฝั่ง: บอกว่าตอนนี้กำลังเลือกให้ใคร ฝั่งที่กำลังเลือกมีกรอบแดง */
 #sc-select .slots { display:flex; align-items:center; gap:10px; }
+#sc-select .side { display:flex; flex-direction:column; gap:5px; }
 #sc-select .slot { min-width:clamp(104px,22vw,150px); padding:5px 10px; border-radius:10px; text-align:center;
   border:2px solid rgba(233,227,214,.22); background:rgba(233,227,214,.07); }
 #sc-select .slot.pickable { cursor:pointer; }
@@ -540,15 +541,16 @@ const OVERLAY_HTML = `
   <div class="wrap">
     <h2>เลือกตัวละคร</h2>
     <div class="slots">
-      <div class="slot" data-side="0"><span class="tag"></span><span class="who"></span></div>
+      <div class="side" data-team="0"></div>
       <span class="vs">VS</span>
-      <div class="slot" data-side="1"><span class="tag"></span><span class="who"></span></div>
+      <div class="side" data-team="1"></div>
     </div>
     <p class="hint"></p>
     <div class="grid"></div>
     <div class="modes">
       <button data-mode="solo">ซ้อมกับหุ่น</button>
       <button data-mode="local">2 คน เครื่องเดียว</button>
+      <button data-mode="team">2v2 (คนจริง 2 + AI 2)</button>
     </div>
     <button class="go">เริ่ม</button>
     <p class="note"></p>
@@ -920,7 +922,8 @@ class ScrambleScene extends Phaser.Scene {
     const el = root.querySelector('#sc-select');
     this.selEl = el;
     this.selGrid = el.querySelector('.grid');
-    this.selSlots = [...el.querySelectorAll('.slot')];
+    this.selSides = [...el.querySelectorAll('.side')];
+    this.selSlots = [];
     this.selGo = el.querySelector('.go');
     this.selNote = el.querySelector('.note');
     this.selHint = el.querySelector('.hint');
@@ -939,19 +942,24 @@ class ScrambleScene extends Phaser.Scene {
       this.selGrid.appendChild(card);
     }
     // ฝั่งที่กำลังเลือก — ตอนต่อเน็ตล็อกไว้ที่ฝั่งตัวเอง กดสลับไม่ได้
-    for (const sl of this.selSlots) {
-      sl.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (this.versus === 'net') return;
-        this.selSide = Number(sl.dataset.side);
-        this._drawSelect();
-      });
-    }
+    // ดักที่กล่องแม่เพราะช่องถูกสร้างใหม่ทุกครั้งที่จำนวนคนเปลี่ยน ผูกทีละช่องจะหลุด
+    el.querySelector('.slots').addEventListener('pointerdown', (e) => {
+      const sl = e.target.closest('.slot');
+      if (!sl) return;
+      e.preventDefault();
+      if (this.versus === 'net') return;
+      this.selSide = Number(sl.dataset.side);
+      this._drawSelect();
+    });
     for (const b of this.selModes) {
       b.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         if (this.versus === 'net') return;
         this.versus = b.dataset.mode;
+        // จัดวงใหม่ทันทีที่เปลี่ยนโหมด ไม่ใช่ตอนกดเริ่ม — แผงเลือกตัวจะได้โชว์ครบทุกช่องเลย
+        this.sim.setRoster(this.versus === 'team' ? 4 : 2);
+        this._initSprites();
+        if (this.selSide >= this.sim.fighters.length) this.selSide = 0;
         if (this.versus === 'solo') this.selSide = 0;
         this._drawSelect();
       });
@@ -1011,11 +1019,18 @@ class ScrambleScene extends Phaser.Scene {
     const name = (f) => CHARACTERS[f.char].label;
     const net = this.versus === 'net';
     this.tSub.setText(net ? (this.isHost ? 'Online · Host' : 'Online · Guest')
-      : this.versus === 'local' ? 'Local 2P' : 'Training');
-    this.tP1.setText(name(this.sim.p1));
-    this.tP2.setText(this.versus === 'solo' ? 'Training dummy' : name(this.sim.p2));
-    this.tP1Sub?.setText(CHAR_ART[this.sim.p1.char]?.title ?? '');
-    this.tP2Sub?.setText(this.versus === 'solo' ? '' : CHAR_ART[this.sim.p2.char]?.title ?? '');
+      : this.versus === 'local' ? 'Local 2P' : this.versus === 'team' ? 'Local 2v2' : 'Training');
+    // ชื่อฝั่งละหนึ่งบรรทัด — ทีมละหลายคนต่อชื่อกันด้วย + ให้ตรงกับหลอดเลือดที่ซ้อนกันอยู่ใต้ชื่อ
+    const ts = this.sim.teams();
+    const label = (t) => this.sim.fighters.filter((f) => f.team === t).map(name).join(' + ');
+    const sub = (t) => {
+      const mates = this.sim.fighters.filter((f) => f.team === t);
+      return mates.length === 1 ? CHAR_ART[mates[0].char]?.title ?? '' : '';
+    };
+    this.tP1.setText(label(ts[0] ?? 0));
+    this.tP2.setText(this.versus === 'solo' ? 'Training dummy' : label(ts[1] ?? 1));
+    this.tP1Sub?.setText(sub(ts[0] ?? 0));
+    this.tP2Sub?.setText(this.versus === 'solo' ? '' : sub(ts[1] ?? 1));
     // แถวเครื่องมือซ้อมกินพื้นที่ครึ่งจอบนมือถือ และตอนต่อเน็ตก็กดไม่ได้อยู่แล้ว
     document.body.classList.toggle('sc-net', net);
     if (net) document.getElementById('sc-tune')?.classList.remove('open');
@@ -1026,7 +1041,11 @@ class ScrambleScene extends Phaser.Scene {
   _syncKoBanner(s) {
     const m = s.match;
     if (!m.on) { this.tKo.setText(''); this.tKoSub.setText(''); return; }
-    const name = (i) => CHARACTERS[i === 0 ? s.p1.char : s.p2.char].label;
+    // 1v1 เรียกชื่อตัวละคร · เล่นเป็นทีมเรียกชื่อทีม เพราะฝั่งหนึ่งมีสองชื่อ
+    const name = (t) => {
+      const mates = s.fighters.filter((f) => f.team === t);
+      return mates.length === 1 ? CHARACTERS[mates[0].char].label : 'ทีม ' + (s.teams().indexOf(t) + 1);
+    };
     if (m.winner !== null) {
       this.tKo.setText(m.winner < 0 ? 'DRAW' : name(m.winner) + ' WINS');
       this.tKoSub.setText('กดปุ่มตีเพื่อเริ่มใหม่');
@@ -1034,7 +1053,7 @@ class ScrambleScene extends Phaser.Scene {
     }
     if (m.freeze > 0) {
       this.tKo.setText('K.O.');
-      this.tKoSub.setText(m.loser.length === 2 ? 'ล้มพร้อมกันทั้งคู่'
+      this.tKoSub.setText(m.loser.length > 1 ? 'ล้มพร้อมกันทั้งคู่'
         : name(m.loser[0]) + ' เสียหนึ่งหลอด · เหลือ ' + Math.max(0, m.bars[m.loser[0]] - 1));
       return;
     }
@@ -1084,7 +1103,8 @@ class ScrambleScene extends Phaser.Scene {
   tick() {
     if (this.net) { this.tickNet(); return; }
     const inp = readInput(0, this.versus === 'solo');
-    const inp2 = this.versus === 'local' ? readInput(1) : null;
+    // 2v2: คนจริงคนละทีม (p1 กับ p2) ส่วน p3/p4 เดินด้วย AI — ส่ง null ให้ sim คุมเอง
+    const inp2 = (this.versus === 'local' || this.versus === 'team') ? readInput(1) : null;
     pressed.clear();
     this.sim.step(inp, inp2);
     for (const e of this.sim.events) {
@@ -1221,7 +1241,7 @@ class ScrambleScene extends Phaser.Scene {
   _pickChar(id) {
     if (this.phase !== 'select') return;
     if (this.versus === 'net' && this.myReady) return;   // กดพร้อมแล้วเปลี่ยนไม่ได้ กันสลับตัวตอนโฮสต์กำลังส่ง go
-    const f = this.selSide === 0 ? this.sim.p1 : this.sim.p2;
+    const f = this.sim.fighters[this.selSide] ?? this.sim.p1;
     f.char = id;
     if (this.versus === 'net') this.netSend?.({ t: 'pick', char: id });
     this._syncSkillSlots();
@@ -1265,15 +1285,41 @@ class ScrambleScene extends Phaser.Scene {
     this.syncTools();
   }
 
+  /** สร้างช่องให้ครบตาม roster แล้วจับเข้าคอลัมน์ของทีมตัวเอง
+   *  ลิสต์ที่คืนเรียงตามลำดับใน fighters เสมอ ถึงในจอจะสลับฝั่งกันอยู่ —
+   *  ที่อื่นใช้ index นี้อ้างตัวละครตรง ๆ */
+  _syncSelectSlots() {
+    const fs = this.sim.fighters;
+    if (this.selSlots.length === fs.length) return;
+    for (const side of this.selSides) side.replaceChildren();
+    const ts = this.sim.teams();
+    this.selSlots = fs.map((f, i) => {
+      const sl = document.createElement('div');
+      sl.className = 'slot';
+      sl.dataset.side = String(i);
+      for (const cls of ['tag', 'who']) {
+        const sp = document.createElement('span');
+        sp.className = cls;
+        sl.appendChild(sp);
+      }
+      (this.selSides[ts.indexOf(f.team)] ?? this.selSides[0]).appendChild(sl);
+      return sl;
+    });
+  }
+
   /** วาดหน้าเลือกตัวใหม่ทั้งแผง — เรียกเมื่อมีอะไรเปลี่ยน ไม่ใช่ทุกเฟรม */
   _drawSelect() {
     if (!this.selEl || !this.sim) return;
     const net = this.versus === 'net';
-    const chars = [this.sim.p1.char, this.sim.p2.char];
+    this._syncSelectSlots();
+    const chars = this.sim.fighters.map((f) => f.char);
     const mine = net ? (this.isHost ? 0 : 1) : this.selSide;
 
     this.selSlots.forEach((sl, i) => {
-      const label = net ? (i === mine ? 'คุณ' : 'เพื่อน') : (this.versus === 'local' ? `ผู้เล่น ${i + 1}` : i === 0 ? 'คุณ' : 'หุ่นซ้อม');
+      const label = net ? (i === mine ? 'คุณ' : 'เพื่อน')
+        : this.versus === 'team' ? (i < 2 ? `ผู้เล่น ${i + 1}` : 'เพื่อน AI')
+        : this.versus === 'local' ? `ผู้เล่น ${i + 1}`
+        : i === 0 ? 'คุณ' : 'หุ่นซ้อม';
       sl.querySelector('.tag').textContent = label;
       const waiting = net && i !== mine && !this.foePick;
       sl.querySelector('.who').textContent = waiting ? 'กำลังเลือก...' : CHARACTERS[chars[i]].label;
@@ -1592,8 +1638,11 @@ class ScrambleScene extends Phaser.Scene {
     this.rigs ??= {};
     let r = this.rigs[f.id];
     if (!r) {
+      // ความลึกไล่ตามลำดับในลิสต์ คนแรกอยู่หน้าสุด — เดิมเขียน 'p1' ตายตัว
+      // ซึ่งพอมีสี่คนจะได้ความลึกเท่ากันหมดสามคน แล้วสลับหน้าหลังมั่วทุกเฟรม
+      const idx = Math.max(0, this.sim.fighters.indexOf(f));
       r = this.rigs[f.id] = { sprite: this.add.sprite(0, 0, CHAR_ART[f.char].atlasKey, 'idle_1.png')
-        .setVisible(false).setDepth(f.id === 'p1' ? 5 : 4), char: f.char, lastState: null, lastJumps: null };
+        .setVisible(false).setDepth(5 - idx * 0.1), char: f.char, lastState: null, lastJumps: null };
     }
     if (r.char !== f.char) {   // สลับตัวละครกลางเกม: เปลี่ยนเท็กซ์เจอร์แล้วบังคับให้เริ่มท่าใหม่
       r.sprite.setTexture(CHAR_ART[f.char].atlasKey, 'idle_1.png');
@@ -1794,10 +1843,10 @@ class ScrambleScene extends Phaser.Scene {
    */
   _stepParallax(s) {
     if (!this.parallax?.length) return;
-    const fx = (s.p1.x + s.p2.x) / 2 - STAGE.w / 2;
+    const fx = s.fighters.reduce((a, f) => a + f.x, 0) / s.fighters.length - STAGE.w / 2;
     // ความสูงคิดจาก "สูงกว่าพื้นเท่าไหร่" ไม่ใช่ y ดิบ — ยืนพื้น = 0 เสมอ
     // ค่าจึงไม่เคยติดลบ เลเยอร์เลื่อนลงได้อย่างเดียว ใต้หน้าผาไม่มีวันโหว่ให้เห็นฟ้า
-    const rise = Math.max(0, STAGE.groundY - (s.p1.y + s.p2.y) / 2);
+    const rise = Math.max(0, STAGE.groundY - s.fighters.reduce((a, f) => a + f.y, 0) / s.fighters.length);
     for (const L of this.parallax) {
       const wx = L.x0 - fx * L.k.x + (L.drift ? Math.sin(s.frame * L.drift * 0.01) * 26 : 0);
       const wy = L.y0 + rise * L.k.y;
@@ -1812,7 +1861,7 @@ class ScrambleScene extends Phaser.Scene {
     g.clear(); fx.clear(); hud.clear();
     // ทั้งสองฝั่งวาดด้วยเส้นทางเดียวกัน — ท่าที่ยังไม่มีอาร์ตตกไปเป็นกล่องเหมือนเดิม
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง
-    for (const f of [s.p2, s.p1]) {
+    for (const f of [...s.fighters].reverse()) {
       if (this._drawCharSprite(f)) {
         g.fillStyle(0x000000, 0.25);
         g.fillEllipse(f.x, f.onGround ? f.y + 2 : Math.min(STAGE.groundY, f.y + 200) + 2, 50, 10);
@@ -1820,14 +1869,14 @@ class ScrambleScene extends Phaser.Scene {
         // ตัวละครที่ยังไม่มีอาร์ตใช้สีกล่องของตัวเอง จะได้แยกออกจากหุ่นซ้อม
         const art = CHAR_ART[f.char];
         if (art && art.artPending) this.drawFighter(g, f, art.box, art.boxAccent, false);
-        else if (f === s.p1) this.drawFighter(g, f, C.nyx, C.nyxScarf, false);
+        else if (f.team === s.p1.team) this.drawFighter(g, f, C.nyx, C.nyxScarf, false);
         else this.drawFighter(g, f, C.dummy, C.dummyMark, true);
       }
     }
 
     // นับถอยหลังของท่าตั้งป้อมยืนยิง — ปักหลักอยู่ 5 วินาทีโดยไม่มีอะไรบอกว่าเหลือเท่าไหร่
     // แปลว่าทั้งคนยิงและคนโดนยิงเดาไม่ถูกว่าจะจบเมื่อไหร่ ซึ่งเป็นข้อมูลที่ทั้งคู่ต้องใช้ตัดสินใจ
-    for (const f of [s.p1, s.p2]) {
+    for (const f of s.fighters) {
       const left = f.stanceUntil - s.frame;
       if (left <= 0) continue;
       // หาจากสกิลที่ประกาศ stance จริง ๆ ไม่ใช่เดาว่าเป็นช่องแรกเสมอ
@@ -1844,7 +1893,7 @@ class ScrambleScene extends Phaser.Scene {
     // และ **ไม่ขยับเลยสักเฟรม** ซึ่งคือสิ่งที่ทำให้มันยุติธรรม: คนเล่นที่ตั้งใจดูจะแยกออก
     // จากความนิ่ง แต่ในวินาทีที่กำลังรัวอยู่มันหลอกได้จริง
     if (s.decoy) {
-      const art = CHAR_ART[(s.decoy.owner === 'p1' ? s.p1 : s.p2).char];
+      const art = CHAR_ART[(s.fighterById(s.decoy.owner) ?? s.p1).char];
       if (art && !art.artPending) {
         this.decoySprite ??= this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setDepth(3);
         const m = art.meta, sp = this.decoySprite;
@@ -1929,7 +1978,7 @@ class ScrambleScene extends Phaser.Scene {
       }
     }
 
-    for (const f of [s.p1, s.p2]) {
+    for (const f of s.fighters) {
       const box = f.hitbox();
       if (box) {
         fx.fillStyle(0xffffff, 0.35);
@@ -1963,7 +2012,7 @@ class ScrambleScene extends Phaser.Scene {
       // ผนังกรง: วาดเฉพาะตอนมีคนติดอยู่จริง ไม่งั้นมันคือแถบฝุ่นเฉย ๆ
       // ต้องเห็นว่า "เดินออกทางนี้ไม่ได้" ไม่ใช่รู้ตัวตอนเดินชนแล้วงงว่าทำไมไม่ไป
       // ขีดตั้งสูงกว่ากรอบฝุ่น = อ่านเป็นกำแพง ไม่ใช่ขอบแถบ
-      const held = [s.p1, s.p2].some((f) => f.caged);
+      const held = s.fighters.some((f) => f.caged);
       if (held) {
         const pulse = 0.45 + 0.25 * Math.abs(Math.sin(s.frame * 0.12));
         for (const wx of [d.x - 200, d.x + 200]) {
@@ -1976,26 +2025,36 @@ class ScrambleScene extends Phaser.Scene {
     }
 
     // HP bars
-    const bar = (x, w, hp, max, alignRight) => {
-      hud.fillStyle(0x0c111c, 0.7); hud.fillRect(x, 42, w, 16);
-      const fw = w * hp / max;
-      hud.fillStyle(hp / max > 0.3 ? 0xe9e3d6 : C.nyxScarf, 1);
-      hud.fillRect(alignRight ? x + w - fw : x, 44, fw, 12);
-    };
-    bar(60, 380, s.p1.hp, s.p1.maxHp, false);
-    bar(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.p2.hp, s.p2.maxHp, true);
+    // หลอดจับกลุ่มตามทีม — 1v1 ได้หลอดเดียวต่อข้างเหมือนเดิมเป๊ะ
+    // 2v2 ได้สองหลอดซ้อนกันต่อข้าง คนเล่นจึงอ่านออกทันทีว่าใครอยู่ทีมใคร
+    // ซึ่งเป็นข้อมูลที่สำคัญที่สุดบนจอตอนเล่นเป็นทีม
+    const sideX = [60, STAGE.w - 440 - (isTouch ? 100 : 0)];
+    s.teams().forEach((t, ti) => {
+      const mates = s.fighters.filter((f) => f.team === t);
+      const x = sideX[ti] ?? sideX[0];
+      mates.forEach((f, mi) => {
+        const h = mates.length > 1 ? 7 : 12;
+        const y = 42 + mi * (h + 3);
+        hud.fillStyle(0x0c111c, 0.7); hud.fillRect(x, y, 380, h + 4);
+        const fw = 380 * f.hp / f.maxHp;
+        hud.fillStyle(f.hp / f.maxHp > 0.3 ? 0xe9e3d6 : C.nyxScarf, 1);
+        hud.fillRect(ti === 1 ? x + 380 - fw : x, y + 2, fw, h);
+      });
+    });
     // จำนวนหลอดที่เหลือ วาดเป็นขีดใต้หลอดเลือด — ขีดที่เสียไปแล้วเหลือแต่โครง
     if (s.match.on) {
-      const pips = (x, w, left, alignRight) => {
+      const pips = (x, w, left, alignRight, dy = 0) => {
         for (let i = 0; i < ROUND_BARS; i++) {
           const pw = 26, gap = 6;
           const px = alignRight ? x + w - (i + 1) * pw - i * gap : x + i * (pw + gap);
-          hud.fillStyle(0x0c111c, 0.7); hud.fillRect(px, 62, pw, 8);
-          if (i < left) { hud.fillStyle(0xe05a57, 1); hud.fillRect(px + 1, 63, pw - 2, 6); }
+          hud.fillStyle(0x0c111c, 0.7); hud.fillRect(px, 62 + dy, pw, 8);
+          if (i < left) { hud.fillStyle(0xe05a57, 1); hud.fillRect(px + 1, 63 + dy, pw - 2, 6); }
         }
       };
-      pips(60, 380, s.match.bars[0], false);
-      pips(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.match.bars[1], true);
+      // ขีดหลอดยกเลื่อนลงตามจำนวนคนในทีม ไม่งั้นทับหลอดเลือดของคนที่สอง
+      const drop = s.fighters.length > 2 ? 14 : 0;
+      pips(60, 380, s.match.bars[0], false, drop);
+      pips(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.match.bars[1], true, drop);
     }
     this._syncKoBanner(s);
     // หลอด ki ของผู้เล่น — เต็มเมื่อไหร่ถึงกดอัลติได้ เต็มแล้วเปลี่ยนเป็นสีแดงให้เห็นชัด
@@ -2008,8 +2067,9 @@ class ScrambleScene extends Phaser.Scene {
     this.tMode.setText(this.versus === 'solo' ? 'Dummy: ' + MODE_LABEL[s.dummyMode] + '    Tech: ' + TECH_LABEL[s.dummyTech] : '');
 
     // combo counter
-    const live = s.p2.comboHits;
-    if (live > 0) { this.tCombo.setText(live + (live === 1 ? ' hit' : ' hits')).setAlpha(1); this.tComboSub.setText(s.p2.comboDmg + ' damage').setAlpha(1); }
+    const combod = s.foes(s.p1).reduce((best, f) => (f.comboHits > (best?.comboHits ?? 0) ? f : best), null) ?? s.p2;
+    const live = combod.comboHits;
+    if (live > 0) { this.tCombo.setText(live + (live === 1 ? ' hit' : ' hits')).setAlpha(1); this.tComboSub.setText(combod.comboDmg + ' damage').setAlpha(1); }
     else if (this.comboFade > 0 && this.lastCombo) {
       const a = Math.min(1, this.comboFade / 30);
       this.tCombo.setText(this.lastCombo.hits + ' hits').setAlpha(a); this.tComboSub.setText(this.lastCombo.dmg + ' damage').setAlpha(a);

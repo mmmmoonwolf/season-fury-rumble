@@ -882,11 +882,31 @@ class Game {
   /** อยู่ทีมเดียวกันไหม (รวมตัวเอง) — ใช้ตัดสินว่าท่าของใครทำร้ายใครได้ */
   sameTeam(a, b) { return a.team === b.team; }
 
+  /** จัดวงใหม่เป็น 2 หรือ 4 คน — เรียกจากฉากตอนเลือกโหมด
+   *
+   *  ตัวละครที่เคยเลือกไว้ของสองคนแรกถูกเก็บไว้ ไม่ให้สลับโหมดแล้วตัวละครหาย
+   *  จุดเกิดคิดจากกึ่งกลางเวทีเสมอ เวทีกว้างขึ้นก็ยังอยู่กลางเหมือนเดิม
+   */
+  setRoster(count) {
+    const shift = (STAGE.w - STAGE_BASE_W) / 2;
+    const keep = this.fighters.map((f) => f.char);
+    // 2 คน: ห่างกัน 440 เหมือนเดิมเป๊ะ · 4 คน: ทีมละสองคนยืนซ้อนกันข้างละฝั่ง
+    const spec = count === 4
+      ? [[340, 1, 0], [780, -1, 1], [500, 1, 0], [940, -1, 1]]
+      : [[420, 1, 0], [860, -1, 1]];
+    this.fighters = spec.map(([x, facing, team], i) =>
+      new Fighter('p' + (i + 1), i === 1 ? 'DUMMY' : 'P' + (i + 1), x + shift, facing,
+        keep[i] ?? (i === 1 ? 'helios' : 'nyx'), team));
+    this.match.bars = this.teams().map(() => ROUND_BARS);
+    this.resetPositions();
+    return this.fighters;
+  }
+
   /** เลขทีมทั้งหมดที่มีอยู่จริง เรียงจากน้อยไปมาก — ไม่ฮาร์ดโค้ด [0, 1] */
   teams() { return [...new Set(this.fighters.map((f) => f.team))].sort((x, y) => x - y); }
   /** เริ่มแมตช์ใหม่ตั้งแต่ยกแรก — ล้างทั้งหลอดเลือดและจำนวนหลอดที่เหลือ */
   startMatch() {
-    this.match = { on: true, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
+    this.match = { on: true, bars: this.teams().map(() => ROUND_BARS), round: 1, freeze: 0, loser: [], winner: null };
     this.resetPositions();
     this.events.push({ type: 'roundStart', round: 1 });
   }
@@ -909,10 +929,11 @@ class Game {
     if (m.freeze > 0) {
       if (--m.freeze > 0) return;
       for (const i of m.loser) m.bars[i]--;
-      const dead = [0, 1].filter((i) => m.bars[i] <= 0);
+      const dead = this.teams().filter((t) => m.bars[t] <= 0);
       if (dead.length) {
         // ล้มพร้อมกันทั้งคู่ในยกสุดท้าย = เสมอ (-1)
-        m.winner = dead.length === 2 ? -1 : (dead[0] === 0 ? 1 : 0);
+        const alive = this.teams().filter((t) => !dead.includes(t));
+        m.winner = alive.length === 1 ? alive[0] : -1;
         this.events.push({ type: 'matchEnd', winner: m.winner });
         return;
       }
@@ -1686,7 +1707,7 @@ class Game {
   }
 
   controlDummy(f) {
-    const p = this.p1;
+    const p = this.foe(f) ?? this.p1;
     if (!ACTIONABLE.has(f.state)) return;
     if (f.onGround) f.facing = p.x >= f.x ? 1 : -1;
     if (!f.onGround) { f.vx *= PHYS.airFric; return; }
