@@ -21,6 +21,16 @@ const ROOM_CODE_LEN = 5;
 const PEER_ID_PREFIX = "sfr-";
 const HOST_ID_RETRY_MAX = 5; // ชนไอดีซ้ำ (unavailable-id) — สุ่มรหัสใหม่แล้วลองอีกได้กี่ครั้ง
 
+/** รอเซิร์ฟเวอร์ signaling ตอบกี่มิลลิวินาทีก่อนยอมแพ้
+ *
+ *  **จำเป็น เพราะ PeerJS ไม่มี timeout ให้เอง** ถ้าเซิร์ฟเวอร์ฟรีของเขาช้าหรือค้าง
+ *  (มีรายงานยาวเป็นปี รวมถึงเคสที่ WebSocket ใช้เวลา 6 นาทีกว่าจะตอบ)
+ *  `peer.on("open")` จะไม่ยิงเลย และไม่มี error ด้วย
+ *  คนเล่นเห็นแค่ "กำลังเชื่อมต่อ..." ค้างอยู่อย่างนั้นตลอดกาล ซึ่งแยกไม่ออกจากเกมพัง
+ *
+ *  20 วินาทีเผื่อเน็ตช้าไว้เยอะแล้ว ต่อติดจริงใช้เวลาระดับ 1-3 วินาที */
+const SIGNAL_TIMEOUT_MS = 20000;
+
 /** สถานะห้องปัจจุบัน — instance เดียวต่อหน้าเว็บ */
 const session = {
   mode: "offline", // "offline" | "host" | "guest"
@@ -96,6 +106,9 @@ export function sendNetPacket(packet) {
   }
 }
 
+const TIMEOUT_MSG = "เซิร์ฟเวอร์จับคู่ไม่ตอบใน 20 วินาที — ลองใหม่อีกครั้ง "
+  + "(ใช้เซิร์ฟเวอร์ฟรีของ PeerJS ซึ่งล่มเป็นพัก ๆ)";
+
 function describePeerError(err) {
   const type = err?.type ?? "unknown";
   if (type === "peer-unavailable") return "ไม่พบห้องนี้ — เช็ครหัสอีกครั้ง";
@@ -114,6 +127,8 @@ function describePeerError(err) {
 export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
   session.mode = "host";
   let attempt = 0;
+  let opened = false;
+  let openTimer = null;
 
   const tryCreate = () => {
     attempt += 1;
@@ -122,7 +137,10 @@ export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
     session.peer = peer;
     session.roomCode = code;
 
-    peer.on("open", () => onCodeReady?.(code));
+    // นับเฉพาะ "กว่าจะได้รหัสห้อง" ไม่ใช่ "กว่าจะมีคนเข้า" — เพื่อนจะเข้ามาเมื่อไหร่ก็ได้
+    clearTimeout(openTimer);
+    openTimer = setTimeout(() => { if (!opened) onError?.(TIMEOUT_MSG); }, SIGNAL_TIMEOUT_MS);
+    peer.on("open", () => { opened = true; clearTimeout(openTimer); onCodeReady?.(code); });
 
     peer.on("connection", (conn) => {
       if (session.conn) {
@@ -139,6 +157,7 @@ export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
         tryCreate();
         return;
       }
+      clearTimeout(openTimer);
       onError?.(describePeerError(err));
     });
   };
@@ -157,14 +176,25 @@ export function joinRoom(code, { onConnected, onError } = {}) {
   const peer = new window.Peer();
   session.peer = peer;
 
+  // นับถอยหลังตั้งแต่กด ครอบทั้งสองจังหวะ: ต่อเซิร์ฟเวอร์ signaling และต่อหาเจ้าของห้อง
+  // ค้างที่จังหวะไหนก็ได้ผลเหมือนกันสำหรับคนเล่น คือกดแล้วไม่มีอะไรเกิดขึ้น
+  let done = false;
+  const timer = setTimeout(() => {
+    if (done) return;
+    done = true;
+    onError?.(TIMEOUT_MSG);
+  }, SIGNAL_TIMEOUT_MS);
+  const settle = (fn) => (...a) => { if (done) return; done = true; clearTimeout(timer); fn?.(...a); };
+
   peer.on("open", () => {
+    if (done) return;                       // หมดเวลาไปแล้ว อย่าเริ่มต่อใหม่ซ้อน
     const conn = peer.connect(PEER_ID_PREFIX + code, { reliable: true });
     wireConnection(conn);
-    conn.on("open", () => onConnected?.());
-    conn.on("error", (err) => onError?.(describePeerError(err)));
+    conn.on("open", settle(() => onConnected?.()));
+    conn.on("error", settle((err) => onError?.(describePeerError(err))));
   });
 
-  peer.on("error", (err) => onError?.(describePeerError(err)));
+  peer.on("error", settle((err) => onError?.(describePeerError(err))));
 }
 
 /** ยกเลิก/เคลียร์ห้องปัจจุบัน — ใช้ตอนกดย้อนกลับจากล็อบบี้ ก่อนเริ่มเกมจริง (กลับไปเป็น offline) */
