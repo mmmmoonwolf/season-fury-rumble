@@ -22,6 +22,12 @@ const realSetTimeout = globalThis.setTimeout;
 globalThis.setTimeout = (fn, ms) => { const id = { fn, ms }; timers.push(id); return id; };
 globalThis.clearTimeout = (id) => { const i = timers.indexOf(id); if (i >= 0) timers.splice(i, 1); };
 const fireAll = () => { const q = timers.splice(0); for (const t of q) t.fn(); };
+/** ยิงเฉพาะนาฬิกาสั้น (เช่นนาฬิกาลองใหม่ 1.2 วิ) ไม่แตะนาฬิกาหมดเวลา 20 วิ
+ *  ไม่งั้นเทสต์เรื่องลองใหม่จะไปโดนข้อความ "หมดเวลา" แทน ซึ่งวัดคนละเรื่องกัน */
+const fireShort = () => {
+  const q = timers.filter((t) => t.ms < 5000);
+  for (const t of q) { const i = timers.indexOf(t); if (i >= 0) timers.splice(i, 1); t.fn(); }
+};
 
 const S = new URL("../../src/net/session.js", import.meta.url).href;
 const { hostRoom, joinRoom, cancelSession } = await import(S);
@@ -76,4 +82,61 @@ const { hostRoom, joinRoom, cancelSession } = await import(S);
   fireAll();
   ok(err === null, "ต่อให้เวลาผ่านไปเท่าไหร่ก็ไม่มี error เด้งใส่คนที่กำลังเล่นอยู่");
   cancelSession();
+}
+
+// ══ หาห้องไม่เจอ: ลองใหม่ก่อน ไม่ใช่ยอมแพ้ทันที ══════════════════════════════
+//
+// อาการที่เจอจริงคือ "สร้างห้องได้ แต่ join ไม่ได้" ซึ่งแปลว่า signaling ใช้งานได้
+// ปัญหาจึงอยู่ที่ "หา" ไม่ใช่ที่ "ต่อ" — เซิร์ฟเวอร์ฟรีของ PeerJS เป็นหลายเครื่อง
+// หลังตัวกระจายโหลด เจ้าของห้องจดชื่อไว้เครื่องหนึ่ง คนเข้าร่วมอาจไปถามอีกเครื่อง
+{
+  class LookupPeer extends DeadPeer {
+    connect() { return { on: () => {}, close() {} }; }
+  }
+  globalThis.window = { Peer: LookupPeer };
+  let err = null;
+  joinRoom("ABCDE", { onError: (m) => { err = m; } });
+  const { getSession } = await import(S);
+  const peer = getSession().peer;
+  peer.handlers.open?.();                        // ต่อ signaling ติดแล้ว เริ่มหาห้อง
+
+  const notFound = { type: "peer-unavailable" };
+  peer.handlers.error?.(notFound);
+  ok(err === null, "หาไม่เจอครั้งแรกยังไม่ยอมแพ้");
+  ok(timers.some((t) => t.ms < 5000), "ตั้งเวลาลองใหม่ไว้");
+  fireShort();                                   // ลองครั้งที่ 2
+  peer.handlers.error?.(notFound);
+  ok(err === null, "ครั้งที่สองก็ยังไม่ยอมแพ้");
+  fireShort();                                   // ลองครั้งที่ 3
+  peer.handlers.error?.(notFound);
+  ok(err !== null, "ครบโควตาแล้วค่อยบอกว่าไม่พบห้อง");
+  ok(/ไม่พบห้องนี้/.test(err), `ข้อความบอกตรง ๆ — "${err.slice(0, 40)}..."`);
+  ok(/สร้างห้องใหม่/.test(err), "และแนะนำทางออกที่ได้ผลจริง คือให้เพื่อนสร้างห้องใหม่");
+  cancelSession();
+}
+
+// ── เน็ตพังไม่ต้องลองซ้ำ ลองกี่ครั้งก็เหมือนเดิม ──
+{
+  globalThis.window = { Peer: DeadPeer };
+  let err = null;
+  joinRoom("ABCDE", { onError: (m) => { err = m; } });
+  const { getSession } = await import(S);
+  getSession().peer.handlers.error?.({ type: "network" });
+  ok(err !== null, "เน็ตพังแล้วบอกทันที ไม่ต้องให้รอเก้อ");
+  cancelSession();
+}
+
+// ── ตัวอักษรที่เป็นไปไม่ได้: บอกก่อนยิงออกเน็ต ──
+//
+// รหัสห้องตัด 0 O 1 I ออกตั้งแต่ตอนสุ่ม เพราะอ่านสับสน
+// ถ้าพิมพ์มาแล้วมีตัวพวกนี้ = อ่านผิดแน่นอน บอกตรง ๆ ดีกว่าปล่อยไปได้ "ไม่พบห้องนี้"
+// ซึ่งชวนให้คิดว่าเพื่อนปิดห้องไปแล้ว แล้วไล่ผิดทางทั้งคู่
+{
+  for (const [code, ch] of [["ABCD0", "0"], ["O2345", "O"], ["2345I", "I"], ["1BCDE", "1"]]) {
+    let err = null, touched = false;
+    globalThis.window = { Peer: class { constructor() { touched = true; } on() {} destroy() {} } };
+    joinRoom(code, { onError: (m) => { err = m; } });
+    ok(err !== null && err.includes(ch), `${code} -> บอกว่าไม่มีตัว ${ch}`);
+    ok(!touched, `${code} -> ไม่ยิงออกเน็ตเลย`);
+  }
 }

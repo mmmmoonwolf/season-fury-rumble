@@ -31,6 +31,17 @@ const HOST_ID_RETRY_MAX = 5; // ชนไอดีซ้ำ (unavailable-id) —
  *  20 วินาทีเผื่อเน็ตช้าไว้เยอะแล้ว ต่อติดจริงใช้เวลาระดับ 1-3 วินาที */
 const SIGNAL_TIMEOUT_MS = 20000;
 
+/** หาห้องไม่เจอแล้วลองใหม่กี่ครั้ง และห่างกันเท่าไหร่
+ *
+ *  **ไม่ใช่การกลบปัญหา** — เซิร์ฟเวอร์ฟรีของ PeerJS เป็นตัวกลางหลายเครื่องอยู่หลังตัวกระจายโหลด
+ *  เจ้าของห้องไปจดชื่อไว้ที่เครื่องหนึ่ง คนเข้าร่วมอาจไปถามอีกเครื่องที่ยังไม่รู้จักชื่อนั้น
+ *  ผลคือ "ไม่พบห้องนี้" ทั้งที่ห้องมีอยู่จริงและเจ้าของนั่งรออยู่ ซึ่งตรงกับอาการที่เจอ
+ *  (สร้างห้องได้ แปลว่า signaling ใช้งานได้ ปัญหาจึงอยู่ที่ "หา" ไม่ใช่ที่ "ต่อ")
+ *
+ *  ลองซ้ำเฉพาะกรณีหาไม่เจอเท่านั้น — เน็ตพังหรือเซิร์ฟเวอร์ล่มลองกี่ครั้งก็เหมือนเดิม */
+const JOIN_RETRY_MAX = 3;
+const JOIN_RETRY_MS = 1200;
+
 /** สถานะห้องปัจจุบัน — instance เดียวต่อหน้าเว็บ */
 const session = {
   mode: "offline", // "offline" | "host" | "guest"
@@ -111,7 +122,10 @@ const TIMEOUT_MSG = "เซิร์ฟเวอร์จับคู่ไม�
 
 function describePeerError(err) {
   const type = err?.type ?? "unknown";
-  if (type === "peer-unavailable") return "ไม่พบห้องนี้ — เช็ครหัสอีกครั้ง";
+  if (type === "peer-unavailable") {
+    return "ไม่พบห้องนี้ — เช็ครหัสอีกครั้ง "
+      + "(ถ้ารหัสถูกและเพื่อนยังรออยู่ ให้เพื่อนกดสร้างห้องใหม่แล้วลองอีกที)";
+  }
   if (["network", "server-error", "socket-error", "socket-closed"].includes(type)) {
     return "เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ — เช็คอินเทอร์เน็ต (วง wifi บางที่บล็อก WebRTC)";
   }
@@ -171,6 +185,15 @@ export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
  * @param {{onConnected?:()=>void, onError?:(msg:string)=>void}} handlers
  */
 export function joinRoom(code, { onConnected, onError } = {}) {
+  // ตรวจตัวอักษรก่อนยิงออกเน็ต — รหัสห้องไม่เคยมี 0 O 1 I เพราะตัดออกตั้งแต่ตอนสุ่ม
+  // ถ้าพิมพ์มาแล้วมีตัวพวกนี้ แปลว่าอ่านผิดแน่นอน บอกตรง ๆ ดีกว่าปล่อยไปได้ "ไม่พบห้องนี้"
+  // ซึ่งชวนให้คิดว่าเพื่อนปิดห้องไปแล้ว
+  const bad = [...code].filter((c) => !ROOM_CODE_CHARS.includes(c));
+  if (bad.length) {
+    onError?.(`รหัสห้องไม่มีตัว ${[...new Set(bad)].join(" ")} — ลองดูใหม่ว่าอ่านผิดหรือเปล่า`
+      + " (รหัสไม่ใช้ 0 O 1 I เพราะอ่านสับสน)");
+    return;
+  }
   session.mode = "guest";
   session.roomCode = code;
   const peer = new window.Peer();
@@ -186,15 +209,26 @@ export function joinRoom(code, { onConnected, onError } = {}) {
   }, SIGNAL_TIMEOUT_MS);
   const settle = (fn) => (...a) => { if (done) return; done = true; clearTimeout(timer); fn?.(...a); };
 
-  peer.on("open", () => {
+  let tries = 0;
+  const attempt = () => {
     if (done) return;                       // หมดเวลาไปแล้ว อย่าเริ่มต่อใหม่ซ้อน
+    tries += 1;
     const conn = peer.connect(PEER_ID_PREFIX + code, { reliable: true });
     wireConnection(conn);
     conn.on("open", settle(() => onConnected?.()));
     conn.on("error", settle((err) => onError?.(describePeerError(err))));
-  });
+  };
 
-  peer.on("error", settle((err) => onError?.(describePeerError(err))));
+  peer.on("open", attempt);
+
+  peer.on("error", (err) => {
+    // หาห้องไม่เจอ = อาจเป็นเรื่องของเซิร์ฟเวอร์ ไม่ใช่เรื่องของห้อง ลองถามใหม่อีกที
+    if (err?.type === "peer-unavailable" && tries < JOIN_RETRY_MAX && !done) {
+      setTimeout(attempt, JOIN_RETRY_MS);
+      return;
+    }
+    settle(() => onError?.(describePeerError(err)))();
+  });
 }
 
 /** ยกเลิก/เคลียร์ห้องปัจจุบัน — ใช้ตอนกดย้อนกลับจากล็อบบี้ ก่อนเริ่มเกมจริง (กลับไปเป็น offline) */
