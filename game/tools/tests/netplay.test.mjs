@@ -71,6 +71,8 @@ const snap = (g) => [g.frame, ...[g.p1, g.p2].flatMap((f) => [
   // กล่องระเบิดของ Momus: ชนวนคลาดกันเฟรมเดียว = ระเบิดคนละจังหวะ ซึ่งเปลี่ยนผลทั้งยก
   g.boxes.length,
   ...g.boxes.map((b) => [b.owner, Math.round(b.x * 1000), b.fuse, b.arm].join(",")),
+  // ตัวแสดงแทนของ Momus — ของบนเวทีที่ sim เป็นคนคิด ต้องอยู่ในสแนปช็อตเหมือนกล่องกับวงฝุ่น
+  g.decoy ? [g.decoy.owner, Math.round(g.decoy.x * 1000), g.decoy.life, g.decoy.facing].join(",") : '-',
 ].join("|");
 
 /** เล่นสองเครื่องด้วยสคริปต์ปุ่มที่กำหนด แล้วคืนว่าสถานะตรงกันตลอดไหม */

@@ -1155,6 +1155,15 @@ class ScrambleScene extends Phaser.Scene {
             life: 16 + Math.round(Math.random() * 14), grow: 0.6, vy: -1.6 - Math.random(), tint: 0xffb03a });
         this.emit('burst', e.x, e.y - 26, { scale: 0.42, life: 13, grow: 1.1, tint: 0xffd166 });
       }
+      if (e.type === 'decoy') this.popup(e.x, e.y - 120, 'Understudy', '#d8b24a');
+      if (e.type === 'decoyPop') {
+        this.cameras.main.shake(70, 0.004);
+        this.emit('burst', e.x, e.y - 60, { scale: 0.34, life: 12, grow: 1.2, tint: 0xffd166 });
+        for (let i = 0; i < 4; i++)
+          this.emit('smokeCurl', e.x + (i - 1.5) * 16, e.y - 50 - Math.random() * 30,
+            { scale: 0.2, life: 24, grow: 1.0, vy: -0.8, alpha: 0.45, tint: 0x9aa3b5,
+              blend: Phaser.BlendModes.NORMAL, depth: 6 });
+      }
       if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); }
       if (e.type === 'blast') {
         this.cameras.main.shake(110, 0.007);
@@ -1828,6 +1837,25 @@ class ScrambleScene extends Phaser.Scene {
       g.fillStyle(0x0c111c, 0.7); g.fillRect(x - 1, y - 1, w + 2, 7);
       g.fillStyle(0xffb03a, 1); g.fillRect(x, y, w * Math.min(1, left / total), 5);
     }
+
+    // ── ตัวแสดงแทนของ Momus ──
+    //
+    // ใช้ "เฟรมแรกของท่ายืน" ของตัวละครจริง ไม่ใช่รูปวาดแยก — มันจึงเหมือนเขาจริง ๆ
+    // และ **ไม่ขยับเลยสักเฟรม** ซึ่งคือสิ่งที่ทำให้มันยุติธรรม: คนเล่นที่ตั้งใจดูจะแยกออก
+    // จากความนิ่ง แต่ในวินาทีที่กำลังรัวอยู่มันหลอกได้จริง
+    if (s.decoy) {
+      const art = CHAR_ART[(s.decoy.owner === 'p1' ? s.p1 : s.p2).char];
+      if (art && !art.artPending) {
+        this.decoySprite ??= this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setDepth(3);
+        const m = art.meta, sp = this.decoySprite;
+        sp.setTexture(art.atlasKey, 'idle_1.png');
+        sp.setVisible(true).setScale(SPRITE_H / m.standing).setFlipX(s.decoy.facing < 0);
+        sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
+        sp.setPosition(s.decoy.x, s.decoy.y);
+        // จาง ๆ นิดเดียว พอให้คนที่มองหาจับได้ แต่ไม่ถึงกับประกาศว่าเป็นของปลอม
+        sp.setAlpha(0.88);
+      }
+    } else if (this.decoySprite) this.decoySprite.setVisible(false);
 
     // กล่องระเบิดของ Momus — ชนวนต้องอ่านออกจากที่ไกล ๆ ไม่งั้นมันคือกับดักที่มองไม่เห็น
     // ยิ่งใกล้ระเบิดยิ่งกะพริบถี่ขึ้น คนเล่นทั้งสองฝั่งจึงกะจังหวะหนีได้เท่ากัน

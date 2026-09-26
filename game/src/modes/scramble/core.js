@@ -609,10 +609,16 @@ const RAIN_BASE = 4;         // อัลติโปรยกี่ไหตอ
 const HOUSE_MAX = 5;         // เพดานชั้น "โรงเต็ม" — เท่าตราแส้ของ Alecto จะได้พูดภาษาเดียวกันทั้งเกม
 const SELF_STUN = 0.5;       // ระเบิดตัวเองทำให้ชะงักครึ่งเดียวของที่คนอื่นโดน
 const RAIN_STEP = 16;        // ชนวนเหลื่อมกันกี่เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่พร้อมกันทีเดียว
-const SNAP_DMG = 5;          // ระเบิดตอนสลับที่ เบากว่ากล่อง แต่ขึ้นสองจุดพร้อมกัน
-const SNAP_HALF = 92;
-const SNAP_STUN = 22;
-const SNAP_KB = [6, -8];
+// ── Understudy: ตัวแสดงแทน ──
+// เขาทิ้งหุ่นที่หน้าตาเหมือนตัวเองไว้ตรงที่ยืนอยู่ แล้วหลุดออกไปข้าง ๆ
+const DECOY_LIFE = 150;      // อยู่ได้ 2.5 วิ หมดเวลาแล้วหายเฉย ๆ ไม่ระเบิด
+const DECOY_SLIP = 120;      // หลุดถอยหลังไปไกลแค่ไหน
+const DECOY_W = 60;          // กรอบที่ตีโดน — แคบกว่าตัวจริงนิดหน่อย
+const DECOY_H = 150;
+const DECOY_HALF = 64;       // รัศมีระเบิดตอนแตก แคบกว่าไห (108) มาก
+const DECOY_DMG = 4;
+const DECOY_STUN = 20;
+const DECOY_KB = [5, -7];
 
 const ORPHEUS_SKILLS = ['slide1', 'burn1', 'solo1'];
 const ORPHEUS_SKILL_CD = [120, 240, 0];   // สไลด์กดถี่ได้ · ถอยลากไฟ 4 วินาที กันกดหนีรัว
@@ -685,14 +691,21 @@ const MOMUS_MOVES = {
   box2: { label: 'Jack-in-the-Box', kind: 'ground', startup: 4, active: 4, recovery: 10, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true },
 
-  // ---- สกิล 2 Ta-da!: ดีดนิ้วสลับที่ แล้วระเบิดขึ้นทั้งสองจุด (ปุ่ม 2) ----
+  // ---- สกิล 2 Understudy: ทิ้งตัวแสดงแทนไว้ แล้วหลุดออกไปข้าง ๆ (ปุ่ม 2) ----
   //
-  // ออกไวที่สุดในเกม เป็นปุ่มหนีฉุกเฉินได้จริง
-  // โดนต้อนติดมุม -> ดีดนิ้วออกมาได้ทันที พร้อมทิ้งระเบิดไว้ให้คนที่ไล่
-  snap1: { label: 'Ta-da!', kind: 'ground', startup: 3, active: 3, recovery: 4, dmg: 0,
+  // ชื่อคีย์ยังเป็น snap1/snap2 ตามของเดิม เพราะ **คีย์นี้คือชื่อเฟรมในแอตลาสด้วย**
+  // เปลี่ยนชื่อตอนนี้ = เฟรมหายทั้งท่า จะเปลี่ยนพร้อมกันตอนอาร์ตชุดใหม่เข้า
+  //
+  // ออกไวที่สุดในเกมเท่าเดิม เป็นปุ่มหนีฉุกเฉินจริง ๆ โดนต้อนติดมุม -> กดออกมาได้ทันที
+  // **ต้องขยับตัวเขาด้วย** ไม่ใช่แค่วางหุ่น ไม่งั้นมันไม่ใช่ปุ่มหนี ซึ่งคือเหตุผลทั้งหมดที่มีท่านี้
+  //
+  // หุ่นไม่ระเบิดเองตอนหมดเวลา — ระเบิดเฉพาะตอนโดนตี
+  // ถ้าระเบิดเองด้วยมันจะกลายเป็นระเบิดใบที่สองที่วางแล้วเดินหนีได้ ซึ่งไม่ใช่สิ่งที่ท่านี้ควรให้
+  // รางวัลอยู่ที่ "หลอกเขาสำเร็จ" ไม่ใช่ที่ "วางไว้เฉย ๆ"
+  snap1: { label: 'Understudy', kind: 'ground', startup: 3, active: 3, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    swapBlast: { at: 3 }, autoChain: 'snap2' },
-  snap2: { label: 'Ta-da!', kind: 'ground', startup: 3, active: 4, recovery: 10, dmg: 0,
+    decoyDrop: { at: 3 }, autoChain: 'snap2' },
+  snap2: { label: 'Understudy', kind: 'ground', startup: 3, active: 4, recovery: 10, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true },
 
   // ---- สกิล 3 Full House (อัลติ): โปรยกล่องทั้งเวที (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
@@ -843,6 +856,7 @@ class Game {
     this.fires = [];
     this.boxes = [];                // กล่องระเบิดของ Momus — ระเบิดใส่ทุกคนรวมเจ้าของ
     this.dust = null;               // วงฝุ่นของ Alecto — มีได้ทีละวงเดียว
+    this.decoy = null;              // ตัวแสดงแทนของ Momus — มีได้ทีละตัวเดียว
     // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
     this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
   }
@@ -896,6 +910,7 @@ class Game {
   resetPositions() {
     this.p1.reset(); this.p2.reset();
     this.meter = []; this.shots = []; this.fires = []; this.boxes = []; this.dust = null;
+    this.decoy = null;
   }
 
   /**
@@ -923,6 +938,9 @@ class Game {
     this.decayLash(p); this.decayLash(d);
     this.tickFlame(p); this.tickFlame(d);
     this.updateDust();
+    this.updateDecoy();
+    // ตีโดนหุ่นตัดสินก่อนตีโดนตัวจริง — ระเบิดจะได้ขัดท่าที่กำลังออกอยู่
+    this.hitDecoy(p); this.hitDecoy(d);
     this.resolveHit(p, d);
     this.resolveHit(d, p);
     this.pushApart(p, d);
@@ -1288,23 +1306,46 @@ class Game {
     this.boxes = live;
   }
 
-  /** ดีดนิ้วสลับที่ แล้วระเบิดขึ้นทั้งจุดที่ไปและจุดที่มา
+  /** ทิ้งตัวแสดงแทนไว้ตรงที่ยืน แล้วหลุดถอยหลังออกไป
    *
-   *  สลับ x อย่างเดียว ห้ามแตะ y/vx/vy — สลับความเร็วด้วยจะกระตุกและคาดเดาไม่ได้
-   *  ไม่สลับถ้าอีกฝ่ายมี invuln (กำลังล้ม/กลิ้งอยู่) ไม่งั้นลากคนที่ล้มอยู่ได้ = พัง
-   *  แต่ **ระเบิดยังขึ้นทั้งสองจุดเสมอ** ต่อให้สลับไม่ได้ ไม่งั้นกดแล้วไม่เกิดอะไรเลย
+   *  ย้ายตัวทันทีไม่ใช่กระโดดจริง — ท่านี้ startup 3 เฟรม เป็นปุ่มหนีตอนโดนต้อนติดมุม
+   *  ถ้าเป็นการกระโดดจริงจะโดนขัดกลางทางได้ และติดกำแพงตอนที่ต้องใช้มากที่สุดพอดี
+   *  ระยะคงที่ ไม่มีสุ่ม สองเครื่องจึงได้ตำแหน่งตรงกันเป๊ะ
    */
-  swapBlast(f) {
-    const o = this.foe(f);
-    const mine = f.x, theirs = o.x;
-    if (o.invuln <= 0 && o.state !== 'knockdown' && o.state !== 'techroll') {
-      f.x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, theirs));
-      o.x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, mine));
-      this.events.push({ type: 'vanish', x: mine, y: f.y });
-      this.events.push({ type: 'appear', x: f.x, y: f.y });
+  dropDecoy(f) {
+    const half = PHYS.width / 2;
+    this.decoy = { x: f.x, y: f.y, owner: f.id, facing: f.facing, life: DECOY_LIFE };
+    this.events.push({ type: 'decoy', x: f.x, y: f.y });
+    this.events.push({ type: 'vanish', x: f.x, y: f.y });
+    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, f.x - f.facing * DECOY_SLIP));
+    this.events.push({ type: 'appear', x: f.x, y: f.y });
+  }
+
+  /** หุ่นหมดอายุ — หายเฉย ๆ ไม่ระเบิด (ดูเหตุผลที่ท่า hide1) */
+  updateDecoy() {
+    if (!this.decoy) return;
+    if (--this.decoy.life <= 0) {
+      this.events.push({ type: 'decoyGone', x: this.decoy.x, y: this.decoy.y });
+      this.decoy = null;
     }
-    this.blast(mine, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB, f.id);
-    this.blast(theirs, SNAP_HALF, SNAP_DMG, SNAP_STUN, SNAP_KB, f.id);
+  }
+
+  /** คู่ต่อสู้ตีโดนหุ่น — หุ่นแตกแล้วระเบิด
+   *
+   *  เรียก **ก่อน** resolveHit ตั้งใจ: ระเบิดทำให้คนตีเข้า hitstun ท่าที่กำลังออกจึงหลุด
+   *  = ต่อยหุ่นแล้วมันระเบิดใส่หน้า ซึ่งคือรางวัลของการหลอกสำเร็จ
+   *
+   *  ไม่กินการโจมตีทิ้ง — ถ้าท่านั้นยาวพอจะถึงตัวจริงด้วยก็ยังถึง หุ่นเป็นของล่อ ไม่ใช่โล่
+   */
+  hitDecoy(a) {
+    const dc = this.decoy;
+    if (!dc || a.id === dc.owner || a.hitList.has('decoy')) return;
+    const hb = a.hitbox(); if (!hb) return;
+    if (!overlap(hb, { x: dc.x - DECOY_W / 2, y: dc.y - DECOY_H, w: DECOY_W, h: DECOY_H })) return;
+    a.hitList.add('decoy');
+    this.decoy = null;
+    this.events.push({ type: 'decoyPop', x: dc.x, y: dc.y });
+    this.blast(dc.x, DECOY_HALF, DECOY_DMG, DECOY_STUN, DECOY_KB, dc.owner);
   }
 
   /** โปรยกล่องทั่วเวที ชนวนเหลื่อมกันทีละใบ = ระเบิดไล่กันเป็นทอด ๆ
@@ -1704,7 +1745,7 @@ class Game {
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
       if (m.boxDrop && f.moveF === m.boxDrop.at) this.dropBox(f.x + f.facing * m.boxDrop.dx, f.id);
-      if (m.swapBlast && f.moveF === m.swapBlast.at) this.swapBlast(f);
+      if (m.decoyDrop && f.moveF === m.decoyDrop.at) this.dropDecoy(f);
       // จำนวนไหคิดตอนใช้จริง ไม่ใช่เลขตายตัวในตารางท่า — ki บอกว่า "ใช้ได้ไหม"
       // ส่วนชั้นที่สะสมไว้บอกว่า "ใหญ่แค่ไหน" คนที่โดนไล่ตีทั้งยกจึงยังได้ใช้อัลติ แค่ได้โรงว่าง
       if (m.boxRain && f.moveF === m.boxRain.at)

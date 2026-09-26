@@ -81,32 +81,31 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 
 ---
 
-## ชีต F — สกิล 2 · Exit Stage Left (6 ท่า · 2 แถวแถวละ 3)
+## ชีต F — สกิล 2 · Understudy (6 ท่า · 2 แถวแถวละ 3)
 
-**ออกไวที่สุดในเกม startup 3 เฟรม** เป็นปุ่มหนีฉุกเฉินจริง ๆ โดนต้อนติดมุมแล้วกดออกมาได้ทันที
-ท่าทางต้อง**โอ่อ่าเกินเหตุ** แบบนักแสดงโค้งลาเวที ไม่ใช่การหนี
+**สร้างและเข้าเกมแล้ว** ท่าคือ: ทิ้งหุ่นที่หน้าตาเหมือนตัวเองไว้ตรงที่ยืน แล้วหลุดถอยออกไป 120 px
+startup 3 เฟรม เป็นปุ่มหนีตอนโดนต้อนติดมุม ท่าจึง**ต้องอ่านว่าลื่นไหลและไว** ไม่ใช่พิธีรีตอง
 
 ```
 A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
 left to right, top row first. Even spacing, no pose touching another.
-He is making a grand theatrical exit gesture — a stage actor sweeping off
-stage with far more flourish than the moment deserves. Draw NO smoke, NO
-sparks, NO explosion, NO motion lines — the game draws all of that.
+He is slipping out of his own cloak and leaving it standing behind him like a
+stage dummy, then sliding away sideways. Fast and slick, not ceremonial.
+Draw NO second figure, NO dummy, NO smoke, NO sparks — the game draws the
+standing decoy and all effects itself.
 
-Pose 1 — snapping upright out of his stance, chin lifting, one hand rising
-with the fingers already coming together to snap.
-Pose 2 — the snap itself: one arm flung out straight to the side at shoulder
-height, fingers snapping, the other hand pressed flat to his chest, chin up,
-grinning, like an actor announcing himself.
-Pose 3 — sweeping the cloak across his body with one arm, half his torso
-hidden behind it, only his masked head and one eye showing over the edge.
-Pose 4 — fully wrapped in the cloak, a narrow upright bundle, his head
-turned sharply back over one shoulder toward the viewer.
-Pose 5 — bursting back out of the cloak the other way, arms thrown wide and
-open, feet planted wide apart, head thrown back.
-Pose 6 — a deep sweeping stage bow, one arm folded across his waist and the
-other flung out behind him, head low, the hanging tragedy mask swinging
-forward past his hip.
+Pose 1 — dropping into a low ready crouch, one hand already reaching up to
+the clasp of his cloak at the shoulder.
+Pose 2 — the clasp released: the cloak peeling off one shoulder, his body
+beginning to twist out from under it, knees bent low.
+Pose 3 — half out of the cloak, both arms sliding free behind him, torso
+turned away, weight shifting onto the back foot.
+Pose 4 — fully out and pushing off hard sideways, body low and stretched,
+both feet nearly leaving the ground, head turned back over his shoulder.
+Pose 5 — landing from the slide, feet planted wide apart, knees deep, one
+hand touching the floor for balance, looking back the way he came.
+Pose 6 — straightened up, feet wide, one finger raised beside his mask in a
+"watch this" gesture, grinning.
 
 Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small mischievous Greek trickster. An ivory-white Greek comedy mask with a wide grinning mouth is pushed to one side of his face, revealing his own grinning face beneath it — the mask stays in that same pushed-aside position in every pose and is always the brightest single thing on him. He wears a laurel wreath askew, and his copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a ragged bone / oatmeal Greek tunic with a torn uneven hem and one bare shoulder, a thick dark red rope belt, and a dark greyish-brown tattered cloak with a dark red border along its ragged edge draped over one shoulder. Dark brown leather wrappings and straps cover both shins above open sandals. A small drawstring pouch hangs at one hip, and a dark bronze Greek tragedy mask with a downturned mouth hangs from a dark red cord at the other hip, clearly visible in silhouette. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of the wreath to the soles of both sandals — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. All cloth and cords fall close to his body and never stream far out to the side. No effects of any kind — no smoke, no sparks, no glow, no motion lines, no confetti.
 ```
@@ -114,6 +113,9 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 ---
 
 ## ชีต G — สกิล 3 อัลติ · Full House (6 ท่า · 2 แถวแถวละ 3)
+
+**กลไกเปลี่ยนแล้ว: กดปุ๊บวาร์ปขึ้นชั้นบนสุดทันที แล้วเรียกฝนลงมา**
+ท่าจึงต้องเป็น "ขึ้นไปยืนบนที่สูงแล้วเรียกโรงละคร" ไม่ใช่ยืนกับพื้นโปรยเอง
 
 **เงื้อนานได้ ไม่เป็นไร** startup 10 เฟรมแล้วต่อเป็น 8 อีกท่อน เพราะเป็นอัลติที่ใช้หลอดเต็ม
 เรื่องเล่าใหม่: **โรงละครที่เต็มคนดู กำลังปาของลงมาใส่เวที**
