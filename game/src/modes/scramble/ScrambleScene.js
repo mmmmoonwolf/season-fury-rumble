@@ -593,6 +593,12 @@ body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
 #sc-select .slot .who { font-weight:700; font-size:clamp(13px,2.6dvh,17px); }
 #sc-select .slot.waiting .who { color:#9aa3b5; font-weight:600; }
 #sc-select .vs { color:#9aa3b5; font-weight:700; font-size:clamp(11px,2.2dvh,14px); }
+/* ปุ่มสุ่ม — เล็กกว่าปุ่มเริ่ม เพราะเป็นทางเลือก ไม่ใช่ทางหลัก
+   วางใต้การ์ดไม่ใช่ข้างปุ่มเริ่ม กันนิ้วพลาดไปกดสุ่มตอนจะกดเริ่ม */
+#sc-select .rand { font:600 clamp(12px,2.4dvh,14px) var(--font); padding:7px 16px; border-radius:9px;
+  border:1px solid rgba(233,227,214,.28); background:rgba(233,227,214,.08); color:var(--dim); cursor:pointer; }
+#sc-select .rand:hover { background:rgba(233,227,214,.16); color:var(--ink); }
+#sc-select .rand:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
 
 /* การ์ดตัวละคร — เรียงแนวนอน ล้นแล้วตัดบรรทัดเอง ใส่ตัวใหม่ใน CHARACTERS แล้วโผล่เองไม่ต้องแก้ CSS */
 #sc-select .grid { display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:8px; }
@@ -659,6 +665,7 @@ const OVERLAY_HTML = `
     </div>
     <p class="hint"></p>
     <div class="grid"></div>
+    <button class="rand" data-sfx="pick">สุ่มตัวละคร</button>
     <div class="modes">
       <button data-mode="solo">ซ้อมกับหุ่น</button>
       <button data-mode="local">2 คน เครื่องเดียว</button>
@@ -1254,6 +1261,12 @@ class ScrambleScene extends Phaser.Scene {
     this.selSlots = [];
     this.selGo = el.querySelector('.go');
     this.selGo.dataset.sfx = 'start';
+    // สุ่มให้ "ช่องที่กำลังเลือกอยู่" ไม่ใช่สุ่มทุกช่อง — คนกดอยากสุ่มของตัวเอง
+    // ไม่ใช่โดนสุ่มทับตัวที่เพื่อนเลือกไว้แล้ว
+    el.querySelector('.rand')?.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this._pickRandom();
+    });
     this.selNote = el.querySelector('.note');
     this.selHint = el.querySelector('.hint');
     this.selModes = [...el.querySelectorAll('.modes button')];
@@ -1666,6 +1679,24 @@ class ScrambleScene extends Phaser.Scene {
     if (this.versus === 'net') this.netSend?.({ t: 'pick', char: id });
     this._syncSkillSlots();
     this._drawSelect();
+  }
+
+  /** สุ่มตัวละครให้ช่องที่กำลังเลือกอยู่
+   *
+   *  ใช้ `Math.random` ได้เพราะนี่คือ**การกดปุ่มของคนหนึ่งคน** ไม่ใช่การคิดในซิม
+   *  ผลที่ได้เดินทางต่อผ่าน `_pickChar()` ซึ่งส่งให้อีกฝั่งอยู่แล้วเหมือนการกดการ์ดปกติ
+   *  สองเครื่องจึงไม่ต้องสุ่มให้ตรงกัน — มีคนสุ่มคนเดียวแล้วบอกอีกฝั่งว่าได้อะไร
+   *
+   *  เลี่ยงตัวเดิม: สุ่มแล้วได้ตัวที่ถืออยู่คือปุ่มที่กดแล้วไม่มีอะไรเกิดขึ้น
+   *  ซึ่งแยกไม่ออกจากปุ่มเสีย
+   */
+  _pickRandom() {
+    if (this.phase !== 'select') return;
+    const ids = Object.keys(CHARACTERS);
+    const now = this.sim.fighters[this.selSide]?.char;
+    const pool = ids.filter((id) => id !== now);
+    if (!pool.length) return;
+    this._pickChar(pool[(Math.random() * pool.length) | 0]);
   }
 
   /** กดปุ่มใหญ่: ออฟไลน์เริ่มเลย · ต่อเน็ตแปลว่า "พร้อม" แล้วรออีกฝั่ง */

@@ -151,9 +151,13 @@
       font-family: var(--font); cursor: pointer; transition: background .15s, transform .1s;
     }
     .lobby-btn:hover { background: rgba(233,227,214,.16); }
+    /* ปุ่มที่กดไม่ได้ต้องดูออกว่ากดไม่ได้ ไม่ใช่กดแล้วเงียบ */
+    .lobby-btn:disabled { opacity: .45; cursor: default; }
+    .lobby-btn:disabled:hover { background: rgba(233,227,214,.08); }
     .lobby-btn:active { transform: scale(.98); }
     .lobby-btn-primary { background: var(--crimson); border-color: var(--crimson); color: #fff; }
     .lobby-btn-primary:hover { background: var(--crimson-hi); border-color: var(--crimson-hi); }
+    .lobby-btn-copy { font-size: 14px; padding: 9px 14px; }
     .lobby-btn-secondary { background: transparent; border-color: var(--line); color: var(--dim); font-weight: 500; font-size: 14px; }
     .lobby-btn-secondary:hover { background: rgba(233,227,214,.10); color: var(--ink); }
     /* เล่นด้วยคีย์บอร์ดต้องเห็นว่าโฟกัสอยู่ปุ่มไหน — ของเดิมมีแต่ :hover ซึ่งคีย์บอร์ดไม่มี */
@@ -232,6 +236,7 @@
         <p class="lobby-status" id="host-status">กำลังสร้างห้อง...</p>
         <div class="spinner" id="host-spinner"></div>
         <div class="room-code" id="room-code-display"></div>
+        <button class="lobby-btn lobby-btn-copy" id="btn-copy-code" hidden>ก๊อปรหัส</button>
         <p class="lobby-hint">บอกรหัสนี้ให้เพื่อนพิมพ์ในช่อง "เข้าร่วมห้อง"</p>
         <button class="lobby-btn lobby-btn-secondary" id="btn-host-back" data-sfx="back">ย้อนกลับ</button>
       </div>
@@ -322,9 +327,10 @@
   <script type="module">
     import { ScrambleScene } from "./src/modes/scramble/ScrambleScene.js";
     import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
-    import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
+    import { hostRoom, joinRoom, cancelSession, getSession,
+             normalizeRoomCode, ROOM_CODE_LEN } from "./src/net/session.js";
     import { wireUiSfx, unlockUiSfx } from "./src/ui/uisfx.js";
-    import { onQuitToLobby } from "./src/ui/shell.js";
+    import { onQuitToLobby, copyText } from "./src/ui/shell.js";
 
     /**
      * ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
@@ -446,9 +452,13 @@
       $("host-status").textContent = "กำลังสร้างห้อง...";
       $("host-spinner").hidden = false;
       $("room-code-display").textContent = "";
+      // ปุ่มก๊อปโผล่ตอนมีรหัสจริงแล้วเท่านั้น — โชว์ตอนช่องยังว่างคือปุ่มที่กดแล้วไม่เกิดอะไร
+      $("btn-copy-code").hidden = true;
+      $("btn-copy-code").textContent = "ก๊อปรหัส";
       hostRoom({
         onCodeReady: (code) => {
           $("room-code-display").textContent = code;
+          $("btn-copy-code").hidden = false;
           $("host-status").textContent = "รอเพื่อนเข้าร่วม — บอกรหัสด้านบนให้เพื่อน";
         },
         onConnected: () => {
@@ -465,12 +475,28 @@
       showPanel("join");
       $("join-status").textContent = "";
       const i = $("join-code-input"); i.value = ""; i.focus();
+      syncJoinInput();          // ช่องว่าง = ปุ่มเชื่อมต่อปิดไว้ตั้งแต่เข้าหน้า
     });
     $("btn-join-back").addEventListener("click", () => { cancelSession(); showPanel("menu"); });
 
+    /** กรองช่องกรอกสด ๆ ตอนพิมพ์ แล้วเปิด/ปิดปุ่มเชื่อมต่อตามความครบ
+     *
+     *  เดิมพิมพ์อะไรลงไปก็ได้ แล้วไปรู้ตอนกดว่าผิด — และเช็คแค่ `length < 4`
+     *  ทั้งที่รหัสยาว 5 ตัว รหัส 4 ตัวจึงผ่านด่านนี้ไปโดนปฏิเสธที่ชั้นเน็ตอีกที
+     *  ตอนนี้กติกาอยู่ที่ normalizeRoomCode() ที่เดียว ทั้งช่องกรอกและ joinRoom ใช้ตัวเดียวกัน */
+    function syncJoinInput() {
+      const el = $("join-code-input");
+      const clean = normalizeRoomCode(el.value);
+      if (el.value !== clean) el.value = clean;          // ตัวที่ใช้ไม่ได้หายไปตอนพิมพ์เลย
+      const full = clean.length === ROOM_CODE_LEN;
+      $("btn-join-submit").disabled = !full;
+      $("join-status").textContent = full || clean.length === 0
+        ? "" : `อีก ${ROOM_CODE_LEN - clean.length} ตัว`;
+    }
+
     function submitJoin() {
-      const code = $("join-code-input").value.trim().toUpperCase();
-      if (code.length < 4) { showError("กรอกรหัสห้องให้ครบก่อน"); return; }
+      const code = normalizeRoomCode($("join-code-input").value);
+      if (code.length < ROOM_CODE_LEN) { showError(`รหัสห้องมี ${ROOM_CODE_LEN} ตัว`); return; }
       $("join-status").textContent = "กำลังเชื่อมต่อ...";
       joinRoom(code, {
         onConnected: () => { $("join-status").textContent = "เชื่อมต่อสำเร็จ! กำลังเริ่มเกม..."; setTimeout(startGame, 250); },
@@ -479,6 +505,24 @@
     }
     $("btn-join-submit").addEventListener("click", submitJoin);
     $("join-code-input").addEventListener("keydown", (e) => { if (e.key === "Enter") submitJoin(); });
+    $("join-code-input").addEventListener("input", syncJoinInput);
+
+    /** ก๊อปรหัสห้อง — คลิปบอร์ดใช้ไม่ได้ก็ต้องยังช่วยอะไรได้
+     *
+     *  navigator.clipboard ต้องเป็น https และผู้ใช้อาจปฏิเสธสิทธิ์
+     *  พังแล้วบอกว่า "ก๊อปไม่ได้" เฉย ๆ ไม่ช่วยอะไร — เลือกข้อความให้เลย
+     *  ผู้เล่นกดก๊อปจากเมนูของเครื่องเองได้ทันที ซึ่งเป็นท่าที่เขาทำอยู่แล้วก่อนมีปุ่มนี้ */
+    /** ก๊อปรหัสห้อง — ตรรกะอยู่ใน src/ui/shell.js เพื่อให้เทสต์สามทางออกได้จริง */
+    $("btn-copy-code").addEventListener("click", async () => {
+      const btn = $("btn-copy-code");
+      const box = $("room-code-display");
+      const how = await copyText(box.textContent.trim(), box);
+      btn.textContent = how === 'copied' ? "ก๊อปแล้ว \u2713"
+        : how === 'selected' ? "เลือกไว้ให้แล้ว — กดก๊อปเอง"
+        : "ก๊อปไม่ได้ — อ่านรหัสให้เพื่อนฟัง";
+      clearTimeout(btn._t);
+      btn._t = setTimeout(() => { btn.textContent = "ก๊อปรหัส"; }, 1800);
+    });
 
     // เผื่อเทสอัตโนมัติอ่านสถานะห้องได้ตรง ๆ โดยไม่ต้อง parse DOM
     window.__netSession = getSession();

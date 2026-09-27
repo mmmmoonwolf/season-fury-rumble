@@ -1,0 +1,142 @@
+// ทดสอบของเล็กในล็อบบี้และแผงเลือกตัว: ก๊อปรหัสห้อง · ตรวจรหัสตอนพิมพ์ · สุ่มตัวละคร
+// รัน: node tools/tests/lobby_bits.test.mjs   (จากโฟลเดอร์ game)
+import "./phaser_stub.mjs";
+import fs from "fs";
+const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
+const root = new URL("../../", import.meta.url).pathname;
+const html = fs.readFileSync(root + "index.html", "utf8");
+const scene = fs.readFileSync(root + "src/modes/scramble/ScrambleScene.js", "utf8");
+
+globalThis.window = { matchMedia: () => ({ matches: false }) };
+globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+const S = await import(new URL("../../src/net/session.js", import.meta.url).href);
+
+// ══ กติกาของรหัสห้องต้องอยู่ที่เดียว ═══════════════════════════════════════════
+//
+// เดิมช่องกรอกเช็ค `length < 4` ทั้งที่รหัสยาว 5 ตัว รหัส 4 ตัวจึงผ่านด่านนั้นไป
+// โดนปฏิเสธที่ชั้นเน็ตอีกที ซึ่งผู้เล่นอ่านไม่ออกว่าใครผิด
+{
+  ok(S.ROOM_CODE_LEN === 5, `รหัสยาว ${S.ROOM_CODE_LEN} ตัว`);
+  ok(typeof S.normalizeRoomCode === 'function', "มีตัวล้างรหัสให้ใช้ร่วมกัน");
+  const n = S.normalizeRoomCode;
+  ok(n('ab3d9') === 'AB3D9', "ตัวเล็กกลายเป็นใหญ่");
+  ok(n('  a b 3 ') === 'AB3', "ช่องว่างหายไป");
+  ok(n('O0I1') === '', "ตัวที่ตัดออกตั้งแต่ตอนสุ่ม (0 O 1 I) ถูกทิ้ง");
+  ok(n('xyz23456789') === 'XYZ23', `ยาวเกินตัดท้าย (${n('xyz23456789')})`);
+  ok(n(null) === '' && n(undefined) === '', "ค่าว่าง/ไม่มีค่าไม่ throw");
+
+  // ทั้งสามที่ต้องใช้ตัวเดียวกัน ไม่ใช่เขียนกติกาซ้ำ
+  ok(/normalizeRoomCode\(el\.value\)/.test(html), "ช่องกรอกใช้ตัวล้างร่วม");
+  ok(/normalizeRoomCode\(\$\("join-code-input"\)\.value\)/.test(html), "ปุ่มเชื่อมต่อก็ใช้ตัวเดียวกัน");
+  // ต้องดูแต่โค้ด — คอมเมนต์ที่อธิบายว่า "เดิมเช็ค length < 4" มีข้อความนั้นอยู่โดยตั้งใจ
+  const code = html
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .split('\n').map((l) => l.replace(/(^|\s)(\/\/|\*)\s.*$/, '')).join('\n');
+  ok(!/length < 4/.test(code), "ไม่มีเลข 4 ที่ฮาร์ดโค้ดไว้แล้วขัดกับความยาวจริง");
+  ok(/code\.length < ROOM_CODE_LEN/.test(html), "เช็คความยาวจากค่าจริง ไม่ใช่เลขตายตัว");
+}
+
+// ── ปุ่มเชื่อมต่อปิดไว้จนรหัสครบ และบอกว่าขาดอีกกี่ตัว ──
+{
+  ok(/btn-join-submit"\)\.disabled = !full/.test(html), "รหัสไม่ครบ ปุ่มเชื่อมต่อกดไม่ได้");
+  ok(/อีก \$\{ROOM_CODE_LEN - clean\.length\} ตัว/.test(html), "บอกว่าขาดอีกกี่ตัว ไม่ปล่อยให้เดา");
+  ok(/\.lobby-btn:disabled \{[^}]*opacity/.test(html), "ปุ่มที่กดไม่ได้ดูออกว่ากดไม่ได้");
+  ok(/addEventListener\("input", syncJoinInput\)/.test(html), "กรองตอนพิมพ์ ไม่ใช่ตอนกด");
+  ok(/syncJoinInput\(\);\s+\/\/ ช่องว่าง/.test(html), "เข้าหน้ามาปุ่มปิดไว้ตั้งแต่ต้น");
+}
+
+// ══ ปุ่มก๊อปรหัสห้อง ═══════════════════════════════════════════════════════════
+{
+  ok(/id="btn-copy-code"/.test(html), "มีปุ่มก๊อป");
+  ok(/id="btn-copy-code" hidden/.test(html), "ซ่อนไว้ก่อน — โชว์ตอนช่องยังว่างคือปุ่มที่กดแล้วไม่เกิดอะไร");
+  const host = html.slice(html.indexOf('$("btn-host").addEventListener'), html.indexOf('$("btn-host-back")'));
+  ok(/btn-copy-code"\)\.hidden = false/.test(host), "โผล่ตอนได้รหัสจริงแล้ว");
+  ok(/btn-copy-code"\)\.hidden = true/.test(host), "และซ่อนกลับตอนเริ่มสร้างห้องใหม่");
+
+  // ── สามทางออกของการก๊อป เทสต์จริง ไม่ใช่อ่านว่ามีคำนั้นอยู่ในไฟล์ ──
+  //
+  // ตอนแรกเขียนเทสต์แบบอ่านข้อความในโค้ด แล้วลองใส่บั๊ก (ตัดทางสำรองทิ้ง) ปรากฏว่า**ไม่แดง**
+  // เพราะคำว่า selectNodeContents ยังอยู่ในไฟล์ แค่ไม่มีใครเดินไปถึง
+  // จึงย้ายตรรกะไป src/ui/shell.js เพื่อเรียกจริงได้
+  {
+    const { copyText } = await import(new URL("../../src/ui/shell.js", import.meta.url).href);
+    const range = { selectNodeContents(el) { this.el = el; } };
+    let selected = null;
+    globalThis.document = { ...(globalThis.document ?? {}), createRange: () => range };
+    globalThis.getSelection = () => ({ removeAllRanges() {}, addRange: (r) => { selected = r.el; } });
+
+    // node 22 มี globalThis.navigator เป็น getter อย่างเดียว กำหนดค่าตรง ๆ ไม่ได้
+    const setNav = (v) => Object.defineProperty(globalThis, 'navigator', { value: v, configurable: true, writable: true });
+    setNav({ clipboard: { writeText: async () => {} } });
+    ok(await copyText('AB3D9', 'กล่อง') === 'copied', "https + ได้สิทธิ์ = ก๊อปได้");
+
+    setNav({ clipboard: { writeText: async () => { throw new Error('denied'); } } });
+    selected = null;
+    ok(await copyText('AB3D9', 'กล่อง') === 'selected', "ถูกปฏิเสธสิทธิ์ = เลือกข้อความให้แทน");
+    ok(selected === 'กล่อง', "และเลือกกล่องรหัสจริง ไม่ใช่เลือกลอย ๆ");
+
+    setNav({});                                      // เบราว์เซอร์ไม่มีคลิปบอร์ดเลย
+    ok(await copyText('AB3D9', 'กล่อง') === 'selected', "ไม่มี API ก็ยังเลือกให้ได้");
+
+    globalThis.document = { ...globalThis.document, createRange: () => { throw new Error('no'); } };
+    ok(await copyText('AB3D9', 'กล่อง') === 'failed', "เลือกก็ไม่ได้ = บอกตรง ๆ ว่าทำไม่ได้ ไม่ throw");
+    ok(await copyText('', 'กล่อง') === 'failed', "ไม่มีรหัสก็ไม่ทำอะไร");
+  }
+
+  const copy = html.slice(html.indexOf('$("btn-copy-code").addEventListener'));
+  ok(/copyText\(box\.textContent\.trim\(\), box\)/.test(copy), "ปุ่มเรียกตัวที่เทสต์ไว้");
+  for (const [how, msg] of [['copied', 'ก๊อปแล้ว'], ['selected', 'กดก๊อปเอง'], ['failed', 'อ่านรหัสให้เพื่อนฟัง']])
+    ok(copy.includes(msg), `ทางออก ${how} มีข้อความของตัวเอง`);
+  ok(/clearTimeout\(btn\._t\)/.test(copy), "กดรัวแล้วข้อความไม่ค้างผิด");
+}
+
+// ══ ปุ่มสุ่มตัวละคร ════════════════════════════════════════════════════════════
+{
+  ok(/class="rand"/.test(scene), "มีปุ่มสุ่มในแผงเลือกตัว");
+  // วางใต้การ์ด ไม่ใช่ข้างปุ่มเริ่ม — กันนิ้วพลาดไปกดสุ่มตอนจะกดเริ่ม
+  const wrap = scene.slice(scene.indexOf('<div id="sc-select">'), scene.indexOf('<div id="sc-tune">'));
+  ok(wrap.indexOf('class="rand"') < wrap.indexOf('class="go"'), "อยู่ก่อนปุ่มเริ่ม ไม่ติดกัน");
+
+  globalThis.location = { search: "" };
+  globalThis.document = { createElement: () => ({ style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false } }) };
+  const G = new URL("../../src/modes/scramble", import.meta.url).href;
+  const { Game, CHARACTERS } = await import(G + "/core.js");
+  const { ScrambleScene } = await import(G + "/ScrambleScene.js");
+
+  const mk = (side = 0) => {
+    const sc = { phase: 'select', selSide: side, sim: new Game(), picked: [],
+      _pickChar(id) { this.sim.fighters[this.selSide].char = id; this.picked.push(id); } };
+    sc._pickRandom = ScrambleScene.prototype._pickRandom;
+    return sc;
+  };
+
+  // สุ่มแล้วต้องไม่ได้ตัวเดิม — ได้ตัวเดิมคือปุ่มที่กดแล้วไม่มีอะไรเกิดขึ้น
+  // ซึ่งแยกไม่ออกจากปุ่มเสีย
+  let same = 0;
+  for (let i = 0; i < 300; i++) {
+    const sc = mk(0);
+    const before = sc.sim.fighters[0].char;
+    sc._pickRandom();
+    if (sc.sim.fighters[0].char === before) same++;
+  }
+  ok(same === 0, `สุ่ม 300 ครั้งไม่เคยได้ตัวเดิม (ได้ซ้ำ ${same} ครั้ง)`);
+
+  // สุ่มให้ช่องที่กำลังเลือกอยู่เท่านั้น ไม่ไปทับตัวที่อีกช่องเลือกไว้
+  const sc = mk(1);
+  const other = sc.sim.fighters[0].char;
+  sc._pickRandom();
+  ok(sc.sim.fighters[0].char === other, "ไม่แตะช่องอื่น");
+  ok(sc.picked.length === 1, "เรียกทางเดียวกับการกดการ์ด (ต่อเน็ตจึงส่งให้อีกฝั่งเอง)");
+
+  // ครอบคลุมทุกตัวละคร ไม่ใช่วนอยู่สองสามตัว
+  const seen = new Set();
+  for (let i = 0; i < 600; i++) { const s2 = mk(0); s2._pickRandom(); seen.add(s2.sim.fighters[0].char); }
+  ok(seen.size === Object.keys(CHARACTERS).length - 1,
+    `สุ่มถึงทุกตัวที่ไม่ใช่ตัวปัจจุบัน (${seen.size}/${Object.keys(CHARACTERS).length - 1})`);
+
+  // ไม่ได้อยู่หน้าเลือกตัวแล้วกดไม่ได้
+  const off = mk(0); off.phase = 'fight';
+  off._pickRandom();
+  ok(off.picked.length === 0, "กดตอนไม่ได้อยู่หน้าเลือกตัวแล้วไม่ทำอะไร");
+}

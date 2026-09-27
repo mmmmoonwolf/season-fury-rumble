@@ -28,6 +28,38 @@ export function quitToLobby() {
   return true;
 }
 
+/**
+ * ก๊อปข้อความลงคลิปบอร์ด — คืนว่าเกิดอะไรขึ้นจริง ไม่ใช่แค่ทำหรือไม่ทำ
+ *
+ * `navigator.clipboard` ต้องเป็น https และผู้ใช้อาจปฏิเสธสิทธิ์ ซึ่งเกิดจริงบ่อย
+ * พังแล้วบอกว่า "ก๊อปไม่ได้" เฉย ๆ ไม่ช่วยอะไร — เลือกข้อความให้เลย
+ * ผู้เล่นกดก๊อปจากเมนูของเครื่องเองได้ทันที ซึ่งเป็นท่าที่เขาทำอยู่แล้วก่อนมีปุ่มนี้
+ *
+ * อยู่ในโมดูลไม่ใช่ใน index.html เพราะสามทางออกของมัน (ก๊อปได้ / เลือกให้ / ทำอะไรไม่ได้)
+ * ต้องเทสต์ได้จริง ไม่ใช่เทสต์ด้วยการอ่านว่ามีคำว่า selectNodeContents อยู่ในไฟล์
+ *
+ * @param text ข้อความที่จะก๊อป
+ * @param el อิลิเมนต์ที่จะเลือกให้ถ้าก๊อปไม่ได้ (ไม่ส่งมาก็ได้)
+ * @returns 'copied' | 'selected' | 'failed'
+ */
+export async function copyText(text, el) {
+  if (!text) return 'failed';
+  try {
+    await navigator.clipboard.writeText(text);
+    return 'copied';
+  } catch (e) { /* ไม่ใช่ https หรือถูกปฏิเสธสิทธิ์ */ }
+  try {
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+    return 'selected';
+  } catch (e) {
+    return 'failed';   // เลือกไม่ได้ก็ยังอ่านรหัสออกเสียงให้เพื่อนได้
+  }
+}
+
 /** ให้เทสต์ล้างค่าระหว่างข้อได้ */
 export function resetShell() {
   quitHandler = null;

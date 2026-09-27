@@ -16,8 +16,25 @@
  *  - รองรับ 2 คนต่อห้องเท่านั้น (host ปฏิเสธคนที่ 3 ที่พยายามต่อเข้ามา)
  */
 
-const ROOM_CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // ตัด 0/O/1/I ออก กันอ่าน/พิมพ์ผิด
-const ROOM_CODE_LEN = 5;
+export const ROOM_CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"; // ตัด 0/O/1/I ออก กันอ่าน/พิมพ์ผิด
+export const ROOM_CODE_LEN = 5;
+
+/**
+ * ล้างรหัสห้องที่คนพิมพ์ให้เหลือแต่ตัวที่ใช้ได้
+ *
+ * **ที่เดียวที่รู้กติกาของรหัสห้อง** — ช่องกรอกในล็อบบี้ ปุ่มเชื่อมต่อ และ joinRoom()
+ * ต้องคิดเหมือนกันหมด ไม่งั้นจะมีเคสที่ช่องกรอกยอมให้พิมพ์ แต่ปุ่มบอกว่าไม่ครบ
+ * หรือกดได้แล้วไปโดนปฏิเสธที่ชั้นเน็ตอีกที ซึ่งผู้เล่นอ่านไม่ออกว่าใครผิด
+ *
+ * ตัวพิมพ์เล็กแปลงเป็นใหญ่ · ตัวที่ไม่อยู่ในชุดทิ้ง (รวม 0 O 1 I ที่ตัดออกตั้งแต่ตอนสุ่ม)
+ * · ยาวเกินตัดท้าย
+ */
+export function normalizeRoomCode(raw) {
+  return [...String(raw ?? "").toUpperCase()]
+    .filter((c) => ROOM_CODE_CHARS.includes(c))
+    .slice(0, ROOM_CODE_LEN)
+    .join("");
+}
 const PEER_ID_PREFIX = "sfr-";
 const HOST_ID_RETRY_MAX = 5; // ชนไอดีซ้ำ (unavailable-id) — สุ่มรหัสใหม่แล้วลองอีกได้กี่ครั้ง
 
