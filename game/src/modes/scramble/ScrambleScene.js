@@ -32,7 +32,7 @@ const BINDS = [
 const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
 
 const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF','KeyZ']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -331,6 +331,26 @@ const PARALLAX = {
   lerp: 0.07,
 };
 
+/** กล้องตามตัวละคร — ทุกค่าในนี้เป็นการวาดล้วน ไม่มีอะไรถึง sim
+ *
+ *  min = 1 เป๊ะ ไม่ใช่ต่ำกว่า: ที่ซูม 1 เวทีกว้างเท่าจอพอดีอยู่แล้ว
+ *  ถอยต่ำกว่านั้นจะเห็นขอบอาร์ตฉากหลัง จึงซูม "เข้า" ได้อย่างเดียว
+ *  ผลที่ได้คือพฤติกรรมที่อยากได้ตรง ๆ: ใกล้กันซูมเข้า ห่างกันถอยมาเห็นเวทีเต็ม
+ *
+ *  ถอยเร็วกว่าเข้าสามเท่าโดยตั้งใจ — คนวาร์ปหนี (Nyx) หรือขึ้นชั้นบนสุด (Momus)
+ *  ต้องเห็นเขาทันที ถ้าถอยด้วยความเร็วเดียวกับที่เข้า เขาจะอยู่นอกจอไปหลายเฟรม
+ *  ซึ่งแปลว่าตายเพราะมองไม่เห็น ไม่ใช่เพราะเล่นแพ้
+ */
+const CAM = {
+  min: 1, max: 1.35,
+  marginX: 300,      // ที่ว่างซ้าย-ขวาของคนที่อยู่ริมสุด
+  marginY: 170,
+  headroom: 150,     // นับหัวด้วย ไม่ใช่แค่เท้า ไม่งั้นคนกระโดดสูงหัวหลุดขอบบน
+  inLerp: 0.045,
+  outLerp: 0.14,
+  panLerp: 0.09,
+};
+
 const STAGE_ART = {
   sky: 'assets/stage/sky.jpg',
   far: 'assets/stage/far.png',      // เกาะบ้านลอย + เกาะเล็ก ๆ (ไกล)
@@ -538,6 +558,7 @@ const OVERLAY_HTML = `
   <button data-tool="KeyT">Tune</button>
   <button data-tool="KeyB">เลือกตัว</button>
   <button data-tool="KeyF">Hz</button>
+  <button data-tool="KeyZ">Zoom</button>
 </div>
 <div id="sc-select">
   <div class="wrap">
@@ -789,7 +810,6 @@ class ScrambleScene extends Phaser.Scene {
     // ส่วนเกินไม่ใช่แถบดำ — ภาพฉากหลังกับพื้นถูกวาดเต็มจอ เห็นเป็นพื้นที่นอกกำแพง
     // ซึ่งมีอยู่แล้วตั้งแต่แรก (กำแพงเว้นจากขอบเวที wallL px)
     this.stagePad = (this.viewW - STAGE.w) / 2;
-    if (this.stagePad > 0) this.cameras.main.setScroll(-this.stagePad, 0);
 
     this.versus = this.versus ?? 'solo';   // 'solo' = ซ้อมกับหุ่น · 'local' = สองคนคีย์บอร์ดเดียว
     this.sim = new Game();
@@ -840,6 +860,9 @@ class ScrambleScene extends Phaser.Scene {
     this.tKoSub = T(W / 2, 330, '', 20, C.ink, 0.5).setDepth(20);
     this.tPace = T(60, 96, '', 13, '#ffd166');   // ใต้ฉายา เหนือแถบข้อมูลท้ายจอที่จะทับ
     this._splitCameras();
+    // วางกล้องให้ถูกตั้งแต่เฟรมแรก ไม่ใช่ให้มันค่อย ๆ เลื่อนเข้าที่ตอนเปิดเกม
+    this.camFollow = true;
+    this._stepCamera(this.sim, true);
     this._initSprites();
     this._syncMatchHud();
     this.syncTools();
@@ -863,6 +886,58 @@ class ScrambleScene extends Phaser.Scene {
     this.uiCam = this.cameras.add(0, 0, this.viewW, STAGE.h).setName('ui');
     this.cameras.main.ignore(this.uiObjects);
     this.uiCam.ignore(this.children.list.filter((o) => !this.uiObjects.includes(o)));
+  }
+
+  /** กล้องตามตัวละคร — เรียกทุกรอบวาด ไม่ใช่ทุกเฟรมของ sim
+   *
+   *  **การวาดล้วน** อ่านตำแหน่งจาก sim แต่ไม่เขียนอะไรกลับ sim เลย
+   *  netplay จึงไม่กระทบ และเพราะอ่านจาก sim ที่เดินตรงกันอยู่แล้ว
+   *  สองเครื่องจึงได้กล้องตรงกันเองโดยไม่ต้องส่งอะไรเพิ่ม
+   *
+   *  ขอบเขตที่กล้องออกไม่ได้คือ "ขอบอาร์ต" ไม่ใช่ขอบพื้นที่เล่น —
+   *  อาร์ตกว้างเท่าจอ (viewW) วางกลางเวที ที่ซูม 1 กล้องจึงถูกบีบให้อยู่กลางเวทีพอดี
+   *  = เหมือนตอนยังไม่มีซูมเป๊ะ ปิดปุ่ม Zoom แล้วได้ภาพเดิมกลับมาทุกพิกเซล
+   *
+   *  ใช้ centerOn ไม่ใช่ setScroll เพราะ scrollX ของ Phaser ไม่ได้คิดซูมให้
+   *  (ซูมคิดจากจุดกลางกล้อง) เผลอใช้ setScroll แล้วภาพจะเยื้องทุกครั้งที่ซูมไม่เท่า 1
+   *
+   *  @param snap true = วางทันทีไม่ต้องไหลเข้าหา (ตอนเปิดฉาก)
+   */
+  _stepCamera(s, snap = false) {
+    const cam = this.cameras?.main;
+    if (!cam || !s?.fighters?.length) return;
+    let minX = Infinity, maxX = -Infinity, top = Infinity, bot = -Infinity;
+    for (const f of s.fighters) {
+      if (f.x < minX) minX = f.x;
+      if (f.x > maxX) maxX = f.x;
+      if (f.y - CAM.headroom < top) top = f.y - CAM.headroom;
+      if (f.y > bot) bot = f.y;
+    }
+    // กรอบที่ต้องเห็นให้ครบ แล้วดูว่าซูมได้เท่าไหร่โดยที่ทุกคนยังอยู่ในจอ
+    // เอาค่าที่น้อยกว่าระหว่างแกนนอนกับแกนตั้ง — คนกระจายทางไหนก็ต้องเห็นครบทางนั้น
+    const needW = (maxX - minX) + CAM.marginX * 2;
+    const needH = (bot - top) + CAM.marginY * 2;
+    const fit = Math.min(this.viewW / needW, STAGE.h / needH);
+    const want = this.camFollow ? Math.min(CAM.max, Math.max(CAM.min, fit)) : CAM.min;
+
+    const z0 = this.camZoom ?? want;
+    const k = snap ? 1 : (want < z0 ? CAM.outLerp : CAM.inLerp);
+    const z = this.camZoom = z0 + (want - z0) * k;
+
+    // เก็บค่าที่ไหลแล้วแบบ "ยังไม่บีบขอบ" ไว้ ค่อยบีบตอนเอาไปใช้
+    // ถ้าเก็บค่าที่บีบแล้ว พอซูมเปลี่ยนขอบก็เปลี่ยน แล้วกล้องจะกระตุกเป็นก้าว ๆ
+    const p = snap ? 1 : CAM.panLerp;
+    const wantX = (minX + maxX) / 2, wantY = (top + bot) / 2;
+    const x0 = this.camX ?? wantX, y0 = this.camY ?? wantY;
+    const cx = this.camX = x0 + (wantX - x0) * p;
+    const cy = this.camY = y0 + (wantY - y0) * p;
+
+    const artL = -this.stagePad, artR = artL + this.viewW;
+    const halfW = this.viewW / (2 * z), halfH = STAGE.h / (2 * z);
+    cam.setZoom(z);
+    cam.centerOn(
+      Math.max(artL + halfW, Math.min(artR - halfW, cx)),
+      Math.max(halfH, Math.min(STAGE.h - halfH, cy)));
   }
 
   /** ลงทะเบียนอ็อบเจกต์ที่สร้างหลัง _splitCameras ว่าเป็น "ของในโลก"
@@ -1042,7 +1117,7 @@ class ScrambleScene extends Phaser.Scene {
   }
 
   /** เครื่องมือที่ปลอดภัยตอนต่อเน็ต: เปลี่ยนแค่สิ่งที่เห็นบนจอเครื่องนี้ ไม่แตะ sim */
-  static VIEW_ONLY = new Set(['KeyH']);
+  static VIEW_ONLY = new Set(['KeyH', 'KeyZ']);
 
   tool(code) {
     const s = this.sim;
@@ -1063,6 +1138,7 @@ class ScrambleScene extends Phaser.Scene {
     // กลับไปหน้าเลือกตัว — ตอนต่อเน็ตกดไม่ได้อยู่แล้ว (VIEW_ONLY) เพราะอีกฝั่งไม่รู้ด้วย
     if (code === 'KeyB') { this.openSelect(); return; }
     if (code === 'KeyF') this.showPace = !this.showPace;
+    if (code === 'KeyZ') this.camFollow = !this.camFollow;
     // สลับตัวละคร — สไปรท์เป็นของฝั่ง ไม่ใช่ของตัวละคร จึงไม่มีตัวค้างบนจอให้ต้องซ่อน
     if (code === 'KeyC' || code === 'KeyV') {
       const ids = Object.keys(CHARACTERS);
@@ -1131,6 +1207,7 @@ class ScrambleScene extends Phaser.Scene {
     b('KeyO').classList.toggle('on', this.timeScale !== 1);
     b('KeyT').classList.toggle('on', document.getElementById('sc-tune').classList.contains('open'));
     b('KeyF').classList.toggle('on', !!this.showPace);
+    b('KeyZ').classList.toggle('on', !!this.camFollow);
   }
 
   /** วัดว่าจอวาดจริงกี่ครั้งต่อวินาที และ sim เดินจริงกี่เฟรมต่อวินาที
@@ -1921,6 +1998,7 @@ class ScrambleScene extends Phaser.Scene {
   draw() {
     const s = this.sim, g = this.world, fx = this.fx, hud = this.hud;
     this._stepParallax(s);
+    this._stepCamera(s);
     g.clear(); fx.clear(); hud.clear();
     // ทั้งสองฝั่งวาดด้วยเส้นทางเดียวกัน — ท่าที่ยังไม่มีอาร์ตตกไปเป็นกล่องเหมือนเดิม
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง

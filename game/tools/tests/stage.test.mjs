@@ -186,7 +186,10 @@ const scene = read("../../src/modes/scramble/ScrambleScene.js");
 // ── ส่วนที่จอกว้างเกินเวที ต้องมีภาพคลุม ไม่ใช่ปล่อยโล่ง ──
 {
   ok(/this\.stagePad = \(this\.viewW - STAGE\.w\) \/ 2/.test(scene), "คำนวณส่วนเกินของจอไว้");
-  ok(/setScroll\(-this\.stagePad, 0\)/.test(scene), "เลื่อนกล้องครึ่งหนึ่งของส่วนเกิน เวทีจึงอยู่กลางจอ");
+  // กล้องถูกบีบให้อยู่ใน "ขอบอาร์ต" ซึ่งกว้างเท่าจอวางกลางเวที
+  // ที่ซูม 1 ขอบบีบจนเหลือจุดเดียว = กลางเวทีพอดี เหมือนตอนยังไม่มีซูมเป๊ะ
+  ok(/const artL = -this\.stagePad, artR = artL \+ this\.viewW/.test(scene),
+    "ขอบที่กล้องออกไม่ได้คิดจากส่วนเกินของจอ");
   ok(/const vw = this\.viewW \?\? STAGE\.w/.test(scene), "ภาพเวทีคิดขนาดจากความกว้างจอ ไม่ใช่ความกว้างพื้นที่เล่น");
   ok(/function drawBackground\(g, viewW = STAGE\.w\)/.test(scene), "ฉากสำรองก็รับความกว้างจอ");
 }
