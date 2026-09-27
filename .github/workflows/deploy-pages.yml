@@ -14,6 +14,8 @@ name: Deploy game to GitHub Pages
 # One-time manual step, already done (the default GITHUB_TOKEN can't grant itself
 # repo-admin rights, so this genuinely can't be automated from the workflow):
 #   repo Settings -> Pages -> "Build and deployment" -> Source -> "GitHub Actions"
+#
+# เทสต์เป็นด่านก่อน deploy (job `test` ด้านล่าง) เทสต์แดง = ไม่ขึ้นเว็บ
 on:
   push:
     branches: [master]
@@ -29,7 +31,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # ── ด่านก่อนขึ้นเว็บ ──
+  # เทสต์ต้องผ่านก่อนถึงจะ deploy ไม่ใช่ deploy ไปแล้วค่อยรู้ว่าพัง
+  # เกมนี้ขึ้นเว็บทุกครั้งที่ push master และมีคนกดเล่นจากลิงก์นั้นจริง
+  # ปล่อยของพังขึ้นไปแล้วค่อยแก้ = คนที่เปิดในช่วงนั้นเห็นเกมเสีย
+  #
+  # เขียนเป็นอีก job ในไฟล์เดียวกัน ไม่ใช่รอผลจาก tests.yml
+  # เพราะการรอผลข้ามไฟล์บน GitHub Actions ต้องพึ่ง workflow_run ซึ่งรันหลังจบ
+  # แล้วกลายเป็น "deploy หลังเทสต์" คนละเรื่องกับ "deploy เฉพาะเมื่อเทสต์ผ่าน"
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: รันเทสต์ทั้งชุด
+        working-directory: game
+        run: bash tools/tests/run_all.sh
+
   deploy:
+    needs: test
     runs-on: ubuntu-latest
     environment:
       name: github-pages

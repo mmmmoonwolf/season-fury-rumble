@@ -1,0 +1,42 @@
+name: Tests
+
+# รันเทสต์ทั้งชุดทุกครั้งที่ push ทุกสาขา และทุก pull request
+#
+# ทำไมต้องมี: เทสต์ 1540 ข้อทำงานเฉพาะตอนมีคนสั่งรันเอง
+# ถ้าคนแก้โค้ดลืมรัน (ซึ่งเกิดได้เสมอ) จะไม่มีอะไรฟ้องเลยจนกว่าจะไปเจอในเกม
+# ตาข่ายรองรับที่ต้องมีคนจำให้ ไม่ใช่ตาข่าย
+#
+# แยกจาก deploy-pages.yml เพราะอันนั้นรันแค่บน master
+# ของจริงคือต้องรู้ "ก่อน" ขึ้น master ไม่ใช่หลัง
+on:
+  push:
+    # master มี job เทสต์ของตัวเองอยู่ใน deploy-pages.yml แล้ว
+    # ไม่กันไว้จะได้เทสต์สองรอบต่อการ push master ครั้งเดียว เปลืองเปล่า ๆ
+    branches-ignore: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# push ซ้ำ ๆ บนสาขาเดียวกันให้ยกเลิกรอบเก่า — รอบเก่าไม่มีใครอ่านอยู่แล้ว
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ตรึงเวอร์ชันเมเจอร์ ไม่ใช่ปล่อยตาม runner — เทสต์ใช้ของที่มีเฉพาะใน node ใหม่
+      # (fs.readdirSync recursive, globalThis.navigator เป็น getter)
+      # ปล่อยลอยแล้ววันหนึ่งจะแดงเพราะ runner เปลี่ยนเวอร์ชัน ไม่ใช่เพราะโค้ดผิด
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # ต้องรันจากโฟลเดอร์ game — ตัวรันเทสต์ glob หาไฟล์แบบพาธสัมพัทธ์
+      # (รันผิดที่แล้วมันฟ้องเองแล้ว ดูท้าย run_all.sh)
+      - name: รันเทสต์ทั้งชุด
+        working-directory: game
+        run: bash tools/tests/run_all.sh
