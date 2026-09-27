@@ -468,7 +468,10 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const fs = await import("fs");
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
   ok(!/\bpadX\b/.test(scene), "ฉากไม่ต้องเลื่อนกล้องชดเชยขอบเวทีอีกแล้ว (ไม่มี padX)");
-  ok(/setStageWidth\(this\.sys\.game\.config\.width\)/.test(scene), "ฉากตั้งความกว้างเวทีจากผืนเกมจริง");
+  // เล่นคนเดียวกว้างเท่าจอ · ต่อเน็ตล็อกที่ความกว้างพื้นฐาน ไม่งั้นสองเครื่องเกิดคนละที่
+  ok(/setStageWidth\(online \? STAGE_BASE_W : this\.viewW\)/.test(scene),
+    "ต่อเน็ตล็อกความกว้างเวที เล่นคนเดียวเท่าจอ");
+  ok(/this\.viewW = this\.sys\.game\.config\.width/.test(scene), "ความกว้างจอจริงยังอ่านจากผืนเกม");
   ok(!/>Run</.test(scene), 'ไม่มีปุ่ม "Run" บนจอแล้ว (วิ่งเสมอ ไม่ต้องกด)');
   ok(/data-code="Digit1" data-slot="1"/.test(scene), 'มีปุ่มสกิล 1 บนจอ');
   ok(/data-code="Digit2" data-slot="2"/.test(scene), 'มีปุ่มสกิล 2 บนจอ');

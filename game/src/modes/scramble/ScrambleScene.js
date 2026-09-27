@@ -1,4 +1,4 @@
-import { STAGE, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, Game } from "./core.js";
+import { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, Game } from "./core.js";
 import { Lockstep, packInput, HELD_MASK, PRESS_MASK } from "./netplay.js";
 import { getSession, sendNetPacket } from "../../net/session.js";
 
@@ -342,13 +342,15 @@ const STAGE_ART = {
   meta: 'assets/stage/stage.json',
 };
 
-function drawBackground(g) {
+/** @param viewW กว้างของจอจริง — เวทีแคบกว่าจอได้ตอนต่อเน็ต ส่วนเกินต้องไม่โล่ง */
+function drawBackground(g, viewW = STAGE.w) {
+  const vw = Math.max(viewW, STAGE.w), x0 = (STAGE.w - vw) / 2, x1 = x0 + vw;
   g.fillGradientStyle(C.skyTop, C.skyTop, C.skyBot, C.skyBot, 1);
-  g.fillRect(0, 0, STAGE.w, STAGE.groundY);
+  g.fillRect(x0, 0, vw, STAGE.groundY);
   const r = rng(7);
   for (const [color, base, minH, maxH, winA] of [[C.far, 520, 160, 330, 0.18], [C.near, 600, 120, 260, 0.32]]) {
-    let x = -20;
-    while (x < STAGE.w + 20) {
+    let x = x0 - 20;
+    while (x < x1 + 20) {
       const w = 60 + r() * 110, h = minH + r() * (maxH - minH);
       g.fillStyle(color, 1); g.fillRect(x, base - h, w, h + 40);
       g.fillStyle(C.window, winA);
@@ -357,12 +359,12 @@ function drawBackground(g) {
     }
   }
   // ground + scramble crossing stripes
-  g.fillStyle(C.asphalt, 1); g.fillRect(0, STAGE.groundY, STAGE.w, 100);
+  g.fillStyle(C.asphalt, 1); g.fillRect(x0, STAGE.groundY, vw, 100);
   g.fillStyle(C.stripe, 0.22);
   for (let x = 60; x < 1240; x += 46) g.fillRect(x, STAGE.groundY + 18, 24, 70);
-  g.fillStyle(C.stripe, 0.5); g.fillRect(0, STAGE.groundY, STAGE.w, 3);
-  // walls
-  g.fillStyle(0x0c111c, 0.55); g.fillRect(0, 0, STAGE.wallL, 720); g.fillRect(STAGE.wallR, 0, STAGE.w - STAGE.wallR, 720);
+  g.fillStyle(C.stripe, 0.5); g.fillRect(x0, STAGE.groundY, vw, 3);
+  // walls — แถบมืดนอกกำแพงลากถึงขอบจอ ไม่ใช่ขอบเวที
+  g.fillStyle(0x0c111c, 0.55); g.fillRect(x0, 0, STAGE.wallL - x0, 720); g.fillRect(STAGE.wallR, 0, x1 - STAGE.wallR, 720);
   g.fillStyle(C.nyxScarf, 0.5); g.fillRect(STAGE.wallL - 2, 0, 2, STAGE.groundY); g.fillRect(STAGE.wallR, 0, 2, STAGE.groundY);
   // platforms (one-way)
   for (const p of STAGE.platforms) {
@@ -633,13 +635,16 @@ class ScrambleScene extends Phaser.Scene {
    */
   _buildStage() {
     const meta = this.cache.json.get('stageMeta');
-    if (!meta || !this.textures.exists('stageGround')) { drawBackground(this.add.graphics()); return false; }
+    if (!meta || !this.textures.exists('stageGround')) { drawBackground(this.add.graphics(), this.viewW ?? STAGE.w); return false; }
     this.parallax = [];
 
     // pad = ขยายเผื่อระยะเลื่อน ไม่งั้นเลื่อนแล้วเห็นขอบภาพ
     // ชั้นที่เลื่อนเยอะต้องเผื่อเยอะตามส่วน (near 0.185 x 640 = 118 px ต้องมีที่ว่างเกินนั้น)
+    // ภาพวาดเต็มจอ ไม่ใช่เต็มพื้นที่เล่น — ตอนต่อเน็ตเวทีแคบกว่าจอได้ ส่วนเกินต้องไม่โล่ง
+    // จัดกลางที่ "กลางเวที" ไม่ใช่กลางจอ เพราะกล้องเลื่อนไปแล้วครึ่งหนึ่งของส่วนเกิน
+    const vw = this.viewW ?? STAGE.w;
     const sky = this.add.image(STAGE.w / 2, STAGE.h / 2, 'stageSky').setDepth(-40);
-    sky.setScale(Math.max(STAGE.w / sky.width, STAGE.h / sky.height) * PARALLAX.sky.pad);
+    sky.setScale(Math.max(vw / sky.width, STAGE.h / sky.height) * PARALLAX.sky.pad);
     this.parallax.push({ img: sky, x0: sky.x, y0: sky.y, k: PARALLAX.sky, drift: PARALLAX.drift });
 
     // สองชั้นนี้เกาะเส้นพื้น ไม่ใช่กึ่งกลางจอ — หน้าผาสองข้างต้องต่อกับพื้นล่างเสมอ
@@ -647,13 +652,13 @@ class ScrambleScene extends Phaser.Scene {
     for (const [key, cfg] of [['stageFar', PARALLAX.far], ['stageNear', PARALLAX.near]]) {
       const im = this.add.image(STAGE.w / 2, STAGE.groundY + MID_DROP, key)
         .setDepth(key === 'stageFar' ? -32 : -28).setOrigin(0.5, 1);
-      im.setScale(STAGE.w / im.width * cfg.pad);
+      im.setScale(vw / im.width * cfg.pad);
       this.parallax.push({ img: im, x0: im.x, y0: im.y, k: cfg, drift: 0 });
     }
 
     // พื้นล่างยืดเต็มความกว้างเวที ส่วนสูงคงสัดส่วนเดิมไว้ ไม่ให้หินยืดจนดูผิดรูป
-    const gm = meta.ground, gs = STAGE.w / gm.w;
-    this.add.image(0, STAGE.groundY - gm.surface * gs, 'stageGround')
+    const gm = meta.ground, gs = vw / gm.w;
+    this.add.image((STAGE.w - vw) / 2, STAGE.groundY - gm.surface * gs, 'stageGround')
       .setOrigin(0, 0).setScale(gs).setDepth(-10);
 
     // แพลตฟอร์ม: ย่อให้ "กว้างเท่ากรอบชนจริง" แล้ววางให้ผิวบนตรงกับ p.y เป๊ะ
@@ -739,16 +744,17 @@ class ScrambleScene extends Phaser.Scene {
   _stageScrim() {
     const g = this.add.graphics().setDepth(-5);
     const dark = 0x0c111c;
+    const vw = this.viewW ?? STAGE.w, x0 = (STAGE.w - vw) / 2;
     // ทึบคงที่ตลอดแถว HUD ก่อน แล้วค่อยไล่จางลงด้านล่าง
     // ถ้าไล่จางตั้งแต่ขอบบน บรรทัดคำบรรยายตัวละคร (y=78) จะได้ความทึบแค่ 0.27 ซึ่งยังอ่านไม่ออก
     for (let i = 0; i < SCRIM_TOP; i += 4) {
       const t = Math.max(0, (i - SCRIM_SOLID) / (SCRIM_TOP - SCRIM_SOLID));
       g.fillStyle(dark, 0.62 * (1 - t));
-      g.fillRect(0, i, STAGE.w, 4);
+      g.fillRect(x0, i, vw, 4);
     }
     for (let i = 0; i < SCRIM_BOT; i += 4) {
       g.fillStyle(dark, 0.55 * (i / SCRIM_BOT));
-      g.fillRect(0, STAGE.h - SCRIM_BOT + i, STAGE.w, 4);
+      g.fillRect(x0, STAGE.h - SCRIM_BOT + i, vw, 4);
     }
   }
   create() {
@@ -760,15 +766,35 @@ class ScrambleScene extends Phaser.Scene {
     // ถอดทุกอย่างคืนตอนออกจากฉาก ไม่งั้น DOM ค้างทับจอ และปุ่มที่กดในฉากอื่นจะถูกโหมดนี้กินไปด้วย
     this.events.once('shutdown', () => this._unmountOverlay());
     this.events.once('destroy', () => this._unmountOverlay());
+    // ล็อบบี้ต่อห้องไว้แล้ว = เข้าโหมดข้ามเครื่องทันที · PeerJS เป็นแค่ท่อหนึ่งแบบที่เสียบเข้ามา
+    const ses = getSession();
+    const online = ses.mode !== 'offline' && !!ses.conn;
+
+    // ── ความกว้างเวที: เล่นคนเดียวเท่าจอ · เล่นข้ามเครื่องเท่ากันทั้งสองฝั่งเสมอ ──
+    //
     // เวทีกว้างเท่าผืนเกม กำแพงจึงอยู่ขอบจอพอดี ไม่เหลือแถบมืดสองข้างให้ดูเหมือนเกมไม่เต็มจอ
-    // ต้องตั้งก่อน new Game() เพราะจุดเกิดของทั้งสองฝั่งอ่าน STAGE ตอนสร้าง
-    setStageWidth(this.sys.game.config.width);
+    // **แต่ผืนเกมกว้างตามสัดส่วนจอ (1280-1920) ซึ่งคนละเครื่องไม่เท่ากัน**
+    // จุดเกิด กำแพง และแพลตฟอร์ม คิดจากความกว้างเวทีทั้งหมด = สองเครื่องเกิดคนละที่ตั้งแต่เฟรมแรก
+    // แล้วหลุดกันทันทีโดยไม่มีอะไรฟ้อง ซึ่งเป็น desync ที่หาสาเหตุยากที่สุดแบบหนึ่ง
+    //
+    // ตอนต่อเน็ตจึงล็อกไว้ที่ความกว้างพื้นฐาน (1280) ซึ่งทุกเครื่องรู้ค่าเหมือนกันโดยไม่ต้องคุยกันเลย
+    // ไม่ต้องต่อรองผ่านแพ็คเก็ต = ไม่มีทางที่สองฝั่งจะตกลงกันไม่ได้ และแท็บเก่าก็ไม่เกี่ยว
+    // ผืนเกมกว้างสุด 1280 อยู่แล้ว เวทีจึงไม่มีทางล้นจอ (ดู MIN_GAME_WIDTH)
+    //
+    // ต้องตั้งก่อน new Game() เพราะจุดเกิดของทุกคนอ่าน STAGE ตอนสร้าง
+    // และก่อน _buildStage() เพราะภาพเวทีวางตามตำแหน่งแพลตฟอร์มจริง
+    this.viewW = this.sys.game.config.width;
+    setStageWidth(online ? STAGE_BASE_W : this.viewW);
+    // จอกว้างกว่าเวทีเท่าไหร่ ก็เลื่อนกล้องไปครึ่งหนึ่งของส่วนเกิน เวทีจึงอยู่กลางจอเสมอ
+    // ส่วนเกินไม่ใช่แถบดำ — ภาพฉากหลังกับพื้นถูกวาดเต็มจอ เห็นเป็นพื้นที่นอกกำแพง
+    // ซึ่งมีอยู่แล้วตั้งแต่แรก (กำแพงเว้นจากขอบเวที wallL px)
+    this.stagePad = (this.viewW - STAGE.w) / 2;
+    if (this.stagePad > 0) this.cameras.main.setScroll(-this.stagePad, 0);
+
     this.versus = this.versus ?? 'solo';   // 'solo' = ซ้อมกับหุ่น · 'local' = สองคนคีย์บอร์ดเดียว
     this.sim = new Game();
     this._syncSkillSlots();   // ต้องหลัง new Game() — อ่านสกิลจากตัวละครของผู้เล่น
-    // ล็อบบี้ต่อห้องไว้แล้ว = เข้าโหมดข้ามเครื่องทันที · PeerJS เป็นแค่ท่อหนึ่งแบบที่เสียบเข้ามา
-    const ses = getSession();
-    if (ses.mode !== 'offline' && ses.conn) {
+    if (online) {
       const recv = this.startNet({ isHost: ses.mode === 'host', send: sendNetPacket });
       ses.onData = recv;
       ses.onClose = () => this.endNet('อีกฝั่งหลุดการเชื่อมต่อ');
