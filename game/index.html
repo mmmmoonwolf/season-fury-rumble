@@ -6,6 +6,15 @@
        ตัวเกมเลยเล็กจิ๋วอ่านไม่ออก · viewport-fit=cover กันแถบดำที่รอยบากของ iPhone -->
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no" />
   <title>Season Fury Rumble</title>
+  <!-- ติดไอคอนหน้าจอแล้วเปิดเล่นได้โดยไม่ต้องมีเน็ต (ดู sw.js) -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32" />
+  <!-- iOS ไม่อ่าน manifest ต้องบอกแยกทุกอย่าง — ไม่มีสามบรรทัดนี้ ไอคอนบนโฮมสกรีนจะเป็นภาพหน้าเว็บย่อ
+       และเปิดแล้วยังมีแถบที่อยู่ของ Safari ทับอยู่ ซึ่งกินพื้นที่จอแนวนอนไปมาก -->
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f172a" />
   <style>
     html, body {
       margin: 0; background: #0f172a; overflow: hidden;
@@ -241,6 +250,19 @@
       ["gesturestart", "gesturechange", "gestureend"].forEach(function (ev) {
         document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
       });
+      // ── ติดตั้ง service worker ──
+      // ลงทะเบียนนอก type="module" ตั้งใจ: ก้อนนี้รันได้ทุกเบราว์เซอร์
+      // ถ้าเบราว์เซอร์เก่าจนโหลด module ไม่ได้ อย่างน้อยไอคอนกับ manifest ก็ยังทำงาน
+      //
+      // ห่อ try และเช็คก่อนทุกอย่าง — เล่นออฟไลน์ไม่ได้คือเรื่องเล็ก เกมเปิดไม่ขึ้นคือเกมเสีย
+      // path เป็น relative ทั้งหมดเพราะ GitHub Pages เสิร์ฟจากโฟลเดอร์ย่อย ไม่ใช่รากโดเมน
+      try {
+        if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
+          window.addEventListener("load", function () {
+            navigator.serviceWorker.register("./sw.js", { scope: "./" }).catch(function () {});
+          });
+        }
+      } catch (e) { /* ไม่รองรับก็เล่นออนไลน์ตามปกติ */ }
     })();
   </script>
   <script type="module">
@@ -277,6 +299,13 @@
           width: w,
           height: GAME_HEIGHT,
         },
+        // เกมนับเวลาเองด้วย accumulator ใน ScrambleScene.update() แล้ว
+        // Phaser เกลี่ย delta เฉลี่ยสิบเฟรมเป็นค่าเริ่มต้น ซึ่งดีกับเกมที่เดินตาม delta ตรง ๆ
+        // แต่ที่นี่มันกลายเป็นตัวนับเวลาชั้นที่สองซ้อนอยู่ใต้ตัวนับของเรา
+        // ผลคือเวลาที่เกมเห็นตามหลังเวลาจริงตอนเฟรมสะดุด และตัววัดความเร็ว (ปุ่ม F)
+        // รายงานค่าที่เกลี่ยแล้ว ไม่ใช่ค่าที่เกิดขึ้นจริง — ซึ่งเป็นตัวเลขที่เราใช้ไล่บั๊ก netplay อยู่
+        // ตัวนับเวลาควรมีชั้นเดียว และควรเป็นชั้นที่เราอ่านออก
+        fps: { target: 60, smoothStep: false },
         // ไม่ตั้ง physics ของ Phaser: SCRAMBLE เดินฟิสิกส์เองใน core.js ทีละเฟรม
         // (ฉากเป็นแค่ตัววาด อ่านสถานะจาก sim) เปิด arcade ไว้ก็มีแต่กิน CPU เปล่า
         scene: [ScrambleScene],
