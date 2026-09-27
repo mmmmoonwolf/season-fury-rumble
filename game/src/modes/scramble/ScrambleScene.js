@@ -343,6 +343,12 @@ const PARALLAX = {
  */
 const CAM = {
   min: 1, max: 1.35,
+  // ซูมกระตุกตอนกระทบ — บวกทับค่าซูมปกติแล้วยุบเอง ไม่ใช่เป้าหมายใหม่ที่ต้องไหลกลับ
+  // คิดจากความแรงของการสั่นกล้องที่มีอยู่แล้ว จุดเดียว ทุกจุดที่สั่นจึงได้กระตุกฟรี
+  // และจุดที่เพิ่มทีหลังก็ได้เองโดยไม่ต้องมาจำว่าต้องเรียกสองอย่าง
+  punchPerShake: 12,
+  punchMax: 0.2,     // ตีรัวแล้วต้องไม่บวกกันจนซูมพุ่ง
+  punchDecay: 0.86,
   marginX: 300,      // ที่ว่างซ้าย-ขวาของคนที่อยู่ริมสุด
   marginY: 170,
   headroom: 150,     // นับหัวด้วย ไม่ใช่แค่เท้า ไม่งั้นคนกระโดดสูงหัวหลุดขอบบน
@@ -906,6 +912,8 @@ class ScrambleScene extends Phaser.Scene {
   _stepCamera(s, snap = false) {
     const cam = this.cameras?.main;
     if (!cam || !s?.fighters?.length) return;
+    // ปิดปุ่ม Zoom = ปิดทั้งการตามตัวและซูมกระตุก จะได้เทียบกับภาพเดิมได้ตรง ๆ
+    if (!this.camFollow) this.camPunch = 0;
     let minX = Infinity, maxX = -Infinity, top = Infinity, bot = -Infinity;
     for (const f of s.fighters) {
       if (f.x < minX) minX = f.x;
@@ -922,7 +930,11 @@ class ScrambleScene extends Phaser.Scene {
 
     const z0 = this.camZoom ?? want;
     const k = snap ? 1 : (want < z0 ? CAM.outLerp : CAM.inLerp);
-    const z = this.camZoom = z0 + (want - z0) * k;
+    // camZoom = ค่าฐานที่ไหลเข้าหาเป้า · ซูมกระตุกบวกทับตอนเอาไปใช้ ไม่เก็บลงค่าฐาน
+    // ถ้าบวกลงค่าฐาน มันจะกลายเป็นตำแหน่งตั้งต้นของการไหลรอบหน้า แล้วซูมจะค้างสูงขึ้นเรื่อย ๆ
+    const base = this.camZoom = z0 + (want - z0) * k;
+    const punch = this.camPunch = snap ? 0 : (this.camPunch ?? 0) * CAM.punchDecay;
+    const z = base + (punch > 0.0005 ? punch : 0);
 
     // เก็บค่าที่ไหลแล้วแบบ "ยังไม่บีบขอบ" ไว้ ค่อยบีบตอนเอาไปใช้
     // ถ้าเก็บค่าที่บีบแล้ว พอซูมเปลี่ยนขอบก็เปลี่ยน แล้วกล้องจะกระตุกเป็นก้าว ๆ
@@ -938,6 +950,18 @@ class ScrambleScene extends Phaser.Scene {
     cam.centerOn(
       Math.max(artL + halfW, Math.min(artR - halfW, cx)),
       Math.max(halfH, Math.min(STAGE.h - halfH, cy)));
+  }
+
+  /** สั่นกล้อง + ซูมกระตุกไปพร้อมกัน — จุดเดียวที่สั่งสั่นกล้องในฉากนี้
+   *
+   *  ความแรงของกระตุกคิดจากความแรงของการสั่นที่ส่งมาอยู่แล้ว ไม่ต้องตั้งเลขใหม่ต่อเหตุการณ์
+   *  = จุดที่เพิ่มทีหลังได้กระตุกฟรี ไม่ต้องมาจำว่าต้องเรียกสองอย่างทุกครั้ง
+   *  กล้อง UI ไม่สั่นไม่กระตุก เพราะเป็นกล้องอีกตัว (ดู _splitCameras)
+   */
+  _shake(ms, intensity) {
+    this.cameras.main.shake(ms, intensity);
+    if (this.camFollow === false) return;
+    this.camPunch = Math.min(CAM.punchMax, (this.camPunch ?? 0) + intensity * CAM.punchPerShake);
   }
 
   /** ลงทะเบียนอ็อบเจกต์ที่สร้างหลัง _splitCameras ว่าเป็น "ของในโลก"
@@ -1253,7 +1277,7 @@ class ScrambleScene extends Phaser.Scene {
         // แรงสั่นคิดจากเวลาที่ภาพหยุดจริง ไม่ใช่สองระดับตายตัว — น้ำหนักหมัดจึงไล่เป็นสเกลเดียวกัน
         // ท่าที่จับลอยได้ hitstop เพิ่มอยู่แล้ว แรงสั่นเลยตามไปเองโดยไม่ต้องมีเงื่อนไขแยก
         const hs = e.hs ?? 5;
-        if (hs >= 6) this.cameras.main.shake(40 + hs * 9, 0.0006 * hs);
+        if (hs >= 6) this._shake(40 + hs * 9, 0.0006 * hs);
         // แบ่งเบา/หนักด้วย hitstop ตัวเดียวกับที่ใช้สั่นจอ ภาพกับเสียงจึงไล่ระดับพร้อมกันเสมอ
         this._sfx(hs >= 9 ? 'hitHeavy' : 'hitLight');
         // ทิศที่ประกายกระเด็นคือทิศที่แรงส่งไป = จากคนตีไปหาคนโดน
@@ -1265,7 +1289,7 @@ class ScrambleScene extends Phaser.Scene {
         this.emit('ring', e.x, e.y, { scale: 0.22, life: 14, grow: 1.4, tint: 0x8fc0ff });
         this.emit('burst', e.x, e.y, { scale: 0.14, life: 9, grow: 0.7, tint: 0x5aa0ff });
       }
-      if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this.cameras.main.shake(90, 0.005); }
+      if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this._shake(90, 0.005); }
       if (e.type === 'tech') {
         this.popup(e.x, e.y, e.label, '#8ff0bd');
         this.emit('ring', e.x, e.y + 20, { scale: 0.16, life: 13, grow: 1.8, tint: 0x8ff0bd });
@@ -1285,7 +1309,7 @@ class ScrambleScene extends Phaser.Scene {
       }
       // อัลติ: ควันตอนหาย/โผล่ + จอกระพริบตอนเริ่มท่า
       if (e.type === 'vanish') {
-        this.cameras.main.shake(60, 0.003);
+        this._shake(60, 0.003);
         for (let i = 0; i < 4; i++)
           this.emit('smokeCurl', e.x + (i - 1.5) * 18, e.y - 40 - Math.random() * 50,
             { scale: 0.22, life: 22, grow: 0.9, vy: -1.4, alpha: 0.55, tint: 0x6b5f7a,
@@ -1308,7 +1332,7 @@ class ScrambleScene extends Phaser.Scene {
           vy: -1.2, tint: 0xffb03a });
       }
       if (e.type === 'firepool') {
-        this.cameras.main.shake(70, 0.004);
+        this._shake(70, 0.004);
         for (let i = 0; i < 7; i++)
           this.emit('flame', e.x + (i - 3) * 16, e.y, { scale: 0.18 + Math.random() * 0.14,
             life: 16 + Math.round(Math.random() * 14), grow: 0.6, vy: -1.6 - Math.random(), tint: 0xffb03a });
@@ -1316,7 +1340,7 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'decoy') this.popup(e.x, e.y - 120, 'Understudy', '#d8b24a');
       if (e.type === 'decoyPop') {
-        this.cameras.main.shake(70, 0.004);
+        this._shake(70, 0.004);
         this.emit('burst', e.x, e.y - 60, { scale: 0.34, life: 12, grow: 1.2, tint: 0xffd166 });
         for (let i = 0; i < 4; i++)
           this.emit('smokeCurl', e.x + (i - 1.5) * 16, e.y - 50 - Math.random() * 30,
@@ -1325,7 +1349,7 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); }
       if (e.type === 'blast') {
-        this.cameras.main.shake(110, 0.007);
+        this._shake(110, 0.007);
         this.emit('burst', e.x, e.y - 40, { scale: 0.55, life: 15, grow: 1.5, tint: 0xffd166 });
         this.emit('ring', e.x, e.y - 40, { scale: 0.30, life: 18, grow: 2.6, tint: 0xfff2d0 });
         // ควันต้องเป็น NORMAL ไม่ใช่ ADD — ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท
@@ -1334,12 +1358,12 @@ class ScrambleScene extends Phaser.Scene {
             { scale: 0.25 + Math.random() * 0.2, life: 30 + Math.round(Math.random() * 20), grow: 1.1,
               vy: -0.7, alpha: 0.5, tint: 0x9aa3b5, blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
-      if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this.cameras.main.shake(160, 0.006); }
+      if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this._shake(160, 0.006); }
       if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
       if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); }
       if (e.type === 'ult') {
         this.popup(e.x, e.y, 'Oni Veil', '#e05a57');
-        this.cameras.main.shake(180, 0.008);
+        this._shake(180, 0.008);
         this.cameras.main.flash(120, 190, 40, 40);
       }
       if (e.type === 'comboEnd') { this.lastCombo = { hits: e.hits, dmg: e.dmg }; this.comboFade = e.hits > 1 ? 90 : 0; }

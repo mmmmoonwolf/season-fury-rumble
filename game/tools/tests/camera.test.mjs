@@ -19,13 +19,16 @@ setStageWidth(STAGE_BASE_W);
 
 /** ฉากปลอมที่มีแค่สิ่งที่ _stepCamera แตะ */
 function mk({ viewW = STAGE.w, follow = true } = {}) {
-  const cam = { zoom: 1, cx: null, cy: null, setZoom(z) { this.zoom = z; return this; }, centerOn(x, y) { this.cx = x; this.cy = y; return this; } };
+  const cam = { zoom: 1, cx: null, cy: null, shakes: [],
+    setZoom(z) { this.zoom = z; return this; }, centerOn(x, y) { this.cx = x; this.cy = y; return this; },
+    shake(ms, i) { this.shakes.push([ms, i]); return this; } };
   const sc = {
     viewW, stagePad: (viewW - STAGE.w) / 2, camFollow: follow,
     cameras: { main: cam },
     sim: new Game(),
   };
   sc._stepCamera = ScrambleScene.prototype._stepCamera;
+  sc._shake = ScrambleScene.prototype._shake;
   return sc;
 }
 /** วางคนตามพิกัดที่ต้องการ — [x, y] ต่อคน */
@@ -182,4 +185,89 @@ const GROUND = STAGE.groundY;
   ok(/cam\.centerOn\(/.test(body), "วางกล้องด้วย centerOn");
   ok(!/setScroll/.test(body), "ไม่ใช้ setScroll ในกล้องตามตัว");
   ok(/cam\.setZoom\(z\)/.test(body), "ตั้งซูมที่กล้องโลก");
+}
+
+// ══ ซูมกระตุกตอนกระทบ ═════════════════════════════════════════════════════════
+//
+// คิดจากความแรงของการสั่นกล้องที่มีอยู่แล้ว จึงต้องมีจุดสั่งสั่นจุดเดียวในฉาก
+// ถ้ามีใครเรียก cameras.main.shake ตรง ๆ จุดนั้นจะสั่นแต่ไม่กระตุก แล้วรู้สึกไม่เท่ากันโดยไม่มีใครรู้
+{
+  const body = scene.slice(scene.indexOf('  _shake(ms, intensity)'), scene.indexOf('  _world(obj)'));
+  ok(/this\.cameras\.main\.shake\(ms, intensity\)/.test(body), "_shake เป็นคนสั่งสั่นกล้องจริง");
+  const outside = scene.split('\n').filter((l, i) =>
+    /this\.cameras\.main\.shake\(/.test(l) && !/shake\(ms, intensity\)/.test(l));
+  ok(outside.length === 0, `ไม่มีใครเรียกสั่นกล้องตรง ๆ นอก _shake (เจอ ${outside.length} จุด)`);
+}
+
+// ── สั่นแล้วกระตุกตามความแรง และซูมที่ใช้จริงสูงกว่าค่าฐาน ──
+{
+  const sc = mk(); place(sc, [[STAGE.wallL + 20, GROUND], [STAGE.wallR - 20, GROUND]]);
+  sc._stepCamera(sc.sim, true);
+  ok(sc.cameras.main.zoom === 1 && !sc.camPunch, "เริ่มที่ซูม 1 ไม่มีกระตุกค้าง");
+
+  sc._shake(120, 0.008);
+  ok(sc.cameras.main.shakes.length === 1, "สั่นกล้องจริงด้วย");
+  ok(sc.camPunch > 0, `ได้กระตุกมา (${sc.camPunch.toFixed(4)})`);
+  sc._stepCamera(sc.sim);
+  ok(sc.cameras.main.zoom > 1, `ซูมที่ใช้จริงสูงกว่าค่าฐาน (${sc.cameras.main.zoom.toFixed(4)})`);
+  ok(sc.camZoom === 1, `แต่ค่าฐานยังเป็น 1 (${sc.camZoom})`);
+}
+
+// ── ตีรัวแล้วกระตุกไม่บวกกันจนซูมพุ่ง ──
+{
+  const sc = mk(); place(sc, [[STAGE.wallL + 20, GROUND], [STAGE.wallR - 20, GROUND]]);
+  sc._stepCamera(sc.sim, true);
+  for (let i = 0; i < 40; i++) sc._shake(120, 0.012);
+  ok(sc.camPunch <= 0.2 + 1e-9, `กระตุกมีเพดาน (${sc.camPunch.toFixed(4)})`);
+  sc._stepCamera(sc.sim);
+  ok(sc.cameras.main.zoom < 1.3, `ตี 40 ทีติดกันซูมก็ยังไม่พุ่ง (${sc.cameras.main.zoom.toFixed(4)})`);
+}
+
+// ── กระตุกต้องยุบหมด ไม่ใช่ค้างสูงขึ้นเรื่อย ๆ ──
+//
+// บั๊กที่ข้อนี้กันไว้: บวกกระตุกลงค่าฐาน แล้วค่าฐานกลายเป็นจุดตั้งต้นของการไหลรอบหน้า
+// ซูมจะไต่ขึ้นทุกครั้งที่ตี แล้วไม่กลับลงมาเลยจนจบยก ซึ่งค่อย ๆ เกิดจนไม่มีใครทันสังเกต
+{
+  const sc = mk(); place(sc, [[STAGE.wallL + 20, GROUND], [STAGE.wallR - 20, GROUND]]);
+  sc._stepCamera(sc.sim, true);
+  for (let r = 0; r < 5; r++) {
+    sc._shake(120, 0.012);
+    for (let i = 0; i < 60; i++) sc._stepCamera(sc.sim);
+  }
+  ok(sc.camZoom === 1, `ตีห้ารอบแล้วค่าฐานยังเป็น 1 เป๊ะ (${sc.camZoom})`);
+  ok(sc.cameras.main.zoom === 1, `และซูมที่ใช้จริงกลับมาที่ 1 (${sc.cameras.main.zoom})`);
+}
+
+// ── ปิดปุ่ม Zoom = ไม่มีกระตุกด้วย ภาพจึงเดิมทุกพิกเซลจริง ──
+{
+  const sc = mk({ follow: false });
+  place(sc, [[600, GROUND], [660, GROUND]]);
+  sc._shake(180, 0.012);
+  ok(!sc.camPunch, "ปิดแล้วสั่นกล้องได้แต่ไม่กระตุก");
+  ok(sc.cameras.main.shakes.length === 1, "กล้องยังสั่นเหมือนเดิม — ปิดซูมไม่ได้ปิดการสั่น");
+  sc.camPunch = 0.2;                       // สมมติมีกระตุกค้างจากก่อนกดปิด
+  sc._stepCamera(sc.sim);
+  ok(sc.cameras.main.zoom === 1 && sc.cameras.main.cx === STAGE.w / 2,
+    `กดปิดแล้วกระตุกที่ค้างถูกล้างทิ้ง ภาพกลับเป็นเดิมทันที (zoom=${sc.cameras.main.zoom})`);
+}
+
+// ── กระตุกแล้วกล้องก็ยังออกนอกขอบอาร์ตไม่ได้ ──
+{
+  let worst = 0;
+  for (const viewW of [STAGE.w, 1560, 1920]) {
+    for (const [a, b] of [[STAGE.wallL, STAGE.wallL + 40], [STAGE.wallR - 40, STAGE.wallR], [640, 700]]) {
+      const sc = mk({ viewW });
+      place(sc, [[a, GROUND], [b, GROUND]]);
+      for (let i = 0; i < 60; i++) {
+        if (i % 7 === 0) sc._shake(120, 0.012);
+        sc._stepCamera(sc.sim);
+        const c = sc.cameras.main;
+        const artL = -sc.stagePad, artR = artL + viewW;
+        const halfW = viewW / (2 * c.zoom), halfH = STAGE.h / (2 * c.zoom);
+        worst = Math.max(worst, (artL + halfW) - c.cx, c.cx - (artR - halfW),
+          halfH - c.cy, c.cy - (STAGE.h - halfH));
+      }
+    }
+  }
+  ok(worst < 1e-9, `กระตุกระหว่างเล่นก็ยังอยู่ในขอบ (หลุดมากสุด ${worst.toFixed(6)} px)`);
 }
