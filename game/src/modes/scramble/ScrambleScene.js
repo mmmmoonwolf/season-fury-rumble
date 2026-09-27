@@ -33,7 +33,7 @@ const BINDS = [
 const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
 
 const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF','KeyZ']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF','KeyZ','KeyG']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -245,6 +245,9 @@ const MID_DROP = 120;
 
 // ความสูงของแถบมืดบน-ล่าง (พิกัดเวที) — บนบังแค่แถว HUD · ล่างบังบรรทัดบอกปุ่ม
 const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
+
+/** คีย์จำโหมดนักพัฒนา — แยกจากคีย์ปิดเสียง (sfr.muted) คนละเรื่องกัน */
+const DEV_STORE = 'sfr.dev';
 
 /** แถวบนของ HUD กินลงมาถึง y เท่าไหร่ และจางเหลือเท่าไหร่ตอนมีคนยืนอยู่ในนั้น
  *
@@ -485,6 +488,14 @@ body.sc-touch #sc-touch { display:flex; }
   user-select:none; -webkit-user-select:none; }
 /* ต่อเน็ตแล้วเครื่องมือซ้อมใช้ไม่ได้ (แก้ sim ข้างเดียว = หลุดกัน) ซ่อนไปเลยดีกว่าให้กดแล้วเงียบ */
 body.sc-net #sc-tools, body.sc-net #sc-tune { display:none; }
+/* ── หน้าคนเล่น vs หน้านักพัฒนา ──
+   เปิดเกมมาเห็นกรอบชนสีเขียว/แดง ข้อมูลเฟรม และปุ่มเครื่องมือเก้าปุ่มพร้อมกัน
+   = คนที่ได้ลิงก์ไปกดเล่นคิดว่าเกมยังไม่เสร็จ ทั้งที่มันเสร็จแล้ว
+   ของพวกนั้นไม่ได้ผิด แค่ไม่ใช่ของที่คนเล่นต้องเห็น จึงซ่อนไว้ใต้ปุ่มเฟืองปุ่มเดียว
+   เลือกซ่อนด้วย CSS ไม่ใช่ลบปุ่มออกจาก DOM เพราะ syncTools() อ่าน textContent ของปุ่มพวกนี้อยู่ */
+body:not(.sc-dev) #sc-tools button[data-dev] { display:none; }
+#sc-tools .dev-toggle { opacity:.45; padding:6px 8px; }
+body.sc-dev #sc-tools .dev-toggle { opacity:1; }
 /* ---------- จอยลอย (floating joystick) ----------
    แตะตรงไหนในโซนซ้ายก็ได้ วงแหวนไปโผล่ตรงนั้น — ไม่ต้องเล็งปุ่มก่อนเริ่มเดิน
    d-pad แบบเดิมบังคับให้นิ้วต้องหาปุ่มให้เจอก่อน ซึ่งบนจอที่ไม่มีสัมผัสตอบกลับคือการเดาล้วน ๆ
@@ -586,15 +597,16 @@ body.sc-picking #sc-touch, body.sc-picking #sc-tools, body.sc-picking #sc-tune {
 const OVERLAY_HTML = `
 <button id="sc-mute" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">♫</button>
 <div id="sc-tools">
-  <button data-tool="KeyH">Hitboxes</button>
-  <button data-tool="Digit0">Dummy: Stand</button>
-  <button data-tool="Digit4">Tech: Off</button>
-  <button data-tool="KeyO">Slow-mo</button>
-  <button data-tool="KeyR">Reset</button>
-  <button data-tool="KeyT">Tune</button>
   <button data-tool="KeyB">เลือกตัว</button>
-  <button data-tool="KeyF">Hz</button>
   <button data-tool="KeyZ">Zoom</button>
+  <button data-tool="KeyR">Reset</button>
+  <button data-tool="KeyH" data-dev="1">Hitboxes</button>
+  <button data-tool="Digit0" data-dev="1">Dummy: Stand</button>
+  <button data-tool="Digit4" data-dev="1">Tech: Off</button>
+  <button data-tool="KeyO" data-dev="1">Slow-mo</button>
+  <button data-tool="KeyT" data-dev="1">Tune</button>
+  <button data-tool="KeyF" data-dev="1">Hz</button>
+  <button data-tool="KeyG" class="dev-toggle" title="เครื่องมือนักพัฒนา">&#9881;</button>
 </div>
 <div id="sc-select">
   <div class="wrap">
@@ -856,7 +868,13 @@ class ScrambleScene extends Phaser.Scene {
       ses.onClose = () => this.endNet('อีกฝั่งหลุดการเชื่อมต่อ');
       ses.onError = () => this.endNet('การเชื่อมต่อมีปัญหา');
     }
-    this.acc = 0; this.timeScale = 1; this.paused = false; this.showBoxes = true; this.stepOnce = false;
+    this.acc = 0; this.timeScale = 1; this.paused = false; this.stepOnce = false;
+    // โหมดนักพัฒนา — จำไว้ข้ามรอบเล่น คนที่เปิดไว้ไม่ต้องเปิดใหม่ทุกครั้ง
+    // กรอบชนเริ่มที่ "ปิด" เสมอ ไม่ผูกกับโหมดนี้ เปิดโหมดแล้วได้แค่ "ปุ่มโผล่มาให้กด"
+    // ซึ่งเดาได้ง่ายกว่าการที่กดเฟืองทีเดียวแล้วจอเปลี่ยนไปหลายอย่างพร้อมกัน
+    this.dev = this._devSaved();
+    this.showBoxes = false;
+    document.body.classList.toggle('sc-dev', this.dev);
     this.sparks = []; this.popups = []; this.comboFade = 0;
     this._buildStage();
     this._startMusic();
@@ -877,7 +895,7 @@ class ScrambleScene extends Phaser.Scene {
       this.uiObjects.push(t);
       return t;
     };
-    this.tTitle = T(W / 2, 14, 'SCRAMBLE', 26, C.ink, 0.5).setFontStyle('700');
+    this.tTitle = T(W / 2, 14, '', 26, C.ink, 0.5).setFontStyle('700');
     this.tSub = T(W / 2, 44, 'Training', 14, C.dim, 0.5);
     this.tP1 = T(60, 14, 'NYX', 20, C.ink);
     this.tP2 = T(W - RPAD, 14, 'Training dummy', 20, C.ink, 1);
@@ -889,7 +907,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
     this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
-    this.tHelp2 = T(W - 60, 703, isTouch ? '' : 'B เลือกตัว   T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo', 12, C.dim, 1);
+    this.tHelp2 = T(W - 60, 703, '', 12, C.dim, 1);   // ข้อความจริงตั้งใน _syncDevText()
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     // ป้ายน็อก/ผู้ชนะ กลางจอ ตัวใหญ่ — อ่านออกจากอีกฝั่งโซฟาได้
     this.tKo = T(W / 2, 250, '', 64, '#ffffff', 0.5).setFontStyle('700').setDepth(20);
@@ -900,6 +918,7 @@ class ScrambleScene extends Phaser.Scene {
     this.hudTop = [this.hud, this.tTitle, this.tSub, this.tP1, this.tP2, this.tMode,
       this.tP1Sub, this.tP2Sub, this.tPace];
     this._splitCameras();
+    this._syncDevText();
     // วางกล้องให้ถูกตั้งแต่เฟรมแรก ไม่ใช่ให้มันค่อย ๆ เลื่อนเข้าที่ตอนเปิดเกม
     this.camFollow = true;
     this._stepCamera(this.sim, true);
@@ -1195,7 +1214,7 @@ class ScrambleScene extends Phaser.Scene {
   // ปุ่มที่กดได้ตอนต่อเน็ต — ต้องไม่แตะ sim เลย ไม่งั้นอีกฝั่งไม่รู้ด้วยแล้วภาพหลุดกันถาวร
   // KeyF (ตัววัดความเร็ว) อยู่ในนี้เพราะเป็นตัวเดียวที่บอกได้ว่าเกมวิ่งความเร็วถูกไหม
   // ซึ่งเป็นอาการที่มองด้วยตาแล้วเถียงกันได้ แต่ดูเลขแล้วจบ (เคยวิ่ง 2 เท่าโดยไม่มีใครพิสูจน์ได้)
-  static VIEW_ONLY = new Set(['KeyH', 'KeyZ', 'KeyF']);
+  static VIEW_ONLY = new Set(['KeyH', 'KeyZ', 'KeyF', 'KeyG']);
 
   tool(code) {
     const s = this.sim;
@@ -1217,6 +1236,7 @@ class ScrambleScene extends Phaser.Scene {
     if (code === 'KeyB') { this.openSelect(); return; }
     if (code === 'KeyF') this.showPace = !this.showPace;
     if (code === 'KeyZ') this.camFollow = !this.camFollow;
+    if (code === 'KeyG') this._setDev(!this.dev);
     // สลับตัวละคร — สไปรท์เป็นของฝั่ง ไม่ใช่ของตัวละคร จึงไม่มีตัวค้างบนจอให้ต้องซ่อน
     if (code === 'KeyC' || code === 'KeyV') {
       const ids = Object.keys(CHARACTERS);
@@ -1276,9 +1296,45 @@ class ScrambleScene extends Phaser.Scene {
     this.tKo.setText(''); this.tKoSub.setText('');
   }
 
+  /** โหมดนักพัฒนาที่จำไว้จากรอบก่อน — อ่านไม่ได้ก็ถือว่าปิด (โหมดส่วนตัวของ Safari throw ตอนอ่าน) */
+  _devSaved() {
+    try { return localStorage.getItem(DEV_STORE) === '1'; } catch (e) { return false; }
+  }
+
+  /** เปิด/ปิดโหมดนักพัฒนา — ปิดแล้วเก็บของที่เป็นของนักพัฒนาไปด้วยทั้งชุด
+   *  ไม่ใช่แค่ซ่อนปุ่ม: กรอบชนกับแผงปรับจูนที่เปิดค้างอยู่ต้องปิดตามด้วย
+   *  ไม่งั้นกดปิดโหมดแล้วยังเห็นกรอบสี่เหลี่ยมอยู่ ซึ่งดูเหมือนปุ่มเสีย */
+  _setDev(on) {
+    this.dev = !!on;
+    try { localStorage.setItem(DEV_STORE, this.dev ? '1' : '0'); } catch (e) { /* ปิดโหมดส่วนตัวไว้ */ }
+    document.body.classList.toggle('sc-dev', this.dev);
+    if (!this.dev) {
+      this.showBoxes = false;
+      this.showPace = false;
+      this.timeScale = 1;
+      document.getElementById('sc-tune')?.classList.remove('open');
+    }
+    this._syncDevText();
+    this.syncTools();
+  }
+
+  /** ข้อความที่มีความหมายกับนักพัฒนาเท่านั้น — ข้อมูลเฟรมและรายการคีย์ลัดของเครื่องมือ
+   *
+   *  บรรทัดบอกปุ่มพื้นฐาน (tHelp) ไม่อยู่ในนี้โดยตั้งใจ — คนเล่นบนคอมต้องรู้ว่ากดปุ่มอะไร
+   *  ซ่อนไปด้วยแล้วเขาไม่มีทางรู้เลยว่าเริ่มยังไง
+   *  "SCRAMBLE" เป็นชื่อโหมดภายใน ไม่ได้สื่ออะไรกับคนเล่น จึงโชว์เฉพาะตอนเปิดโหมดนี้ */
+  _syncDevText() {
+    this.tTitle?.setText(this.dev ? 'SCRAMBLE' : '');
+    this.tHelp2?.setText(this.dev && !isTouch
+      ? 'B เลือกตัว   T tune   H hitboxes   4 dummy tech   R reset   P pause   N step   O slow-mo   G dev'
+      : '');
+    if (!this.dev) this.tMove?.setText('');
+  }
+
   syncTools() {
     const b = q => document.querySelector(`#sc-tools [data-tool="${q}"]`);
     if (!b('KeyH')) return;
+    b('KeyG').classList.toggle('on', !!this.dev);
     b('KeyH').classList.toggle('on', this.showBoxes);
     b('Digit0').textContent = 'Dummy: ' + MODE_LABEL[this.sim.dummyMode];
     b('Digit4').textContent = 'Tech: ' + TECH_LABEL[this.sim.dummyTech];
@@ -2363,7 +2419,7 @@ class ScrambleScene extends Phaser.Scene {
     } else { this.tCombo.setText(''); this.tComboSub.setText(''); }
 
     // move info + frame meter
-    const m = s.lastMoveInfo;
+    const m = this.dev ? s.lastMoveInfo : null;
     if (m) this.tMove.setText(`${m.label}    Startup ${m.startup}f    Active ${m.untilLand ? 'until landing' : m.active + 'f'}    Recovery ${m.untilLand ? m.landLag + 'f landing' : m.recovery + 'f'}    Damage ${m.dmg}`);
     const mx = 60, my = 672;
     hud.fillStyle(0x0c111c, 0.6); hud.fillRect(mx - 4, my - 4, 150 * 5 + 8, 18);
