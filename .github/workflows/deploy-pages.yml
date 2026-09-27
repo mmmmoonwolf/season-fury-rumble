@@ -46,6 +46,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      # เทสต์ลำดับท่า (sheet_order) เรียกเครื่องมือฝั่ง Python จริง ไม่ใช่เลียนแบบ
+      # เพราะสิ่งที่มันตรวจคือ "ลำดับที่ sheet_poses.py คืนมา" ซึ่งเลียนแบบแล้วไม่มีความหมาย
+      # runner ของ GitHub มี python3 แต่ไม่มี numpy/pillow ต้องลงเอง (~15 วินาที)
+      # ไม่ลงแล้วเทสต์ข้อนั้น CRASH ซึ่ง run_all.sh นับเป็นไม่ผ่าน — ตามที่ควรเป็น
+      # ไม่ได้ทำให้มันข้ามไปเงียบ ๆ เพราะ "ข้ามแบบมองไม่เห็น" คือวิธีที่ความครอบคลุมหายไปทีละข้อ
+      - name: ลง Python deps ที่เทสต์ฝั่งเครื่องมือใช้
+        run: python3 -m pip install --quiet numpy pillow
       - name: รันเทสต์ทั้งชุด
         working-directory: game
         run: bash tools/tests/run_all.sh

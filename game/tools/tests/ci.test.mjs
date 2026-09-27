@@ -39,7 +39,14 @@ const wf = (n) => fs.readFileSync(root + ".github/workflows/" + n, "utf8");
   ok(/node-version: '2\d'/.test(test), "ตรึงเวอร์ชันเมเจอร์ของ node ไม่ปล่อยตาม runner");
 
   // ลำดับต้องถูก: ต้องมี checkout ก่อนรันเทสต์
-  ok(test.indexOf('checkout') < test.indexOf('run_all.sh'), "checkout ก่อนรันเทสต์");
+  const runAt = test.indexOf('run: bash tools/tests/run_all.sh');
+  ok(runAt > 0, "หาบรรทัดที่สั่งรันเทสต์ได้");
+  ok(test.indexOf('checkout') < runAt, "checkout ก่อนรันเทสต์");
+  // เทสต์ sheet_order เรียกเครื่องมือฝั่ง Python จริง runner ไม่มี numpy/pillow ต้องลงเอง
+  // CI รอบแรกแดงเพราะข้อนี้พอดี — ด่านทำงานถูกแล้ว เกมไม่ได้ขึ้นเว็บ
+  ok(/pip install[^\n]*numpy/.test(test), "ลง numpy ให้เทสต์ฝั่งเครื่องมือ");
+  ok(/pip install[^\n]*pillow/.test(test), "และ pillow");
+  ok(test.indexOf('pip install') < runAt, "ลงก่อนรันเทสต์");
 }
 
 // ══ ต้องรู้ก่อนขึ้น master ไม่ใช่หลัง ═══════════════════════════════════════════
@@ -51,6 +58,12 @@ const wf = (n) => fs.readFileSync(root + ".github/workflows/" + n, "utf8");
   ok(/working-directory: game/.test(t) && /run_all\.sh/.test(t), "รันชุดเดียวกันจากที่เดียวกัน");
   ok(/cancel-in-progress: true/.test(t), "push ซ้ำ ๆ ยกเลิกรอบเก่า ไม่ต่อคิวยาว");
   ok(/permissions:\s*\n\s*contents: read/.test(t), "ขอสิทธิ์แค่อ่าน — เทสต์ไม่ต้องเขียนอะไร");
+  // สองไฟล์ต้องเตรียมสภาพแวดล้อมเหมือนกัน ไม่งั้นผ่านที่หนึ่งแดงที่หนึ่งด้วยเหตุผลที่ไม่ใช่โค้ด
+  const d2 = wf('deploy-pages.yml');
+  for (const need of ['setup-node', 'numpy', 'pillow'])
+    ok(t.includes(need) && d2.includes(need), `ทั้งสอง workflow เตรียม ${need} เหมือนกัน`);
+  const ver = (src) => src.match(/node-version: '(\d+)'/)?.[1];
+  ok(ver(t) === ver(d2), `ตรึง node เวอร์ชันเดียวกันทั้งสองไฟล์ (${ver(t)} / ${ver(d2)})`);
 }
 
 // ══ ตัวรันเทสต์ต้องกัน "เขียวเพราะไม่ได้รันอะไร" ═══════════════════════════════
