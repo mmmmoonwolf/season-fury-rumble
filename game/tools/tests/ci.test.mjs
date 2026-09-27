@@ -42,10 +42,10 @@ const wf = (n) => fs.readFileSync(root + ".github/workflows/" + n, "utf8");
   const runAt = test.indexOf('run: bash tools/tests/run_all.sh');
   ok(runAt > 0, "หาบรรทัดที่สั่งรันเทสต์ได้");
   ok(test.indexOf('checkout') < runAt, "checkout ก่อนรันเทสต์");
-  // เทสต์ sheet_order เรียกเครื่องมือฝั่ง Python จริง runner ไม่มี numpy/pillow ต้องลงเอง
+  // เทสต์ sheet_order เรียกเครื่องมือฝั่ง Python จริง runner ไม่มีแพ็กเกจพวกนั้น ต้องลงเอง
   // CI รอบแรกแดงเพราะข้อนี้พอดี — ด่านทำงานถูกแล้ว เกมไม่ได้ขึ้นเว็บ
-  ok(/pip install[^\n]*numpy/.test(test), "ลง numpy ให้เทสต์ฝั่งเครื่องมือ");
-  ok(/pip install[^\n]*pillow/.test(test), "และ pillow");
+  ok(/pip install[^\n]*-r game\/tools\/requirements\.txt/.test(test),
+    "ลง deps จาก requirements.txt ไม่ใช่พิมพ์ชื่อไว้ใน workflow");
   ok(test.indexOf('pip install') < runAt, "ลงก่อนรันเทสต์");
 }
 
@@ -60,7 +60,7 @@ const wf = (n) => fs.readFileSync(root + ".github/workflows/" + n, "utf8");
   ok(/permissions:\s*\n\s*contents: read/.test(t), "ขอสิทธิ์แค่อ่าน — เทสต์ไม่ต้องเขียนอะไร");
   // สองไฟล์ต้องเตรียมสภาพแวดล้อมเหมือนกัน ไม่งั้นผ่านที่หนึ่งแดงที่หนึ่งด้วยเหตุผลที่ไม่ใช่โค้ด
   const d2 = wf('deploy-pages.yml');
-  for (const need of ['setup-node', 'numpy', 'pillow'])
+  for (const need of ['setup-node', 'requirements.txt'])
     ok(t.includes(need) && d2.includes(need), `ทั้งสอง workflow เตรียม ${need} เหมือนกัน`);
   const ver = (src) => src.match(/node-version: '(\d+)'/)?.[1];
   ok(ver(t) === ver(d2), `ตรึง node เวอร์ชันเดียวกันทั้งสองไฟล์ (${ver(t)} / ${ver(d2)})`);
@@ -93,4 +93,40 @@ const wf = (n) => fs.readFileSync(root + ".github/workflows/" + n, "utf8");
     "บรรทัดสุดท้ายตัดสินรหัสออกจากทั้ง FAIL และ CRASH");
   // นับ CRASH แยกจาก FAIL เพราะเทสต์ที่ throw กลางคันไม่พิมพ์ FAIL สักบรรทัด
   ok(/crashed=\$\(\(crashed \+ 1\)\)/.test(sh), "นับเทสต์ที่ throw กลางคันแยก (ไม่พิมพ์ FAIL)");
+}
+
+// ══ requirements.txt ต้องครบตาม import จริงใน tools/*.py ════════════════════════
+//
+// **ข้อนี้เกิดจากความผิดพลาดจริง**: ตอนตั้ง CI ผมไล่ลง deps จากความจำ ได้ numpy กับ pillow
+// CI แดงเพราะ scipy · ลงเพิ่มแล้วก็ยังไม่รู้ว่าเหลืออะไรอีก การเดาแบบนั้นผิดได้เรื่อย ๆ
+// ข้อนี้อ่าน import จริงจากไฟล์แล้วเทียบ จะได้ไม่ต้องเดาอีก
+{
+  const fsp = await import("fs");
+  const path = new URL("../", import.meta.url).pathname;        // โฟลเดอร์ tools
+  const req = fsp.readFileSync(path + "requirements.txt", "utf8")
+    .split('\n').map((l) => l.replace(/#.*/, '').trim()).filter(Boolean)
+    .map((l) => l.split(/[<>=!~ ]/)[0].toLowerCase());
+  ok(req.length > 0, `requirements.txt มี ${req.length} แพ็กเกจ`);
+
+  // ชื่อโมดูลตอน import ไม่ตรงกับชื่อแพ็กเกจตอนลงเสมอ
+  const PKG = { pil: 'pillow', imageio_ffmpeg: 'imageio-ffmpeg' };
+  const STD = new Set(['os', 'sys', 'json', 'wave', 'subprocess', 'math', 're', 'shutil',
+    'pathlib', 'argparse', 'itertools', 'collections', 'random', 'time', 'struct', 'glob',
+    'textwrap', 'hashlib', 'base64', 'io', 'csv', 'zipfile', 'functools', 'typing']);
+  const localMods = new Set(fsp.readdirSync(path).filter((f) => f.endsWith('.py'))
+    .map((f) => f.replace(/\.py$/, '').toLowerCase()));
+
+  const found = new Set();
+  for (const f of fsp.readdirSync(path).filter((f) => f.endsWith('.py'))) {
+    for (const m of fsp.readFileSync(path + f, "utf8").matchAll(/^\s*(?:import|from)\s+([A-Za-z_]\w*)/gm)) {
+      const mod = m[1].toLowerCase();
+      if (STD.has(mod) || localMods.has(mod)) continue;
+      found.add(PKG[mod] ?? mod);
+    }
+  }
+  ok(found.size > 0, `เครื่องมือ import แพ็กเกจภายนอก ${found.size} ตัว: ${[...found].sort().join(', ')}`);
+  const absent = [...found].filter((m) => !req.includes(m));
+  ok(absent.length === 0, absent.length
+    ? `import แล้วแต่ไม่อยู่ใน requirements.txt: ${absent.join(', ')}`
+    : "requirements.txt ครบตาม import จริงทุกตัว");
 }

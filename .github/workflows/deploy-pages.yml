@@ -48,11 +48,15 @@ jobs:
           node-version: '22'
       # เทสต์ลำดับท่า (sheet_order) เรียกเครื่องมือฝั่ง Python จริง ไม่ใช่เลียนแบบ
       # เพราะสิ่งที่มันตรวจคือ "ลำดับที่ sheet_poses.py คืนมา" ซึ่งเลียนแบบแล้วไม่มีความหมาย
-      # runner ของ GitHub มี python3 แต่ไม่มี numpy/pillow ต้องลงเอง (~15 วินาที)
+      # runner ของ GitHub มี python3 แต่ไม่มีแพ็กเกจพวกนี้ ต้องลงเอง
       # ไม่ลงแล้วเทสต์ข้อนั้น CRASH ซึ่ง run_all.sh นับเป็นไม่ผ่าน — ตามที่ควรเป็น
       # ไม่ได้ทำให้มันข้ามไปเงียบ ๆ เพราะ "ข้ามแบบมองไม่เห็น" คือวิธีที่ความครอบคลุมหายไปทีละข้อ
+      #
+      # อ่านจาก requirements.txt ไม่ใช่พิมพ์ชื่อไว้ในนี้ — ตอนแรกพิมพ์ไว้แล้วลืม scipy
+      # CI แดงรอบสอง แก้แล้วก็ยังไม่รู้ว่าเหลืออะไรอีก การเดาแบบนั้นผิดได้เรื่อย ๆ
+      # ตอนนี้มีรายการที่ ci.test.mjs เทียบกับ import จริงใน tools/*.py ให้ทุกครั้งที่รันเทสต์
       - name: ลง Python deps ที่เทสต์ฝั่งเครื่องมือใช้
-        run: python3 -m pip install --quiet numpy pillow
+        run: python3 -m pip install --quiet -r game/tools/requirements.txt
       - name: รันเทสต์ทั้งชุด
         working-directory: game
         run: bash tools/tests/run_all.sh
