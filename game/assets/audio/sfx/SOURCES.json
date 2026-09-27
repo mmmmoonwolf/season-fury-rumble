@@ -123,6 +123,41 @@
       "lic": "cc0",
       "max_ms": 150
     },
+    "ui_back": {
+      "source": "back_002.ogg",
+      "out": "ui_back",
+      "lic": "cc0"
+    },
+    "ui_click_1": {
+      "source": "click2.ogg",
+      "out": "ui_click_1",
+      "lic": "cc0"
+    },
+    "ui_click_2": {
+      "source": "click4.ogg",
+      "out": "ui_click_2",
+      "lic": "cc0"
+    },
+    "ui_hover": {
+      "source": "rollover2.ogg",
+      "out": "ui_hover",
+      "lic": "cc0"
+    },
+    "ui_pick_1": {
+      "source": "select_001.ogg",
+      "out": "ui_pick_1",
+      "lic": "cc0"
+    },
+    "ui_pick_2": {
+      "source": "select_002.ogg",
+      "out": "ui_pick_2",
+      "lic": "cc0"
+    },
+    "ui_start": {
+      "source": "confirmation_001.ogg",
+      "out": "ui_start",
+      "lic": "cc0"
+    },
     "whip_1": {
       "source": "knifeSlice2.ogg",
       "out": "whip_1",

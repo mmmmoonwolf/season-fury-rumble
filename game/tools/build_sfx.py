@@ -109,6 +109,20 @@ MAP = {
     # ── แส้ของ Alecto ── เสียงเฉือน ตัดเพดานให้เหลือแต่หัวเสียงกับหางสั้น ๆ
     "knifeSlice2.ogg": {"out": "whip_1", "lic": "cc0", "max_ms": 180},
     "knifeSlice.ogg": {"out": "whip_2", "lic": "cc0", "max_ms": 180},
+
+    # ── เสียงเมนู ──
+    #
+    # สั้นกว่าเสียงในเกมมาก (27-60 ms ยกเว้นเสียงยืนยัน 280 ms) หัวกับหางแทบไม่มีอะไรให้ตัด
+    # ผ่านท่อเดียวกันทุกขั้นโดยตั้งใจ ไม่ได้ทำทางลัดแยก เพราะสองอย่างที่ต้องได้คือ
+    # **ระดับเสียงชุดเดียวกับในเกม** และ **ชื่อไปโผล่ใน SOURCES.json** ซึ่งเทสต์เครดิตอ่านอยู่
+    # เอาไปเล่นฝั่ง DOM (src/ui/uisfx.js) ไม่ได้ผ่าน this.sound ของฉาก
+    "click2.ogg": {"out": "ui_click_1", "lic": "cc0"},
+    "click4.ogg": {"out": "ui_click_2", "lic": "cc0"},
+    "rollover2.ogg": {"out": "ui_hover", "lic": "cc0"},
+    "select_001.ogg": {"out": "ui_pick_1", "lic": "cc0"},
+    "select_002.ogg": {"out": "ui_pick_2", "lic": "cc0"},
+    "back_002.ogg": {"out": "ui_back", "lic": "cc0"},
+    "confirmation_001.ogg": {"out": "ui_start", "lic": "cc0"},
 }
 
 # ── เก็บไว้เผื่อย้อนกลับ ──

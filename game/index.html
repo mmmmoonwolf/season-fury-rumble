@@ -160,7 +160,7 @@
       <h1>Season Fury Rumble</h1>
 
       <div id="lobby-menu" class="lobby-panel">
-        <button id="btn-solo" class="lobby-btn lobby-btn-primary">เล่นคนเดียว</button>
+        <button id="btn-solo" class="lobby-btn lobby-btn-primary" data-sfx="start">เล่นคนเดียว</button>
         <button id="btn-host" class="lobby-btn">สร้างห้อง (เล่นกับเพื่อน)</button>
         <button id="btn-join" class="lobby-btn">เข้าร่วมห้อง</button>
       </div>
@@ -170,14 +170,14 @@
         <div class="spinner" id="host-spinner"></div>
         <div class="room-code" id="room-code-display"></div>
         <p class="lobby-hint">บอกรหัสนี้ให้เพื่อนพิมพ์ในช่อง "เข้าร่วมห้อง"</p>
-        <button class="lobby-btn lobby-btn-secondary" id="btn-host-back">ย้อนกลับ</button>
+        <button class="lobby-btn lobby-btn-secondary" id="btn-host-back" data-sfx="back">ย้อนกลับ</button>
       </div>
 
       <div id="lobby-join" class="lobby-panel" hidden>
         <input id="join-code-input" class="lobby-input" maxlength="5" placeholder="ABCDE" autocomplete="off" autocapitalize="characters" />
-        <button class="lobby-btn lobby-btn-primary" id="btn-join-submit">เชื่อมต่อ</button>
+        <button class="lobby-btn lobby-btn-primary" id="btn-join-submit" data-sfx="start">เชื่อมต่อ</button>
         <p class="lobby-status" id="join-status"></p>
-        <button class="lobby-btn lobby-btn-secondary" id="btn-join-back">ย้อนกลับ</button>
+        <button class="lobby-btn lobby-btn-secondary" id="btn-join-back" data-sfx="back">ย้อนกลับ</button>
       </div>
 
       <p class="lobby-error" id="lobby-error" hidden></p>
@@ -247,6 +247,7 @@
     import { ScrambleScene } from "./src/modes/scramble/ScrambleScene.js";
     import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
     import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
+    import { wireUiSfx, unlockUiSfx } from "./src/ui/uisfx.js";
 
     /**
      * ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
@@ -331,6 +332,12 @@
       $("lobby-error").hidden = true;
     };
     const showError = (msg) => { const el = $("lobby-error"); el.textContent = msg; el.hidden = false; };
+
+    // เสียงปุ่มทั้งหน้าผูกที่ body ทีเดียว ไม่ผูกทีละปุ่ม — ปุ่มที่โผล่มาทีหลังได้เสียงเอง
+    // ปลุกระบบเสียงจาก pointerdown ครั้งแรกของทั้งหน้า ซึ่งมาถึงก่อน click เสมอ
+    // ปุ่มแรกที่กดจึงดังตั้งแต่ครั้งแรก ไม่ใช่เงียบแล้วค่อยดังตั้งแต่ปุ่มที่สอง
+    window.addEventListener("pointerdown", unlockUiSfx, { once: true, capture: true });
+    wireUiSfx(document.body);
 
     $("btn-solo").addEventListener("click", startGame);
 

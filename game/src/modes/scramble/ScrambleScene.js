@@ -1,3 +1,4 @@
+import { wireUiSfx } from "../../ui/uisfx.js";
 import { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, Game } from "./core.js";
 import { Lockstep, packInput, HELD_MASK, PRESS_MASK } from "./netplay.js";
 import { getSession, sendNetPacket } from "../../net/session.js";
@@ -244,6 +245,17 @@ const MID_DROP = 120;
 
 // ความสูงของแถบมืดบน-ล่าง (พิกัดเวที) — บนบังแค่แถว HUD · ล่างบังบรรทัดบอกปุ่ม
 const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
+
+/** แถวบนของ HUD กินลงมาถึง y เท่าไหร่ และจางเหลือเท่าไหร่ตอนมีคนยืนอยู่ในนั้น
+ *
+ *  ชั้น 5 (เท้า y=160) สูงพอที่หัวตัวละครจะเข้ามาในแถบนี้ ซึ่ง**ตั้งใจให้เป็นที่เสี่ยง**
+ *  ยืนบนนั้นแลกด้วยการอ่านหลอดเลือดตัวเองไม่ออก
+ *
+ *  แต่พอแยกกล้อง UI ออกมา กล้อง UI วาดทับทุกอย่างเสมอ **HUD จึงบังตัวละครแทน**
+ *  (ก่อนแยกกล้อง สไปรท์ depth 5 อยู่เหนือข้อความ HUD depth 0 จึงไม่มีปัญหา)
+ *  มองไม่เห็นตัวเองเป็นคนละเรื่องกับอ่านหลอดไม่ออก — อันแรกคือเกมพัง อันหลังคือกติกา
+ *  จางลงจึงได้ทั้งสองอย่าง: เห็นตัวเองแน่นอน และยังอ่าน HUD ไม่ถนัดเหมือนที่ตั้งใจไว้ */
+const HUD_BAND = 140, HUD_DIM = 0.26, HUD_FADE = 0.15;
 
 /** รอยฟาดต่อ "ชื่อท่า" ไม่ใช่ต่อตัวละคร
  *
@@ -868,6 +880,10 @@ class ScrambleScene extends Phaser.Scene {
     this.tKo = T(W / 2, 250, '', 64, '#ffffff', 0.5).setFontStyle('700').setDepth(20);
     this.tKoSub = T(W / 2, 330, '', 20, C.ink, 0.5).setDepth(20);
     this.tPace = T(60, 96, '', 13, '#ffd166');   // ใต้ฉายา เหนือแถบข้อมูลท้ายจอที่จะทับ
+    // เฉพาะของที่อยู่ "แถวบน" เท่านั้นที่จางตอนมีคนยืนชั้นสูง
+    // ป้ายน็อก ตัวนับคอมโบ และแถบข้อมูลท้ายจอไม่อยู่ในแถบนั้น จางไปด้วยก็มีแต่เสีย
+    this.hudTop = [this.hud, this.tTitle, this.tSub, this.tP1, this.tP2, this.tMode,
+      this.tP1Sub, this.tP2Sub, this.tPace];
     this._splitCameras();
     // วางกล้องให้ถูกตั้งแต่เฟรมแรก ไม่ใช่ให้มันค่อย ๆ เลื่อนเข้าที่ตอนเปิดเกม
     this.camFollow = true;
@@ -955,6 +971,15 @@ class ScrambleScene extends Phaser.Scene {
       Math.max(halfH, Math.min(STAGE.h - halfH, cy)));
   }
 
+  /** จาง HUD แถวบนตอนมีคนยืนสูงพอจะถูกมันบัง — ดู HUD_BAND ว่าทำไมต้องมี */
+  _fadeHudFor(s) {
+    if (!this.hudTop) return;
+    const hidden = s.fighters.some((f) => f.y - PHYS.standH < HUD_BAND);
+    const want = hidden ? HUD_DIM : 1;
+    this.hudAlpha = (this.hudAlpha ?? 1) + (want - (this.hudAlpha ?? 1)) * HUD_FADE;
+    for (const o of this.hudTop) o.setAlpha(this.hudAlpha);
+  }
+
   /** สั่นกล้อง + ซูมกระตุกไปพร้อมกัน — จุดเดียวที่สั่งสั่นกล้องในฉากนี้
    *
    *  ความแรงของกระตุกคิดจากความแรงของการสั่นที่ส่งมาอยู่แล้ว ไม่ต้องตั้งเลขใหม่ต่อเหตุการณ์
@@ -986,6 +1011,12 @@ class ScrambleScene extends Phaser.Scene {
     document.body.appendChild(root);
     this._overlay = [style, root];
     if (isTouch) document.body.classList.add('sc-touch');
+    // เสียงปุ่มของแผงเลือกตัวกับแถวเครื่องมือ — ผูกที่ root ทีเดียว
+    // การ์ดตัวละครถูกสร้างจาก CHARACTERS ทีหลัง ผูกทีละใบจะหลุดทุกครั้งที่เพิ่มตัวละคร
+    // ปุ่มสัมผัสในเกม (#sc-touch) ไม่เอาเสียงนี้ — มันคือปุ่มเล่นเกม ไม่ใช่ปุ่มเมนู
+    // และมีเสียงของท่าอยู่แล้ว ใส่เพิ่มจะกลายเป็นสองเสียงทุกครั้งที่กดตี
+    wireUiSfx(root.querySelector('#sc-select'));
+    wireUiSfx(root.querySelector('#sc-tools'));
 
     root.querySelectorAll('#sc-tools button').forEach((b) => {
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); this.tool(b.dataset.tool); });
@@ -1089,6 +1120,7 @@ class ScrambleScene extends Phaser.Scene {
     this.selSides = [...el.querySelectorAll('.side')];
     this.selSlots = [];
     this.selGo = el.querySelector('.go');
+    this.selGo.dataset.sfx = 'start';
     this.selNote = el.querySelector('.note');
     this.selHint = el.querySelector('.hint');
     this.selModes = [...el.querySelectorAll('.modes button')];
@@ -1099,6 +1131,7 @@ class ScrambleScene extends Phaser.Scene {
       const card = document.createElement('button');
       card.className = 'card';
       card.dataset.char = id;
+      card.dataset.sfx = 'pick';
       card.innerHTML = `<span class="pic"></span><span><span class="name">${ch.label}</span>`
         + `<br><span class="title">${art.title ?? ''}</span>`
         + `<br><span class="skills"><b>${art.role ?? ''}</b> · ${art.tip ?? ''}<br>${skills}</span></span>`;
@@ -2074,6 +2107,7 @@ class ScrambleScene extends Phaser.Scene {
     const s = this.sim, g = this.world, fx = this.fx, hud = this.hud;
     this._stepParallax(s);
     this._stepCamera(s);
+    this._fadeHudFor(s);
     g.clear(); fx.clear(); hud.clear();
     // ทั้งสองฝั่งวาดด้วยเส้นทางเดียวกัน — ท่าที่ยังไม่มีอาร์ตตกไปเป็นกล่องเหมือนเดิม
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง

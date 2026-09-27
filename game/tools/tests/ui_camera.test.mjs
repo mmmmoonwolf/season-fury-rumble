@@ -104,3 +104,54 @@ function mk(uiCount = 3, worldCount = 5) {
     ? `ลืมเรียก _world ที่: ${missing.join(' · ')}`
     : "ทุกจุดที่สร้างของในโลกหลังแยกกล้องเรียก _world ครบ");
 }
+
+// ══ HUD แถวบนต้องจางตอนมีคนยืนสูงจนถูกมันบัง ═══════════════════════════════════
+//
+// ชั้น 5 (เท้า y=160) สูงพอที่หัวจะเข้ามาในแถบ HUD ซึ่งตั้งใจให้เป็นที่เสี่ยง
+// แต่พอแยกกล้อง UI กล้องนั้นวาดทับทุกอย่างเสมอ **HUD จึงบังตัวละครแทน**
+// มองไม่เห็นตัวเองเป็นคนละเรื่องกับอ่านหลอดไม่ออก — อันแรกคือเกมพัง อันหลังคือกติกา
+{
+  const { Game, STAGE, PHYS } = await import(G + "/core.js");
+  const obj = () => ({ alpha: 1, setAlpha(a) { this.alpha = a; return this; } });
+  const mkFade = () => {
+    const sc = { hudTop: [obj(), obj(), obj()] };
+    sc._fadeHudFor = ScrambleScene.prototype._fadeHudFor;
+    return sc;
+  };
+  const settle = (sc, g) => { for (let i = 0; i < 200; i++) sc._fadeHudFor(g); };
+
+  const low = mkFade(), g1 = new Game();
+  for (const f of g1.fighters) f.y = STAGE.groundY;
+  settle(low, g1);
+  ok(low.hudTop.every((o) => o.alpha > 0.99), `ยืนพื้นกันหมด HUD ชัดเต็ม (${low.hudTop[0].alpha.toFixed(3)})`);
+
+  const high = mkFade(), g2 = new Game();
+  g2.p2.y = 160;                       // ชั้น 5
+  settle(high, g2);
+  ok(high.hudTop.every((o) => o.alpha < 0.4), `มีคนยืนชั้นบนสุด HUD จางลง (${high.hudTop[0].alpha.toFixed(3)})`);
+  ok(high.hudTop.every((o) => o.alpha > 0), "แต่ไม่หายไปเลย — ยังอ่านคร่าว ๆ ได้");
+
+  // ลงมาแล้วต้องกลับมาชัด ไม่ใช่จางค้าง
+  g2.p2.y = STAGE.groundY;
+  settle(high, g2);
+  ok(high.hudTop.every((o) => o.alpha > 0.99), "ลงมาแล้วกลับมาชัดเหมือนเดิม");
+
+  // ชั้นที่ต่ำกว่านั้นต้องไม่ทำให้จาง ไม่งั้น HUD กะพริบทั้งเกม
+  const mid = mkFade(), g3 = new Game();
+  g3.p2.y = 352;                       // ชั้น 3
+  settle(mid, g3);
+  ok(mid.hudTop.every((o) => o.alpha > 0.99), "ยืนชั้นกลาง HUD ยังชัดเต็ม ไม่กะพริบ");
+
+  ok(PHYS.standH > 0 && 160 - PHYS.standH < 140, "ชั้น 5 อยู่ในแถบ HUD จริงตามที่คิดเลขไว้");
+}
+
+// ── ป้ายน็อกกับตัวนับคอมโบต้องไม่จางไปด้วย ──
+//
+// อยู่กลางจอ/ท้ายจอ ไม่ได้อยู่ในแถบที่ถูกบัง จางไปด้วยมีแต่เสีย
+{
+  const list = scene.slice(scene.indexOf('this.hudTop = ['), scene.indexOf('this._splitCameras()'));
+  for (const keep of ['tKo', 'tKoSub', 'tCombo', 'tComboSub', 'tMove', 'tHelp'])
+    ok(!new RegExp('\\bthis\\.' + keep + '\\b').test(list), `${keep} ไม่อยู่ในกลุ่มที่จาง`);
+  for (const dim of ['tP1', 'tP2', 'tTitle'])
+    ok(new RegExp('\\bthis\\.' + dim + '\\b').test(list), `${dim} อยู่ในกลุ่มที่จาง`);
+}
