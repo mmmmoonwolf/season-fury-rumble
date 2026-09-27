@@ -767,6 +767,41 @@ const hitstopFor = (m) => Math.round(m.dmg * HITSTOP_PER_DMG) + (m.kb[1] < -10 ?
 
 const ACTIONABLE = new Set(['idle', 'walk', 'run', 'crouch', 'air', 'block', 'blockcrouch']);
 
+/** เพื่อน AI — ตัวเลขทั้งหมดของสมอง อยู่ที่เดียวจะได้จูนง่าย */
+const AI = {
+  think: 7,        // คิดใหม่ทุกกี่เฟรม — ระหว่างนั้นถือแผนเดิมไว้ นี่คือ "เวลาตอบสนอง" ของ AI
+                   // คิดใหม่ทุกเฟรม = อ่านเกมได้สมบูรณ์แบบ ซึ่งเล่นด้วยแล้วไม่สนุก
+  reach: 95,       // ระยะที่ถือว่าประชิดพอจะตี
+  chase: 260,      // ไกลกว่านี้คือวิ่งเข้าหาอย่างเดียว ไม่คิดอย่างอื่น
+  backoff: 52,     // ใกล้เกินไป ถอยออกนิดให้มีระยะออกท่า
+  climb: 90,       // ศัตรูอยู่สูงกว่าเท่านี้ถึงคิดจะกระโดดขึ้นไป
+  attack: 0.55,    // โอกาสกดตีในรอบคิดที่อยู่ในระยะ
+  block: 0.45,     // โอกาสยกการ์ดตอนศัตรูกำลังออกท่าใส่
+  jump: 0.12,      // โอกาสกระโดดมั่ว ๆ ให้ดูมีชีวิต
+  skill: 0.30,     // โอกาสปล่อยสกิลเมื่อพร้อม
+  ultKi: 1,        // ต้องมี ki เต็มถึงจะปล่อยช่องอัลติ
+};
+
+/** สุ่มแบบคงที่ — เลขเดิมเข้า เลขเดิมออก ทุกเครื่อง ทุกครั้ง
+ *
+ *  **ห้ามใช้ Math.random ใน AI เด็ดขาด** เพราะ AI อยู่ในซิม
+ *  สองเครื่องต้องคิดออกมาตรงกันเป๊ะ ไม่งั้นเพื่อน AI ของแต่ละเครื่องเดินคนละทาง
+ *  = desync ที่ไม่มีอะไรฟ้อง และหาสาเหตุยากมากเพราะผู้เล่นทั้งคู่ไม่ได้ทำอะไรผิด
+ */
+function aiRoll(frame, seed) {
+  let x = (frame * 2654435761 + seed * 40503) | 0;
+  x ^= x << 13; x |= 0;
+  x ^= x >>> 17;
+  x ^= x << 5; x |= 0;
+  return (x >>> 0) / 4294967296;
+}
+
+/** อินพุตเปล่าหนึ่งเฟรม — รูปร่างเดียวกับที่ฉากอ่านจากคีย์บอร์ดเป๊ะ */
+function blankInput() {
+  return { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0,
+    skill1: 0, skill2: 0, skill3: 0, p: {} };
+}
+
 class Fighter {
   constructor(id, name, x, facing, char = DEFAULT_CHAR, team = (id === 'p1' ? 0 : 1)) {
     this.id = id; this.name = name; this.spawnX = x; this.spawnFacing = facing;
@@ -774,6 +809,9 @@ class Fighter {
     // ตั้งค่าเริ่มต้นจากไอดีเพื่อให้โหมดเดิม (p1 vs p2) ได้ทีมคนละทีมเองโดยไม่ต้องแก้ที่เรียก
     this.team = team;
     this.char = char;
+    // ช่องนี้เดินด้วยสมองไหม — ตั้งจาก setRoster() ไม่ใช่จากไอดี
+    // หุ่นซ้อมของโหมด 1v1 ไม่ติดธงนี้ พฤติกรรมเดิมจึงไม่เปลี่ยนเลย
+    this.ai = false;
     this.reset();
   }
   /** ตารางท่าของตัวละครตัวนี้ — ชื่อท่าเหมือนกันทุกตัว ค่าเฟรมเดต้าเป็นของใครของมัน */
@@ -807,6 +845,7 @@ class Fighter {
       // บัฟเฟอร์อินพุตเป็นของแต่ละฝั่ง — เล่นสองคนต้องกดพร้อมกันได้โดยไม่กินคิวของกันและกัน
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
       lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
+      aiPlan: null, aiNext: 0,      // แผนที่เพื่อน AI ถืออยู่ และเฟรมที่จะคิดใหม่
       comboHits: 0, comboDmg: 0, wallBounced: false, jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
     });
   }
@@ -889,14 +928,19 @@ class Game {
    */
   setRoster(count) {
     const shift = (STAGE.w - STAGE_BASE_W) / 2;
+    // สองช่องหลังเป็นเพื่อน AI ที่สู้จริง ไม่ใช่หุ่นซ้อมที่ยืนเฉย ๆ
+    // ช่องแรกสองช่องไม่ติดธง โหมดซ้อม 1v1 จึงยังได้หุ่นซ้อมเหมือนเดิมเป๊ะ
     const keep = this.fighters.map((f) => f.char);
     // 2 คน: ห่างกัน 440 เหมือนเดิมเป๊ะ · 4 คน: ทีมละสองคนยืนซ้อนกันข้างละฝั่ง
     const spec = count === 4
       ? [[340, 1, 0], [780, -1, 1], [500, 1, 0], [940, -1, 1]]
       : [[420, 1, 0], [860, -1, 1]];
-    this.fighters = spec.map(([x, facing, team], i) =>
-      new Fighter('p' + (i + 1), i === 1 ? 'DUMMY' : 'P' + (i + 1), x + shift, facing,
-        keep[i] ?? (i === 1 ? 'helios' : 'nyx'), team));
+    this.fighters = spec.map(([x, facing, team], i) => {
+      const f = new Fighter('p' + (i + 1), i === 1 ? 'DUMMY' : 'P' + (i + 1), x + shift, facing,
+        keep[i] ?? (i === 1 ? 'helios' : 'nyx'), team);
+      f.ai = i >= 2;
+      return f;
+    });
     this.match.bars = this.teams().map(() => ROUND_BARS);
     this.resetPositions();
     return this.fighters;
@@ -972,7 +1016,9 @@ class Game {
     this.frame++; this.events = [];
     const p = this.p1, d = this.p2;
     // อินพุตเรียงตามลำดับเดียวกับ `fighters` · ตัวไหนได้ null เดินด้วย AI (โหมดซ้อม/ช่องที่ยังไม่มีคน)
-    const inps = this.fighters.map((_, i) => inputs[i] ?? null);
+    // ช่องที่ติดธง ai ได้อินพุตจากสมองตั้งแต่ตรงนี้ ทุกอย่างใต้บรรทัดนี้จึงไม่รู้เลยว่าใครเป็นคนใครเป็น AI
+    // (คิดก่อนใครขยับ ทุกตัวจึงเห็นสถานะต้นเฟรมชุดเดียวกัน = ผลเหมือนกันทุกเครื่อง)
+    const inps = this.fighters.map((f, i) => inputs[i] ?? (f.ai ? this.aiInput(f) : null));
     this.fighters.forEach((f, i) => { if (inps[i]) this.takeInput(f, inps[i]); });
 
     for (const [f, inp] of this.fighters.map((f, i) => [f, inps[i]])) {
@@ -1704,6 +1750,108 @@ class Game {
       if (f.vy < PHYS.jumpCut && !f.jumpHeldSinceTakeoff) f.vy = PHYS.jumpCut; // variable jump height
       if (inp.down && f.vy > -2) f.vy = Math.max(f.vy, PHYS.fastFall);   // fast fall
     }
+  }
+
+  /** สมองของเพื่อน AI — คืน **อินพุตหนึ่งเฟรม** เหมือนที่คนกด ไม่ใช่ไปยัดสถานะตรง ๆ
+   *
+   *  เดินผ่านทางเดียวกับผู้เล่นจริงทุกขั้น (takeInput → controlPlayer → physics → advanceMove)
+   *  ข้อดีคือ **AI ทำอะไรที่คนทำไม่ได้ไม่ได้เลย** — ไม่มีท่าพิเศษ ไม่ข้ามคูลดาวน์ ไม่เดินเร็วกว่า
+   *  และไม่ต้องก๊อปตรรกะการเคลื่อนที่มาไว้อีกที่ให้แก้สองที่ทุกครั้ง
+   *
+   *  **ห้ามสุ่มและห้ามอ่านเวลาจริง** AI อยู่ในซิม สองเครื่องต้องคิดตรงกันเป๊ะ
+   *  ความหลากหลายมาจาก aiRoll(เลขเฟรม, ไอดี) ซึ่งคงที่และต่างกันต่อคน
+   *
+   *  คิดใหม่ทุก AI.think เฟรม ระหว่างนั้นถือแผนเดิม = เวลาตอบสนองของ AI
+   *  คิดใหม่ทุกเฟรมจะอ่านเกมได้สมบูรณ์แบบ ซึ่งเล่นด้วยแล้วไม่สนุก
+   */
+  aiInput(f) {
+    const inp = blankInput();
+    const e = this.foe(f);
+    if (!e) return inp;
+
+    const seed = this.fighters.indexOf(f) + 1;
+    if (this.frame >= f.aiNext) {
+      f.aiNext = this.frame + AI.think;
+      f.aiPlan = this.aiPlan(f, e, seed);
+    }
+    const plan = f.aiPlan;
+    if (!plan) return inp;
+
+    const dx = e.x - f.x, adx = Math.abs(dx);
+    // ทิศเดินคิดสดทุกเฟรม ไม่ใช่ตอนคิดแผน — ไม่งั้นวิ่งเลยตัวไปแล้วยังวิ่งต่ออีกหลายเฟรม
+    if (plan.move === 'in' && adx > AI.backoff) { if (dx > 0) inp.right = 1; else inp.left = 1; }
+    if (plan.move === 'out' && adx < AI.chase) { if (dx > 0) inp.left = 1; else inp.right = 1; }
+
+    // ปุ่มที่ "กดค้าง" ถือไว้ตลอดแผน ส่วนปุ่มที่ "กดติ๊ง" กดเฟรมเดียวตอนเริ่มแผน
+    if (plan.block) inp.block = 1;
+    const fresh = this.frame === f.aiNext - AI.think;
+    if (fresh) {
+      if (plan.jump) inp.p.jump = 1;
+      if (plan.attack) { inp.attack = 1; inp.p.attack = 1; }
+      if (plan.skill) { inp[plan.skill] = 1; inp.p[plan.skill] = 1; }
+      if (plan.aim === 'up') inp.up = 1;
+      if (plan.aim === 'down') inp.down = 1;
+    }
+    if (plan.jump && !fresh && !f.onGround) inp.jump = 1;   // ถือปุ่มต่อ = กระโดดสูงเต็ม
+    return inp;
+  }
+
+  /** ตัดสินใจหนึ่งครั้ง — เรียกทุก AI.think เฟรม ไม่ใช่ทุกเฟรม */
+  aiPlan(f, e, seed) {
+    const r = (n) => aiRoll(this.frame + n * 131, seed);
+    const dx = e.x - f.x, adx = Math.abs(dx);
+    const above = f.y - e.y;            // ศัตรูสูงกว่าเราเท่าไหร่
+    const plan = { move: 'in', block: false, jump: false, attack: false, skill: null, aim: null };
+
+    // ล้มอยู่/ติดสตันอยู่ ไม่ต้องคิดอะไร รอฟื้นก่อน
+    if (!ACTIONABLE.has(f.state)) return plan;
+
+    // ศัตรูอยู่สูงกว่ามากและเราอยู่พื้น — กระโดดขึ้นไปหา ไม่ใช่ยืนต๊อง ๆ ข้างล่าง
+    if (above > AI.climb && f.onGround && adx < AI.chase) { plan.jump = true; plan.aim = 'up'; return plan; }
+
+    // ไกลมาก: วิ่งเข้าหาอย่างเดียว ไม่ต้องคิดเรื่องตีหรือกัน
+    if (adx > AI.chase) { plan.move = 'in'; return plan; }
+
+    // ศัตรูกำลังออกท่าและเราอยู่ในระยะที่โดนได้ — ยกการ์ด
+    if (e.state === 'attack' && adx < AI.reach + 40 && r(1) < AI.block) {
+      plan.block = true; plan.move = 'none';
+      return plan;
+    }
+
+    // ใกล้เกินจนออกท่าไม่ถนัด ถอยนิดหนึ่ง
+    if (adx < AI.backoff) { plan.move = 'out'; return plan; }
+
+    if (adx <= AI.reach) {
+      // สกิลก่อน ถ้าพร้อมและถึงคิว — ช่องอัลติต้อง ki เต็ม
+      const pick = this.aiSkill(f, r(2));
+      if (pick && r(3) < AI.skill) { plan.skill = pick; plan.move = 'none'; return plan; }
+      if (r(4) < AI.attack) {
+        plan.attack = true; plan.move = 'none';
+        // เล็งขึ้นถ้าศัตรูลอยอยู่ เล็งลงถ้าเราลอยอยู่เหนือเขา
+        if (above > 40) plan.aim = 'up';
+        else if (!f.onGround && above < -20) plan.aim = 'down';
+        return plan;
+      }
+      plan.move = r(5) < 0.5 ? 'none' : 'out';   // ไม่ตีก็อย่ายืนนิ่ง เดินยั่วไปมา
+      return plan;
+    }
+
+    plan.move = 'in';
+    if (r(6) < AI.jump) plan.jump = true;
+    return plan;
+  }
+
+  /** ช่องสกิลที่พร้อมใช้ — คืนชื่อปุ่มหรือ null · ไล่จากช่องท้ายไปหน้า ท่าใหญ่ได้ออกก่อน */
+  aiSkill(f, roll) {
+    const ready = [];
+    for (let i = f.skills.length - 1; i >= 0; i--) {
+      if (!f.skills[i] || f.cd[i] > 0) continue;
+      const m = f.moves[f.skills[i]];
+      if (m?.ki && f.ki < KI_MAX * AI.ultKi) continue;
+      ready.push('skill' + (i + 1));
+    }
+    if (!ready.length) return null;
+    return ready[Math.floor(roll * ready.length) % ready.length];
   }
 
   controlDummy(f) {

@@ -57,6 +57,8 @@ const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
   f.char, f.lash, f.lashF, f.house, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard, f.caged,
+  // เพื่อน AI คิดในซิม แผนของมันจึงเป็นสถานะที่ต้องตรงกันเหมือนตำแหน่งและเลือด
+  f.ai ? 1 : 0, f.aiNext, JSON.stringify(f.aiPlan),
   // อาวุธที่ถืออยู่ (Alecto สลับแส้/ไรเฟิล) — ถ้าไม่เทียบ สองเครื่องถืออาวุธคนละชุด
   // แล้วปุ่มตีเดียวกันจะออกท่าคนละท่า ซึ่งเป็น desync ที่ทุกอย่างอื่นยังดูตรงกันหมด
   f.alt,
