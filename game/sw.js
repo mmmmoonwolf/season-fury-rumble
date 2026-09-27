@@ -41,6 +41,14 @@ const PRECACHE = [
   './src/modes/scramble/ScrambleScene.js',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
+  // ฟอนต์ต้องอยู่ในนี้ ไม่งั้นเปิดออฟไลน์แล้วตัวหนังสือเปลี่ยนหน้าตาไปเป็นฟอนต์เครื่อง
+  // ซึ่งดูเหมือนหน้าพัง มากกว่าดูเหมือน "ไม่มีเน็ต"
+  './vendor/fonts/chakra-petch-400-latin.woff2',
+  './vendor/fonts/chakra-petch-400-thai.woff2',
+  './vendor/fonts/chakra-petch-600-latin.woff2',
+  './vendor/fonts/chakra-petch-600-thai.woff2',
+  './vendor/fonts/chakra-petch-700-latin.woff2',
+  './vendor/fonts/chakra-petch-700-thai.woff2',
 ];
 
 self.addEventListener('install', (e) => {

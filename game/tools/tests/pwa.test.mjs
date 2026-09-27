@@ -22,8 +22,12 @@ const mf = JSON.parse(read("manifest.webmanifest"));
   ok(!mf.scope.startsWith('/'), `scope เป็น relative (${mf.scope})`);
   ok(mf.icons.every((i) => !i.src.startsWith('/')), "path ของไอคอนก็ relative");
   ok(mf.orientation === 'landscape', "บังคับแนวนอน — แมพเป็น 16:9 แนวตั้งเล่นไม่ได้");
-  ok(mf.background_color === '#0f172a' && mf.theme_color === '#0f172a',
-    "สีพื้นตรงกับ backgroundColor ของเกม — ไม่งั้นตอนเปิดจะเห็นขาววาบก่อน");
+  // เทียบกับค่าที่ใช้จริงในหน้าเว็บ ไม่ฮาร์ดโค้ดสี — เปลี่ยนจานสีแล้วเทสต์ต้องยังมีความหมาย
+  const bg = html.match(/backgroundColor: "(#[0-9a-f]{6})"/i)?.[1];
+  const meta = html.match(/name="theme-color" content="(#[0-9a-f]{6})"/i)?.[1];
+  ok(mf.background_color === bg, `สีพื้น manifest ตรงกับ backgroundColor ของเกม (${mf.background_color} = ${bg})`);
+  ok(mf.theme_color === meta, `สีธีมตรงกับเมตาแท็กในหน้าเว็บ (${mf.theme_color} = ${meta})`);
+  // ไม่ตรงกันแปลว่าตอนเปิดจากโฮมสกรีนจะเห็นสีหนึ่งวาบก่อนแล้วเปลี่ยนเป็นอีกสี
   ok(mf.icons.some((i) => i.sizes === '192x192') && mf.icons.some((i) => i.sizes === '512x512'),
     "มีไอคอนครบทั้ง 192 และ 512 (Android ต้องการทั้งคู่)");
   ok(mf.icons.some((i) => i.purpose === 'maskable'),
