@@ -47,17 +47,51 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
     tool: ScrambleScene.prototype.tool,
   };
   const before = state();
-  for (const code of ["KeyC", "KeyV", "KeyM", "KeyR", "KeyP", "KeyN", "KeyO", "Digit0", "Digit4"]) scene.tool(code);
+  for (const code of ["KeyC", "KeyV", "KeyM", "KeyR", "KeyN", "KeyO", "Digit0", "Digit4"]) scene.tool(code);
   ok(state() === before, "ต่อเน็ตอยู่ กดเครื่องมือซ้อมทุกปุ่มแล้ว sim ไม่ขยับเลย");
   ok(!scene.sim.reset, "โดยเฉพาะ reset ที่จะดีดตำแหน่งข้างเดียว");
 
   scene.tool("KeyH");
   ok(scene.showBoxes === false, "ปุ่มที่เปลี่ยนแค่สิ่งที่เห็นบนจอ (hitboxes) ยังกดได้ตามเดิม");
 
+  // ── เมนูหยุดพักเปิดได้ตอนต่อเน็ต แต่ต้องไม่หยุด sim ──
+  //
+  // lockstep เดินด้วยอินพุตของทั้งสองฝั่ง ฝ่ายเดียวหยุดคือฝ่ายนั้นเลิกส่งอินพุต
+  // แล้วอีกฝั่งค้างรอไปเรื่อย ๆ โดยไม่รู้ว่าทำไม — ซึ่งแยกไม่ออกจากเน็ตหลุด
+  // ต้องเปิดได้ เพราะ "ออกจากห้อง" คือสิ่งที่ต้องทำได้ตอนต่อเน็ตมากกว่าตอนเล่นคนเดียวด้วยซ้ำ
+  {
+    let opened = 0;
+    const cls = new Set();
+    const el = { classList: { contains: (c) => cls.has(c), add: (c) => cls.add(c), remove: (c) => cls.delete(c) },
+      querySelector: (sel) => ({ hidden: false, textContent: '', get _s() { return sel; } }) };
+    const netScene = { versus: 'net', paused: false, menuEl: el, syncTools() {},
+      _toggleMenu: ScrambleScene.prototype._toggleMenu,
+      _openMenu: ScrambleScene.prototype._openMenu,
+      _closeMenu: ScrambleScene.prototype._closeMenu,
+      tool: ScrambleScene.prototype.tool };
+    globalThis.document = globalThis.document ?? {};
+    globalThis.document.getElementById = globalThis.document.getElementById
+      ?? (() => ({ classList: { add() {}, remove() {}, toggle() {}, contains: () => false } }));
+    netScene.tool('KeyP');
+    ok(cls.has('open'), "ต่อเน็ตแล้วกดหยุดพัก เมนูเปิดได้");
+    ok(netScene.paused === false, "แต่ sim ไม่หยุด — ฝ่ายเดียวหยุดแล้วอีกฝั่งค้างรอไปเรื่อย ๆ");
+    netScene.tool('Escape');
+    ok(!cls.has('open'), "กด Escape ปิดเมนู");
+    ok(netScene.paused === false, "และยังไม่หยุด sim");
+
+    const soloScene = { ...netScene, versus: 'solo', paused: false };
+    soloScene.tool('KeyP');
+    ok(soloScene.paused === true, "เล่นคนเดียวกดหยุดพักแล้วหยุดจริง (ไม่มีใครต้องรอ)");
+    soloScene.tool('KeyP');
+    ok(soloScene.paused === false, "กดอีกทีเล่นต่อ");
+  }
+
   // พอออกจากโหมดเน็ตแล้วต้องกลับมากดได้ ไม่งั้นโหมดซ้อมพังตามไปด้วย
+  // ใช้ปุ่มที่แตะ sim จริง (reset) ไม่ใช่ปุ่มเมนู — ปุ่มเมนูกดได้ทั้งสองโหมดอยู่แล้ว
   scene.versus = "solo";
-  scene.tool("KeyP");
-  ok(scene.paused === true, "ออกจากโหมดเน็ตแล้วเครื่องมือซ้อมกลับมาใช้ได้");
+  scene.sim.reset = false;
+  scene.tool("KeyR");
+  ok(scene.sim.reset === true, "ออกจากโหมดเน็ตแล้วเครื่องมือซ้อมกลับมาใช้ได้");
 }
 
 // ── แพ็คเก็ตที่มาถึงก่อนฉากจะพร้อม ต้องไม่หาย ──

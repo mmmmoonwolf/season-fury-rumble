@@ -1,4 +1,5 @@
 import { wireUiSfx } from "../../ui/uisfx.js";
+import { quitToLobby } from "../../ui/shell.js";
 import { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, Game } from "./core.js";
 import { Lockstep, packInput, HELD_MASK, PRESS_MASK } from "./netplay.js";
 import { getSession, sendNetPacket } from "../../net/session.js";
@@ -33,7 +34,7 @@ const BINDS = [
 const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
 
 const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
-const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF','KeyZ','KeyG']);
+const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF','KeyZ','KeyG','Escape']);
 const held = new Set();
 let pressed = new Set();
 let activeScene = null;
@@ -438,9 +439,9 @@ const OVERLAY_CSS = `
 #sc-tools { position:absolute; top:calc(58px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); display:flex; gap:6px; z-index:15; }
 /* พื้นปุ่มเป็น "สีเข้มทึบ" ไม่ใช่ขาวโปร่ง — ฉากเปลี่ยนเป็นฟ้ากลางวันแล้วปุ่มขาวโปร่งกลืนหายไปเลย
    ขอบสว่าง + เงาตัวอักษร + เงารอบปุ่ม ทำให้อ่านออกทั้งบนฟ้าสว่างและบนหินเข้ม */
-#sc-tools button, #sc-touch button, #sc-mute { font:600 13px "Chakra Petch", system-ui, sans-serif; color:#f2ede3; background:rgba(12,17,28,.62); border:1.5px solid rgba(242,237,227,.55); border-radius:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); box-shadow:0 2px 10px rgba(0,0,0,.35); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
+#sc-tools button, #sc-touch button, #sc-mute, #sc-pause-btn { font:600 13px "Chakra Petch", system-ui, sans-serif; color:#f2ede3; background:rgba(12,17,28,.62); border:1.5px solid rgba(242,237,227,.55); border-radius:12px; text-shadow:0 1px 3px rgba(0,0,0,.8); box-shadow:0 2px 10px rgba(0,0,0,.35); touch-action:none; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent; }
 #sc-tools button { padding:6px 10px; font-size:12px; }
-#sc-tools button.on, #sc-touch button.on, #sc-mute.on { background:rgba(200,50,60,.82); border-color:rgba(255,200,200,.7); }
+#sc-tools button.on, #sc-touch button.on, #sc-mute.on, #sc-pause-btn.on { background:rgba(200,50,60,.82); border-color:rgba(255,200,200,.7); }
 /* ปุ่มปิดเสียงอยู่นอกแถวเครื่องมือ เพราะแถวนั้นถูกซ่อนตอนต่อเน็ต
    คนที่ปิดเสียงเพราะอยู่ที่สาธารณะต้องปิดได้ทุกโหมด ไม่ใช่เฉพาะตอนซ้อม
    วางชิดซ้ายบนใต้แถบเลือด — มุมขวาบนมีปุ่มเต็มจอของเกมอยู่แล้ว */
@@ -483,7 +484,7 @@ body.sc-touch #sc-touch { display:flex; }
 /* กันแว่นขยาย/เมนูคัดลอกของ iOS ทั้งแผงคุม ไม่ใช่เฉพาะตัวปุ่ม
    ที่ว่างระหว่างปุ่มกับพื้นหลังของแผงก็เป็น element ที่นิ้วแตะค้างได้เหมือนกัน
    ของเดิมใส่ไว้แค่ที่ <button> ซึ่งพอมีพื้นผิวที่ไม่ใช่ปุ่ม (จอยลอย) ก็หลุดทันที */
-#sc-tools, #sc-tools *, #sc-touch, #sc-touch *, #sc-mute {
+#sc-tools, #sc-tools *, #sc-touch, #sc-touch *, #sc-mute, #sc-pause-btn {
   -webkit-touch-callout:none; -webkit-tap-highlight-color:transparent;
   user-select:none; -webkit-user-select:none; }
 /* ต่อเน็ตแล้วเครื่องมือซ้อมใช้ไม่ได้ (แก้ sim ข้างเดียว = หลุดกัน) ซ่อนไปเลยดีกว่าให้กดแล้วเงียบ */
@@ -542,6 +543,36 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
 /* ---------- หน้าเลือกตัวละคร ----------
    คุมความสูงเป็นหลัก ไม่ใช่ความกว้าง: มือถือแนวนอนสูงแค่ ~390 px ซึ่งเตี้ยกว่าจอคอมครึ่งหนึ่ง
    ทุกก้อนจึงวัดจาก dvh และการ์ดวางนอน (รูปซ้าย ข้อความขวา) เพื่อกินความสูงให้น้อยที่สุด */
+/* ── เมนูหยุดพัก ──
+   ยืมหน้าตาจากแผงเลือกตัวมาทั้งชุด (พื้นมืดโปร่ง + เบลอ + การ์ดกลางจอ)
+   ไม่ได้ออกแบบใหม่โดยตั้งใจ — สองแผงนี้เป็นของชนิดเดียวกัน (แผงที่ทับเกมอยู่)
+   ทำหน้าตาต่างกันแปลว่าคนเล่นต้องเรียนรู้สองแบบทั้งที่ความหมายเดียวกัน
+   z-index สูงกว่าแผงเลือกตัว เพราะกดหยุดตอนอยู่หน้าเลือกตัวก็ต้องเห็นเมนูนี้ */
+#sc-pause { position:absolute; inset:0; z-index:32; display:none; align-items:center; justify-content:center;
+  background:rgba(8,12,20,.86); backdrop-filter:blur(4px); font:14px var(--font); color:var(--ink);
+  touch-action:none; -webkit-tap-highlight-color:transparent; }
+#sc-pause.open { display:flex; }
+#sc-pause .wrap { width:min(88vw,340px); display:flex; flex-direction:column; gap:max(1.2dvh,7px);
+  padding:max(2dvh,14px) 18px; background:var(--card); border:1px solid var(--line);
+  border-radius:14px; box-shadow:0 20px 60px rgba(0,0,0,.5); text-align:center; }
+#sc-pause h2 { margin:0 0 2px; font-size:clamp(16px,3.4dvh,22px); font-weight:700; letter-spacing:.04em; }
+#sc-pause .pbtn { font:600 clamp(14px,2.8dvh,16px) var(--font); padding:12px 14px; border-radius:10px;
+  border:1px solid var(--line); background:rgba(233,227,214,.08); color:var(--ink); cursor:pointer; }
+#sc-pause .pbtn:hover { background:rgba(233,227,214,.16); }
+#sc-pause .pbtn:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
+#sc-pause .pbtn.primary { background:var(--crimson); border-color:var(--crimson); color:#fff; }
+#sc-pause .pbtn.primary:hover { background:var(--crimson-hi); border-color:var(--crimson-hi); }
+#sc-pause .pbtn.danger { color:var(--dim); }
+#sc-pause .pbtn.danger:hover { color:var(--ink); }
+#sc-pause .pbtn[hidden] { display:none !important; }
+#sc-pause .note { margin:2px 0 0; font-size:clamp(11px,2.2dvh,13px); color:var(--gold); min-height:1.2em; }
+/* ปุ่มหยุดพักอยู่ข้างปุ่มปิดเสียง ไม่อยู่ในแถวเครื่องมือ — แถวนั้นถูกซ่อนทั้งแถวตอนต่อเน็ต
+   แต่ "ออกจากห้อง" เป็นสิ่งที่ต้องทำได้ตอนต่อเน็ตมากกว่าตอนเล่นคนเดียวด้วยซ้ำ */
+#sc-pause-btn { position:absolute; z-index:31; width:38px; height:38px; border-radius:10px;
+  display:grid; place-items:center; font-size:15px; line-height:1; padding:0;
+  left:calc(54px + env(safe-area-inset-left,0px)); top:calc(96px + env(safe-area-inset-top,0px)); }
+body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
+
 #sc-select { position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
   background:rgba(8,12,20,.82); backdrop-filter:blur(3px); font:14px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6;
   touch-action:none; -webkit-tap-highlight-color:transparent; }
@@ -596,6 +627,7 @@ body.sc-picking #sc-touch, body.sc-picking #sc-tools, body.sc-picking #sc-tune {
 
 const OVERLAY_HTML = `
 <button id="sc-mute" title="เปิด/ปิดเสียง" aria-label="เปิด/ปิดเสียง">♫</button>
+<button id="sc-pause-btn" title="หยุดพัก" aria-label="หยุดพัก" data-sfx="click">&#9208;</button>
 <div id="sc-tools">
   <button data-tool="KeyB">เลือกตัว</button>
   <button data-tool="KeyZ">Zoom</button>
@@ -607,6 +639,15 @@ const OVERLAY_HTML = `
   <button data-tool="KeyT" data-dev="1">Tune</button>
   <button data-tool="KeyF" data-dev="1">Hz</button>
   <button data-tool="KeyG" class="dev-toggle" title="เครื่องมือนักพัฒนา">&#9881;</button>
+</div>
+<div id="sc-pause">
+  <div class="wrap">
+    <h2>หยุดพัก</h2>
+    <button class="pbtn primary" data-act="resume" data-sfx="start">เล่นต่อ</button>
+    <button class="pbtn" data-act="select">เลือกตัวละคร</button>
+    <button class="pbtn danger" data-act="quit" data-sfx="back">ออกไปหน้าแรก</button>
+    <p class="note"></p>
+  </div>
 </div>
 <div id="sc-select">
   <div class="wrap">
@@ -929,6 +970,62 @@ class ScrambleScene extends Phaser.Scene {
     if (this.phase !== 'select') this.openSelect();
   }
 
+  /** เมนูหยุดพัก — ทางออกเดียวที่ไม่ใช่การรีเฟรชหน้าเว็บ
+   *
+   *  **ต่อเน็ตแล้วหยุดเกมไม่ได้** lockstep เดินด้วยอินพุตของทั้งสองฝั่ง
+   *  ฝ่ายเดียวหยุดคือฝ่ายนั้นเลิกส่งอินพุต แล้วอีกฝั่งค้างรอไปเรื่อย ๆ โดยไม่รู้ว่าทำไม
+   *  จึงเปิดเมนูได้แต่เกมยังเดินอยู่ และบอกตรง ๆ บนเมนูว่าเกมยังเดิน
+   *  (เกมออนไลน์ทุกเกมทำแบบนี้ ไม่ใช่ข้อจำกัดของเราคนเดียว)
+   */
+  _wireMenu(root) {
+    this.menuEl = root.querySelector('#sc-pause');
+    root.querySelector('#sc-pause-btn')?.addEventListener('pointerdown', (e) => {
+      e.preventDefault(); this._toggleMenu();
+    });
+    this.menuEl?.addEventListener('pointerdown', (e) => {
+      const b = e.target.closest?.('[data-act]');
+      // แตะพื้นมืดนอกการ์ด = ปิดเมนู (เหมือนกดเล่นต่อ) เป็นท่าที่คนคาดหวังอยู่แล้ว
+      if (!b) { if (e.target === this.menuEl) { e.preventDefault(); this._closeMenu(); } return; }
+      e.preventDefault();
+      this._menuAct(b.dataset.act);
+    });
+  }
+
+  _toggleMenu() { this.menuEl?.classList.contains('open') ? this._closeMenu() : this._openMenu(); }
+
+  _openMenu() {
+    if (!this.menuEl) return;
+    const net = this.versus === 'net';
+    // หยุด sim เฉพาะตอนเล่นเครื่องเดียว — ดูเหตุผลที่หัวเมธอด _wireMenu
+    if (!net) this.paused = true;
+    this.menuEl.querySelector('[data-act="select"]').hidden = net;
+    this.menuEl.querySelector('[data-act="quit"]').textContent = net ? 'ออกจากห้อง' : 'ออกไปหน้าแรก';
+    this.menuEl.querySelector('.note').textContent = net ? 'ต่อเน็ตหยุดเกมไม่ได้ — เกมยังเดินอยู่' : '';
+    this.menuEl.classList.add('open');
+    document.getElementById('sc-pause-btn')?.classList.add('on');
+  }
+
+  _closeMenu() {
+    if (!this.menuEl) return;
+    this.menuEl.classList.remove('open');
+    document.getElementById('sc-pause-btn')?.classList.remove('on');
+    if (this.versus !== 'net') this.paused = false;
+  }
+
+  _menuAct(act) {
+    if (act === 'resume') { this._closeMenu(); return; }
+    if (act === 'select') { this._closeMenu(); this.openSelect(); return; }
+    if (act === 'quit') {
+      // ไม่มีใครลงทะเบียนทางออกไว้ = อย่าปิดเมนูทิ้ง
+      // ปิดแล้วผู้เล่นจะเห็นว่าเมนูหายแต่ยังอยู่ในเกม ซึ่งดูเหมือนปุ่มเสีย
+      if (!quitToLobby()) {
+        this.menuEl.querySelector('.note').textContent = 'ออกไม่ได้ตอนนี้ — ลองรีเฟรชหน้าเว็บ';
+        return;
+      }
+      this._closeMenu();
+    }
+  }
+
   /** กล้องสองตัว: กล้องโลกซูม/สั่น/เลื่อนได้ · กล้อง UI นิ่งเสมอ
    *
    *  ต้องแยกเพราะ HUD เป็นอ็อบเจกต์ในโลกเหมือนตัวละคร ใช้กล้องเดียวแล้วซูมทีหลอดเลือดโตตาม
@@ -1051,6 +1148,8 @@ class ScrambleScene extends Phaser.Scene {
     // และมีเสียงของท่าอยู่แล้ว ใส่เพิ่มจะกลายเป็นสองเสียงทุกครั้งที่กดตี
     wireUiSfx(root.querySelector('#sc-select'));
     wireUiSfx(root.querySelector('#sc-tools'));
+    wireUiSfx(root.querySelector('#sc-pause'));
+    this._wireMenu(root);
 
     root.querySelectorAll('#sc-tools button').forEach((b) => {
       b.addEventListener('pointerdown', (e) => { e.preventDefault(); this.tool(b.dataset.tool); });
@@ -1214,7 +1313,7 @@ class ScrambleScene extends Phaser.Scene {
   // ปุ่มที่กดได้ตอนต่อเน็ต — ต้องไม่แตะ sim เลย ไม่งั้นอีกฝั่งไม่รู้ด้วยแล้วภาพหลุดกันถาวร
   // KeyF (ตัววัดความเร็ว) อยู่ในนี้เพราะเป็นตัวเดียวที่บอกได้ว่าเกมวิ่งความเร็วถูกไหม
   // ซึ่งเป็นอาการที่มองด้วยตาแล้วเถียงกันได้ แต่ดูเลขแล้วจบ (เคยวิ่ง 2 เท่าโดยไม่มีใครพิสูจน์ได้)
-  static VIEW_ONLY = new Set(['KeyH', 'KeyZ', 'KeyF', 'KeyG']);
+  static VIEW_ONLY = new Set(['KeyH', 'KeyZ', 'KeyF', 'KeyG', 'KeyP', 'Escape']);
 
   tool(code) {
     const s = this.sim;
@@ -1227,7 +1326,7 @@ class ScrambleScene extends Phaser.Scene {
     if (code === 'Digit0') s.dummyMode = MODES[(MODES.indexOf(s.dummyMode) + 1) % MODES.length];
     if (code === 'Digit4') s.dummyTech = TECHS[(TECHS.indexOf(s.dummyTech) + 1) % TECHS.length];
     if (code === 'KeyR') { s.match.on ? s.startMatch() : s.resetPositions(); this.comboFade = 0; }
-    if (code === 'KeyP') this.paused = !this.paused;
+    if (code === 'KeyP' || code === 'Escape') this._toggleMenu();
     if (code === 'KeyN') { this.paused = true; this.stepOnce = true; }
     // สลับโหมดสองคน — ฝั่งขวาเปลี่ยนจากหุ่นซ้อมเป็นคนเล่นจริง (ลูกศร + numpad)
     if (code === 'KeyM') { this.versus = this.versus === 'local' ? 'solo' : 'local'; s.resetPositions(); this._syncMatchHud(); }

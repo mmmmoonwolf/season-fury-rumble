@@ -324,6 +324,7 @@
     import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
     import { hostRoom, joinRoom, cancelSession, getSession } from "./src/net/session.js";
     import { wireUiSfx, unlockUiSfx } from "./src/ui/uisfx.js";
+    import { onQuitToLobby } from "./src/ui/shell.js";
 
     /**
      * ผืนเกมกว้างตามสัดส่วนจอจริง กันแถบดำซ้ายขวาบนมือถือ (ดู config/viewport.config.js)
@@ -421,6 +422,22 @@
     // ปุ่มแรกที่กดจึงดังตั้งแต่ครั้งแรก ไม่ใช่เงียบแล้วค่อยดังตั้งแต่ปุ่มที่สอง
     window.addEventListener("pointerdown", unlockUiSfx, { once: true, capture: true });
     wireUiSfx(document.body);
+
+    // ── ทางกลับจากเกมมาหน้าแรก ──
+    // เดิมไม่มีเลย เข้าเกมแล้วออกไม่ได้นอกจากรีเฟรชหน้าเว็บ
+    // ต้องเป็นด้านกลับของ startGame() ให้ครบทุกบรรทัด ไม่ใช่แค่ซ่อน canvas
+    onQuitToLobby(() => {
+      // เลื่อนออกไปหนึ่งรอบก่อนทำลายเกม — ตรงนี้ถูกเรียกจากใน event handler ของฉากเอง
+      // ทำลายทันทีคือดึงพื้นออกจากใต้เท้าตัวเอง (Phaser ยังวนลูปอยู่ในสแต็กเดียวกัน)
+      setTimeout(() => {
+        cancelSession();                       // ต่อห้องอยู่ก็ตัดให้เรียบร้อย ไม่ปล่อยค้าง
+        window.__sfrGame?.destroy(true);       // true = เอา canvas ออกจากหน้าด้วย
+        window.__sfrGame = null;
+        $("lobby").style.display = "";
+        $("credits").style.display = "";
+        showPanel("menu");
+      }, 0);
+    });
 
     $("btn-solo").addEventListener("click", startGame);
 

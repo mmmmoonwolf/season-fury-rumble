@@ -36,6 +36,7 @@ const PRECACHE = [
   './src/config/viewport.config.js',
   './src/net/session.js',
   './src/ui/uisfx.js',
+  './src/ui/shell.js',
   './src/modes/scramble/core.js',
   './src/modes/scramble/netplay.js',
   './src/modes/scramble/ScrambleScene.js',

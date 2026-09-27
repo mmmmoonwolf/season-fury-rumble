@@ -168,6 +168,10 @@ ok(NET_DELAY === 3, `ระยะจองล่วงหน้ายังเ�
   ok(ScrambleScene.VIEW_ONLY.has('KeyH'), "ปุ่มโชว์กล่องชน (H) ยังกดได้เหมือนเดิม");
   ok(ScrambleScene.VIEW_ONLY.has('KeyZ'), "ปุ่มซูม (Z) ยังกดได้เหมือนเดิม");
   // ปุ่มที่แตะ sim ต้องกดไม่ได้ ไม่งั้นอีกฝั่งไม่รู้ด้วยแล้วภาพหลุดกันถาวร
-  for (const k of ['KeyR', 'KeyP', 'KeyN', 'KeyO', 'KeyC', 'KeyV', 'KeyM', 'Digit0', 'Digit4'])
+  for (const k of ['KeyR', 'KeyN', 'KeyO', 'KeyC', 'KeyV', 'KeyM', 'Digit0', 'Digit4'])
     ok(!ScrambleScene.VIEW_ONLY.has(k), `${k} ยังกดไม่ได้ตอนต่อเน็ต (แตะ sim)`);
+  // KeyP/Escape เปิดเมนูหยุดพัก ซึ่งต้องกดได้ตอนต่อเน็ต (ไว้ออกจากห้อง)
+  // การหยุด sim ถูกกั้นแยกข้างใน _openMenu ไม่ได้กั้นที่ระดับปุ่ม
+  ok(ScrambleScene.VIEW_ONLY.has('KeyP') && ScrambleScene.VIEW_ONLY.has('Escape'),
+    "ปุ่มเมนูหยุดพักกดได้ตอนต่อเน็ต");
 }

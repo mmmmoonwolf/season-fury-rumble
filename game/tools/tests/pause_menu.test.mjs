@@ -1,0 +1,140 @@
+// ทดสอบเมนูหยุดพักและทางออกกลับหน้าแรก
+// รัน: node tools/tests/pause_menu.test.mjs   (จากโฟลเดอร์ game)
+//
+// ก่อนหน้านี้ **เข้าเกมแล้วออกไม่ได้เลย** — B กลับได้แค่หน้าเลือกตัว P หยุดเกมแต่ไม่มีเมนูโผล่มา
+// ต้องรีเฟรชหน้าเว็บอย่างเดียว และบนมือถือไม่มีปุ่มหยุดเกมด้วยซ้ำ (P เป็นคีย์บอร์ดเท่านั้น)
+import "./phaser_stub.mjs";
+import fs from "fs";
+
+const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
+const root = new URL("../../", import.meta.url).pathname;
+const scene = fs.readFileSync(root + "src/modes/scramble/ScrambleScene.js", "utf8");
+const html = fs.readFileSync(root + "index.html", "utf8");
+
+globalThis.window = { matchMedia: () => ({ matches: false }) };
+globalThis.location = { search: "" };
+const btnCls = new Set();
+globalThis.document = {
+  createElement: () => ({ style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false } }),
+  getElementById: () => ({ classList: { add: (c) => btnCls.add(c), remove: (c) => btnCls.delete(c), toggle() {}, contains: (c) => btnCls.has(c) } }),
+};
+const G = new URL("../../src/modes/scramble", import.meta.url).href;
+const { ScrambleScene } = await import(G + "/ScrambleScene.js");
+const shell = await import(new URL("../../src/ui/shell.js", import.meta.url).href);
+
+/** เมนูปลอม — เก็บค่าที่โค้ดเขียนลงไปให้ตรวจได้ */
+function mkMenu() {
+  const cls = new Set();
+  const fields = { select: { hidden: null }, quit: { textContent: '' }, note: { textContent: '' } };
+  return {
+    cls, fields,
+    classList: { contains: (c) => cls.has(c), add: (c) => cls.add(c), remove: (c) => cls.delete(c) },
+    querySelector: (sel) => sel.includes('select') ? fields.select
+      : sel.includes('quit') ? fields.quit : fields.note,
+  };
+}
+function mkScene(versus = 'solo') {
+  const menu = mkMenu();
+  const sc = { versus, paused: false, menuEl: menu, opened: 0, syncTools() {}, openSelect() { this.opened++; } };
+  for (const m of ['_toggleMenu', '_openMenu', '_closeMenu', '_menuAct'])
+    sc[m] = ScrambleScene.prototype[m];
+  return sc;
+}
+
+// ══ เล่นเครื่องเดียว: เปิดเมนู = หยุดเกมจริง ════════════════════════════════════
+{
+  const sc = mkScene('solo');
+  sc._toggleMenu();
+  ok(sc.menuEl.cls.has('open'), "เปิดเมนูได้");
+  ok(sc.paused === true, "เล่นคนเดียวแล้วหยุดเกมจริง");
+  ok(sc.menuEl.fields.select.hidden === false, "มีปุ่มกลับไปเลือกตัวละคร");
+  ok(sc.menuEl.fields.quit.textContent === 'ออกไปหน้าแรก', `ปุ่มออกบอกว่าไปไหน (${sc.menuEl.fields.quit.textContent})`);
+  ok(sc.menuEl.fields.note.textContent === '', "ไม่มีคำเตือน");
+  sc._toggleMenu();
+  ok(!sc.menuEl.cls.has('open') && sc.paused === false, "กดอีกทีเล่นต่อ และเกมเดินต่อ");
+}
+
+// ══ ต่อเน็ต: เปิดเมนูได้ แต่ห้ามหยุดเกม ════════════════════════════════════════
+//
+// lockstep เดินด้วยอินพุตของทั้งสองฝั่ง ฝ่ายเดียวหยุดคือฝ่ายนั้นเลิกส่งอินพุต
+// แล้วอีกฝั่งค้างรอไปเรื่อย ๆ โดยไม่รู้ว่าทำไม — ซึ่งแยกไม่ออกจากเน็ตหลุด
+{
+  const sc = mkScene('net');
+  sc._openMenu();
+  ok(sc.menuEl.cls.has('open'), "ต่อเน็ตก็เปิดเมนูได้");
+  ok(sc.paused === false, "แต่ไม่หยุดเกม — ไม่งั้นอีกฝั่งค้างรอไปเรื่อย ๆ");
+  ok(sc.menuEl.fields.select.hidden === true, "ซ่อนปุ่มเลือกตัวละคร (เปลี่ยนข้างเดียวไม่ได้)");
+  ok(sc.menuEl.fields.quit.textContent === 'ออกจากห้อง', `ปุ่มออกเปลี่ยนคำตามโหมด (${sc.menuEl.fields.quit.textContent})`);
+  ok(/เกมยังเดินอยู่/.test(sc.menuEl.fields.note.textContent), "บอกตรง ๆ ว่าเกมยังเดิน ไม่ปล่อยให้เข้าใจผิด");
+  sc._closeMenu();
+  ok(sc.paused === false, "ปิดเมนูแล้วก็ยังไม่แตะ paused");
+}
+
+// ══ ปุ่มในเมนูทำงานถูก ═════════════════════════════════════════════════════════
+{
+  const sc = mkScene('solo');
+  sc._openMenu();
+  sc._menuAct('resume');
+  ok(!sc.menuEl.cls.has('open') && !sc.paused, "เล่นต่อ = ปิดเมนูและเดินต่อ");
+
+  sc._openMenu();
+  sc._menuAct('select');
+  ok(sc.opened === 1 && !sc.menuEl.cls.has('open'), "เลือกตัวละคร = ปิดเมนูแล้วเปิดหน้าเลือกตัว");
+}
+
+// ── ยังไม่มีใครลงทะเบียนทางออก: ต้องไม่ปิดเมนูทิ้ง ──
+//
+// ปิดแล้วผู้เล่นเห็นว่าเมนูหายแต่ยังอยู่ในเกม ซึ่งดูเหมือนปุ่มเสีย
+// แล้วเขาจะกดซ้ำอีกหลายครั้งโดยไม่มีอะไรเกิดขึ้น
+{
+  shell.resetShell();
+  const sc = mkScene('solo');
+  sc._openMenu();
+  sc._menuAct('quit');
+  ok(sc.menuEl.cls.has('open'), "ออกไม่ได้ก็ไม่ปิดเมนูทิ้ง");
+  ok(/รีเฟรช/.test(sc.menuEl.fields.note.textContent), `บอกทางออกสำรองให้ (${sc.menuEl.fields.note.textContent})`);
+}
+
+// ── ลงทะเบียนแล้วต้องเรียกจริง ──
+{
+  let called = 0;
+  shell.onQuitToLobby(() => { called++; });
+  const sc = mkScene('solo');
+  sc._openMenu();
+  sc._menuAct('quit');
+  ok(called === 1, "เรียกทางออกที่หน้าเว็บลงทะเบียนไว้");
+  ok(!sc.menuEl.cls.has('open'), "และปิดเมนู");
+  shell.resetShell();
+  ok(shell.quitToLobby() === false, "ล้างค่าแล้วบอกกลับว่าออกไม่ได้");
+}
+
+// ══ ทางออกต้องเป็นด้านกลับของ startGame ให้ครบทุกบรรทัด ════════════════════════
+//
+// startGame ซ่อน #lobby, ซ่อน #credits, สร้าง Phaser.Game
+// ขาดข้อไหนคือกลับมาแล้วหน้าตาไม่เหมือนเดิม เช่นเครดิตหายไปเฉย ๆ
+{
+  const start = html.slice(html.indexOf('function startGame'), html.indexOf('const $ = (id)'));
+  const quit = html.slice(html.indexOf('onQuitToLobby(() =>'), html.indexOf('$("btn-solo")'));
+  for (const id of ['lobby', 'credits'])
+    ok(start.includes(id) && quit.includes(id), `ทางออกคืนค่า #${id} ที่ startGame ซ่อนไว้`);
+  ok(/__sfrGame\?\.destroy\(true\)/.test(quit), "ทำลายเกมและเอา canvas ออกจากหน้า");
+  ok(/__sfrGame = null/.test(quit), "ล้างตัวอ้างอิงทิ้ง ไม่ให้กดเริ่มใหม่แล้วมีสองเกมซ้อน");
+  ok(/cancelSession\(\)/.test(quit), "ตัดการต่อห้องให้เรียบร้อย ไม่ปล่อยค้าง");
+  ok(/showPanel\("menu"\)/.test(quit), "กลับไปหน้าเมนูหลัก ไม่ใช่หน้าที่ค้างอยู่ก่อนเข้าเกม");
+  // เรียกจากใน event handler ของฉากเอง ทำลายทันทีคือดึงพื้นออกจากใต้เท้าตัวเอง
+  ok(/setTimeout\(\(\) => \{/.test(quit), "เลื่อนออกไปหนึ่งรอบก่อนทำลาย (Phaser ยังวนลูปอยู่ในสแต็กเดียวกัน)");
+}
+
+// ══ ต้องกดได้บนมือถือ ไม่ใช่มีแต่คีย์บอร์ด ═════════════════════════════════════
+//
+// เดิม P เป็นคีย์บอร์ดเท่านั้น และไม่มีปุ่มบนจอ = บนมือถือหยุดเกมไม่ได้เลย
+{
+  ok(/id="sc-pause-btn"/.test(scene), "มีปุ่มหยุดพักบนจอ");
+  // อยู่นอกแถวเครื่องมือโดยตั้งใจ — แถวนั้นถูกซ่อนทั้งแถวตอนต่อเน็ต
+  // แต่ "ออกจากห้อง" คือสิ่งที่ต้องทำได้ตอนต่อเน็ตมากกว่าตอนเล่นคนเดียวด้วยซ้ำ
+  const tools = scene.slice(scene.indexOf('<div id="sc-tools">'), scene.indexOf('<div id="sc-pause">'));
+  ok(!/sc-pause-btn/.test(tools), "ปุ่มหยุดพักไม่อยู่ในแถวเครื่องมือ (แถวนั้นหายตอนต่อเน็ต)");
+  ok(/body\.sc-net #sc-pause-btn/.test(scene), "และย้ายตำแหน่งให้ถูกตอนต่อเน็ต");
+  ok(/#sc-pause \{[^}]*z-index:32/.test(scene), "ทับแผงเลือกตัว (z-index 30) ได้");
+  ok(/e\.target === this\.menuEl/.test(scene), "แตะพื้นมืดนอกการ์ดก็ปิดเมนูได้");
+}
