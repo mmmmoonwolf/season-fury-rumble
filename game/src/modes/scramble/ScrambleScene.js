@@ -806,12 +806,21 @@ class ScrambleScene extends Phaser.Scene {
     this._startMusic();
     this.world = this.add.graphics();
     this.fx = this.add.graphics();
+    // ทุกชิ้นที่กล้อง UI เป็นคนวาด — ต้องเก็บไว้ตอนสร้าง ไม่ใช่ไปไล่หาทีหลังจากชนิดของอ็อบเจกต์
+    this.uiObjects = [];
     this.hud = this.add.graphics();
-    const W = STAGE.w;   // ข้อความ HUD เกาะขอบเวทีจริง ไม่ใช่เลข 1280 ตายตัว
+    this.uiObjects.push(this.hud);
+    // HUD เกาะขอบ "จอ" ไม่ใช่ขอบพื้นที่เล่น — กล้อง UI ไม่เลื่อนตามกล้องโลก
+    // เล่นคนเดียวสองค่านี้เท่ากันอยู่แล้ว · ต่อเน็ตเวทีแคบกว่าจอได้ HUD ต้องยังอยู่ขอบจอ
+    const W = this.viewW;
     // บนมือถือมีปุ่มเต็มจอ (DOM) ทับมุมขวาบนอยู่ หลบให้พ้นไม่งั้นชื่อฝั่งขวาอ่านไม่ออก
     // 56 px บนจอ แปลงเป็นพิกัดเวที = 56 * (720 / ความสูงจอจริง) ซึ่งประมาณ 100 บนมือถือแนวนอน
     const RPAD = 60 + (isTouch ? 100 : 0);
-    const T = (x, y, s, size, color, origin = 0) => this.add.text(x, y, s, { fontFamily: FONT, fontSize: size + 'px', color, fontStyle: '600' }).setOrigin(origin, 0);
+    const T = (x, y, s, size, color, origin = 0) => {
+      const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: size + 'px', color, fontStyle: '600' }).setOrigin(origin, 0);
+      this.uiObjects.push(t);
+      return t;
+    };
     this.tTitle = T(W / 2, 14, 'SCRAMBLE', 26, C.ink, 0.5).setFontStyle('700');
     this.tSub = T(W / 2, 44, 'Training', 14, C.dim, 0.5);
     this.tP1 = T(60, 14, 'NYX', 20, C.ink);
@@ -830,12 +839,39 @@ class ScrambleScene extends Phaser.Scene {
     this.tKo = T(W / 2, 250, '', 64, '#ffffff', 0.5).setFontStyle('700').setDepth(20);
     this.tKoSub = T(W / 2, 330, '', 20, C.ink, 0.5).setDepth(20);
     this.tPace = T(60, 96, '', 13, '#ffd166');   // ใต้ฉายา เหนือแถบข้อมูลท้ายจอที่จะทับ
+    this._splitCameras();
     this._initSprites();
     this._syncMatchHud();
     this.syncTools();
     // ต่อห้องอยู่แล้ว startNet เปิดหน้าเลือกตัวให้เอง (ต้องรออีกฝั่งด้วย) เล่นออฟไลน์ก็เปิดเลย
     if (this.phase !== 'select') this.openSelect();
   }
+
+  /** กล้องสองตัว: กล้องโลกซูม/สั่น/เลื่อนได้ · กล้อง UI นิ่งเสมอ
+   *
+   *  ต้องแยกเพราะ HUD เป็นอ็อบเจกต์ในโลกเหมือนตัวละคร ใช้กล้องเดียวแล้วซูมทีหลอดเลือดโตตาม
+   *  และตอนกล้องสั่น (มีอยู่แล้วทุกครั้งที่ตีหนัก) ตัวเลขบน HUD ก็สั่นไปด้วย
+   *
+   *  ทำตอนนี้ทั้งที่ยังไม่มีซูม เพราะ **การแยกคือส่วนที่แพง** ส่วนซูมเป็นแค่ตัวเลขที่ใส่ทีหลังได้
+   *  ของแถมที่ได้ทันทีคือกล้องสั่นแล้ว HUD นิ่ง ซึ่งอ่านง่ายกว่าเดิม
+   *
+   *  วิธีแบ่ง: เก็บลิสต์ของ UI ไว้ตอนสร้าง (uiObjects) ที่เหลือใน children คือของในโลกทั้งหมด
+   *  ไม่เดาจากชนิดหรือ depth เพราะทั้งสองชั้นมีทั้ง graphics ทั้ง text ปนกันอยู่
+   */
+  _splitCameras() {
+    if (this.uiCam) return;
+    this.uiCam = this.cameras.add(0, 0, this.viewW, STAGE.h).setName('ui');
+    this.cameras.main.ignore(this.uiObjects);
+    this.uiCam.ignore(this.children.list.filter((o) => !this.uiObjects.includes(o)));
+  }
+
+  /** ลงทะเบียนอ็อบเจกต์ที่สร้างหลัง _splitCameras ว่าเป็น "ของในโลก"
+   *
+   *  ของที่สร้างใหม่ถูกวาดด้วยกล้องทุกตัวเป็นค่าเริ่มต้น ลืมเรียกที่ไหน ชิ้นนั้นจะถูกวาดสองรอบ
+   *  รอบที่สองใช้พิกัดของกล้อง UI = เห็นเป็นภาพซ้อนเลื่อนไปอีกที่ ซึ่งดูเหมือนบั๊กกราฟิก
+   *  ไม่ใช่บั๊กกล้อง จุดที่ต้องเรียกมีสี่แห่ง: สไปรท์ตัวละคร · หุ่นแสดงแทน · พูลเอฟเฟค · ป้ายลอย
+   */
+  _world(obj) { this.uiCam?.ignore(obj); return obj; }
 
   _mountOverlay() {
     const style = document.createElement('style');
@@ -1526,7 +1562,7 @@ class ScrambleScene extends Phaser.Scene {
   emit(frame, x, y, o = {}) {
     if (!this.textures.exists('vfx')) return null;
     this._fxPool ??= []; this._fxLive ??= [];
-    const img = this._fxPool.pop() ?? this.add.image(0, 0, 'vfx', frame);
+    const img = this._fxPool.pop() ?? this._world(this.add.image(0, 0, 'vfx', frame));
     const life = o.life ?? 16;
     img.setTexture('vfx', frame).setVisible(true).setActive(true)
       .setPosition(x, y).setDepth(o.depth ?? 8)
@@ -1611,7 +1647,7 @@ class ScrambleScene extends Phaser.Scene {
     });
   }
   popup(x, y, s, color) {
-    const t = this.add.text(x, y, s, { fontFamily: FONT, fontSize: '20px', color, fontStyle: '700', stroke: '#0c111c', strokeThickness: 4 }).setOrigin(0.5);
+    const t = this._world(this.add.text(x, y, s, { fontFamily: FONT, fontSize: '20px', color, fontStyle: '700', stroke: '#0c111c', strokeThickness: 4 }).setOrigin(0.5));
     this.popups.push({ t, life: 40 });
   }
 
@@ -1668,8 +1704,8 @@ class ScrambleScene extends Phaser.Scene {
       // ความลึกไล่ตามลำดับในลิสต์ คนแรกอยู่หน้าสุด — เดิมเขียน 'p1' ตายตัว
       // ซึ่งพอมีสี่คนจะได้ความลึกเท่ากันหมดสามคน แล้วสลับหน้าหลังมั่วทุกเฟรม
       const idx = Math.max(0, this.sim.fighters.indexOf(f));
-      r = this.rigs[f.id] = { sprite: this.add.sprite(0, 0, CHAR_ART[f.char].atlasKey, 'idle_1.png')
-        .setVisible(false).setDepth(5 - idx * 0.1), char: f.char, lastState: null, lastJumps: null };
+      r = this.rigs[f.id] = { sprite: this._world(this.add.sprite(0, 0, CHAR_ART[f.char].atlasKey, 'idle_1.png')
+        .setVisible(false).setDepth(5 - idx * 0.1)), char: f.char, lastState: null, lastJumps: null };
     }
     if (r.char !== f.char) {   // สลับตัวละครกลางเกม: เปลี่ยนเท็กซ์เจอร์แล้วบังคับให้เริ่มท่าใหม่
       r.sprite.setTexture(CHAR_ART[f.char].atlasKey, 'idle_1.png');
@@ -1922,7 +1958,7 @@ class ScrambleScene extends Phaser.Scene {
     if (s.decoy) {
       const art = CHAR_ART[(s.fighterById(s.decoy.owner) ?? s.p1).char];
       if (art && !art.artPending) {
-        this.decoySprite ??= this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setDepth(3);
+        this.decoySprite ??= this._world(this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setDepth(3));
         const m = art.meta, sp = this.decoySprite;
         sp.setTexture(art.atlasKey, 'idle_1.png');
         sp.setVisible(true).setScale(SPRITE_H / m.standing).setFlipX(s.decoy.facing < 0);
@@ -2055,7 +2091,7 @@ class ScrambleScene extends Phaser.Scene {
     // หลอดจับกลุ่มตามทีม — 1v1 ได้หลอดเดียวต่อข้างเหมือนเดิมเป๊ะ
     // 2v2 ได้สองหลอดซ้อนกันต่อข้าง คนเล่นจึงอ่านออกทันทีว่าใครอยู่ทีมใคร
     // ซึ่งเป็นข้อมูลที่สำคัญที่สุดบนจอตอนเล่นเป็นทีม
-    const sideX = [60, STAGE.w - 440 - (isTouch ? 100 : 0)];
+    const sideX = [60, this.viewW - 440 - (isTouch ? 100 : 0)];
     s.teams().forEach((t, ti) => {
       const mates = s.fighters.filter((f) => f.team === t);
       const x = sideX[ti] ?? sideX[0];
@@ -2081,7 +2117,7 @@ class ScrambleScene extends Phaser.Scene {
       // ขีดหลอดยกเลื่อนลงตามจำนวนคนในทีม ไม่งั้นทับหลอดเลือดของคนที่สอง
       const drop = s.fighters.length > 2 ? 14 : 0;
       pips(60, 380, s.match.bars[0], false, drop);
-      pips(STAGE.w - 440 - (isTouch ? 100 : 0), 380, s.match.bars[1], true, drop);
+      pips(this.viewW - 440 - (isTouch ? 100 : 0), 380, s.match.bars[1], true, drop);
     }
     this._syncKoBanner(s);
     // หลอด ki ของผู้เล่น — เต็มเมื่อไหร่ถึงกดอัลติได้ เต็มแล้วเปลี่ยนเป็นสีแดงให้เห็นชัด
