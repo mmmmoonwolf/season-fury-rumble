@@ -283,9 +283,41 @@ const stat = (p) => { try { return fs.statSync(new URL(p, import.meta.url)).size
   const quiet = inSim.filter((t) => !wired.has(t) && t !== "comboEnd").sort();
   console.log(`NOTE เสียงที่ต่อแล้ว ${[...wired].sort().join(", ")}`);
   console.log(`NOTE ยังเงียบอยู่ ${quiet.length} อีเวนต์: ${quiet.join(", ")}`);
-  // ปุ่มเมนูเป็น DOM ไม่ใช่อีเวนต์ในซิม จึงไม่โผล่ในรายการบน ต้องเตือนแยก
-  const menuWired = /sfx|sound|Audio/i.test(read("../../index.html").match(/function startGame[\s\S]{0,800}/)?.[0] ?? "");
-  console.log(`NOTE ปุ่มเมนู (DOM ไม่ใช่อีเวนต์ในซิม) ${menuWired ? "ต่อแล้ว" : "ยังไม่ได้ต่อ"}`
-    + " — ไฟล์คัดไว้แล้วที่ art_reference/audio/sfx_ui_pending/ (ดู README ที่นั่น)");
-  ok(true, `รายการเสียงที่ยังขาด พิมพ์ไว้ข้างบนแล้ว (${quiet.length} อีเวนต์)`);
+  // ปุ่มเมนูเป็น DOM ไม่ใช่อีเวนต์ในซิม จึงไม่โผล่ในรายการบน ต้องเช็คแยก
+  // ตอนนี้ต่อแล้ว (src/ui/uisfx.js) ข้อนี้จึงเปลี่ยนจาก "เตือน" เป็น "กันหลุด"
+  const lobby = read("../../index.html");
+  ok(/wireUiSfx\(document\.body\)/.test(lobby), "ปุ่มล็อบบี้มีเสียงแล้ว");
+  ok(/wireUiSfx\(root\.querySelector\('#sc-select'\)\)/.test(scene), "แผงเลือกตัวมีเสียงแล้ว");
+  // สองอีเวนต์ที่เหลือรอต้นฉบับเสียงไฟ ซึ่งไม่มีในคลัง CC0 ที่โหลดมา
+  ok(quiet.every((t) => t === 'burn' || t === 'ignite'),
+    `ที่ยังเงียบเหลือเฉพาะเสียงไฟ (${quiet.join(', ') || 'ไม่เหลือแล้ว'})`)
+}
+
+// ══ ทุกไฟล์ที่ตารางเสียงอ้างถึงต้องมีจริงและถูกโหลด ═════════════════════════════
+//
+// ตารางชี้ไปที่ไฟล์ที่ไม่มี = เงียบโดยไม่มี error ให้เห็น ซึ่งแยกไม่ออกจาก "ยังไม่ได้ต่อ"
+// เป็นอาการเดียวกับที่ไล่มาทั้งไฟล์นี้ จึงต้องมีข้อที่จับมันตรง ๆ
+{
+  const fsx = await import("fs");
+  const dir = new URL("../../assets/audio/sfx/", import.meta.url).pathname;
+  const banks = [...scene.matchAll(/^\s{4}(\w+):\s*\{ files: \[([^\]]+)\]/gm)];
+  ok(banks.length >= 12, `อ่านตารางเสียงได้ ${banks.length} ชุด`);
+  const missing = [];
+  for (const [, bank, list] of banks)
+    for (const f of list.split(',').map((x) => x.trim().replace(/'/g, '')))
+      for (const ext of ['ogg', 'm4a'])
+        if (!fsx.existsSync(dir + f + '.' + ext)) missing.push(`${bank}:${f}.${ext}`);
+  ok(missing.length === 0, missing.length ? `ไฟล์หาย: ${missing.join(' ')}` : "ไฟล์ครบทุกชุด ทั้ง ogg และ m4a");
+}
+
+// ── เสียงที่ยืดมาจากต้นฉบับเดิมต้องยังอยู่ในบัญชีสัญญาอนุญาต ──
+//
+// ไฟล์ที่ทำขึ้นใหม่หลุดบัญชีได้ง่ายที่สุด เพราะมันไม่มีชื่อต้นฉบับตรง ๆ ให้เห็น
+{
+  const fsx = await import("fs");
+  const src = JSON.parse(fsx.readFileSync(new URL("../../assets/audio/sfx/SOURCES.json", import.meta.url), "utf8"));
+  const rows = src.files ?? src;
+  for (const made of ['blast_1', 'ko_1', 'wall_1', 'metal_1', 'thud_1', 'tick_1', 'whoosh_1'])
+    ok(made in rows, `${made} อยู่ในบัญชีสัญญาอนุญาต`);
+  ok(Object.values(rows).every((v) => (v.lic ?? v.license) === 'cc0'), "ทุกไฟล์ยังเป็น CC0 ใช้เชิงพาณิชย์ได้");
 }

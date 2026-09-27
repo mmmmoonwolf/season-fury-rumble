@@ -15,6 +15,18 @@
     }
   },
   "files": {
+    "blast_1": {
+      "source": "impactPunch_heavy_000.ogg",
+      "out": "blast_1",
+      "lic": "cc0",
+      "rate": 0.45
+    },
+    "blast_2": {
+      "source": "impactPunch_heavy_001.ogg",
+      "out": "blast_2",
+      "lic": "cc0",
+      "rate": 0.5
+    },
     "block_1": {
       "source": "impactMetal_light_000.ogg",
       "out": "block_1",
@@ -75,6 +87,12 @@
       "out": "hit_light_5",
       "lic": "cc0"
     },
+    "ko_1": {
+      "source": "impactPunch_heavy_002.ogg",
+      "out": "ko_1",
+      "lic": "cc0",
+      "rate": 0.62
+    },
     "land_hard_1": {
       "source": "impactPlank_medium_001.ogg",
       "out": "land_hard_1",
@@ -105,6 +123,18 @@
       "out": "land_soft_3",
       "lic": "cc0"
     },
+    "metal_1": {
+      "source": "impactMetal_light_000.ogg",
+      "out": "metal_1",
+      "lic": "cc0",
+      "rate": 0.8
+    },
+    "metal_2": {
+      "source": "impactMetal_light_001.ogg",
+      "out": "metal_2",
+      "lic": "cc0",
+      "rate": 0.85
+    },
     "swing_1": {
       "source": "cloth1.ogg",
       "out": "swing_1",
@@ -122,6 +152,24 @@
       "out": "swing_3",
       "lic": "cc0",
       "max_ms": 150
+    },
+    "thud_1": {
+      "source": "impactPlank_medium_001.ogg",
+      "out": "thud_1",
+      "lic": "cc0",
+      "rate": 1.25
+    },
+    "thud_2": {
+      "source": "impactPlank_medium_002.ogg",
+      "out": "thud_2",
+      "lic": "cc0",
+      "rate": 1.15
+    },
+    "tick_1": {
+      "source": "impactMetal_light_004.ogg",
+      "out": "tick_1",
+      "lic": "cc0",
+      "rate": 1.5
     },
     "ui_back": {
       "source": "back_002.ogg",
@@ -158,6 +206,12 @@
       "out": "ui_start",
       "lic": "cc0"
     },
+    "wall_1": {
+      "source": "impactPunch_heavy_003.ogg",
+      "out": "wall_1",
+      "lic": "cc0",
+      "rate": 0.72
+    },
     "whip_1": {
       "source": "knifeSlice2.ogg",
       "out": "whip_1",
@@ -169,6 +223,20 @@
       "out": "whip_2",
       "lic": "cc0",
       "max_ms": 180
+    },
+    "whoosh_1": {
+      "source": "cloth1.ogg",
+      "out": "whoosh_1",
+      "lic": "cc0",
+      "max_ms": 120,
+      "rate": 1.3
+    },
+    "whoosh_2": {
+      "source": "cloth2.ogg",
+      "out": "whoosh_2",
+      "lic": "cc0",
+      "max_ms": 120,
+      "rate": 1.2
     }
   }
 }

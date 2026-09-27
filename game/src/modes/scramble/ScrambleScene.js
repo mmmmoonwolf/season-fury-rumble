@@ -332,6 +332,21 @@ const SFX = {
     // ซึ่งกลับหัวกลับหางความหมาย: ตีโดนต้องดังกว่าตีพลาดเสมอ
     swing:    { files: ['swing_1', 'swing_2', 'swing_3'], vol: 0.42 },
     whip:     { files: ['whip_1', 'whip_2'], vol: 0.55 },
+    // ── เสียงที่ทำจากต้นฉบับเดิมด้วยการยืดคลื่นตอน build (ดู resample ใน build_sfx.py) ──
+    // เกมนี้ไม่มีต้นฉบับเสียงระเบิด/ชนกำแพง/โลหะหนักอยู่เลย
+    // เสียงที่ทำจากตระกูลเดียวกันเข้ากันได้ดีกว่าเสียงที่ยืมมาจากไลบรารีอื่นที่อัดคนละห้อง
+    blast:    { files: ['blast_1', 'blast_2'], vol: 0.95 },
+    ko:       { files: ['ko_1'], vol: 1.1 },
+    wall:     { files: ['wall_1'], vol: 0.8 },
+    metal:    { files: ['metal_1', 'metal_2'], vol: 0.6 },
+    thud:     { files: ['thud_1', 'thud_2'], vol: 0.7 },
+    // เสียงจิ๊ดเล็ก ๆ บอกว่า "ติดแล้ว" — หมายหัว ปักหมุด ได้ชั้น ตรารอยแส้
+    // ต้องเบามาก มันดังบ่อยและไม่ใช่จังหวะสำคัญ แค่ยืนยันว่าเกิดขึ้นจริง
+    tick:     { files: ['tick_1'], vol: 0.4 },
+    whoosh:   { files: ['whoosh_1', 'whoosh_2'], vol: 0.5 },
+    // ยืมเสียงยืนยันของเมนูมาใช้เป็นเสียงเริ่มยก — เป็นเสียง "โทน" เดียวที่มีในคลังทั้งหมด
+    // และความหมายตรงกันพอดี: บอกว่าเริ่มแล้ว ไม่ใช่เสียงกระทบ
+    roundStart: { files: ['ui_start'], vol: 0.9 },
   },
 };
 
@@ -1349,15 +1364,18 @@ class ScrambleScene extends Phaser.Scene {
         this.emit('ring', e.x, e.y, { scale: 0.22, life: 14, grow: 1.4, tint: 0x8fc0ff });
         this.emit('burst', e.x, e.y, { scale: 0.14, life: 9, grow: 0.7, tint: 0x5aa0ff });
       }
-      if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this._shake(90, 0.005); }
+      if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this._shake(90, 0.005); this._sfx('wall'); }
       if (e.type === 'tech') {
         this.popup(e.x, e.y, e.label, '#8ff0bd');
+        this._sfx('whoosh');
         this.emit('ring', e.x, e.y + 20, { scale: 0.16, life: 13, grow: 1.8, tint: 0x8ff0bd });
         this.emit('dustFlat', e.x, e.y + 6, { scale: 0.34, life: 18, grow: 0.9, alpha: 0.5,
           tint: 0xd8c9a8, blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
-      if (e.type === 'djump')
+      if (e.type === 'djump') {
+        this._sfx('whoosh', { vol: 0.8 });
         this.emit('ring', e.x, e.y - 20, { scale: 0.14, life: 12, grow: 1.6, tint: 0xcfe0ff, alpha: 0.8 });
+      }
       // ลงพื้น: ฝุ่นฟุ้งตรงเท้า — อันนี้ไม่มีในเกมมาก่อน ทั้งที่เป็นจังหวะที่เกิดบ่อยที่สุด
       if (e.type === 'land') {
         this._sfx(e.hard ? 'landHard' : 'landSoft');
@@ -1370,20 +1388,23 @@ class ScrambleScene extends Phaser.Scene {
       // อัลติ: ควันตอนหาย/โผล่ + จอกระพริบตอนเริ่มท่า
       if (e.type === 'vanish') {
         this._shake(60, 0.003);
+        this._sfx('whoosh');
         for (let i = 0; i < 4; i++)
           this.emit('smokeCurl', e.x + (i - 1.5) * 18, e.y - 40 - Math.random() * 50,
             { scale: 0.22, life: 22, grow: 0.9, vy: -1.4, alpha: 0.55, tint: 0x6b5f7a,
               blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
       if (e.type === 'appear') {
+        this._sfx('whoosh');
         this.emit('ring', e.x, e.y - 60, { scale: 0.20, life: 14, grow: 2.0, tint: 0xe05a57 });
         this.emit('star4', e.x, e.y - 60, { scale: 0.26, life: 10, grow: 0.9, tint: 0xffb3b0 });
       }
-      if (e.type === 'throw') this.spark(e.x, e.y, 7, 0xc9a227);
-      if (e.type === 'lash') this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97');
+      if (e.type === 'throw') { this.spark(e.x, e.y, 7, 0xc9a227); this._sfx('whoosh', { vol: 0.7 }); }
+      if (e.type === 'lash') { this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97'); this._sfx('tick'); }
       // ชั้น "โรงเต็ม" ของ Momus — ต้องเห็นตอนได้ ไม่งั้นคนเล่นไม่รู้ว่าอัลติจะใหญ่แค่ไหน
       if (e.type === 'house') {
         this.popup(e.x, e.y, 'House \u00d7' + e.n, '#ffd166');
+        this._sfx('tick', { vol: 1.4 });
         this.emit('ring', e.x, e.y + 40, { scale: 0.18, life: 14, grow: 1.5, tint: 0xffd166 });
       }
       if (e.type === 'burn') {
@@ -1393,23 +1414,26 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'firepool') {
         this._shake(70, 0.004);
+        this._sfx('blast', { vol: 0.6 });
         for (let i = 0; i < 7; i++)
           this.emit('flame', e.x + (i - 3) * 16, e.y, { scale: 0.18 + Math.random() * 0.14,
             life: 16 + Math.round(Math.random() * 14), grow: 0.6, vy: -1.6 - Math.random(), tint: 0xffb03a });
         this.emit('burst', e.x, e.y - 26, { scale: 0.42, life: 13, grow: 1.1, tint: 0xffd166 });
       }
-      if (e.type === 'decoy') this.popup(e.x, e.y - 120, 'Understudy', '#d8b24a');
+      if (e.type === 'decoy') { this.popup(e.x, e.y - 120, 'Understudy', '#d8b24a'); this._sfx('thud'); }
       if (e.type === 'decoyPop') {
         this._shake(70, 0.004);
+        this._sfx('blast', { vol: 0.55 });
         this.emit('burst', e.x, e.y - 60, { scale: 0.34, life: 12, grow: 1.2, tint: 0xffd166 });
         for (let i = 0; i < 4; i++)
           this.emit('smokeCurl', e.x + (i - 1.5) * 16, e.y - 50 - Math.random() * 30,
             { scale: 0.2, life: 24, grow: 1.0, vy: -0.8, alpha: 0.45, tint: 0x9aa3b5,
               blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
-      if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); }
+      if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); this._sfx('thud', { vol: 0.8 }); }
       if (e.type === 'blast') {
         this._shake(110, 0.007);
+        this._sfx('blast');
         this.emit('burst', e.x, e.y - 40, { scale: 0.55, life: 15, grow: 1.5, tint: 0xffd166 });
         this.emit('ring', e.x, e.y - 40, { scale: 0.30, life: 18, grow: 2.6, tint: 0xfff2d0 });
         // ควันต้องเป็น NORMAL ไม่ใช่ ADD — ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท
@@ -1418,14 +1442,27 @@ class ScrambleScene extends Phaser.Scene {
             { scale: 0.25 + Math.random() * 0.2, life: 30 + Math.round(Math.random() * 20), grow: 1.1,
               vy: -0.7, alpha: 0.5, tint: 0x9aa3b5, blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
-      if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this._shake(160, 0.006); }
-      if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); }
-      if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); }
+      if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this._shake(160, 0.006); this._sfx('blast', { vol: 1.1 }); }
+      if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); this._sfx('tick'); }
+      if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); this._sfx('tick', { vol: 1.2 }); }
       if (e.type === 'ult') {
         this.popup(e.x, e.y, 'Oni Veil', '#e05a57');
+        this._sfx('blast', { vol: 0.85 });
         this._shake(180, 0.008);
         this.cameras.main.flash(120, 190, 40, 40);
       }
+      // ── อีเวนต์ที่มีแต่เสียง ยังไม่มีภาพประกอบเป็นของตัวเอง ──
+      // แยกมาไว้ท้ายก้อนเพื่อให้เห็นชัดว่าอันไหน "ต่อเสียงแล้วแต่ยังไม่มีเอฟเฟค"
+      // เกราะของ Atlas กินหมัด — โลหะ ไม่ใช่เนื้อ ต้องฟังต่างจากโดนตีปกติ
+      if (e.type === 'armor') { this._sfx('metal', { vol: 1.2 }); this.spark(e.x, e.y, 12, 0xd8c9a8); }
+      if (e.type === 'caged') this._sfx('metal', { vol: 0.8 });
+      // สลับอาวุธของ Alecto — เสียงบอกว่าสลับแล้ว สำคัญเพราะปุ่มตีชุดเดิมออกคนละท่า
+      if (e.type === 'swap') this._sfx('metal', { vol: 0.7 });
+      if (e.type === 'dust') this._sfx('whoosh', { vol: 0.6 });
+      if (e.type === 'decoyGone') this._sfx('whoosh', { vol: 0.45 });
+      if (e.type === 'ko') this._sfx('ko');
+      if (e.type === 'matchEnd') this._sfx('ko', { vol: 1.2 });
+      if (e.type === 'roundStart') this._sfx('roundStart');
       if (e.type === 'comboEnd') { this.lastCombo = { hits: e.hits, dmg: e.dmg }; this.comboFade = e.hits > 1 ? 90 : 0; }
     }
   }

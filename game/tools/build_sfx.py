@@ -74,17 +74,31 @@ MAP = {
     "impactPunch_medium_002.ogg": {"out": "hit_light_3", "lic": "cc0"},
     "impactPunch_medium_003.ogg": {"out": "hit_light_4", "lic": "cc0"},
     "impactPunch_medium_004.ogg": {"out": "hit_light_5", "lic": "cc0"},
-    "impactPunch_heavy_000.ogg": {"out": "hit_heavy_1", "lic": "cc0"},
-    "impactPunch_heavy_001.ogg": {"out": "hit_heavy_2", "lic": "cc0"},
-    "impactPunch_heavy_002.ogg": {"out": "hit_heavy_3", "lic": "cc0"},
-    "impactPunch_heavy_003.ogg": {"out": "hit_heavy_4", "lic": "cc0"},
+    # ── เสียงที่ทำจากต้นฉบับเดิมด้วยการยืดคลื่น (ดู resample) ──
+    #
+    # เกมนี้ไม่มีต้นฉบับเสียงระเบิด/ล้ม/ชนกำแพงอยู่เลย และ**เสียงที่ทำจากตระกูลเดียวกัน
+    # เข้ากันได้ดีกว่า**เสียงที่ยืมมาจากไลบรารีอื่นที่อัดคนละห้องคนละไมค์
+    # หมัดหนักยืดครึ่งความเร็ว = ทุ้มลงหนึ่งอ็อกเทฟและยาวขึ้นเท่าตัว ซึ่งคือเสียงระเบิดพอดี
+    "impactPunch_heavy_000.ogg": [{"out": "hit_heavy_1", "lic": "cc0"},
+                                  {"out": "blast_1", "lic": "cc0", "rate": 0.45}],
+    "impactPunch_heavy_001.ogg": [{"out": "hit_heavy_2", "lic": "cc0"},
+                                  {"out": "blast_2", "lic": "cc0", "rate": 0.5}],
+    "impactPunch_heavy_002.ogg": [{"out": "hit_heavy_3", "lic": "cc0"},
+                                  {"out": "ko_1", "lic": "cc0", "rate": 0.62}],
+    "impactPunch_heavy_003.ogg": [{"out": "hit_heavy_4", "lic": "cc0"},
+                                  {"out": "wall_1", "lic": "cc0", "rate": 0.72}],
 
     # ── บล็อก ── โลหะเบา เบสแทบเป็นศูนย์ (0.5-1%)
     # ตั้งใจเลือกให้ไม่มีเบส เพราะบล็อกเกิดพร้อม ๆ กับหมัดที่เบสหนัก
     # ถ้าสองอย่างแย่งย่านเดียวกัน จะกลายเป็นก้อนเดียวแยกไม่ออกว่าโดนหรือกัน
-    "impactMetal_light_000.ogg": {"out": "block_1", "lic": "cc0"},
-    "impactMetal_light_001.ogg": {"out": "block_2", "lic": "cc0"},
-    "impactMetal_light_004.ogg": {"out": "block_3", "lic": "cc0"},
+    "impactMetal_light_000.ogg": [{"out": "block_1", "lic": "cc0"},
+                                  # เกราะของ Atlas / ติดกรงฝุ่น — โลหะเบาแต่ต่ำลงหน่อย
+                                  {"out": "metal_1", "lic": "cc0", "rate": 0.8}],
+    "impactMetal_light_001.ogg": [{"out": "block_2", "lic": "cc0"},
+                                  {"out": "metal_2", "lic": "cc0", "rate": 0.85}],
+    "impactMetal_light_004.ogg": [{"out": "block_3", "lic": "cc0"},
+                                  # เสียงเล็ก ๆ ของการหมายหัว/ปักหมุด — สูงและสั้น
+                                  {"out": "tick_1", "lic": "cc0", "rate": 1.5}],
 
     # ── ลงพื้นเบา ── เสียงเหยียบหญ้า ตรงกับพื้นเวทีที่เป็นหญ้ากับดิน
     "footstep_grass_000.ogg": {"out": "land_soft_1", "lic": "cc0"},
@@ -96,14 +110,20 @@ MAP = {
     # impactSoft_heavy พลังงาน 95% อยู่ต่ำกว่า 200 Hz ซึ่งลำโพงมือถือแทบไม่มีเลย
     # เกมนี้เล่นบนมือถือเป็นหลัก เสียงนั้นจะหายไปเฉย ๆ ทั้งที่ในหูฟังดังมาก
     # impactPlank มีเบส 44-50% แต่ที่เหลืออยู่ย่าน 800-1000 Hz ซึ่งมือถือส่งออกได้
-    "impactPlank_medium_001.ogg": {"out": "land_hard_1", "lic": "cc0"},
-    "impactPlank_medium_002.ogg": {"out": "land_hard_2", "lic": "cc0"},
+    "impactPlank_medium_001.ogg": [{"out": "land_hard_1", "lic": "cc0"},
+                                   # วางไหของ Momus — ไม้กระทบพื้น เบากว่าตอนคนลง
+                                   {"out": "thud_1", "lic": "cc0", "rate": 1.25}],
+    "impactPlank_medium_002.ogg": [{"out": "land_hard_2", "lic": "cc0"},
+                                   {"out": "thud_2", "lic": "cc0", "rate": 1.15}],
     "impactPlank_medium_003.ogg": {"out": "land_hard_3", "lic": "cc0"},
 
     # ── หวดลม ── เสียงผ้าสะบัด คือเสียงแขนเหวี่ยงผ่านอากาศจริง ๆ
     # ต้นฉบับยาว 260-420 ms ซึ่งยาวกว่าจังหวะแย็บ (ราว 200 ms) ต้องตัดเพดาน
-    "cloth1.ogg": {"out": "swing_1", "lic": "cc0", "max_ms": 150},
-    "cloth2.ogg": {"out": "swing_2", "lic": "cc0", "max_ms": 150},
+    "cloth1.ogg": [{"out": "swing_1", "lic": "cc0", "max_ms": 150},
+                   # กระโดดสองชั้น / ม้วนหลบ / โยนของ — ผ้าสะบัด สั้นและเบา
+                   {"out": "whoosh_1", "lic": "cc0", "max_ms": 120, "rate": 1.3}],
+    "cloth2.ogg": [{"out": "swing_2", "lic": "cc0", "max_ms": 150},
+                   {"out": "whoosh_2", "lic": "cc0", "max_ms": 120, "rate": 1.2}],
     "cloth3.ogg": {"out": "swing_3", "lic": "cc0", "max_ms": 150},
 
     # ── แส้ของ Alecto ── เสียงเฉือน ตัดเพดานให้เหลือแต่หัวเสียงกับหางสั้น ๆ
@@ -168,6 +188,22 @@ def trim(a):
     return a[s0:s1], s0 / SR, (len(a) - s1) / SR
 
 
+def resample(a, rate):
+    """ยืด/หดคลื่นตามอัตราที่ให้ — ช้าลง = ทุ้มลงและยาวขึ้น
+
+    ใช้ทำเสียงที่ไม่มีต้นฉบับจากเสียงที่มี: หมัดหนักยืดเป็นครึ่งความเร็ว = เสียงระเบิด
+    ไม่ใช่การขี้เกียจหาไฟล์ — เกมนี้ไม่มีต้นฉบับเสียงระเบิดอยู่เลย และ**เสียงที่ทำจาก
+    ตระกูลเดียวกันเข้ากันได้ดีกว่า**เสียงที่ยืมมาจากไลบรารีอื่นที่อัดคนละห้อง
+
+    ทำตอน build ไม่ใช่ตอนเล่น เพื่อให้ผ่านการปรับระดับเสียงชุดเดียวกัน
+    และให้ฟังไฟล์ที่ออกมาได้จริงตอนจูน ไม่ใช่ต้องเปิดเกมถึงจะรู้ว่าเป็นยังไง
+    """
+    if rate == 1:
+        return a
+    idx = np.arange(0, len(a) - 1, rate)
+    return np.interp(idx, np.arange(len(a)), a)
+
+
 def shape(a):
     """ปรับระดับ + เฟดออกตรงรอยตัด"""
     # เติมศูนย์ให้ครบ 100 ms ก่อนวัด ไม่งั้นเสียงที่สั้นกว่าหน้าต่างจะวัดได้ดังเกินจริง
@@ -187,7 +223,12 @@ def main():
     os.makedirs(TMP, exist_ok=True)
     os.makedirs(OUT, exist_ok=True)
     built = []
-    for src, info in sorted(MAP.items(), key=lambda kv: kv[1]["out"]):
+    # ต้นฉบับหนึ่งไฟล์ทำได้หลายเสียง (ดู resample) จึงรับได้ทั้งก้อนเดียวและลิสต์
+    jobs = []
+    for src, info in MAP.items():
+        for one in (info if isinstance(info, list) else [info]):
+            jobs.append((src, one))
+    for src, info in sorted(jobs, key=lambda kv: kv[1]["out"]):
         name = info["out"]
         if info["lic"] not in LICENSES:
             raise SystemExit(f"{src}: ไม่รู้จักสัญญาอนุญาต {info['lic']!r}")
@@ -198,6 +239,7 @@ def main():
         if peak < 1e-4:
             raise SystemExit(
                 f"{src}: ไฟล์เงียบทั้งอัน (พีค {peak:.6f}) — ElevenLabs เจนพลาด ต้องเจนใหม่")
+        raw = resample(raw, info.get("rate", 1))
         cut, head, tail = trim(raw)
         # เพดานความยาว: ไลบรารีเสียงทั่วไปไม่ได้ทำมาให้จังหวะเกมต่อสู้
         # เสียงหวดลมที่ยาวกว่าช่วงห่างระหว่างหมัด จะค้างทับหมัดถัดไปของตัวเอง
