@@ -574,7 +574,7 @@ const OVERLAY_CSS = `
 /* จอยลอย (.stick) เป็น position:absolute จึงหลุดออกจาก flex flow ไปแล้ว
    เหลือ .acts เป็นลูกตัวเดียว ถ้ายังใช้ space-between มันจะไปกองอยู่ซ้ายทับจอยพอดี
    (เจอจริงตอนเทสต์บนมือถือ: ปุ่มทั้งแถบไปอยู่ซ้าย วงแหวนจอยทับปุ่มสกิล) */
-#sc-touch { display:none; position:absolute; inset:auto 0 0 0; justify-content:flex-end; align-items:flex-end; padding:0 calc(14px + env(safe-area-inset-right,0px)) 14px calc(14px + env(safe-area-inset-left,0px)); pointer-events:none; z-index:15; }
+#sc-touch { display:none; position:absolute; inset:auto 0 0 0; justify-content:flex-end; align-items:flex-end; padding:0 calc(10px + env(safe-area-inset-right,0px)) 14px calc(14px + env(safe-area-inset-left,0px)); pointer-events:none; z-index:15; }
 /* ปุ่มล่างสุดต้องห่างขอบจอ ไม่งั้นแถบ gesture / ขีดโฮม ของมือถือกินการแตะไปก่อน = กดไม่ติด
    (เหตุผลเดียวกับ BOTTOM_SAFE ในโหมดปกติ ซึ่งพอร์ต SCRAMBLE เข้ามาทีหลังเลยยังไม่ได้ของนี้)
    โหมดปกติเว้นไว้ 94 หน่วยเกมจาก 720 = 13% ของความสูงจอ = พื้นล่างที่ห้ามต่ำกว่านี้
@@ -653,10 +653,10 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
    สีเอามาจากจานสีในเกมทั้งหมด ไม่ได้เลือกใหม่ลอย ๆ
 
    --u คือตัวคูณขนาดทั้งชุด มือถือจอเตี้ยย่อด้วยการเปลี่ยนเลขตัวเดียว ไม่ต้องไล่แก้ทุกปุ่ม */
-/* กล่อง .acts กินพื้นที่ 216x214 แต่ปุ่มหกเหลี่ยมกินจริงแค่ส่วนโค้ง เหลือมุมล่างซ้ายว่างเยอะ
+/* กล่อง .acts กินพื้นที่ 252x252 แต่ปุ่มกินจริงแค่ส่วนโค้ง เหลือมุมบนซ้ายของกล่องว่างเยอะ
    ปล่อยให้กล่องรับการแตะทั้งใบ = แตะที่ว่างแล้วโดนกลืนไปเฉย ๆ จึงให้เฉพาะตัวปุ่มรับ */
 #sc-touch .acts { --u:1; position:relative; pointer-events:none;
-  width:calc(216px * var(--u)); height:calc(214px * var(--u)); }
+  width:calc(252px * var(--u)); height:calc(252px * var(--u)); }
 /* ── ปุ่มกลมแบบ Kenney ──
    เคยเป็นหกเหลี่ยมโปร่งกลาง เปลี่ยนเป็นวงกลมทึบอ่อน ๆ ตามชุด Onscreen Controls ของ Kenney
    ซึ่งเป็นภาษาปุ่มที่เกมมือถือใช้กันจนคนเล่นรู้จักอยู่แล้ว — ไม่ต้องเรียนรู้ใหม่
@@ -677,23 +677,29 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
 /* กดแล้วต้องเห็นว่ากด — จอสัมผัสไม่มีแรงสะท้อนกลับ ปุ่มที่ไม่ตอบสนองอ่านว่า "กดไม่ติด" */
 #sc-touch .hex:active { background:rgba(242,237,227,.38); transform:scale(.93); }
 
-/* ชั้นใน — ท่าที่กดตลอดเวลา */
-#sc-touch .atk { width:calc(78px * var(--u)); height:calc(78px * var(--u));
-  right:calc(4px * var(--u)); bottom:calc(4px * var(--u)); color:#ff6b73; }
-#sc-touch .jmp { width:calc(68px * var(--u)); height:calc(68px * var(--u));
-  right:calc(4px * var(--u)); bottom:calc(88px * var(--u)); color:#7fe3a6; }
-#sc-touch .blk { width:calc(68px * var(--u)); height:calc(68px * var(--u));
-  right:calc(88px * var(--u)); bottom:calc(14px * var(--u)); color:#7fbaff; }
+/* ชั้นใน — ท่าที่กดตลอดเวลา
+   ปุ่มกระโดดชิดขวาสุด (right:0) ส่วนปุ่มตีถอยเข้ามา 8 — นิ้วโป้งจึงโยกขึ้น-ลงระหว่างสองปุ่มนี้
+   ได้โดยไม่ต้องขยับโคนนิ้ว แทนที่จะซ้อนกันตรง ๆ ซึ่งทำให้กดพลาดสลับกัน
+   ไม่ใช้ค่าติดลบเพื่อดันออกนอกกล่อง — ขยับทั้งชุดด้วยระยะขอบของ #sc-touch แทน
+   (ค่าติดลบทำให้ "ระยะห่างจากมุม" ที่เทสต์ใช้ตรวจลำดับชั้นอ่านไม่ออก) */
+#sc-touch .atk { width:calc(92px * var(--u)); height:calc(92px * var(--u));
+  right:calc(8px * var(--u)); bottom:calc(4px * var(--u)); color:#ff6b73; }
+#sc-touch .jmp { width:calc(72px * var(--u)); height:calc(72px * var(--u));
+  right:calc(0px * var(--u)); bottom:calc(104px * var(--u)); color:#7fe3a6; }
+#sc-touch .blk { width:calc(72px * var(--u)); height:calc(72px * var(--u));
+  right:calc(108px * var(--u)); bottom:calc(12px * var(--u)); color:#7fbaff; }
 
 /* ชั้นนอก — สกิลสามช่อง กดเป็นจังหวะ ไม่ใช่ทุกวินาที จึงเล็กกว่าและอยู่ไกลกว่า
    สล็อตที่ยังไม่มีสกิลขึ้นจางและกดไม่ได้ จะได้รู้ว่าเตรียมที่ไว้ให้แล้วแต่ยังว่าง */
 #sc-touch .skills { touch-action:none; }
-#sc-touch .sk { width:calc(52px * var(--u)); height:calc(52px * var(--u));
-  font:700 calc(19px * var(--u))/1 var(--font); color:#ffd166;
+/* 60 px ตอนเต็ม = 45.6 px ตอนย่อบนมือถือ ซึ่ง**เพิ่งพ้น**ระยะแตะขั้นต่ำ 44 px ของ iOS
+   ของเดิม 52 ได้แค่ 39.5 ซึ่งต่ำกว่าเกณฑ์ และเป็นสิ่งที่ผู้เล่นบ่นว่ากดยาก */
+#sc-touch .sk { width:calc(60px * var(--u)); height:calc(60px * var(--u));
+  font:700 calc(22px * var(--u))/1 var(--font); color:#ffd166;
   text-shadow:0 1px 3px rgba(0,0,0,.9); }
-#sc-touch .s1 { right:calc(160px * var(--u)); bottom:calc(84px * var(--u)); }
-#sc-touch .s2 { right:calc(100px * var(--u)); bottom:calc(134px * var(--u)); }
-#sc-touch .s3 { right:calc(32px * var(--u)); bottom:calc(160px * var(--u)); }
+#sc-touch .s1 { right:calc(192px * var(--u)); bottom:calc(96px * var(--u)); }
+#sc-touch .s2 { right:calc(118px * var(--u)); bottom:calc(158px * var(--u)); }
+#sc-touch .s3 { right:calc(38px * var(--u)); bottom:calc(192px * var(--u)); }
 #sc-touch .skills button[disabled] { opacity:.32; }
 /* ฝั่งซ้ายเตี้ยกว่าฝั่งขวาเท่าตัว จึงยกได้สูงกว่า — ผู้เล่นบ่นเรื่องนิ้วซ้ายบังก่อนเป็นอันดับแรก */
 

@@ -283,3 +283,62 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
   ok(/querySelectorAll\('#sc-touch \.skills button'\)/.test(scr),
     "ตัวหรี่ปุ่มสกิลยังหาปุ่มเจอ (.skills ยังเป็นตัวครอบอยู่)");
 }
+
+// ══ ปุ่มฝั่งขวาต้องไม่ทับกันเอง และไม่ล้นกล่อง ══════════════════════════════════
+//
+// ส่วนโค้งของนิ้วโป้งวางด้วยมือ ทุกครั้งที่ใครขยับขนาดปุ่มใบเดียว ใบข้าง ๆ มีสิทธิ์โดนทับทันที
+// ปุ่มที่ทับกันไม่ได้ดูพัง — มันดูปกติ แต่กดตรงที่ทับแล้ว **ได้ท่าผิด** ซึ่งโทษตัวเองไปก่อนเสมอ
+// (ใบที่อยู่หลังใน DOM รับการแตะ ไม่ใช่ใบที่ตาเห็นว่าอยู่บน)
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const rule = (sel) => scr.match(
+    new RegExp('^' + sel.replace(/[.#]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'm'))?.[1] ?? "";
+  const px = (r, k) => Number(r.match(new RegExp(k + ':calc\\((\\d+)px'))?.[1] ?? NaN);
+
+  const KEYS = ['.atk', '.jmp', '.blk', '.s1', '.s2', '.s3'];
+  const size = (b) => {
+    const own = rule('#sc-touch ' + b);
+    // สกิลสามใบเอาขนาดจากกฎรวม .sk ไม่ได้เขียนซ้ำในกฎของตัวเอง
+    const w = px(own, 'width') || px(rule('#sc-touch .sk'), 'width');
+    return w;
+  };
+  /** กรอบของปุ่ม วัดจากมุมขวาล่างของกล่อง (x โตไปทางซ้าย · y โตขึ้นบน) */
+  const box = (b) => {
+    const r = rule('#sc-touch ' + b), w = size(b);
+    const x = px(r, 'right'), y = px(r, 'bottom');
+    return { b, x0: x, x1: x + w, y0: y, y1: y + w, w };
+  };
+  const boxes = KEYS.map(box);
+  ok(boxes.every((v) => Number.isFinite(v.x0) && Number.isFinite(v.y0) && v.w > 0),
+    `อ่านกรอบของทุกปุ่มได้ (${boxes.map((v) => `${v.b}:${v.w}`).join(' ')})`);
+
+  const hits = [];
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const a = boxes[i], c = boxes[j];
+    if (a.x0 < c.x1 && c.x0 < a.x1 && a.y0 < c.y1 && c.y0 < a.y1) hits.push(`${a.b}+${c.b}`);
+  }
+  ok(hits.length === 0, hits.length ? `ปุ่มทับกัน: ${hits.join(' · ')}` : "ไม่มีปุ่มคู่ไหนทับกันเลย");
+
+  // ช่องว่างระหว่างใบที่ใกล้ที่สุดต้องพอให้นิ้วพลาดแล้วไม่ไปโดนใบข้าง ๆ
+  let gap = Infinity;
+  for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+    const a = boxes[i], c = boxes[j];
+    const dx = Math.max(a.x0 - c.x1, c.x0 - a.x1, 0);
+    const dy = Math.max(a.y0 - c.y1, c.y0 - a.y1, 0);
+    if (dx > 0 || dy > 0) gap = Math.min(gap, Math.max(dx, dy));
+  }
+  ok(gap >= 6, `ใบที่ใกล้กันที่สุดห่างกัน ${gap} px (ต้อง >= 6)`);
+
+  // ทุกใบต้องอยู่ในกล่อง .acts — ล้นแล้วกล่องไม่รู้ตัว แต่ปุ่มไปโผล่นอกพื้นที่ที่จองไว้
+  const acts = rule('#sc-touch .acts');
+  const bw = px(acts, 'width'), bh = px(acts, 'height');
+  const over = boxes.filter((v) => v.x1 > bw || v.y1 > bh);
+  ok(over.length === 0, over.length
+    ? `ปุ่มล้นกล่อง ${bw}x${bh}: ${over.map((v) => `${v.b}(${v.x1},${v.y1})`).join(' ')}`
+    : `ทุกปุ่มอยู่ในกล่อง ${bw}x${bh}`);
+
+  // ย่อบนมือถือแล้วปุ่มสกิลต้องยังพ้นระยะแตะขั้นต่ำของ iOS
+  const u = Number(scr.match(/@media \(max-height: 500px\) \{[\s\S]*?--u:(\.?\d+)/)?.[1] ?? 0);
+  const skMin = size('.s1') * u;
+  ok(skMin >= 44, `ปุ่มสกิลตอนย่อแล้วได้ ${skMin.toFixed(1)} px (ต้อง >= 44 ตามเกณฑ์ iOS)`);
+}
