@@ -311,6 +311,49 @@ const COMING_SOON = [
  *  จางลงจึงได้ทั้งสองอย่าง: เห็นตัวเองแน่นอน และยังอ่าน HUD ไม่ถนัดเหมือนที่ตั้งใจไว้ */
 const HUD_BAND = 140, HUD_DIM = 0.26, HUD_FADE = 0.15;
 
+/** ลูกศรเล็ก ๆ เหนือหัว — บอกว่า "ตัวไหนคือใคร" โดยไม่ต้องอ่าน HUD
+ *
+ *  ปัญหาที่แก้: เล่น 2v2 แล้วสี่ตัวเคลื่อนไหวพร้อมกัน **หาตัวเองไม่เจอ**
+ *  ซึ่งไม่ใช่เรื่องที่ HUD ช่วยได้ เพราะตอนนั้นสายตาอยู่กลางจอ ไม่ได้อยู่ที่มุมจอ
+ *
+ *  สีตาม **ทีม** ไม่ใช่ตามคน — ข้อมูลที่ต้องการตอนวุ่นคือ "ฝั่งไหนพวกเรา" ไม่ใช่ "คนนี้ชื่ออะไร"
+ *  ตัวที่เครื่องนี้คุมอยู่ได้ลูกศร **ทึบและใหญ่กว่า** ที่เหลือเป็นเส้นบาง ๆ
+ *  1v1 จึงเหลือสามเหลี่ยมจิ๋วสองอันแทบไม่รบกวน · 2v2 ได้สี่อันซึ่งคือข้อมูลที่จำเป็นพอดี
+ *
+ *  วาดในพิกัดโลก ลูกศรจึงโตตามซูมกล้องเหมือนตัวละคร ไม่ได้ลอยอยู่คนละระนาบ
+ */
+/** แผงผู้เล่นมุมจอ — รูปวงกลม + วงเลือดรอบรูป แทนหลอดยาวแบบเดิม
+ *
+ *  ทำไมเปลี่ยน: หลอดยาว 380 px ต่อคน พอเป็น 2v2 กลายเป็นสี่หลอดซ้อนกันกินความกว้างครึ่งจอบน
+ *  และยังอ่านไม่ออกอยู่ดีว่าหลอดไหนของใคร เพราะไม่มีรูปกำกับ มีแต่ชื่อตัวหนังสือ
+ *
+ *  รูปกลมอ่านได้ในเสี้ยววินาทีเพราะมันคือ**หน้าตัวละครที่กำลังวิ่งอยู่บนจอ** ไม่ใช่ชื่อที่ต้องอ่าน
+ *  และกินที่เท่าเดิมไม่ว่าจะสองคนหรือสี่คน — วงเลือดขยายรอบรูปแทนที่จะยืดออกข้าง
+ *
+ *  ของเราได้วงทองรอบนอกเพิ่ม + วงพลัง (ki) อีกชั้นด้านใน — คนอื่นไม่มี เพราะเราใช้ ki ของเราคนเดียว
+ */
+const POD = {
+  r: 27,           // รัศมีรูป
+  ring: 5,         // ความหนาวงเลือด
+  gap: 6,          // ระยะจากขอบรูปถึงวงเลือด
+  step: 78,        // ระยะห่างระหว่างคนในทีมเดียวกัน
+  top: 52,         // จุดกลางวงของแถวบน
+  side: 66,        // ห่างจากขอบจอเท่าไหร่
+  mine: 1.16,      // ของเราใหญ่กว่ากี่เท่า
+  sweep: 250,      // วงเลือดกวาดกี่องศา (เว้นด้านล่างไว้ให้ขีดยก)
+  pip: 4.5,        // รัศมีจุดบอกยกที่เหลือ
+  full: 0xe9e3d6, low: 0xe05a57, dim: 0x0c111c,
+  gold: 0xffd166, ki: 0x5aa0ff, kiFull: 0xe05a57,
+};
+
+const TAG = {
+  rise: 30,        // สูงจากหัวเท่าไหร่ (หัวอยู่ที่ f.y - PHYS.standH)
+  w: 15, h: 11,    // ขนาดสามเหลี่ยมของตัวที่เราคุม
+  small: 0.72,     // ตัวอื่นเล็กลงเท่าไหร่
+  bob: 3,          // ลอยขึ้นลงกี่พิกเซล — ขยับนิดเดียวก็จับตาได้ในจอที่มีของเคลื่อนไหวเต็มไปหมด
+  team: [0xffd166, 0x5aa0ff],
+};
+
 /** จบแมตช์แล้วค้างป้ายผู้ชนะไว้กี่เฟรมของ **ซิม** ก่อนพากลับไปหน้าเลือกตัว
  *
  *  ต้องนับเป็นเฟรมของซิม ไม่ใช่มิลลิวินาที — เฟรมของซิมคือเส้นเวลาเดียวที่สองเครื่องใช้ร่วมกัน
@@ -515,10 +558,11 @@ const OVERLAY_CSS = `
    วางชิดซ้ายบนใต้แถบเลือด — มุมขวาบนมีปุ่มเต็มจอของเกมอยู่แล้ว */
 /* z-index สูงกว่าแผงเลือกตัว (30) โดยตั้งใจ — เพลงเริ่มเล่นตั้งแต่อยู่หน้าเลือกตัว
    ถ้าปุ่มอยู่ใต้แผง คนเล่นจะปิดเสียงไม่ได้จนกว่าจะเลือกตัวเสร็จ ซึ่งสายไปแล้ว */
+/* ต่ำกว่าแผงผู้เล่นทั้งก้อน (วง + จุดบอกยก + ชื่อ) ไม่ใช่แค่พ้นหลอดเลือด
+   ตอนเป็นหลอดยาวปุ่มอยู่ใต้หลอดพอดี แต่แผงกลมสูงกว่านั้นราว 60 px — ดู POD */
 #sc-mute { position:absolute; z-index:31; left:calc(10px + env(safe-area-inset-left,0px));
-  top:calc(96px + env(safe-area-inset-top,0px)); width:38px; height:38px; border-radius:10px;
+  top:calc(152px + env(safe-area-inset-top,0px)); width:38px; height:38px; border-radius:10px;
   display:grid; place-items:center; font-size:17px; line-height:1; padding:0; }
-body.sc-net #sc-mute { top:calc(60px + env(safe-area-inset-top,0px)); }
 #sc-tune { display:none; position:absolute; right:calc(12px + env(safe-area-inset-right,0px)); top:calc(100px + env(safe-area-inset-top,0px)); width:250px; max-height:60%; overflow-y:auto; background:rgba(12,17,28,.9); border:1px solid rgba(233,227,214,.25); border-radius:12px; padding:10px 12px; font:13px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; z-index:16; }
 #sc-tune.open { display:block; }
 #sc-tune label { display:flex; justify-content:space-between; margin-top:8px; }
@@ -685,7 +729,7 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
    แต่ "ออกจากห้อง" เป็นสิ่งที่ต้องทำได้ตอนต่อเน็ตมากกว่าตอนเล่นคนเดียวด้วยซ้ำ */
 #sc-pause-btn { position:absolute; z-index:31; width:38px; height:38px; border-radius:10px;
   display:grid; place-items:center; font-size:15px; line-height:1; padding:0;
-  left:calc(54px + env(safe-area-inset-left,0px)); top:calc(96px + env(safe-area-inset-top,0px)); }
+  left:calc(54px + env(safe-area-inset-left,0px)); top:calc(152px + env(safe-area-inset-top,0px)); }
 body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
 
 #sc-select { position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
@@ -1103,7 +1147,9 @@ class ScrambleScene extends Phaser.Scene {
     this.sim = new Game();
     this._syncSkillSlots();   // ต้องหลัง new Game() — อ่านสกิลจากตัวละครของผู้เล่น
     if (online) {
-      const recv = this.startNet({ isHost: ses.mode === 'host', send: sendNetPacket });
+      // ที่นั่งกับจำนวนคนมาจากชั้นท่อ ไม่ใช่เดาจาก isHost — ห้องสี่คนขึ้นกับว่าใครต่อเข้ามาก่อน
+      const recv = this.startNet({
+        isHost: ses.mode === 'host', seat: ses.seat, seats: ses.seats, send: sendNetPacket });
       ses.onData = recv;
       ses.onClose = () => this.endNet('อีกฝั่งหลุดการเชื่อมต่อ');
       ses.onError = () => this.endNet('การเชื่อมต่อมีปัญหา');
@@ -1114,6 +1160,8 @@ class ScrambleScene extends Phaser.Scene {
     // ซึ่งเดาได้ง่ายกว่าการที่กดเฟืองทีเดียวแล้วจอเปลี่ยนไปหลายอย่างพร้อมกัน
     this.dev = this._devSaved();
     this.showBoxes = false;
+    // ลูกศรเหนือหัวเปิดไว้เสมอ — ตัวแปรมีไว้ให้ปิดได้ตอนถ่ายภาพ/ดีบั๊ก ไม่ใช่ตัวเลือกของคนเล่น
+    this.showTags = true;
     document.body.classList.toggle('sc-dev', this.dev);
     this.sparks = []; this.popups = []; this.comboFade = 0;
     this._buildStage();
@@ -1139,12 +1187,17 @@ class ScrambleScene extends Phaser.Scene {
     };
     this.tTitle = T(W / 2, 14, '', 26, C.ink, 0.5).setFontStyle('700');
     this.tSub = T(W / 2, 44, 'Training', 14, C.dim, 0.5);
-    this.tP1 = T(60, 14, 'NYX', 20, C.ink);
-    this.tP2 = T(W - RPAD, 14, 'Training dummy', 20, C.ink, 1);
-    this.tMode = T(W - RPAD, 66, '', 13, C.dim, 1);
-    // ฉายาอยู่ใต้หลอดเลือดและหลอดพลัง (หลอดจบที่ y=74) ไม่ใช่ใต้ชื่อ — ตรงนั้นหลอดเลือดกินที่อยู่
-    this.tP1Sub = T(60, 78, '', 11, C.dim);
-    this.tP2Sub = T(W - RPAD, 78, '', 11, C.dim, 1);
+    // ชื่ออยู่ **ใต้รูปกลม** ตัวเล็ก ไม่ใช่พาดหัวตัวใหญ่ — รูปบอกว่าใครอยู่แล้ว
+    // ชื่อมีไว้ตอนสองฝั่งเลือกตัวเดียวกัน ซึ่งเป็นกรณีเดียวที่รูปแยกไม่ออก
+    // จัดกลางเหนือ/ใต้รูปของคนแรกในทีม ตำแหน่งจริงตั้งใน _syncMatchHud()
+    // ชื่ออยู่ตรงที่แถบมืดรอง HUD จางไปแล้วราวครึ่งหนึ่ง (y≈116) — สีจาง ๆ จะกลืนกับฟ้ากลางวัน
+    // ใส่ขอบเข้มรอบตัวอักษรแทนการเพิ่มความทึบของแถบ ซึ่งจะไปบังพื้นที่เล่นเพิ่มโดยไม่จำเป็น
+    this.tP1 = T(60, 100, 'NYX', 12, C.ink, 0.5).setStroke('#0c111c', 3);
+    this.tP2 = T(W - RPAD, 100, 'Training dummy', 12, C.ink, 0.5).setStroke('#0c111c', 3);
+    this.tMode = T(W - RPAD, 136, '', 12, C.dim, 1);   // ใต้ชื่อ ไม่ทับกัน (เฉพาะโหมดซ้อม)
+    // ฉายา ("The Fury of Silence") ย้ายไปอยู่แต่บนหน้าเลือกตัว — บนจอสู้มันคือตัวหนังสือที่ไม่มีใครอ่าน
+    this.tP1Sub = T(60, 118, '', 11, C.dim);
+    this.tP2Sub = T(W - RPAD, 118, '', 11, C.dim, 1);
     this.tCombo = T(1210, 150, '', 44, '#ffffff', 1).setFontStyle('700');
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
@@ -1313,12 +1366,185 @@ class ScrambleScene extends Phaser.Scene {
    *  (ดู ALONE_EXTRA) · ซ้อมกับหุ่นและต่อเน็ตต่างก็มีคนจริงคนเดียวต่อเครื่อง */
   sharedKeyboard() { return this.versus === 'local' || this.versus === 'team'; }
 
+  /** ช่องไหนใน fighters คือตัวที่ "เรา" คุม — แหล่งความจริงเดียว
+   *  เดิมเขียน `isHost ? 0 : 1` กระจายอยู่หลายที่ ซึ่งพอมีสี่ที่นั่งจะผิดทุกจุดพร้อมกัน */
+  mySeat() { return this.versus === 'net' ? (this.netSeat ?? (this.isHost ? 0 : 1)) : 0; }
+
   /** บรรทัดบอกปุ่มท้ายจอ — เปลี่ยนตามว่าตอนนี้ฝั่ง 1 ใช้ numpad ได้หรือเปล่า
    *  บอกปุ่มผิดแย่กว่าไม่บอก เพราะคนเล่นจะลองแล้วคิดว่าเกมเสีย ไม่ใช่คิดว่าตัวเองกดผิดปุ่ม */
   helpLine() {
     return this.sharedKeyboard()
       ? 'P1  A D / W S / Space / J / L / 1 2 3      P2  ← → / ↑ ↓ / Num0 / Num1 / Num3 / Num4 5 6'
       : 'Move A D   Aim W S   Jump Space   Attack Num1   Block Num8   Skills Num2 Num3 Num5';
+  }
+
+  /** ตำแหน่งกลางวงของทุกคน เรียงตามลำดับใน fighters — ทีมแรกชิดซ้าย ทีมสองชิดขวา
+   *
+   *  คิดใหม่ทุกครั้งที่เรียก ไม่ได้เก็บไว้ เพราะจำนวนคนเปลี่ยนได้กลางเกม (สลับโหมด 1v1 <-> 2v2)
+   *  และความกว้างจอก็เปลี่ยนได้ (หมุนจอ) การเก็บค่าไว้แปลว่าต้องจำว่าต้องล้างเมื่อไหร่บ้าง
+   */
+  _podSpots(s) {
+    const ts = s.teams();
+    const rpad = POD.side + (isTouch ? 100 : 0);
+    return s.fighters.map((f) => {
+      const ti = Math.max(0, ts.indexOf(f.team));
+      const mates = s.fighters.filter((o) => o.team === f.team);
+      const mi = mates.indexOf(f);
+      const x = ti === 0 ? POD.side + mi * POD.step : this.viewW - rpad - mi * POD.step;
+      return { x, y: POD.top, f, ti };
+    });
+  }
+
+  /** รูปวงกลมของแต่ละคน — สร้างครั้งเดียวต่อช่อง แล้วเปลี่ยนเท็กซ์เจอร์เมื่อสลับตัวละคร
+   *
+   *  ตัดเป็นวงกลมด้วย geometry mask ไม่ใช่ setCrop — setCrop ตัดได้แค่สี่เหลี่ยม
+   *  หน้ากากไม่ได้อยู่ในลิสต์การวาด (`add: false`) มันจึงไม่ถูกกล้องไหนวาดเป็นภาพ
+   *  แต่ยังใช้เป็นแม่พิมพ์ได้ — ถ้าเผลอใส่เข้าลิสต์ จะเห็นวงกลมทึบทับรูปพอดี
+   */
+  _syncPods(s) {
+    this.pods ??= [];
+    const spots = this._podSpots(s);
+    const mine = this.mySeat();
+    // ช่องเกินจากรอบก่อน (สลับ 2v2 -> 1v1) ต้องเก็บกวาด ไม่ใช่ปล่อยค้างเป็นรูปลอย
+    while (this.pods.length > spots.length) this.pods.pop()?.img?.destroy();
+
+    spots.forEach((sp, i) => {
+      const art = CHAR_ART[sp.f.char];
+      const k = i === mine ? POD.mine : 1;
+      const r = POD.r * k;
+      let pod = this.pods[i];
+      if (!pod) pod = this.pods[i] = { img: null, char: null, r: 0, x: 0, y: 0 };
+      if (!art || art.artPending || !this.textures.exists(art.atlasKey)) return;
+
+      if (!pod.img) {
+        pod.img = this._ui(this.add.image(0, 0, art.atlasKey, 'idle_1.png').setDepth(-4));
+        pod.char = sp.f.char;
+      } else if (pod.char !== sp.f.char) {
+        pod.img.setTexture(art.atlasKey, 'idle_1.png');
+        pod.char = sp.f.char;
+      }
+      // ตำแหน่ง/ขนาดเปลี่ยนเมื่อสลับตัวละคร ย้ายที่ หรือขนาดวงเปลี่ยน — ไม่ต้องคิดใหม่ทุกเฟรม
+      if (pod.x !== sp.x || pod.y !== sp.y || pod.r !== r || pod.fitted !== pod.char) {
+        this._fitPortrait(pod, art, sp.x, sp.y, r);
+        pod.x = sp.x; pod.y = sp.y; pod.r = r; pod.fitted = pod.char;
+      }
+    });
+  }
+
+  /** ย่อ/วางรูปให้ "หัว" อยู่กลางวงพอดี ทุกตัวหัวเท่ากัน
+   *
+   *  วัดจาก meta ของชีต (standing/anchorX/feetY) ไม่ใช่จากกรอบเฟรม —
+   *  ตัวที่ชีตถ่ายไกลกว่าจะหัวเล็กกว่าเพื่อนทันทีถ้าวัดจากกรอบ (ปัญหาเดียวกับรูปบนการ์ดเลือกตัว)
+   */
+  _fitPortrait(pod, art, cx, cy, r) {
+    // **จุดยึดเป็นสัดส่วนของ canvas ไม่ใช่พิกัดของเฟรมในอัตลาส** — เฟรมถูก trim ไว้
+    // ตำแหน่งของเฟรมในอัตลาส (fr.x/fr.y) จึงไม่ใช่ระยะที่ภาพถูกตัดขอบออก เอามาหักลบแล้วรูปหลุดจอ
+    // วิธีเดียวกับที่ _applyCharTransform ใช้วางสไปรท์บนเวที ซึ่งพิสูจน์แล้วว่าถูก
+    const m = art.meta ?? this.textures.get(art.atlasKey)?.customData?.meta;
+    if (!m?.standing || !m.canvasW || !m.canvasH) return;
+    const headY = m.feetY - m.standing * 0.87;   // กลางหัว วัดจากปลายเท้าขึ้นไป
+    pod.img.setScale((r * 4.6) / m.standing)     // ทั้งตัวสูงราว 4.6 รัศมี = หัวเต็มวงพอดี
+      .setOrigin(m.anchorX / m.canvasW, headY / m.canvasH)
+      .setPosition(cx, cy);
+    pod.mask?.destroy();
+    const mg = this.make.graphics({ add: false });
+    mg.fillStyle(0xffffff, 1).fillCircle(cx, cy, r);
+    pod.mask = mg;
+    pod.img.setMask(mg.createGeometryMask());
+  }
+
+  /** วงเลือด/วงพลัง/จุดบอกยก รอบรูปแต่ละคน — วาดใหม่ทุกเฟรมบน hud graphics
+   *
+   *  วงกวาดจากด้านบนลงสองข้างเท่า ๆ กัน (เว้นก้นวงไว้ให้จุดบอกยก) ไม่ได้เริ่มจากซ้ายไปขวา
+   *  เพราะสองฝั่งของจอต้องอ่านเหมือนกัน ถ้ากวาดทางเดียว ฝั่งขวาจะดูเหมือนเลือดลดสวนทาง
+   */
+  _drawPods(s, hud) {
+    const spots = this._podSpots(s);
+    const mine = this.mySeat();
+    const D = Math.PI / 180, half = POD.sweep / 2;
+    spots.forEach((sp, i) => {
+      const me = i === mine;
+      const k = me ? POD.mine : 1;
+      const r = POD.r * k, rr = r + POD.gap + POD.ring / 2;
+      const dead = sp.f.hp <= 0;
+
+      // พื้นหลังวงกลม: รูปวาดทับอยู่แล้ว แต่ตัวที่ยังไม่มีอาร์ตจะเหลือแค่วงนี้ ซึ่งยังอ่านออกว่าเป็นคน
+      hud.fillStyle(POD.dim, dead ? 0.75 : 0.55);
+      hud.fillCircle(sp.x, sp.y, r + 1);
+
+      // รางวงเลือด แล้วทับด้วยส่วนที่เหลือจริง
+      const frac = Math.max(0, Math.min(1, sp.f.hp / sp.f.maxHp));
+      hud.lineStyle(POD.ring, POD.dim, 0.7);
+      hud.beginPath(); hud.arc(sp.x, sp.y, rr, (-90 - half) * D, (-90 + half) * D); hud.strokePath();
+      if (frac > 0) {
+        hud.lineStyle(POD.ring, frac > 0.3 ? POD.full : POD.low, 1);
+        hud.beginPath();
+        hud.arc(sp.x, sp.y, rr, (-90 - half) * D, (-90 - half + POD.sweep * frac) * D);
+        hud.strokePath();
+      }
+
+      // ของเรา: วงทองรอบนอก + วงพลังด้านใน — บอกทั้ง "อันไหนเรา" และ "กดอัลติได้หรือยัง" ที่เดียว
+      if (me) {
+        hud.lineStyle(2, POD.gold, 0.9);
+        hud.strokeCircle(sp.x, sp.y, r + 2.5);
+        const ki = Math.min(1, sp.f.ki / KI_MAX);
+        const kr = rr + POD.ring / 2 + 3;
+        hud.lineStyle(3, POD.dim, 0.6);
+        hud.beginPath(); hud.arc(sp.x, sp.y, kr, (-90 - half) * D, (-90 + half) * D); hud.strokePath();
+        if (ki > 0) {
+          hud.lineStyle(3, ki >= 1 ? POD.kiFull : POD.ki, 1);
+          hud.beginPath(); hud.arc(sp.x, sp.y, kr, (-90 - half) * D, (-90 - half + POD.sweep * ki) * D); hud.strokePath();
+        }
+      }
+
+      // จุดบอกยกที่เหลือ วางใต้วง — จุดที่เสียไปเหลือแต่โครง
+      if (s.match.on) {
+        const left = s.match.bars[sp.f.team] ?? 0;
+        const gap = POD.pip * 3;
+        const x0 = sp.x - gap * (ROUND_BARS - 1) / 2;
+        for (let n = 0; n < ROUND_BARS; n++) {
+          const px = x0 + n * gap, py = sp.y + rr + POD.ring / 2 + 7;
+          hud.fillStyle(POD.dim, 0.7); hud.fillCircle(px, py, POD.pip);
+          if (n < left) { hud.fillStyle(POD.low, 1); hud.fillCircle(px, py, POD.pip - 1.5); }
+        }
+      }
+    });
+  }
+
+  /** ลูกศรเหนือหัวทุกคน — ดู TAG ว่าทำไมต้องมีและทำไมสีตามทีม
+   *
+   *  ตำแหน่งยึด **หัว** ไม่ใช่เท้า (`f.y - PHYS.standH`) ไม่งั้นตอนกระโดดลูกศรจะจมอยู่กลางตัว
+   *  ลอยขึ้นลงด้วยเลขเฟรมของซิม ไม่ใช่เวลาจริง — สองเครื่องที่ต่อเน็ตจึงเห็นลูกศรขยับตรงกัน
+   *  (ไม่ได้บังคับ เพราะเป็นภาพล้วน แต่ของที่ตรงกันได้ฟรีก็ไม่มีเหตุผลให้ปล่อยให้ต่างกัน)
+   */
+  _drawTags(s, fx) {
+    if (!this.showTags) return;
+    const seats = s.fighters;
+    const me = seats[this.mySeat()];
+    const ts = s.teams();
+    const bob = Math.sin(s.frame * 0.09) * TAG.bob;
+    for (const f of seats) {
+      // ตัวที่ล้มแล้วไม่ต้องติดป้าย — ตอนนั้นไม่มีใครต้องหามันเจอ และป้ายจะไปกองกับป้ายน็อก
+      if (f.hp <= 0) continue;
+      const mine = f === me;
+      const k = mine ? 1 : TAG.small;
+      const w = TAG.w * k, h = TAG.h * k;
+      const cx = f.x, cy = f.y - PHYS.standH - TAG.rise + (mine ? bob : 0);
+      const color = TAG.team[Math.max(0, ts.indexOf(f.team))] ?? TAG.team[0];
+      const tri = [cx, cy + h, cx - w / 2, cy, cx + w / 2, cy];
+      if (mine) {
+        // ของเราทึบ + มีขอบเข้ม ให้ลอยอยู่เหนือฉากหลังสว่างได้โดยไม่กลืน
+        fx.fillStyle(0x0c111c, 0.55);
+        fx.fillTriangle(tri[0], tri[1] + 2, tri[2] - 2, tri[3] - 2, tri[4] + 2, tri[5] - 2);
+        fx.fillStyle(color, 1);
+        fx.fillTriangle(...tri);
+      } else {
+        fx.lineStyle(2.5, 0x0c111c, 0.45);
+        fx.strokeTriangle(...tri);
+        fx.lineStyle(2, color, 0.85);
+        fx.strokeTriangle(...tri);
+      }
+    }
   }
 
   /** จาง HUD แถวบนตอนมีคนยืนสูงพอจะถูกมันบัง — ดู HUD_BAND ว่าทำไมต้องมี */
@@ -1328,6 +1554,9 @@ class ScrambleScene extends Phaser.Scene {
     const want = hidden ? HUD_DIM : 1;
     this.hudAlpha = (this.hudAlpha ?? 1) + (want - (this.hudAlpha ?? 1)) * HUD_FADE;
     for (const o of this.hudTop) o.setAlpha(this.hudAlpha);
+    // รูปในแผงผู้เล่นสร้างทีหลัง (ตอนวาดเฟรมแรก) เข้าลิสต์ hudTop ตอนสร้างฉากไม่ได้
+    // ลืมจางด้วยแล้วจะเห็นรูปลอยชัดเจนอยู่บนหัวคนที่กระโดดขึ้นมา ซึ่งบังยิ่งกว่าหลอดเลือดอีก
+    for (const p of this.pods ?? []) p.img?.setAlpha(this.hudAlpha);
   }
 
   /** สั่นกล้อง + ซูมกระตุกไปพร้อมกัน — จุดเดียวที่สั่งสั่นกล้องในฉากนี้
@@ -1349,6 +1578,18 @@ class ScrambleScene extends Phaser.Scene {
    *  ไม่ใช่บั๊กกล้อง จุดที่ต้องเรียกมีสี่แห่ง: สไปรท์ตัวละคร · หุ่นแสดงแทน · พูลเอฟเฟค · ป้ายลอย
    */
   _world(obj) { this.uiCam?.ignore(obj); return obj; }
+
+  /** ตรงข้ามกับ _world: ของที่สร้างหลังแยกกล้องแล้วเป็น "ของ UI" ไม่ใช่ของในโลก
+   *
+   *  ต้องมีคู่กัน เพราะกฎจริงไม่ใช่ "ทุกอย่างเป็นของในโลก" แต่คือ
+   *  **ทุกชิ้นที่สร้างหลังแยกกล้องต้องบอกว่าตัวเองอยู่กล้องไหน** ลืมบอก = ถูกวาดสองรอบ
+   *  รอบที่สองใช้พิกัดของอีกกล้อง เห็นเป็นภาพซ้อนเลื่อนไปอีกที่ ซึ่งดูเหมือนบั๊กกราฟิก
+   */
+  _ui(obj) {
+    this.cameras?.main?.ignore(obj);
+    if (!this.uiObjects.includes(obj)) this.uiObjects.push(obj);
+    return obj;
+  }
 
   _mountOverlay() {
     const style = document.createElement('style');
@@ -1601,9 +1842,19 @@ class ScrambleScene extends Phaser.Scene {
       return mates.length === 1 ? CHAR_ART[mates[0].char]?.title ?? '' : '';
     };
     this.tP1.setText(label(ts[0] ?? 0));
-    this.tP2.setText(this.versus === 'solo' ? 'Training dummy' : label(ts[1] ?? 1));
-    this.tP1Sub?.setText(sub(ts[0] ?? 0));
-    this.tP2Sub?.setText(this.versus === 'solo' ? '' : sub(ts[1] ?? 1));
+    this.tP2.setText(this.versus === 'solo' ? 'หุ่นซ้อม' : label(ts[1] ?? 1));
+    // ชื่ออยู่ใต้แผงผู้เล่น จัดกลางที่กลุ่มของทีมนั้น — เลื่อนตามจำนวนคนในทีมเอง
+    const spots = this._podSpots(this.sim);
+    const mid = (t) => {
+      const xs = spots.filter((sp) => sp.f.team === t).map((sp) => sp.x);
+      return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : POD.side;
+    };
+    // ใต้จุดบอกยก ไม่ใช่ใต้วงเลือด — คิดจากวงของ "เรา" ซึ่งใหญ่ที่สุด ชื่อจะได้ไม่ทับจุดของใคร
+    const nameY = POD.top + POD.r * POD.mine + POD.gap + POD.ring + 7 + POD.pip + 10;
+    this.tP1.setPosition(mid(ts[0] ?? 0), nameY);
+    this.tP2.setPosition(mid(ts[1] ?? 1), nameY);
+    this.tP1Sub?.setText('');
+    this.tP2Sub?.setText('');
     // ผังปุ่มของฝั่ง 1 ต่างกันระหว่าง "อยู่คนเดียวบนคีย์บอร์ด" กับ "แชร์กับอีกคน" (ดู ALONE_EXTRA)
     // ต้องอัปเดตตรงนี้ ไม่ใช่ตั้งครั้งเดียวตอนสร้างฉาก เพราะเปลี่ยนโหมดได้ตลอดจากแผงเลือกตัว
     if (!isTouch) this.tHelp?.setText(this.helpLine());
@@ -1922,8 +2173,10 @@ class ScrambleScene extends Phaser.Scene {
   openSelect() {
     this.phase = 'select';
     this.matchEndAt = null;
-    this.selSide = this.versus === 'net' ? (this.isHost ? 0 : 1) : 0;
-    this.myReady = false; this.foeReady = false;
+    this.selSide = this.mySeat();
+    // ความพร้อมล้างทุกครั้งที่กลับมาหน้านี้ — ทุกคนต้องกดใหม่ ไม่งั้นแมตช์หน้าเริ่มเองก่อนใครทัน
+    this.myReady = false;
+    this.readyBy = {};
     document.body.classList.add('sc-picking');
     this.selEl?.classList.add('open');
     this._drawSelect();
@@ -1935,7 +2188,8 @@ class ScrambleScene extends Phaser.Scene {
     if (this.versus === 'net' && this.myReady) return;   // กดพร้อมแล้วเปลี่ยนไม่ได้ กันสลับตัวตอนโฮสต์กำลังส่ง go
     const f = this.sim.fighters[this.selSide] ?? this.sim.p1;
     f.char = id;
-    if (this.versus === 'net') this.netSend?.({ t: 'pick', char: id });
+    // ต้องติดเลขที่นั่งไปด้วย — ห้องสี่คนมี "อีกฝั่ง" สามคน ไม่ใช่คนเดียวให้เดาได้
+    if (this.versus === 'net') this.netSend?.({ t: 'pick', s: this.mySeat(), char: id });
     this._syncSkillSlots();
     this._drawSelect();
   }
@@ -1963,17 +2217,30 @@ class ScrambleScene extends Phaser.Scene {
     if (this.phase !== 'select') return;
     if (this.versus !== 'net') { this.beginMatch(); return; }
     this.myReady = !this.myReady;
-    this.netSend?.({ t: 'ready', ready: this.myReady, char: this.sim[this.isHost ? 'p1' : 'p2'].char });
+    const seat = this.mySeat();
+    this.netSend?.({ t: 'ready', s: seat, ready: this.myReady, char: this.sim.fighters[seat]?.char });
     this._maybeStartNetMatch();
     this._drawSelect();
   }
 
-  /** โฮสต์เท่านั้นที่ตัดสินว่าเริ่มได้แล้ว — แขกรอ 'go' อย่างเดียว */
+  /** ที่นั่งที่ยังไม่กดพร้อม — ใช้ทั้งตัดสินว่าเริ่มได้ และบอกคนเล่นว่ารอใครอยู่ */
+  _notReady() {
+    const mine = this.mySeat();
+    const out = [];
+    for (let i = 0; i < (this.netSeats ?? 2); i++) {
+      if (!(i === mine ? this.myReady : this.readyBy?.[i])) out.push(i);
+    }
+    return out;
+  }
+
+  /** โฮสต์เท่านั้นที่ตัดสินว่าเริ่มได้แล้ว — แขกรอ 'go' อย่างเดียว
+   *  ต้องพร้อม **ครบทุกที่นั่ง** ไม่ใช่แค่สองคนแรก ไม่งั้นห้องสี่คนจะเริ่มทั้งที่คนที่สี่ยังเลือกตัวอยู่ */
   _maybeStartNetMatch() {
-    if (!this.isHost || this.phase !== 'select' || !this.myReady || !this.foeReady) return;
-    const p1 = this.sim.p1.char, p2 = this.sim.p2.char;
+    if (!this.isHost || this.phase !== 'select' || this._notReady().length) return;
+    const chars = this.sim.fighters.map((f) => f.char);
     this.matchEpoch = (this.matchEpoch ?? 0) + 1;
-    this.netSend?.({ t: 'go', p1, p2, m: this.matchEpoch, tune: tuneSnapshot() });
+    // p1/p2 ติดไปด้วยเพื่อให้แท็บที่เปิดบิลด์ก่อนหน้ายังอ่านรู้เรื่องในห้องสองคน
+    this.netSend?.({ t: 'go', chars, p1: chars[0], p2: chars[1], m: this.matchEpoch, tune: tuneSnapshot() });
     this.beginMatch();
   }
 
@@ -2032,16 +2299,19 @@ class ScrambleScene extends Phaser.Scene {
     const net = this.versus === 'net';
     this._syncSelectSlots();
     const chars = this.sim.fighters.map((f) => f.char);
-    const mine = net ? (this.isHost ? 0 : 1) : this.selSide;
+    const mine = this.mySeat();
 
     this.selSlots.forEach((sl, i) => {
-      const label = net ? (i === mine ? 'คุณ' : 'เพื่อน')
+      const label = net ? (i === mine ? 'คุณ' : `ผู้เล่น ${i + 1}`)
         : this.versus === 'team' ? (i < 2 ? `ผู้เล่น ${i + 1}` : 'เพื่อน AI')
         : this.versus === 'local' ? `ผู้เล่น ${i + 1}`
         : i === 0 ? 'คุณ' : 'หุ่นซ้อม';
       sl.querySelector('.tag').textContent = label;
-      const waiting = net && i !== mine && !this.foePick;
-      sl.querySelector('.who').textContent = waiting ? 'กำลังเลือก...' : CHARACTERS[chars[i]].label;
+      // "กำลังเลือก..." ต่อที่นั่ง ไม่ใช่ตัวเดียวรวมทุกคน — ห้องสี่คนต้องรู้ว่าใครยังไม่เลือก
+      const waiting = net && i !== mine && !this.picks?.[i];
+      const ready = net && (i === mine ? this.myReady : this.readyBy?.[i]);
+      sl.querySelector('.who').textContent = waiting ? 'กำลังเลือก...'
+        : CHARACTERS[chars[i]].label + (ready ? ' ✓' : '');
       sl.classList.toggle('waiting', waiting);
       sl.classList.toggle('active', i === this.selSide);
       sl.classList.toggle('pickable', !net);
@@ -2059,12 +2329,14 @@ class ScrambleScene extends Phaser.Scene {
     this.selEl.querySelector('.modes').style.display = net ? 'none' : 'flex';
 
     this.selHint.textContent = net
-      ? (this.isHost ? 'คุณคือฝั่งซ้าย' : 'คุณคือฝั่งขวา')
+      ? `คุณคือผู้เล่น ${mine + 1}` + (this.netSeats > 2 ? ` · ทีม ${(this.sim.fighters[mine]?.team ?? 0) + 1}` : '')
       : 'แตะที่ช่องด้านบนเพื่อสลับว่ากำลังเลือกให้ฝั่งไหน';
     this.selGo.textContent = !net ? 'เริ่ม' : this.myReady ? 'ยกเลิกพร้อม' : 'พร้อม';
+    // บอกว่า "รอใคร" เป็นตัวเลขที่นั่ง ไม่ใช่ "รออีกฝั่ง" — ห้องสี่คนต้องรู้ว่าเหลือใคร
+    const wait = net ? this._notReady().filter((i) => i !== mine) : [];
     this.selNote.textContent = !net ? ''
-      : this.myReady && !this.foeReady ? 'รออีกฝั่งกดพร้อม...'
-      : this.foeReady && !this.myReady ? 'อีกฝั่งพร้อมแล้ว รอคุณ'
+      : !this.myReady && wait.length < (this.netSeats ?? 2) - 1 ? 'คนอื่นพร้อมแล้ว รอคุณ'
+      : this.myReady && wait.length ? `รอผู้เล่น ${wait.map((i) => i + 1).join(', ')} กดพร้อม...`
       : '';
   }
 
@@ -2131,16 +2403,28 @@ class ScrambleScene extends Phaser.Scene {
    *  ทั้งสองเครื่องเดิน sim ของตัวเองด้วยอินพุตชุดเดียวกัน จึงไม่ส่งสถานะอะไรข้ามเน็ตเลย
    *  คืนฟังก์ชันรับแพ็คเก็ต ให้ฝั่งท่อเรียกเมื่อมีข้อมูลเข้ามา
    */
-  startNet({ isHost, send }) {
+  /** เข้าโหมดข้ามเครื่อง — `seat` คือช่องใน fighters ที่เครื่องนี้คุม, `seats` คือห้องนี้กี่คน
+   *
+   *  ทั้งสองค่ามาจากชั้นท่อ (session.js) ไม่ใช่เดาจาก isHost — ห้องสี่คนเดาไม่ได้ว่าใครนั่งที่ไหน
+   *  ขึ้นกับว่าใครต่อเข้ามาก่อน และถ้าเดาซ้ำกัน สองเครื่องจะคุมตัวเดียวกันโดยไม่มีอะไรฟ้อง
+   */
+  startNet({ isHost, seat = isHost ? 0 : 1, seats = 2, send }) {
     this.versus = 'net';
     this.isHost = isHost;
+    this.netSeat = seat;
+    this.netSeats = seats;
+    if (this.sim.fighters.length !== seats) this.sim.setRoster(seats);
+    // ต่อเน็ตทุกช่องมีคนจริงนั่งอยู่ ไม่มีใครเดินด้วย AI — setRoster ติดธงให้ช่อง 3-4 ไว้ ต้องปลด
+    // ถ้าลืมปลด ซิมจะเอาอินพุตของ AI ไปใช้แทนอินพุตที่ส่งข้ามเน็ตมา (ดู step())
+    // สองเครื่องคิดคนละอย่างทันทีตั้งแต่เฟรมแรก และไม่มีอะไรฟ้อง
+    for (const f of this.sim.fighters) f.ai = false;
     // ต้องสร้าง Lockstep ตั้งแต่ตอนนี้ ไม่ใช่ตอนเริ่มแมตช์
     // อีกฝั่งอาจกดพร้อมและเริ่มยิงอินพุตก่อนเราจะเลือกตัวเสร็จ ถ้ายังไม่มีที่รับ แพ็คเก็ตพวกนั้นหาย
     // แล้วค้างรอเฟรมที่ไม่มีวันมาถึง (บั๊กเดียวกับตอนที่ฉากโหลดช้ากว่าอีกฝั่ง)
-    // โฮสต์นั่งที่นั่ง 0 แขกนั่งที่นั่ง 1 — ที่นั่งคือตำแหน่งใน fighters ตรง ๆ
-    this.net = new Lockstep(send, { seat: isHost ? 0 : 1 });
+    this.net = new Lockstep(send, { seat, seats });
     this.netSend = send;
-    this.foePick = null;
+    this.picks = {};
+    this.readyBy = {};
     this._syncSkillSlots();
     this._syncMatchHud();
     this.syncTools();
@@ -2148,15 +2432,25 @@ class ScrambleScene extends Phaser.Scene {
     return (pk) => this.netReceive(pk);
   }
 
+  /** ที่นั่งที่แพ็คเก็ตนี้มาจาก — บิลด์เก่าไม่ส่ง `s` มา ห้องสองคนจึงเดาได้ว่าเป็นอีกฝั่ง
+   *  ห้องสี่คนเดาไม่ได้ ต้องทิ้ง (เหตุผลเดียวกับ Lockstep.onPacket) */
+  _fromSeat(pk) {
+    if (typeof pk.s === 'number') return pk.s;
+    return (this.netSeats ?? 2) === 2 ? 1 - this.mySeat() : -1;
+  }
+
   netReceive(pk) {
     if (!this.net || !pk) return;
-    // อีกฝั่งเปลี่ยนตัวละคร — เห็นสด ๆ บนหน้าเลือกตัว
+    // คนอื่นเปลี่ยนตัวละคร — เห็นสด ๆ บนหน้าเลือกตัว ทีละที่นั่ง ไม่ใช่ "อีกฝั่ง" ที่มีอยู่คนเดียว
     if (pk.t === 'pick' || pk.t === 'ready') {
+      const seat = this._fromSeat(pk);
+      if (seat < 0 || seat === this.mySeat()) return;   // ของตัวเองที่วนกลับมาจากตัวส่งต่อ = ข้าม
       if (pk.char && CHARACTERS[pk.char]) {
-        this.foePick = pk.char;
-        (this.isHost ? this.sim.p2 : this.sim.p1).char = pk.char;
+        (this.picks ??= {})[seat] = pk.char;
+        const f = this.sim.fighters[seat];
+        if (f) f.char = pk.char;
       }
-      if (pk.t === 'ready') { this.foeReady = !!pk.ready; this._maybeStartNetMatch(); }
+      if (pk.t === 'ready') { (this.readyBy ??= {})[seat] = !!pk.ready; this._maybeStartNetMatch(); }
       this._drawSelect();
       return;
     }
@@ -2164,7 +2458,9 @@ class ScrambleScene extends Phaser.Scene {
     // แขกไม่เริ่มเองเด็ดขาด ต้องรออันนี้เท่านั้น นาฬิกาเฟรม 0 จะได้ออกตัวพร้อมกัน
     if (pk.t === 'go') {
       if (this.isHost || this.phase !== 'select') return;
-      this.sim.p1.char = pk.p1; this.sim.p2.char = pk.p2;
+      // chars มาเป็นลิสต์เรียงตามที่นั่ง — p1/p2 คือรูปแบบเก่าของห้องสองคน ยังรับไว้
+      const chars = pk.chars ?? [pk.p1, pk.p2];
+      chars.forEach((c, i) => { if (CHARACTERS[c] && this.sim.fighters[i]) this.sim.fighters[i].char = c; });
       // เลขแมตช์มาจากโฮสต์เสมอ ไม่ใช่ต่างคนต่างนับ — นับเองแล้วสองฝั่งเหลื่อมกันได้
       // ถ้าเหลื่อม อินพุตของอีกฝั่งจะถูกทิ้งทั้งหมดเพราะ epoch ไม่ตรง = ค้างรอตลอดกาล
       this.matchEpoch = pk.m ?? 0;
@@ -2726,6 +3022,8 @@ class ScrambleScene extends Phaser.Scene {
       }
     }
 
+    this._drawTags(s, fx);
+
     for (const f of s.fighters) {
       const box = f.hitbox();
       if (box) {
@@ -2772,44 +3070,11 @@ class ScrambleScene extends Phaser.Scene {
       }
     }
 
-    // HP bars
-    // หลอดจับกลุ่มตามทีม — 1v1 ได้หลอดเดียวต่อข้างเหมือนเดิมเป๊ะ
-    // 2v2 ได้สองหลอดซ้อนกันต่อข้าง คนเล่นจึงอ่านออกทันทีว่าใครอยู่ทีมใคร
-    // ซึ่งเป็นข้อมูลที่สำคัญที่สุดบนจอตอนเล่นเป็นทีม
-    const sideX = [60, this.viewW - 440 - (isTouch ? 100 : 0)];
-    s.teams().forEach((t, ti) => {
-      const mates = s.fighters.filter((f) => f.team === t);
-      const x = sideX[ti] ?? sideX[0];
-      mates.forEach((f, mi) => {
-        const h = mates.length > 1 ? 7 : 12;
-        const y = 42 + mi * (h + 3);
-        hud.fillStyle(0x0c111c, 0.7); hud.fillRect(x, y, 380, h + 4);
-        const fw = 380 * f.hp / f.maxHp;
-        hud.fillStyle(f.hp / f.maxHp > 0.3 ? 0xe9e3d6 : C.nyxScarf, 1);
-        hud.fillRect(ti === 1 ? x + 380 - fw : x, y + 2, fw, h);
-      });
-    });
-    // จำนวนหลอดที่เหลือ วาดเป็นขีดใต้หลอดเลือด — ขีดที่เสียไปแล้วเหลือแต่โครง
-    if (s.match.on) {
-      const pips = (x, w, left, alignRight, dy = 0) => {
-        for (let i = 0; i < ROUND_BARS; i++) {
-          const pw = 26, gap = 6;
-          const px = alignRight ? x + w - (i + 1) * pw - i * gap : x + i * (pw + gap);
-          hud.fillStyle(0x0c111c, 0.7); hud.fillRect(px, 62 + dy, pw, 8);
-          if (i < left) { hud.fillStyle(0xe05a57, 1); hud.fillRect(px + 1, 63 + dy, pw - 2, 6); }
-        }
-      };
-      // ขีดหลอดยกเลื่อนลงตามจำนวนคนในทีม ไม่งั้นทับหลอดเลือดของคนที่สอง
-      const drop = s.fighters.length > 2 ? 14 : 0;
-      pips(60, 380, s.match.bars[0], false, drop);
-      pips(this.viewW - 440 - (isTouch ? 100 : 0), 380, s.match.bars[1], true, drop);
-    }
+    // แผงผู้เล่น: รูปกลม + วงเลือดรอบรูป — กินที่เท่าเดิมไม่ว่าสองคนหรือสี่คน (ดู POD)
+    // หลอดยาวแบบเดิมพอเป็น 2v2 กลายเป็นสี่หลอดซ้อนกันกินความกว้างครึ่งจอ และยังไม่รู้ว่าอันไหนของใคร
+    this._syncPods(s);
+    this._drawPods(s, hud);
     this._syncKoBanner(s);
-    // หลอด ki ของผู้เล่น — เต็มเมื่อไหร่ถึงกดอัลติได้ เต็มแล้วเปลี่ยนเป็นสีแดงให้เห็นชัด
-    const ki = s.p1.ki / KI_MAX;
-    hud.fillStyle(0x0c111c, 0.7); hud.fillRect(60, 64, 260, 10);
-    hud.fillStyle(ki >= 1 ? 0xe05a57 : 0x5aa0ff, 1);
-    hud.fillRect(61, 65, 258 * Math.min(1, ki), 8);
     this._syncSkillBtns();
     // สถานะหุ่นซ้อมไม่มีความหมายเมื่อฝั่งขวาเป็นคนจริง
     this.tMode.setText(this.versus === 'solo' ? 'Dummy: ' + MODE_LABEL[s.dummyMode] + '    Tech: ' + TECH_LABEL[s.dummyTech] : '');

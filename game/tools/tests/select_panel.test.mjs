@@ -55,7 +55,7 @@ function mk(versus = 'local') {
     myReady: false, foeReady: false,
     _paintPortrait() {},
   };
-  for (const m of ['_syncSelectSlots', '_drawSelect']) sc[m] = ScrambleScene.prototype[m];
+  for (const m of ['_syncSelectSlots', '_drawSelect', 'mySeat', '_notReady']) sc[m] = ScrambleScene.prototype[m];
   return sc;
 }
 const tags = (sc) => sc.selSlots.map((sl) => sl.querySelector('.tag').textContent);

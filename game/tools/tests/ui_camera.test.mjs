@@ -98,11 +98,11 @@ function mk(uiCount = 3, worldCount = 5) {
     if (head) fn = head[1];
     if (!/this\.add\.(sprite|image|text|graphics)\(/.test(lines[i])) continue;
     if (BEFORE_SPLIT.has(fn) || fn === '<top>') continue;
-    if (!/this\._world\(/.test(lines[i])) missing.push(`${fn}() บรรทัด ${i + 1}`);
+    if (!/this\._(world|ui)\(/.test(lines[i])) missing.push(`${fn}() บรรทัด ${i + 1}`);
   }
   ok(missing.length === 0, missing.length
-    ? `ลืมเรียก _world ที่: ${missing.join(' · ')}`
-    : "ทุกจุดที่สร้างของในโลกหลังแยกกล้องเรียก _world ครบ");
+    ? `ลืมบอกว่าอยู่กล้องไหนที่: ${missing.join(' · ')}`
+    : "ทุกจุดที่สร้างของหลังแยกกล้องบอกกล้องของตัวเองครบ (_world หรือ _ui)");
 }
 
 // ══ HUD แถวบนต้องจางตอนมีคนยืนสูงจนถูกมันบัง ═══════════════════════════════════
@@ -154,4 +154,19 @@ function mk(uiCount = 3, worldCount = 5) {
     ok(!new RegExp('\\bthis\\.' + keep + '\\b').test(list), `${keep} ไม่อยู่ในกลุ่มที่จาง`);
   for (const dim of ['tP1', 'tP2', 'tTitle'])
     ok(new RegExp('\\bthis\\.' + dim + '\\b').test(list), `${dim} อยู่ในกลุ่มที่จาง`);
+}
+
+// ── _ui() ต้องทำตรงข้ามกับ _world() ให้ครบ: กล้องโลกไม่วาด และเข้าลิสต์ UI ──
+//
+// ลืมข้อหลังไป ของชิ้นนั้นจะไม่ถูกกล้องไหนมองข้ามเลยตอนแยกกล้องรอบถัดไป = วาดสองรอบ
+{
+  const { sc } = mk();
+  sc._ui = ScrambleScene.prototype._ui;
+  sc._splitCameras();
+  const late = { tag: 'lateUi' };
+  ok(sc._ui(late) === late, "คืนอ็อบเจกต์เดิมกลับไป ใช้ต่อในบรรทัดเดียวได้");
+  ok(sc.cameras.main.ignored.includes(late), "กล้องโลกไม่วาดมัน");
+  ok(sc.uiObjects.includes(late), "และเข้าลิสต์ UI แล้ว");
+  sc._ui(late);
+  ok(sc.uiObjects.filter((o) => o === late).length === 1, "เรียกซ้ำไม่เข้าลิสต์สองรอบ");
 }

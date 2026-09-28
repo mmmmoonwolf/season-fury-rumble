@@ -30,7 +30,7 @@ const fireShort = () => {
 };
 
 const S = new URL("../../src/net/session.js", import.meta.url).href;
-const { hostRoom, joinRoom, cancelSession } = await import(S);
+const { hostRoom, joinRoom, cancelSession, getSession } = await import(S);
 
 // ── เข้าร่วมห้องแล้วเซิร์ฟเวอร์เงียบ ต้องได้ error ไม่ใช่ค้าง ──
 {
@@ -62,12 +62,14 @@ const { hostRoom, joinRoom, cancelSession } = await import(S);
 // ข้อนี้สำคัญกว่าที่คิด: ถ้าลืมยกเลิกนาฬิกา คนที่ต่อติดแล้วกำลังเล่นอยู่
 // จะโดนข้อความ "เชื่อมต่อไม่ได้" เด้งใส่กลางเกมตอนครบ 20 วินาทีพอดี
 {
+  // เจ้าของห้องตอบทั้งสองจังหวะ: สายเปิด แล้วบอกที่นั่งตามมาทันที (ลำดับเดียวกับของจริง)
+  // ที่นั่งต้องมาก่อนถึงจะถือว่า "ต่อติด" — ฉากสร้างคิวอินพุตจากเลขที่นั่งตั้งแต่เฟรมแรก
   class SlowPeer extends DeadPeer {
     connect() {
       const h = {};
       this._conn = { on: (ev, fn) => { h[ev] = fn; }, close() {}, send() {} };
       realSetTimeout(() => {}, 0);
-      queueMicrotask(() => h.open?.());
+      queueMicrotask(() => { h.open?.(); h.data?.({ t: "seat", seat: 1, seats: 2 }); });
       return this._conn;
     }
   }
@@ -78,6 +80,7 @@ const { hostRoom, joinRoom, cancelSession } = await import(S);
   peer.handlers.open?.();                       // เซิร์ฟเวอร์ตอบ แล้วต่อหาเจ้าของห้องติดทันที
   await new Promise((r) => realSetTimeout(r, 0));
   ok(connected, "ต่อติดแล้ว");
+  ok(getSession().seat === 1 && getSession().seats === 2, "และรู้ที่นั่งของตัวเองแล้ว");
   ok(timers.length === 0, "นาฬิกาถูกยกเลิกทิ้งแล้ว ไม่มีระเบิดเวลาค้างไว้");
   fireAll();
   ok(err === null, "ต่อให้เวลาผ่านไปเท่าไหร่ก็ไม่มี error เด้งใส่คนที่กำลังเล่นอยู่");

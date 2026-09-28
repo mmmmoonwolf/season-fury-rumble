@@ -148,7 +148,8 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
     // ถ้าปล่อยให้เป็นคนละก้อน เทสต์จะผ่านทั้งที่โค้ดจริงอ่าน fighters แล้วพัง
     const fighters = [{ char: "nyx", team: 0 }, { char: "helios", team: 1 }];
     const sc = {
-      isHost, versus: "net", phase: null, selSide: null, myReady: false, foeReady: false, foePick: null,
+      isHost, versus: "net", phase: null, selSide: null, myReady: false,
+      netSeat: isHost ? 0 : 1, netSeats: 2, picks: {}, readyBy: {},
       sim: { frame: 999, fighters, get p1() { return fighters[0]; }, get p2() { return fighters[1]; }, match: { on: false }, resetPositions() { this.reset = (this.reset ?? 0) + 1; }, startMatch() { this.reset = (this.reset ?? 0) + 1; this.match.on = true; } },
       out: [],
       _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
@@ -156,7 +157,8 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
     // ที่นั่งตามของจริง: โฮสต์ 0 แขก 1 — ถ้าตั้งเหมือนกันทั้งคู่ เทสต์จะไม่เหมือนที่ฉากทำ
     sc.net = new Lockstep((pk) => sc.out.push(pk), { seat: isHost ? 0 : 1 });
     sc.netSend = (pk) => sc.out.push(pk);
-    for (const m of ["openSelect", "_pickChar", "_selectGo", "_maybeStartNetMatch", "beginMatch", "netReceive"])
+    for (const m of ["openSelect", "_pickChar", "_selectGo", "_maybeStartNetMatch", "beginMatch",
+      "netReceive", "mySeat", "_fromSeat", "_notReady"])
       sc[m] = ScrambleScene.prototype[m];
     sc.openSelect();
     return sc;
@@ -171,14 +173,14 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
   // แขกเปลี่ยนตัว โฮสต์ต้องเห็น
   guest._pickChar("nyx");
   flush(guest, host);
-  ok(host.sim.p2.char === "nyx" && host.foePick === "nyx", "เปลี่ยนตัวแล้วอีกฝั่งเห็นทันที");
+  ok(host.sim.p2.char === "nyx" && host.picks[1] === "nyx", "เปลี่ยนตัวแล้วอีกฝั่งเห็นทันที");
 
   // โฮสต์กดพร้อมฝ่ายเดียว ต้องยังไม่เริ่ม และต้องไม่มี go หลุดออกไป
   host._selectGo();
   const sent = flush(host, guest);
   ok(host.phase === "select", "พร้อมฝ่ายเดียวยังไม่เริ่ม");
   ok(!sent.some(p => p.t === "go"), "ยังไม่ส่งสัญญาณเริ่มออกไป");
-  ok(guest.phase === "select" && guest.foeReady === true, "แขกรู้ว่าอีกฝั่งพร้อมแล้ว แต่ยังไม่เริ่มเอง");
+  ok(guest.phase === "select" && guest.readyBy[0] === true, "แขกรู้ว่าอีกฝั่งพร้อมแล้ว แต่ยังไม่เริ่มเอง");
 
   // แขกกดพร้อม -> โฮสต์ส่ง go แล้วเริ่มทันที
   guest._selectGo();
@@ -192,7 +194,7 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
 
   // แขกต้องไม่เริ่มเองเด็ดขาด ต่อให้กดพร้อมค้างไว้ก่อน
   const g2 = mk(false);
-  g2._selectGo(); g2.foeReady = true; g2._maybeStartNetMatch();
+  g2._selectGo(); g2.readyBy[0] = true; g2._maybeStartNetMatch();
   ok(g2.phase === "select", "แขกไม่เริ่มเองแม้พร้อมครบ — ต้องรอสัญญาณจากโฮสต์เท่านั้น");
 
   // อินพุตที่มาถึงตอนยังเลือกตัวอยู่ ต้องเก็บไว้ ไม่ใช่ทิ้ง (ไม่งั้นค้างรอเฟรมต้น ๆ ตลอดกาล)
@@ -201,4 +203,130 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
   ok(g3.net.remote.size === 3, `อินพุตที่มาก่อนเริ่มแมตช์ถูกเก็บไว้ครบ (${g3.net.remote.size}/3)`);
   g3.netReceive({ t: "go", p1: "nyx", p2: "nyx", tune: {} });
   ok(g3.phase === "fight" && g3.net.ready(), "พอเริ่มแมตช์ก็เดินได้ทันที ไม่ต้องรออะไรอีก");
+}
+
+// ══ ห้องสี่คน: ท่อแบบดาว + แจกที่นั่ง + พร้อมครบถึงจะเริ่ม ═══════════════════════
+//
+// เจ้าของห้องเป็นศูนย์กลาง แขกไม่ได้คุยกันเอง — ของที่แขกคนหนึ่งส่ง
+// เจ้าของห้องต้องส่งต่อให้แขกที่เหลือ **ไม่งั้นแขกสองคนไม่มีวันรู้จักกันเลย**
+// ทั้งตอนเลือกตัว (ไม่เห็นว่าอีกคนเลือกอะไร) และตอนเล่น (ค้างรออินพุตที่ไม่มีวันมา)
+{
+  const { Lockstep } = await import(G + "/netplay.js");
+  const SEATS = 4;
+  const mk4 = (seat) => {
+    const fighters = Array.from({ length: SEATS }, (_, i) => ({ char: "nyx", team: i % 2, ai: i >= 2 }));
+    const sc = {
+      isHost: seat === 0, versus: "net", phase: null, selSide: null, myReady: false,
+      netSeat: seat, netSeats: SEATS, picks: {}, readyBy: {},
+      sim: { frame: 999, fighters, get p1() { return fighters[0]; }, get p2() { return fighters[1]; },
+        match: { on: false }, resetPositions() {}, startMatch() { this.match.on = true; } },
+      out: [],
+      _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
+    };
+    sc.net = new Lockstep((pk) => sc.out.push(pk), { seats: SEATS, seat });
+    sc.netSend = (pk) => sc.out.push(pk);
+    for (const m of ["openSelect", "_pickChar", "_selectGo", "_maybeStartNetMatch", "beginMatch",
+      "netReceive", "mySeat", "_fromSeat", "_notReady"])
+      sc[m] = ScrambleScene.prototype[m];
+    sc.openSelect();
+    return sc;
+  };
+  const peers = [0, 1, 2, 3].map(mk4);
+
+  /** ท่อดาวเหมือนของจริง: แขกส่งถึงเจ้าของห้องเท่านั้น เจ้าของห้องส่งต่อให้แขกที่เหลือ */
+  const pump = () => {
+    for (let i = 0; i < SEATS; i++) {
+      const q = peers[i].out.splice(0);
+      for (const pk of q) {
+        if (i === 0) { for (let j = 1; j < SEATS; j++) peers[j].netReceive(pk); }
+        else {
+          peers[0].netReceive(pk);
+          for (let j = 1; j < SEATS; j++) if (j !== i) peers[j].netReceive(pk);   // เจ้าของห้องส่งต่อ
+        }
+      }
+    }
+  };
+
+  ok(peers.every((p) => p.phase === "select"), "ทั้งสี่เครื่องเข้าหน้าเลือกตัวก่อน");
+  ok(peers.map((p) => p.selSide).join() === "0,1,2,3", "แต่ละเครื่องเลือกให้ที่นั่งของตัวเอง ไม่ทับกัน");
+
+  // แขกคนที่ 3 (ที่นั่ง 2) เปลี่ยนตัว — ทุกคนต้องเห็น รวมถึงแขกคนอื่นที่ไม่ได้คุยกับเขาตรง ๆ
+  peers[2]._pickChar("momus");
+  pump();
+  const saw = peers.filter((p) => p.sim.fighters[2].char === "momus").length;
+  ok(saw === SEATS, `ทุกเครื่องเห็นว่าที่นั่ง 2 เลือก momus (${saw}/${SEATS})`);
+  ok(peers[3].picks[2] === "momus", "แขกคนอื่นเห็นด้วย ทั้งที่ไม่ได้ต่อสายหากันเอง (เจ้าของห้องส่งต่อให้)");
+  ok(peers[2].picks[2] === undefined, "และคนเลือกเองไม่ได้บันทึกของตัวเองซ้ำจากแพ็คเก็ตที่วนกลับมา");
+
+  // พร้อมทีละคน — ยังไม่ครบก็ยังไม่เริ่ม
+  for (let i = 0; i < SEATS - 1; i++) {
+    peers[i]._selectGo();
+    pump();
+    ok(peers.every((p) => p.phase === "select"),
+      `พร้อม ${i + 1}/${SEATS} คน ยังไม่มีใครเริ่ม`);
+  }
+  ok(peers[0]._notReady().join() === "3", `เจ้าของห้องรู้ว่าเหลือที่นั่ง 3 (${peers[0]._notReady().join()})`);
+
+  // คนสุดท้ายกดพร้อม -> เจ้าของห้องส่ง go แล้วทุกคนเริ่มพร้อมกันที่เฟรม 0
+  peers[3]._selectGo();
+  pump();
+  const go = peers[0].out.find((p) => p.t === "go");
+  pump();
+  ok(peers.every((p) => p.phase === "fight"), "ครบทุกที่นั่งแล้วทุกเครื่องเริ่มพร้อมกัน");
+  ok(peers.every((p) => p.sim.frame === 0), "และนาฬิกาเริ่มที่เฟรม 0 เหมือนกันหมด");
+  ok(!!go && go.chars?.length === SEATS, `สัญญาณเริ่มพ่วงตัวละครมาครบทุกที่นั่ง (${go?.chars?.length})`);
+  const same = peers.every((p) => p.sim.fighters.map((f) => f.char).join() === go.chars.join());
+  ok(same, "ทุกเครื่องใช้ตารางท่าชุดเดียวกันทั้งสี่ช่อง");
+  ok(peers.every((p) => p.net.seats === SEATS), "คิวอินพุตรู้ว่ามีสี่ที่นั่ง");
+}
+
+// ── ที่นั่งไม่ครบ แขกคนที่สี่ยังไม่มา = ยังเริ่มไม่ได้ ──
+//
+// เริ่มไปทั้งที่ที่นั่งว่าง = ไม่มีใครส่งอินพุตของช่องนั้น lockstep ค้างรอตลอดกาล
+{
+  const { Lockstep } = await import(G + "/netplay.js");
+  const sc = {
+    isHost: true, versus: "net", phase: "select", netSeat: 0, netSeats: 4,
+    myReady: true, readyBy: { 1: true, 2: true }, picks: {},
+    sim: { frame: 0, fighters: [1, 2, 3, 4].map(() => ({ char: "nyx", team: 0 })), match: { on: false } },
+    out: [], netSend(pk) { this.out.push(pk); },
+  };
+  sc.net = new Lockstep(() => {}, { seats: 4, seat: 0 });
+  for (const m of ["_maybeStartNetMatch", "mySeat", "_notReady"]) sc[m] = ScrambleScene.prototype[m];
+  sc._maybeStartNetMatch();
+  ok(sc.phase === "select" && sc.out.length === 0, "ขาดที่นั่ง 3 แล้วไม่ส่ง go ออกไปเลย");
+  ok(sc._notReady().join() === "3", "และบอกได้ว่ารอที่นั่งไหนอยู่");
+}
+
+// ══ startNet ต่อสี่คน: ต้องจัดวงให้ครบ และ **ปลดธง AI ทุกช่อง** ═══════════════════
+//
+// นี่คือบรรทัดที่อันตรายที่สุดในท่อทั้งเส้น: setRoster(4) ติดธง ai ให้ช่อง 3-4 ไว้
+// (มันถูกออกแบบมาสำหรับ 2v2 บนเครื่องเดียวที่สองช่องหลังเป็นเพื่อน AI)
+// ลืมปลด = ซิมเอาอินพุตของ AI ไปใช้แทนอินพุตที่ส่งข้ามเน็ตมา (ดู step())
+// สองเครื่องคิดคนละอย่างตั้งแต่เฟรมแรก ไม่ throw ไม่ค้าง ไม่มีอะไรฟ้อง
+{
+  const { Game } = await import(G + "/core.js");
+  const mkReal = (seat, seats) => {
+    const sc = {
+      sim: new Game(), versus: null, phase: null, selSide: null, myReady: false,
+      out: [], _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
+    };
+    for (const m of ["startNet", "openSelect", "mySeat", "netReceive", "_fromSeat", "_notReady"])
+      sc[m] = ScrambleScene.prototype[m];
+    sc.startNet({ isHost: seat === 0, seat, seats, send: (pk) => sc.out.push(pk) });
+    return sc;
+  };
+
+  const four = mkReal(2, 4);
+  ok(four.sim.fighters.length === 4, `จัดวงเป็นสี่คนให้เอง (${four.sim.fighters.length})`);
+  const ais = four.sim.fighters.filter((f) => f.ai).length;
+  ok(ais === 0, `ไม่มีช่องไหนเดินด้วย AI — ต่อเน็ตทุกช่องมีคนจริงนั่งอยู่ (เจอ ${ais} ช่อง)`);
+  ok(four.net.seats === 4 && four.net.seat === 2, `คิวอินพุตรู้ที่นั่งของตัวเอง (seat ${four.net.seat}/${four.net.seats})`);
+  ok(four.mySeat() === 2 && four.selSide === 2, "และหน้าเลือกตัวชี้ไปที่ช่องของเราเอง");
+
+  // ห้องสองคนต้องไม่ถูกจัดวงใหม่โดยไม่จำเป็น — พฤติกรรมเดิมต้องไม่เปลี่ยน
+  const two = mkReal(1, 2);
+  ok(two.sim.fighters.length === 2, "ห้องสองคนยังเป็นสองช่องเหมือนเดิม");
+  ok(two.mySeat() === 1, "แขกของห้องสองคนนั่งที่ 1");
+  ok(two.net.seats === 2, "และคิวอินพุตเป็นสองที่นั่ง");
 }

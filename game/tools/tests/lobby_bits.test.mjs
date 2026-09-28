@@ -50,7 +50,7 @@ const S = await import(new URL("../../src/net/session.js", import.meta.url).href
 {
   ok(/id="btn-copy-code"/.test(html), "มีปุ่มก๊อป");
   ok(/id="btn-copy-code" hidden/.test(html), "ซ่อนไว้ก่อน — โชว์ตอนช่องยังว่างคือปุ่มที่กดแล้วไม่เกิดอะไร");
-  const host = html.slice(html.indexOf('$("btn-host").addEventListener'), html.indexOf('$("btn-host-back")'));
+  const host = html.slice(html.indexOf('const openHostPanel ='), html.indexOf('$("btn-host-back")'));
   ok(/btn-copy-code"\)\.hidden = false/.test(host), "โผล่ตอนได้รหัสจริงแล้ว");
   ok(/btn-copy-code"\)\.hidden = true/.test(host), "และซ่อนกลับตอนเริ่มสร้างห้องใหม่");
 
@@ -185,4 +185,20 @@ const S = await import(new URL("../../src/net/session.js", import.meta.url).href
 
   // ปุ่มสุ่มต้องไม่สุ่มไปโดนตัวที่ยังไม่ปล่อย (มันสุ่มจาก CHARACTERS ซึ่งไม่มีตัวนี้อยู่แล้ว)
   ok(/const ids = Object\.keys\(CHARACTERS\);/.test(scene), "ปุ่มสุ่มอ่านจาก CHARACTERS เท่านั้น");
+}
+
+// ══ ห้องสี่คน: ต้องรอครบก่อนเริ่ม ═══════════════════════════════════════════════
+//
+// เข้าเกมไปตอนยังไม่ครบ = ที่นั่งที่เหลือไม่มีใครส่งอินพุต แล้ว lockstep ค้างรอตลอดกาล
+// ซึ่งบนจออ่านว่า "เกมแฮงก์" ไม่ใช่ "ยังรอเพื่อนอยู่" — คนเล่นจะรีเฟรชหนีทันที
+{
+  ok(/id="btn-host4"/.test(html), "มีปุ่มสร้างห้องสี่คน");
+  ok(/data-seats="4"/.test(html), "ปุ่มบอกจำนวนที่นั่งไว้ใน markup ไม่ใช่ฮาร์ดโค้ดในสคริปต์");
+  const host = html.slice(html.indexOf('const openHostPanel ='), html.indexOf('$("btn-host-back")'));
+  ok(/hostRoom\(\{\s*\n?\s*seats,/.test(host), "ส่งจำนวนที่นั่งเข้า hostRoom จริง");
+  ok(/if \(here < total\)/.test(host), "ยังไม่ครบก็ยังไม่เริ่ม");
+  ok(/return;/.test(host.slice(host.indexOf('if (here < total)'))), "และออกจากฟังก์ชันไปเลย ไม่เผลอเริ่มต่อ");
+  ok(/\$\{total - here\}/.test(host), "บอกเป็นตัวเลขว่าขาดอีกกี่คน ไม่ใช่ \"รอเพื่อน\" เฉย ๆ");
+  // ปุ่มทั้งสองต้องใช้ทางเดียวกัน ไม่ใช่ก๊อปโค้ดกันคนละชุดแล้วแก้ไม่ครบทีหลัง
+  ok(/for \(const id of \["btn-host", "btn-host4"\]\)/.test(html), "ปุ่มสองปุ่มผูกกับฟังก์ชันเดียวกัน");
 }

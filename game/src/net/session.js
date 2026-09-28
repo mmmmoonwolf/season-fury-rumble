@@ -59,11 +59,28 @@ const SIGNAL_TIMEOUT_MS = 20000;
 const JOIN_RETRY_MAX = 3;
 const JOIN_RETRY_MS = 1200;
 
+/** ที่นั่งมากสุดต่อห้อง — 2v2 คือเพดานของเกมนี้ (ดู STAGE.platforms กับ setRoster) */
+export const MAX_SEATS = 4;
+
+/**
+ * ทำไมเป็น "ดาว" ไม่ใช่ "ตาข่าย"
+ *
+ * เล่นสี่คนแบบตาข่ายต้องให้แขกทุกคนรู้จัก peer id ของแขกคนอื่น ซึ่งต้องมีใครสักคนบอก
+ * = ต้องมีตัวกลางอยู่ดี และยังเพิ่มทางที่ต่อไม่ติดจาก 1 เส้นเป็น 6 เส้น
+ * (วง wifi ที่บล็อก WebRTC บล็อกทีละคู่ ไม่ใช่ทั้งห้อง — ตาข่ายจึงพังบ่อยกว่าเป็นทวีคูณ)
+ *
+ * เจ้าของห้องเป็นศูนย์กลาง: แขกคุยกับเจ้าของห้องคนเดียว เจ้าของห้องส่งต่อให้แขกคนอื่น
+ * ราคาที่จ่ายคือ **แขกถึงแขกเดินสองต่อ** หน่วงเป็นสองเท่าของแขกถึงเจ้าของห้อง
+ * ซึ่งอาจต้องเพิ่ม NET_DELAY ตอนเล่นสี่คนจริง (วัดก่อนค่อยปรับ อย่าเดา)
+ */
 /** สถานะห้องปัจจุบัน — instance เดียวต่อหน้าเว็บ */
 const session = {
   mode: "offline", // "offline" | "host" | "guest"
   peer: null, // instance ของ Peer (PeerJS) — null ถ้ายังไม่เปิดห้อง/ยังไม่เข้าร่วม
-  conn: null, // DataConnection ที่เชื่อมกับอีกฝั่ง
+  conn: null, // สายหลัก: แขกคือสายไปหาเจ้าของห้อง · เจ้าของห้องคือแขกคนแรกที่ต่อเข้ามา
+  conns: [], // เจ้าของห้อง: สายของแขกทุกคน เรียงตามลำดับที่ต่อเข้ามา = ที่นั่ง 1, 2, 3
+  seat: 0, // ที่นั่งของเครื่องนี้ — เจ้าของห้องได้ 0 เสมอ แขกได้ตามที่เจ้าของห้องแจก
+  seats: 2, // ห้องนี้เล่นกี่คน — เจ้าของห้องตั้งตอนสร้าง แล้วบอกแขกตอนต่อติด
   roomCode: null, // รหัสห้อง 5 ตัวอักษร
   // ฉากเข้ามาเซ็ต 3 ตัวนี้เองตอน create() (ตอนเปิดห้อง/เข้าร่วมยังไม่มี scene ให้ผูก)
   onClose: null,
@@ -111,8 +128,22 @@ function randomRoomCode() {
  * ทำงานได้ทันทีโดยไม่ต้อง re-register listener ของ PeerJS ใหม่
  */
 function wireConnection(conn) {
-  session.conn = conn;
+  if (!session.conns.includes(conn)) session.conns.push(conn);
+  session.conn ??= conn;
   conn.on("data", (packet) => {
+    // ที่นั่งเป็นข้อมูลของชั้นท่อ ไม่ใช่ของเกม — กินตรงนี้ ไม่ส่งต่อให้ฉาก
+    if (packet?.t === "seat" && session.mode === "guest") {
+      session.seat = packet.seat;
+      session.seats = packet.seats;
+      const done = session._onSeat;
+      session._onSeat = null;
+      done?.();
+      return;
+    }
+    // เจ้าของห้องเป็นศูนย์กลาง: ของที่แขกคนหนึ่งส่งมา แขกคนอื่นไม่ได้ยิน ต้องส่งต่อให้
+    // ส่งต่อ**ก่อน**เอาเข้าฉากของตัวเอง เพื่อให้ทางเดินของแขกสองคนสั้นที่สุดเท่าที่ทำได้
+    // (ส่งต่อทุกชนิดแพ็คเก็ต ไม่ใช่แค่อินพุต — เลือกตัว/กดพร้อม แขกคนอื่นก็ต้องเห็นเหมือนกัน)
+    if (session.mode === "host") relay(packet, conn);
     if (session._onData) session._onData(packet);
     else if (session._pending.length < PENDING_MAX) session._pending.push(packet);
   });
@@ -120,18 +151,28 @@ function wireConnection(conn) {
   conn.on("error", (err) => session.onError?.(err));
 }
 
+/** ส่งของที่ได้จากแขกคนหนึ่ง ต่อให้แขกที่เหลือ — ไม่ส่งกลับคนเดิม ไม่งั้นวนไม่จบ */
+function relay(packet, from) {
+  for (const c of session.conns) if (c !== from) safeSend(c, packet);
+}
+
+function safeSend(conn, packet) {
+  if (!conn || !conn.open) return;
+  try {
+    conn.send(packet);
+  } catch (_e) {
+    // data channel อาจหลุดกลางอากาศระหว่างส่ง — ปล่อยให้ event "close"/"error" ของ conn แจ้งเตือนแทน
+  }
+}
+
 /**
- * ส่งแพ็คเก็ต (plain object — PeerJS serialize ให้เอง) ไปอีกฝั่ง
- * เงียบๆ ถ้ายังไม่ต่อ/หลุดไปแล้ว ผู้เรียกไม่ต้องเช็ค conn เอง — เรียกได้ทุกเฟรมโดยไม่ throw
+ * ส่งแพ็คเก็ต (plain object — PeerJS serialize ให้เอง) ออกไปทุกสายที่เปิดอยู่
+ *
+ * แขกมีสายเดียว (ไปหาเจ้าของห้อง) · เจ้าของห้องมีสายละคนของแขกทุกคน
+ * ผู้เรียกไม่ต้องรู้ว่าตัวเองเป็นใครหรือห้องมีกี่คน เรียกได้ทุกเฟรมโดยไม่ throw
  */
 export function sendNetPacket(packet) {
-  if (session.conn && session.conn.open) {
-    try {
-      session.conn.send(packet);
-    } catch (_e) {
-      // data channel อาจหลุดกลางอากาศระหว่างส่ง — ปล่อยให้ event "close"/"error" ของ conn แจ้งเตือนแทน
-    }
-  }
+  for (const c of session.conns) safeSend(c, packet);
 }
 
 const TIMEOUT_MSG = "เซิร์ฟเวอร์จับคู่ไม่ตอบใน 20 วินาที — ลองใหม่อีกครั้ง "
@@ -155,8 +196,12 @@ function describePeerError(err) {
  * รับเฉพาะผู้เข้าร่วมคนแรกที่ต่อเข้ามา (เกม 1v1 — ปฏิเสธคนที่ 3)
  * @param {{onCodeReady?:(code:string)=>void, onConnected?:()=>void, onError?:(msg:string)=>void}} handlers
  */
-export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
+export function hostRoom({ seats = 2, onCodeReady, onConnected, onError } = {}) {
   session.mode = "host";
+  session.seat = 0;
+  session.seats = Math.max(2, Math.min(MAX_SEATS, seats | 0));
+  session.conns = [];
+  session.conn = null;
   let attempt = 0;
   let opened = false;
   let openTimer = null;
@@ -174,12 +219,19 @@ export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
     peer.on("open", () => { opened = true; clearTimeout(openTimer); onCodeReady?.(code); });
 
     peer.on("connection", (conn) => {
-      if (session.conn) {
-        conn.close(); // มีคนต่ออยู่แล้ว — ห้องนี้รับได้แค่ 1v1
+      if (session.conns.length >= session.seats - 1) {
+        conn.close(); // ห้องเต็มแล้ว — ที่นั่งมีเท่าที่เจ้าของห้องตั้งไว้ตอนสร้าง
         return;
       }
+      // ที่นั่งแจกตามลำดับที่ต่อเข้ามา เจ้าของห้องนั่ง 0 แขกคนแรกนั่ง 1 ไล่ไป
+      // **ต้องแจกที่นี่ที่เดียว** แขกเดาเองไม่ได้ เพราะไม่รู้ว่ามีใครเข้ามาก่อนหรือยัง
+      // และถ้าเดาซ้ำกัน สองเครื่องจะคุมตัวละครตัวเดียวกันโดยไม่มีอะไรฟ้อง
+      const seat = session.conns.length + 1;
       wireConnection(conn);
-      conn.on("open", () => onConnected?.());
+      conn.on("open", () => {
+        safeSend(conn, { t: "seat", seat, seats: session.seats });
+        onConnected?.(session.conns.length + 1, session.seats);
+      });
     });
 
     peer.on("error", (err) => {
@@ -195,6 +247,9 @@ export function hostRoom({ onCodeReady, onConnected, onError } = {}) {
 
   tryCreate();
 }
+
+const SEAT_MSG = "ต่อห้องติดแล้วแต่เจ้าของห้องไม่ตอบว่าให้นั่งที่ไหน — "
+  + "ให้เพื่อนรีเฟรชหน้าเว็บแล้วสร้างห้องใหม่ (หน้าเว็บของเขาน่าจะเป็นเวอร์ชันเก่า)";
 
 /**
  * เข้าร่วมห้องด้วยรหัส 5 ตัวอักษรที่ฝั่ง host โชว์ไว้
@@ -213,16 +268,23 @@ export function joinRoom(code, { onConnected, onError } = {}) {
   }
   session.mode = "guest";
   session.roomCode = code;
+  session.conns = [];
+  session.conn = null;
+  session.seat = 1;          // ค่าเริ่มต้นเผื่อเจ้าของห้องเป็นบิลด์เก่าที่ไม่ส่ง 'seat' มา (ห้อง 1v1)
+  session.seats = 2;
+  session.seatKnown = false;
+  session._onSeat = null;
   const peer = new window.Peer();
   session.peer = peer;
 
   // นับถอยหลังตั้งแต่กด ครอบทั้งสองจังหวะ: ต่อเซิร์ฟเวอร์ signaling และต่อหาเจ้าของห้อง
   // ค้างที่จังหวะไหนก็ได้ผลเหมือนกันสำหรับคนเล่น คือกดแล้วไม่มีอะไรเกิดขึ้น
-  let done = false;
+  let done = false, opened = false;
   const timer = setTimeout(() => {
     if (done) return;
     done = true;
-    onError?.(TIMEOUT_MSG);
+    // ต่อติดแล้วแต่ไม่ได้ที่นั่ง เป็นคนละอาการกับเซิร์ฟเวอร์ไม่ตอบ — บอกให้ตรงกับที่เกิดจริง
+    onError?.(opened ? SEAT_MSG : TIMEOUT_MSG);
   }, SIGNAL_TIMEOUT_MS);
   const settle = (fn) => (...a) => { if (done) return; done = true; clearTimeout(timer); fn?.(...a); };
 
@@ -232,7 +294,14 @@ export function joinRoom(code, { onConnected, onError } = {}) {
     tries += 1;
     const conn = peer.connect(PEER_ID_PREFIX + code, { reliable: true });
     wireConnection(conn);
-    conn.on("open", settle(() => onConnected?.()));
+    // ต่อติดแล้ว **ยังเข้าเกมไม่ได้** จนกว่าจะรู้ที่นั่งของตัวเอง
+    // ฉากสร้างคิวอินพุตจากเลขที่นั่งตั้งแต่เฟรมแรก แก้ทีหลังไม่ได้ และเดาเองก็ไม่ได้
+    // (ห้อง 1v1 แขกเป็นที่นั่ง 1 เสมอ แต่ห้องสี่คนขึ้นกับว่าใครต่อเข้ามาก่อน)
+    //
+    // ไม่ได้ตั้งนาฬิกาเพิ่ม — ใช้นาฬิกาหมดเวลาตัวเดิมที่ยังเดินอยู่
+    // เพิ่มนาฬิกาตัวที่สองแปลว่ามีระเบิดเวลาอีกลูกที่ต้องจำว่าต้องยกเลิกตรงไหนบ้าง
+    conn.on("open", () => { opened = true; });
+    session._onSeat = settle(() => onConnected?.());
     conn.on("error", settle((err) => onError?.(describePeerError(err))));
   };
 
@@ -250,11 +319,16 @@ export function joinRoom(code, { onConnected, onError } = {}) {
 
 /** ยกเลิก/เคลียร์ห้องปัจจุบัน — ใช้ตอนกดย้อนกลับจากล็อบบี้ ก่อนเริ่มเกมจริง (กลับไปเป็น offline) */
 export function cancelSession() {
-  session.conn?.close();
+  for (const c of session.conns) c?.close();
   session.peer?.destroy();
   session.mode = "offline";
   session.peer = null;
   session.conn = null;
+  session.conns = [];
+  session.seat = 0;
+  session.seats = 2;
+  session.seatKnown = false;
+  session._onSeat = null;
   session.roomCode = null;
   session._pending = [];
   session.onData = null;

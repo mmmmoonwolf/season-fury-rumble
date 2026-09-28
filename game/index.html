@@ -228,7 +228,8 @@
 
       <div id="lobby-menu" class="lobby-panel">
         <button id="btn-solo" class="lobby-btn lobby-btn-primary" data-sfx="start">เล่นคนเดียว</button>
-        <button id="btn-host" class="lobby-btn">สร้างห้อง (เล่นกับเพื่อน)</button>
+        <button id="btn-host" class="lobby-btn" data-seats="2">สร้างห้อง 1v1</button>
+        <button id="btn-host4" class="lobby-btn" data-seats="4">สร้างห้อง 2v2 (4 คน)</button>
         <button id="btn-join" class="lobby-btn">เข้าร่วมห้อง</button>
       </div>
 
@@ -238,6 +239,7 @@
         <div class="room-code" id="room-code-display"></div>
         <button class="lobby-btn lobby-btn-copy" id="btn-copy-code" hidden>ก๊อปรหัส</button>
         <p class="lobby-hint">บอกรหัสนี้ให้เพื่อนพิมพ์ในช่อง "เข้าร่วมห้อง"</p>
+        <p class="lobby-hint" id="host-seats"></p>
         <button class="lobby-btn lobby-btn-secondary" id="btn-host-back" data-sfx="back">ย้อนกลับ</button>
       </div>
 
@@ -447,28 +449,42 @@
 
     $("btn-solo").addEventListener("click", startGame);
 
-    $("btn-host").addEventListener("click", () => {
+    /* สร้างห้อง — ปุ่มเดียวกันทั้ง 1v1 และ 2v2 ต่างกันแค่จำนวนที่นั่งบนปุ่ม
+     *
+     *  ห้องสี่คนไม่ได้เริ่มทันทีที่มีคนแรกเข้ามา ต้องรอครบทุกที่นั่งก่อน
+     *  เข้าเกมไปตอนยังไม่ครบแปลว่าที่นั่งที่เหลือไม่มีใครส่งอินพุต แล้ว lockstep ค้างรอตลอดกาล
+     *  ซึ่งบนจออ่านว่า "เกมแฮงก์" ไม่ใช่ "ยังรอเพื่อนอยู่" */
+    const openHostPanel = (seats) => {
       showPanel("host");
       $("host-status").textContent = "กำลังสร้างห้อง...";
       $("host-spinner").hidden = false;
       $("room-code-display").textContent = "";
+      $("host-seats").textContent = seats > 2 ? `ห้องนี้เล่น ${seats} คน — รอให้ครบก่อนถึงจะเริ่มได้` : "";
       // ปุ่มก๊อปโผล่ตอนมีรหัสจริงแล้วเท่านั้น — โชว์ตอนช่องยังว่างคือปุ่มที่กดแล้วไม่เกิดอะไร
       $("btn-copy-code").hidden = true;
       $("btn-copy-code").textContent = "ก๊อปรหัส";
       hostRoom({
+        seats,
         onCodeReady: (code) => {
           $("room-code-display").textContent = code;
           $("btn-copy-code").hidden = false;
           $("host-status").textContent = "รอเพื่อนเข้าร่วม — บอกรหัสด้านบนให้เพื่อน";
         },
-        onConnected: () => {
-          $("host-status").textContent = "เชื่อมต่อสำเร็จ! กำลังเริ่มเกม...";
+        onConnected: (here, total) => {
+          if (here < total) {
+            // บอกเป็นตัวเลขว่าขาดอีกกี่คน ไม่ใช่ "รอเพื่อน" เฉย ๆ — คนสร้างห้องต้องรู้ว่าต้องตามอีกกี่คน
+            $("host-status").textContent = `เข้ามาแล้ว ${here}/${total} คน — รออีก ${total - here}`;
+            return;
+          }
+          $("host-status").textContent = "ครบแล้ว! กำลังเริ่มเกม...";
           $("host-spinner").hidden = true;
           setTimeout(startGame, 250);
         },
         onError: (msg) => { cancelSession(); showPanel("menu"); showError(msg); },
       });
-    });
+    };
+    for (const id of ["btn-host", "btn-host4"])
+      $(id).addEventListener("click", () => openHostPanel(Number($(id).dataset.seats)));
     $("btn-host-back").addEventListener("click", () => { cancelSession(); showPanel("menu"); });
 
     $("btn-join").addEventListener("click", () => {
