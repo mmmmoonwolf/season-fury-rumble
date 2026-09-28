@@ -1,10 +1,25 @@
-"""ตัดคลิปวิ่งของ Momus ออกเป็นเฟรม PNG + clip.json
+"""ตัดคลิปวิ่งออกเป็นเฟรม PNG + clip.json
 
 รูปแบบเอาต์พุตเหมือนของ Orpheus/Atlas เป๊ะ build script จึงอ่านได้ด้วยโค้ดชุดเดียวกัน
 
-คาบของรอบวิ่งวัดจาก "ระยะถ่างเท้า" ไม่ใช่เดาเอา — สัญญาณนี้ขึ้นลงหนึ่งรอบต่อหนึ่งก้าว
-ส่วนรอบเต็ม (ซ้าย+ขวา) เป็นสองเท่าของนั้น หาได้จาก autocorrelation
-รัน (จากโฟลเดอร์ game):  python3 tools/cut_momus_clip.py <โฟลเดอร์เฟรม>
+รัน (จากโฟลเดอร์ game):  python3 tools/cut_momus_clip.py <โฟลเดอร์เฟรม> [ชื่อคลิป]
+
+## หาคาบของรอบวิ่งยังไง
+
+**ตัวตลก** วัดจาก "ระยะถ่างเท้า" แล้ว autocorrelate — สัญญาณขึ้นลงหนึ่งรอบต่อหนึ่งก้าว
+รอบเต็ม (ซ้าย+ขวา) เป็นสองเท่าของนั้น
+
+**DEAR ใช้วิธีนั้นไม่ได้** หมัดกลของเขาห้อยยาวเลยเข่า พาดอยู่ในแถบล่างของตัวที่ใช้วัดเท้า
+ระยะถ่างเท้าจึงอ่านได้ 711 px ตอนยืนนิ่ง (จริง ๆ คือความกว้างของกำปั้นสองข้าง)
+autocorrelation ได้ r แค่ 0.41-0.51 ซึ่งเชื่อไม่ได้
+
+เปลี่ยนไปเทียบ **รูปทรงทั้งตัว** แทน: จัดให้เท้าแตะเส้นเดียวกันและกึ่งกลางตรงกัน
+แล้ววัด IoU ระหว่างเฟรม n กับ n+P ทุกค่า P — คาบคือ P ที่ IoU เฉลี่ยสูงสุด
+วัดจริงได้ P=29 ที่ IoU 0.854 ซึ่งเป็นยอดที่ชัด (P ข้างเคียงต่ำกว่าชัดเจน)
+และ 29 ≈ 2 x 14.5 ตรงกับครึ่งคาบที่สัญญาณเท้าให้มา — สองวิธีเห็นตรงกัน
+
+จุดเริ่มก็เลือกด้วยไม้เดียวกัน: เฟรมที่ **ลูปปิดสนิทที่สุด** (IoU ของ n กับ n+P สูงสุด)
+โดยที่เฟรมในรอบยังต่างกันพอ ไม่ใช่ช่วงที่ภาพค้าง — f95 ได้ 0.970
 """
 import json
 import os
@@ -18,14 +33,21 @@ from atlas_sheets import body_anchor
 from cut import cutout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "..", "art_reference", "momus_clip")
+REF_DIR = os.path.join(HERE, "..", "..", "art_reference")
 N_CELLS = 10
-IDLE_FRAME = 10          # ช่วงต้นคลิปเขายืนนิ่ง ใช้วัดความสูงท่ายืน
-RUN_START = 111          # จังหวะเท้าแตะพื้นหลังผ่านจุดถ่างเท้าน้อยสุด (เฟรม 110)
-PERIOD = 23              # วัดจาก autocorrelation ของระยะถ่างเท้า
+
+# ค่าที่วัดมาแล้วต่อคลิป — อย่าเดา ทุกตัวเลขในนี้มาจากการวัดคลิปจริง (ดู docstring)
+CLIPS = {
+    # idle = เฟรมที่ยังยืนนิ่ง ใช้วัดความสูงท่ายืนอย่างเดียว ไม่ได้เป็นเฟรมในเกม
+    "momus": {"idle": 10, "start": 111, "period": 23},
+    "dear":  {"idle": 3,  "start": 95,  "period": 29},
+}
 
 
-def main(frame_dir):
+def main(frame_dir, name="momus"):
+    cfg = CLIPS[name]
+    OUT = os.path.join(REF_DIR, f"{name}_clip")
+    IDLE_FRAME, RUN_START, PERIOD = cfg["idle"], cfg["start"], cfg["period"]
     pick = [round(RUN_START + PERIOD * i / N_CELLS) for i in range(N_CELLS)]
     print("เฟรมที่เลือก:", pick)
 
@@ -59,4 +81,4 @@ def main(frame_dir):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1])
+    main(sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "momus")
