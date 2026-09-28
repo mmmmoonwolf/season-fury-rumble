@@ -132,7 +132,7 @@ const whos = (sc) => sc.selSlots.map((sl) => sl.querySelector('.who').textConten
   };
 
   const WANT = { nyx: ['BOMB', 'Nyx'], helios: ['MARCH', 'Helios'], alecto: ['KUNJAE', 'Alecto'],
-    atlas: ['TEEMEE', 'Atlas'], orpheus: ['OAT', 'Orpheus'], momus: ['DEAR', 'Momus'] };
+    atlas: ['TEEMEE', 'Atlas'], orpheus: ['OAT', 'Orpheus'], momus: ['DEAR', 'Hephaestus'] };
 
   const wrong = [];
   for (const [id, [real, myth]] of Object.entries(WANT)) {

@@ -270,6 +270,22 @@ const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% �
 // ไม่ใช่ท่าทำดาเมจ แต่เป็นท่าเอาตัวรอดตอนโดนรุม — ผู้เล่นรายงานว่าคนเล่นเธอโดนรุมประจำ
 const DUST_HALF = 200;       // ครึ่งความกว้างของวง — กว้างกว่ากองไฟ (62) สามเท่า
 const DUST_LIFE = 300;       // วงฝุ่นอยู่กี่เฟรม (5 วินาที)
+
+/* ── DEAR: ไอพ่น · การลาก · โอเวอร์คล็อก (ดู docs/MOMUS_KIT.md) ── */
+const BOOST_MAX = 3;         // กี่ขีด — พุ่งหรือกระโดดเพิ่มกินขีดละหนึ่ง
+const BOOST_PER_AIR = 2;     // คืนได้มากสุดกี่ขีดต่อหนึ่งช่วงลอย
+                             // **ชั้นกันคอมโบอากาศไม่รู้จบ** — ต่อยโดนคืนขีด + dair เด้งขึ้น
+                             // + เด้งแล้วได้ดับเบิลจัมพ์คืน = วนได้ตลอดกาลถ้าไม่มีเพดานนี้
+                             // (ชั้นแรกคือแรงโน้มถ่วงที่เพิ่มตามจำนวนฮิต ซึ่งมีอยู่แล้วในเอนจิ้น)
+const BOOST_DASH_VX = 15;    // พุ่งแรงแค่ไหนทางแกนนอน
+const BOOST_DASH_VY = 12;    // และทางแกนตั้ง (กดทิศขึ้น/ลงตอนพุ่ง)
+const BOOST_IFRAMES = 5;     // อมตะกี่เฟรมตอนออกตัว — สั้นพอที่จะไม่ใช่ปุ่มหนีฟรี
+const BOOST_LOCK = 12;       // พุ่งติดกันได้เร็วสุดกี่เฟรม (กันพุ่งรัวจนกลายเป็นการบิน)
+const OVERCLOCK_TIME = 180;  // 3 วินาที
+const OVERCLOCK_DMG = 1.4;   // ท่าปกติแรงขึ้นกี่เท่าระหว่างติดบัฟ
+const OVERCLOCK_ARMOR = 3;   // เกราะรับได้กี่ทีต่อหนึ่งท่า (เท่าท่าหนักของ Atlas)
+const CARRY_GAP = 52;        // ลากไว้ห่างจากตัวเท่าไหร่ — ทับกันแล้วสไปรท์ซ้อนจนดูไม่ออกว่าใครเป็นใคร
+const SLAM_WAVE = 0.45;      // คลื่นตามพื้นแรงกี่ส่วนของหมัดที่อัดคนที่จับไว้
 const DUST_DR = 0.45;        // อยู่ในวงแล้วดาเมจที่รับเหลือเท่าไหร่
 const VEIL_TIME = 45;        // ออกจากวงแล้วยังจาง ๆ ต่ออีกกี่เฟรม — ช่วงนี้คือเวลาหนี
 
@@ -599,133 +615,122 @@ const ORPHEUS_MOVES = {
 // กลไกประจำตัวเขาทั้งหมดอยู่ที่กล่องนี้ และกฎเหล็กคือ **มันโดนเจ้าของด้วย**
 // เขาเป็นตัวเดียวในเกมที่สกิลตัวเองฆ่าตัวเองได้ — ไม่ได้ชนะเพราะแรงกว่า
 // แต่ชนะเพราะรู้ว่าระเบิดจะลงตรงไหน ส่วนคนอื่นไม่รู้
-const BOX_FUSE = 180;        // 3 วินาที ไม่ใช่ 5 — เกมเร็วขนาดนี้ 5 วิคือลืมไปแล้วว่าวางไว้
-const BOX_HALF = 108;        // รัศมีระเบิด
-const BOX_TRIGGER = 52;      // เดินเข้าใกล้กว่านี้ = จุดชนวนทันที ไม่ต้องรอครบเวลา
-const BOX_ARM = 24;          // เพิ่งขว้างออกไปยังไม่ติดชนวน ไม่งั้นระเบิดใส่หน้าตัวเองทุกครั้ง
-const BOX_DMG = 9;
-const BOX_STUN = 30;
-const BOX_KB = [7, -11];     // ดีดลอย — ระเบิดไม่ใช่ท่ากลางคอมโบ การจับลอยคือจุดประสงค์
-const BOX_MAX = 2;           // วางพร้อมกันได้สองกล่อง
-const RAIN_BASE = 4;         // อัลติโปรยกี่ไหตอนยังไม่มีชั้นเลย
-const HOUSE_MAX = 5;         // เพดานชั้น "โรงเต็ม" — เท่าตราแส้ของ Alecto จะได้พูดภาษาเดียวกันทั้งเกม
 const SELF_STUN = 0.5;       // ระเบิดตัวเองทำให้ชะงักครึ่งเดียวของที่คนอื่นโดน
-const RAIN_STEP = 16;        // ชนวนเหลื่อมกันกี่เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่พร้อมกันทีเดียว
 // ── Understudy: ตัวแสดงแทน ──
 // เขาทิ้งหุ่นที่หน้าตาเหมือนตัวเองไว้ตรงที่ยืนอยู่ แล้วหลุดออกไปข้าง ๆ
-const DECOY_LIFE = 150;      // อยู่ได้ 2.5 วิ หมดเวลาแล้วหายเฉย ๆ ไม่ระเบิด
-const DECOY_SLIP = 120;      // หลุดถอยหลังไปไกลแค่ไหน
-const DECOY_W = 60;          // กรอบที่ตีโดน — แคบกว่าตัวจริงนิดหน่อย
-const DECOY_H = 150;
-const DECOY_HALF = 64;       // รัศมีระเบิดตอนแตก แคบกว่าไห (108) มาก
-const DECOY_DMG = 4;
-const DECOY_STUN = 20;
-const DECOY_KB = [5, -7];
 
 const ORPHEUS_SKILLS = ['slide1', 'burn1', 'solo1'];
 const ORPHEUS_SKILL_CD = [120, 240, 0];   // สไลด์กดถี่ได้ · ถอยลากไฟ 4 วินาที กันกดหนีรัว
 
 /**
- * MOMUS — ตัวป่วนสนาม (ตัวสุดท้ายของโรสเตอร์)
+ * DEAR (ฉายา Hephaestus) — เด็กแบกโครงแขนกลไซเบอร์แวร์ · สายบุกทางอากาศ
  *
- * สี่ตัวแรกทุกตัวมีสกิลที่เล็งใส่คู่ต่อสู้ ตัวนี้ไม่เล็งใคร — มันโดนทุกคนที่ยืนผิดที่
- * ดาเมจของเขาไม่มีอะไรรับประกันเลย ระเบิดทุกลูกหลบได้ถ้าเห็นทัน
- * ตัวอื่นกดปุ่มแล้วดาเมจออกแน่ ๆ ของเขาต้องหลอกให้คนเดินไปยืนผิดที่ก่อน
+ * **เขาเป็นคนเดียวในเกมที่ไม่ลงพื้น — และเขาอยู่บนฟ้าได้ก็ต่อเมื่อเขาต่อยโดน**
  *
- * ท่าตีปกติเบาแต่รัว เหมือนตัวตลกตบตี ไม่ใช่ต่อยหนักเงื้อนาน
- * เดิมออกแบบให้ต่อยช้าหนัก ทิ้งไปแล้ว — เกมนี้เร็วและคนใส่กันรัว
- * ท่าที่ใช้เวลาเตรียมตัวคือท่าที่ตายก่อนได้ใช้
+ * โรสเตอร์ที่เหลือสู้กันบนดินหมด พื้นที่แนวตั้งของเวทีจึงยังว่างอยู่ ตัวนี้เกิดมาเพื่อใช้มัน
+ * ดูเหตุผลของทุกตัวเลขได้ที่ `docs/MOMUS_KIT.md`
+ *
+ * ── ทำไมแขนใหญ่แต่ไม่ช้า ──
+ * มันเป็นไซเบอร์แวร์ เซอร์โวเป็นคนออกแรง ไม่ใช่เด็ก แขนจึงเร็วกว่าแขนคน ไม่ใช่ช้ากว่า
+ * ราคาที่เขาจ่ายคือ **"ห้ามพลาด"** ไม่ใช่ "อืดอาด" — พลาดแล้วไอพ่นหมด ร่วงลงพื้น
+ * ซึ่งเป็นที่ที่เขาสู้ใครไม่ได้เลย ความดุดันจึงเป็นสิ่งที่ถูกบังคับ ไม่ใช่ตัวเลือก
+ *
+ * ── เวอร์ชันก่อนหน้า (ตัวตลกวางกับดัก) ถูกถอดทั้งตัว ──
+ * มันมีสามระบบวางของบนเวทีพร้อมกัน (กล่อง + หุ่นแสดงแทน + ชั้นโรง) ผู้เล่นสรุปว่า "วุ่นวาย"
+ * และอัลติผูกกับเลย์เอาต์เวที ซึ่งพังทันทีที่เวทีเปลี่ยนจากห้าชั้นเหลือสามชั้น
+ * ของเก่าเก็บไว้ที่ `docs/archive/MOMUS_KIT_jester.md`
  */
 const MOMUS_MOVES = {
-  // ---- ท่าตีปกติ: หมัดพันผ้าเร็ว ๆ สามจังหวะ ----
+  // ---- ท่าตีปกติ: หมัดลูกสูบ เร็วและเอื้อมไกลกว่าค่ากลางโรสเตอร์ ----
+  //
   // kb[1] ต้องเป็น 0 ทุกจังหวะที่อยู่กลางคอมโบ ถีบขึ้นแม้นิดเดียวคู่ต่อสู้จะลอย
-  // พอตกถึงพื้นกลายเป็นท่าล้มซึ่งมี invuln ติดมา จังหวะที่เหลือจะฟาดลม (กัดมาแล้วห้ารอบ)
-  jab1: { label: 'Slap', kind: 'ground', startup: 4, active: 3, recovery: 7, dmg: 2,
-    hb: { x: 8, y: -96, w: 76, h: 28 }, kb: [1.5, 0], stun: 14, chain: 'jab2' },
-  jab2: { label: 'Slap', kind: 'ground', startup: 4, active: 3, recovery: 8, dmg: 2,
-    hb: { x: 8, y: -92, w: 80, h: 30 }, kb: [1.5, 0], stun: 14, chain: 'jab3' },
-  jab3: { label: 'Shove', kind: 'ground', startup: 5, active: 4, recovery: 15, dmg: 5,
-    hb: { x: 10, y: -94, w: 92, h: 34 }, kb: [4, 0], stun: 30, chain: 'jab4' },
+  // พอตกถึงพื้นกลายเป็นท่าล้มซึ่งมี invuln ติดมา จังหวะที่เหลือจะฟาดลม
+  // (บทเรียนจากตัวเดิม กัดมาแล้วห้ารอบ — ข้อนี้ไม่เกี่ยวกับตัวละคร มันเป็นกฎของเอนจิ้น)
+  jab1: { label: 'Piston Jab', kind: 'ground', startup: 4, active: 3, recovery: 7, dmg: 3,
+    hb: { x: 10, y: -96, w: 96, h: 28 }, kb: [1.5, 0], stun: 14, chain: 'jab2' },
+  jab2: { label: 'Piston Jab', kind: 'ground', startup: 4, active: 3, recovery: 8, dmg: 3,
+    hb: { x: 10, y: -92, w: 100, h: 30 }, kb: [1.5, 0], stun: 14, chain: 'jab3' },
+  jab3: { label: 'Double Ram', kind: 'ground', startup: 5, active: 4, recovery: 12, dmg: 5,
+    hb: { x: 12, y: -94, w: 108, h: 36 }, kb: [3, 0], stun: 26, chain: 'jab4' },
 
-  // ---- ไม้จบ: ยัดหีบ — ภาพจำของตัวละคร ----
+  // ---- ไม้จบ: ส่งขึ้นฟ้า — นี่คือทางขึ้นหลักของตัวละครทั้งตัว ----
   //
-  // เดิมวางไว้เป็นอัลติ ย้ายมาเป็นไม้จบคอมโบเพราะสองเหตุผล:
-  // อัลติที่โดนคนเดียวอ่อนเกินไปตอนเล่นหลายคน และมุกนี้ดีเกินกว่าจะได้เห็นแค่ยกละครั้ง
-  // ต่อครบสี่จังหวะไม่ง่ายตอนคนรุมกัน จึงยังเป็นรางวัล ไม่ใช่ของแจกฟรี
-  //
-  // jab4 คือ "คว้า" · jab5/jab6 ต่อเฉพาะตอนคว้าติด (onHit ไม่ใช่ autoChain)
-  // คว้าไม่โดนก็จบแค่ลุงจ์ค้างไว้ — ไม่งั้นจะดูเหมือนจับติดทั้งที่ไม่โดน
-  //
-  // kb ของสองจังหวะแรกติดลบ = **ลากเข้าหาตัว** ไม่ใช่ผลักออก
-  // วัดแล้วตอนตั้งเป็นบวก ระยะห่างไต่ขึ้นทุกหมัด (90 -> 114 -> 125) จน jab6 เอื้อมไม่ถึง
-  // คอมโบเลยขาดที่จังหวะห้าทุกครั้ง ทั้งที่คว้าติดแล้ว — ท่าจับต้องดึงเข้า ไม่งั้นมันไม่ใช่ท่าจับ
-  jab4: { label: 'Toy Chest', kind: 'ground', startup: 7, active: 4, recovery: 16, dmg: 3,
-    hb: { x: 14, y: -92, w: 96, h: 40 }, kb: [-5, 0], stun: 58, onHit: 'jab5' },
-  jab5: { label: 'Toy Chest', kind: 'ground', startup: 6, active: 4, recovery: 12, dmg: 7,
-    hb: { x: 8, y: -70, w: 112, h: 64 }, kb: [-2, 0], stun: 40, autoChain: 'jab6' },
-  // จบคอมโบตรงนี้ ถีบขึ้นได้แล้ว — ไม่มีจังหวะต่อให้ขาด
-  jab6: { label: 'Encore', kind: 'ground', startup: 5, active: 4, recovery: 18, dmg: 5,
-    hb: { x: 6, y: -84, w: 124, h: 76 }, kb: [12, -10], stun: 34 },
+  // `jumpCancel` ทำให้ต่อยโดนแล้วกดกระโดดตามขึ้นไปต่อคอมโบอากาศได้ทันที
+  // เอนจิ้นรองรับอยู่แล้ว (ดู advanceMove) — ธงนี้คือสิ่งเดียวที่ต้องติด
+  jab4: { label: 'Skyward', kind: 'ground', startup: 6, active: 5, recovery: 16, dmg: 6,
+    hb: { x: 8, y: -120, w: 96, h: 72 }, kb: [2, -16], stun: 32, jumpCancel: true },
 
-  // ทางเข้าหลัก: พุ่งสะบัดแขนเสื้อไปข้างหน้า มีแรงส่งตัวตาม
-  side: { label: 'Jester Rush', kind: 'ground', startup: 7, active: 5, recovery: 16, dmg: 5,
-    hb: { x: 16, y: -94, w: 104, h: 32 }, kb: [6, 0], stun: 22,
-    imp: { f: 5, vx: 11 }, glide: true },
-  up: { label: 'Pop-up', kind: 'ground', startup: 6, active: 5, recovery: 16, dmg: 5,
-    hb: { x: -4, y: -168, w: 82, h: 116 }, kb: [2, -15], stun: 30, jumpCancel: true },
-  down: { label: 'Low Sweep', kind: 'ground', crouch: true, startup: 6, active: 4, recovery: 15, dmg: 4,
-    hb: { x: 10, y: -32, w: 102, h: 28 }, kb: [3, -8], stun: 24 },
-  nair: { label: 'Spin', kind: 'air', startup: 5, active: 8, recovery: 11, dmg: 4,
-    hb: { x: -46, y: -120, w: 104, h: 104 }, kb: [3, -6], stun: 22, jumpCancel: true },
-  sair: { label: 'Air Slap', kind: 'air', startup: 6, active: 8, recovery: 13, dmg: 5,
-    hb: { x: 12, y: -96, w: 104, h: 32 }, kb: [8, -4], stun: 26,
-    imp: { f: 6, vx: 8, vy: -1 }, floaty: true },
-  dair: { label: 'Stomp', kind: 'air', startup: 7, active: 8, recovery: 14, dmg: 5,
-    hb: { x: -14, y: -40, w: 88, h: 76 }, kb: [4, -4], stun: 24 },
+  side: { label: 'Shoulder Charge', kind: 'ground', startup: 7, active: 5, recovery: 16, dmg: 6,
+    hb: { x: 16, y: -94, w: 104, h: 36 }, kb: [7, 0], stun: 24,
+    imp: { f: 5, vx: 12 }, glide: true },
+  up: { label: 'Rocket Upper', kind: 'ground', startup: 6, active: 5, recovery: 15, dmg: 6,
+    hb: { x: -4, y: -172, w: 88, h: 120 }, kb: [2, -15], stun: 30, jumpCancel: true },
+  down: { label: 'Low Piston', kind: 'ground', crouch: true, startup: 6, active: 4, recovery: 15, dmg: 5,
+    hb: { x: 12, y: -32, w: 110, h: 28 }, kb: [3, -8], stun: 24 },
 
-  // ---- สกิล 1 Jack-in-the-Box: ขว้างกล่องระเบิด (ปุ่ม 1) ----
+  // ---- ท่าอากาศ: บ้านของเขา ----
+  nair: { label: 'Spin Fists', kind: 'air', startup: 5, active: 9, recovery: 10, dmg: 5,
+    hb: { x: -50, y: -122, w: 112, h: 108 }, kb: [3, -6], stun: 22, jumpCancel: true },
+  sair: { label: 'Rocket Punch', kind: 'air', startup: 6, active: 8, recovery: 12, dmg: 6,
+    hb: { x: 14, y: -96, w: 116, h: 34 }, kb: [9, -4], stun: 26,
+    imp: { f: 6, vx: 9, vy: -1 }, floaty: true },
+  // pogo = ทุบโดนแล้วเด้งกลับขึ้น **พร้อมคืนดับเบิลจัมพ์** (ดู resolveHit)
+  // ทุบโดน -> เด้งขึ้น -> ได้ดับเบิลจัมพ์คืน -> ได้ไอพ่นคืน -> ทุบอีก
+  // นี่คือความรู้สึกของตัวละครทั้งตัวในบรรทัดเดียว
+  dair: { label: 'Piston Slam', kind: 'air', startup: 7, active: 8, recovery: 13, dmg: 6,
+    hb: { x: -16, y: -40, w: 96, h: 80 }, kb: [4, -4], stun: 24, pogo: -12 },
+
+  // ---- สกิล 1 Drag & Slam: ไถลากแล้วทุบพื้น (ปุ่ม 1) ----
   //
-  // ขว้างแบบสะบัดมือ ไม่ใช่ย่อลงไปวาง — ต้องกดได้กลางวงที่กำลังตีกัน
-  // กล่องระเบิดเมื่อใครแตะ หรือครบ 3 วินาที อย่างใดถึงก่อน และ **โดนเจ้าของด้วย**
-  box1: { label: 'Jack-in-the-Box', kind: 'ground', startup: 5, active: 4, recovery: 6, dmg: 0,
+  // คว้าติดแล้ว **ลากไปด้วย** จนสุดทาง แล้วทุบลงพื้น
+  // ชื่อคีย์เป็นชื่อจริงของท่าใหม่ ส่วนอาร์ตยืมเฟรมเก่าไปพลาง (ดู artAs ใน ScrambleScene)
+  drag1: { label: 'Drag & Slam', kind: 'ground', startup: 8, active: 6, recovery: 10, dmg: 4,
+    hb: { x: 16, y: -100, w: 112, h: 90 }, kb: [0, 0], stun: 16,
+    carry: { frames: 36, mash: 5 }, imp: { f: 8, vx: 13 }, glide: true, autoChain: 'drag2' },
+  // ทุบ — คนที่ยังถูกลากอยู่กินเต็ม · ดิ้นหลุดไปแล้วรอดไป
+  // ทุบเปล่า ๆ ก็ยังมีคลื่นเล็ก ๆ กดพลาดไม่ได้แปลว่าเสียเปล่า แต่ค้างท่า 22 เฟรมคือของจริง
+  drag2: { label: 'Drag & Slam', kind: 'ground', startup: 6, active: 5, recovery: 22, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    boxDrop: { at: 6, dx: 150 }, autoChain: 'box2' },
-  box2: { label: 'Jack-in-the-Box', kind: 'ground', startup: 4, active: 4, recovery: 10, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true },
+    slam: { at: 6, dmg: 12, half: 150, stun: 34, kb: [6, -13] } },
 
-  // ---- สกิล 2 Understudy: ทิ้งตัวแสดงแทนไว้ แล้วหลุดออกไปข้าง ๆ (ปุ่ม 2) ----
+  // ---- สกิล 2 OVERCLOCK: เกราะติดทุกท่า + หมัดแรงขึ้น แต่บล็อกไม่ได้ (ปุ่ม 2) ----
   //
-  // ชื่อคีย์ยังเป็น snap1/snap2 ตามของเดิม เพราะ **คีย์นี้คือชื่อเฟรมในแอตลาสด้วย**
-  // เปลี่ยนชื่อตอนนี้ = เฟรมหายทั้งท่า จะเปลี่ยนพร้อมกันตอนอาร์ตชุดใหม่เข้า
+  // **ไม่ใช่ "กันสถานะ"** — วงฝุ่นของ Alecto (dustGuard) ทำอยู่แล้ว ให้ตัวนี้แบบติดตัว
+  // เคลื่อนที่ได้ ไม่ต้องยืนในวง = ของเธอเวอร์ชันดีกว่า และปิดสวิตช์กิตเธอกับ Orpheus ไปเลย
+  // ตัวนี้ได้ "ล้างสถานะทีเดียวตอนกด" แทน ซึ่งให้ความรู้สึกเดียวกันแต่เป็นการกดถูกจังหวะ
   //
-  // ออกไวที่สุดในเกมเท่าเดิม เป็นปุ่มหนีฉุกเฉินจริง ๆ โดนต้อนติดมุม -> กดออกมาได้ทันที
-  // **ต้องขยับตัวเขาด้วย** ไม่ใช่แค่วางหุ่น ไม่งั้นมันไม่ใช่ปุ่มหนี ซึ่งคือเหตุผลทั้งหมดที่มีท่านี้
-  //
-  // หุ่นไม่ระเบิดเองตอนหมดเวลา — ระเบิดเฉพาะตอนโดนตี
-  // ถ้าระเบิดเองด้วยมันจะกลายเป็นระเบิดใบที่สองที่วางแล้วเดินหนีได้ ซึ่งไม่ใช่สิ่งที่ท่านี้ควรให้
-  // รางวัลอยู่ที่ "หลอกเขาสำเร็จ" ไม่ใช่ที่ "วางไว้เฉย ๆ"
-  snap1: { label: 'Understudy', kind: 'ground', startup: 3, active: 3, recovery: 4, dmg: 0,
+  // "บล็อกไม่ได้" คือหัวใจ — เกราะที่ไม่มีราคาคือบัฟฟรี และเกราะเป็นของ Atlas อยู่แล้ว
+  // ความต่างคือ Atlas มีเกราะติดท่าหนักตลอดเวลา · ตัวนี้ติดทุกท่าแต่แค่ 3 วิ และถอยไม่ได้เลย
+  over1: { label: 'Overclock', kind: 'ground', startup: 5, active: 3, recovery: 12, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    decoyDrop: { at: 3 }, autoChain: 'snap2' },
-  snap2: { label: 'Understudy', kind: 'ground', startup: 3, active: 4, recovery: 10, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true },
+    overclock: { at: 5, frames: OVERCLOCK_TIME } },
 
-  // ---- สกิล 3 Full House (อัลติ): โปรยกล่องทั้งเวที (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
+  // ---- สกิล 3 METEOR (อัลติ): จับขึ้นฟ้า แล้วพากลับลงมา (ปุ่ม 3 ใช้หลอด ki เต็ม) ----
   //
-  // ของใหญ่ควรอยู่ที่อัลติ ไม่ใช่สกิลที่ต้องกดกลางวงตีกัน เงื้อนานได้ไม่เป็นไร
-  // ชนวนเหลื่อมกันทีละ RAIN_STEP เฟรม = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่ตูมเดียวจบ
-  full1: { label: 'Full House', kind: 'ground', startup: 10, active: 6, recovery: 8, dmg: 0,
+  // สกิล 1 เป็นแนวนอน อัลติจึงต้องเป็นแนวตั้ง ไม่งั้นมันคือท่าเดิมที่ยาวขึ้น
+  //
+  // **อมตะตลอดขาขึ้น** สำคัญที่สุดในท่า: อัลติที่กดได้เฉพาะตอนกำลังชนะคืออัลติที่ไม่มีใครกด
+  // อันนี้กดสวนตอนโดนต้อนติดมุมได้ จึงเป็นปุ่มที่มีค่าตลอดทั้งยก
+  meteor1: { label: 'Meteor', kind: 'ground', startup: 4, active: 8, recovery: 6, dmg: 5,
+    hb: { x: 10, y: -150, w: 96, h: 120 }, kb: [0, 0], stun: 20,
+    carry: { frames: 999, mash: 0 },        // อัลติดิ้นไม่หลุด — แลกกับที่มันกิน ki เต็มหลอด
+    iframes: [0, 24], imp: { f: 4, vx: 0, vy: -30 }, autoChain: 'meteor2', airChain: true, ghost: true },
+  // จุดสูงสุด: ลอยนิ่งเงื้อสองหมัด (จอมืดลงรอบตัวเป็นเรื่องฝั่งวาด ซิมไม่รู้เรื่อง)
+  meteor2: { label: 'Meteor', kind: 'air', startup: 8, active: 4, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    warpStage: true, iframes: [0, 14], autoChain: 'full2' },
-  full2: { label: 'Full House', kind: 'ground', startup: 8, active: 6, recovery: 20, dmg: 0,
+    iframes: [0, 16], imp: { f: 1, vx: 0, vy: -1 }, floaty: true, autoChain: 'meteor3', airChain: true, ghost: true },
+  // ลง: ดิ่งจนแตะพื้นแล้วอัด — คลื่นวิ่งตามพื้นสองข้าง โดนเฉพาะคนที่ยืนอยู่
+  // จับไม่ติดก็ยังได้คลื่น ไม่ใช่กดแล้วเสียหลอดฟรี (บทเรียนจากอัลติเดิมที่โปรยของทิ้งไว้เฉย ๆ)
+  meteor3: { label: 'Meteor', kind: 'air', startup: 3, active: 60, recovery: 0, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    boxRain: { at: 8 } },
+    imp: { f: 3, vx: 0, vy: 26 }, untilLand: true, landLag: 26, ghost: true,
+    slam: { onLand: true, dmg: 22, half: 260, stun: 40, kb: [8, -14] } },
 };
 
-const MOMUS_SKILLS = ['box1', 'snap1', 'full1'];
-// สกิล 1 กับ 2 ต้องกดได้บ่อย — ทั้งคู่คือ "จัดสนาม" ไม่ใช่ดาเมจที่การันตี
-// สกิล 2 ถูกที่สุดเพราะเป็นปุ่มหนีด้วย แต่ก็ทิ้งระเบิดไว้สองจุดทุกครั้งที่กด
-const MOMUS_SKILL_CD = [150, 120, 0];
+const MOMUS_SKILLS = ['drag1', 'over1', 'meteor1'];
+// สกิล 1 เป็นทั้งทางเข้าและดาเมจก้อนใหญ่ — ถี่กว่านี้แล้วไม่ต้องเล่นเกมระยะเลย
+// สกิล 2 คูลดาวน์ยาวกว่าตัวบัฟเอง (300 > 180) จะได้ไม่มีช่วงที่ติดบัฟค้างตลอดเวลา
+const MOMUS_SKILL_CD = [150, 300, 0];
 
 /* ชื่อที่โชว์ (`label`) คือ **ชื่อเล่นของคนที่เล่นตัวนั้น** ไม่ใช่ชื่อในตำนาน
  *
@@ -747,7 +752,7 @@ const CHARACTERS = {
   orpheus: { id: 'orpheus', label: 'OAT', moves: ORPHEUS_MOVES, skills: ORPHEUS_SKILLS,
     skillCd: ORPHEUS_SKILL_CD },
   momus: { id: 'momus', label: 'DEAR', moves: MOMUS_MOVES, skills: MOMUS_SKILLS,
-    skillCd: MOMUS_SKILL_CD },
+    skillCd: MOMUS_SKILL_CD, boost: true },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -829,6 +834,8 @@ class Fighter {
   get skills() { return CHARACTERS[this.char].skills; }
   get skillCd() { return CHARACTERS[this.char].skillCd; }
   get backstep() { return CHARACTERS[this.char].backstep ?? null; }
+  /** ตัวนี้ใช้ระบบไอพ่นไหม — ตั้งที่ตารางตัวละคร ไม่ใช่เช็กชื่อตัวละครกระจายทั่วซิม */
+  get boostJump() { return !!CHARACTERS[this.char].boost; }
   /** ตารางท่าตีปกติชุดที่สอง (ถ้าตัวนี้มี) — ว่างเปล่าแปลว่าไม่มีให้สลับ */
   get altMoves() { return CHARACTERS[this.char].altMoves ?? null; }
   // เลือดเป็นค่าของตัวละคร ไม่ใช่ค่ากลาง — Atlas 130 ที่เหลือ 100
@@ -842,9 +849,15 @@ class Fighter {
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
       lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
-      house: 0,                     // "โรงเต็มแค่ไหน" ของ Momus — อยู่ที่ "คนวาง" ไม่ใช่คนโดน
-                                    // ได้ชั้นเมื่อไหของเขาระเบิดโดนคู่ต่อสู้ ใช้ขยายอัลติ
-                                    // รีเซ็ตทุกยก เพราะเป็นของที่สะสมเพื่อจังหวะเดียว ไม่ใช่สถานะถาวร
+      dashTap: 0, dashTapF: 0,      // เคาะทิศสองทีติดกัน = พุ่ง (ดู takeInput)
+      dashLock: 0,                  // พุ่งติดกันได้เร็วสุดกี่เฟรม
+      carryLeft: 0, slammed: 0,
+      boost: BOOST_MAX,             // ไอพ่นของ DEAR — พุ่ง/กระโดดใช้ขีด ต่อยโดนคืนขีด (ดู BOOST_MAX)
+      boostGain: 0,                 // คืนไปแล้วกี่ขีดในช่วงลอยนี้ — แตะพื้นแล้วล้าง (กันคอมโบไม่รู้จบ)
+      carriedBy: null,              // ถูกใครลากอยู่ (id) — ตำแหน่งถูกผูกกับคนนั้นชั่วคราว
+      carrying: [],                 // กำลังลากใครอยู่บ้าง (id)
+      mashOut: 0,                   // กดดิ้นไปแล้วกี่ที — ครบแล้วหลุดจากการถูกลาก
+      overclock: 0,                 // เหลือกี่เฟรม — เกราะติดทุกท่า หมัดแรงขึ้น แต่บล็อกไม่ได้
       armorLeft: 0,                 // เกราะของ Atlas เหลือกินได้อีกกี่ที (ตั้งตอนเริ่มท่า)
       stanceUntil: -9999,           // ท่าตั้งป้อมยืนยิงหมดเวลาที่เฟรมไหน
       alt: 0,                       // สลับไปใช้ท่าตีปกติชุดที่สองอยู่ไหม (Alecto: ถือไรเฟิลแทนแส้)
@@ -913,9 +926,7 @@ class Game {
     this.lastMoveInfo = null;
     this.shots = [];
     this.fires = [];
-    this.boxes = [];                // กล่องระเบิดของ Momus — ระเบิดใส่ทุกคนรวมเจ้าของ
     this.dust = null;               // วงฝุ่นของ Alecto — มีได้ทีละวงเดียว
-    this.decoy = null;              // ตัวแสดงแทนของ Momus — มีได้ทีละตัวเดียว
     // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
     this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
   }
@@ -1017,8 +1028,7 @@ class Game {
 
   resetPositions() {
     for (const f of this.fighters) f.reset();
-    this.meter = []; this.shots = []; this.fires = []; this.boxes = []; this.dust = null;
-    this.decoy = null;
+    this.meter = []; this.shots = []; this.fires = []; this.dust = null;
   }
 
   /**
@@ -1047,13 +1057,15 @@ class Game {
 
     // ของบนเวทีหยุดเดินตอนมีใครถูกแช่อยู่ ไม่งั้นระเบิดเดินต่อขณะภาพนิ่ง = จังหวะเพี้ยน
     if (this.fighters.every((f) => f.hitstop <= 0)) {
-      this.updateShots(); this.updateFires(); this.updateBoxes();
+      this.updateShots(); this.updateFires();
     }
     for (const f of this.fighters) { this.decayLash(f); this.tickFlame(f); }
     this.updateDust();
-    this.updateDecoy();
-    // ตีโดนหุ่นตัดสินก่อนตีโดนตัวจริง — ระเบิดจะได้ขัดท่าที่กำลังออกอยู่
-    for (const f of this.fighters) this.hitDecoy(f);
+    this.updateCarry();
+    for (const f of this.fighters) {
+      if (f.overclock > 0 && --f.overclock === 0) this.events.push({ type: 'overclockEnd', x: f.x, y: f.y - 70 });
+      if (f.dashLock > 0) f.dashLock--;
+    }
     // ทุกคู่ที่เป็นไปได้ ทั้งสองทิศ — 2 คนได้ 2 คู่เหมือนเดิม 4 คนได้ 12 คู่
     // เรียงตามลำดับในลิสต์เสมอ ไม่ใช่ตามใครตีก่อน สองเครื่องจึงตัดสินลำดับเดียวกัน
     for (const a of this.fighters) for (const b of this.fighters) if (a !== b) this.resolveHit(a, b);
@@ -1070,6 +1082,19 @@ class Game {
   takeInput(f, inp) {
     f.inp = inp;
     for (const k of Object.keys(f.buf)) if (inp.p[k]) f.buf[k] = PHYS.buffer + 1;
+    // ── DEAR: เคาะทิศสองทีติดกัน = พุ่งด้วยไอพ่น ──
+    //
+    // ใช้ปุ่มเดิมทั้งหมด ไม่เพิ่มปุ่มใหม่ — โปรโตคอลเน็ตส่งแค่บิตที่มีอยู่แล้ว
+    // (เพิ่มปุ่มแปลว่าต้องแก้ packInput/unpackInput ซึ่งทำให้แท็บเก่าเล่นกับแท็บใหม่ไม่ได้)
+    // PHYS.dashWindow ถูกเว้นไว้ให้เรื่องนี้มาตั้งแต่แรก ดูคอมเมนต์ใน PHYS
+    if (f.boostJump) {
+      const tap = (inp.p.right ? 1 : 0) - (inp.p.left ? 1 : 0);
+      if (tap) {
+        if (f.dashTap === tap && f.dashTapF > 0) { this.boostDash(f); f.dashTap = 0; f.dashTapF = 0; }
+        else { f.dashTap = tap; f.dashTapF = PHYS.dashWindow; }
+      }
+      if (f.dashTapF > 0) f.dashTapF--;
+    }
     // กดปุ่มกันตอนลอยอยู่ = ขอ tech · กดพลาดช่วงแล้วโดนล็อกไว้ชั่วครู่ (กันการรัวปุ่ม)
     if (inp.p.block && !f.onGround && f.techLock === 0) { f.techBuf = PHYS.techWindow; f.techLock = PHYS.techLockout; }
   }
@@ -1106,18 +1131,171 @@ class Game {
     // ทั้งสองเครื่องเดินถึงบรรทัดนี้ที่เฟรมเดียวกันเสมอ เพราะมาจากปุ่มที่ส่งข้ามเน็ตเหมือนกัน
     if (mv.toggle) { f.alt = f.alt ? 0 : 1; this.events.push({ type: 'swap', alt: f.alt, x: f.x, y: f.y - 90 }); }
     if (mv.warp) this.warp(f);
-    if (mv.warpStage) this.warpStage(f);
     if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
     // ท่าที่ประกาศ refresh: ปลดชื่อท่าที่ระบุออกจาก used = ใช้ชุดนั้นซ้ำได้อีกรอบในคอมโบเดียว
     // นี่คือสิ่งที่ทำให้ "รัวยาว" เกิดขึ้นจริง แทนที่จะจบที่ชุดเดียวเพราะติด used
     if (mv.refresh) for (const k of mv.refresh) f.used.delete(k);
     f.move = mv; f.moveId = id; f.moveF = 0;
-    f.armorLeft = mv.armor ?? 0;
+    // โอเวอร์คล็อกให้เกราะกับ **ทุกท่า** ไม่ใช่เฉพาะท่าที่ประกาศไว้เอง — นั่นคือทั้งหมดของบัฟตัวนี้
+    // ท่าที่มีเกราะของตัวเองอยู่แล้ว (Atlas) เอาค่าที่มากกว่า ไม่ใช่ทับทิ้ง
+    f.armorLeft = Math.max(mv.armor ?? 0, f.overclock > 0 ? OVERCLOCK_ARMOR : 0);
+    f.slammed = 0;
+    f.carrying = [];
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
     f.setState('attack');
     this.lastMoveInfo = { id, ...f.moves[id] };
     this.events.push({ type: 'move', id });
+  }
+
+  /* ══ DEAR: ไอพ่น · การลาก · โอเวอร์คล็อก ══════════════════════════════════
+   *
+   * ทั้งสามอย่างเดินด้วยเลขเฟรมล้วน ไม่มีสุ่ม ไม่อ่านเวลาจริง — สองเครื่องจึงตรงกันเอง
+   * ดูเหตุผลของทุกตัวเลขที่ docs/MOMUS_KIT.md
+   */
+
+  /** ใช้ไอพ่นหนึ่งขีด — คืน true ถ้าใช้ได้จริง */
+  spendBoost(f) {
+    if (f.boost <= 0) return false;
+    f.boost--;
+    this.events.push({ type: 'boost', x: f.x, y: f.y - 60, n: f.boost });
+    return true;
+  }
+
+  /** ต่อยโดนแล้วคืนไอพ่น — มีเพดานต่อหนึ่งช่วงลอย ดู BOOST_PER_AIR
+   *
+   *  เรียกเฉพาะตอน "โดนตัวจริง" ไม่ใช่ตอนโดนบล็อก — ไม่งั้นตีใส่คนที่กันอยู่เฉย ๆ
+   *  ก็เติมน้ำมันได้ไม่จำกัด ซึ่งลบเงื่อนไข "ห้ามพลาด" ที่เป็นราคาทั้งหมดของตัวละครทิ้ง
+   */
+  gainBoost(f) {
+    if (!f || f.boost >= BOOST_MAX) return;
+    if (!f.onGround && f.boostGain >= BOOST_PER_AIR) return;
+    f.boost++;
+    if (!f.onGround) f.boostGain++;
+    this.events.push({ type: 'boostGain', x: f.x, y: f.y - 90, n: f.boost });
+  }
+
+  /** พุ่งด้วยไอพ่น 8 ทิศ — เรียกจาก step() ตอนกดปุ่มพุ่ง
+   *
+   *  ไม่มีทิศที่กดค้าง = พุ่งไปข้างหน้า (ทิศที่หันอยู่) ไม่ใช่กดแล้วไม่เกิดอะไร
+   *  "กดแล้วไม่เกิดอะไร" เป็นความรู้สึกที่แย่ที่สุดในเกมต่อสู้ และคนเล่นจะโทษว่าปุ่มเสีย
+   */
+  boostDash(f) {
+    if (f.dashLock > 0 || f.stun > 0 || f.hitstop > 0 || f.carriedBy) return false;
+    if (!ACTIONABLE.has(f.state) && f.state !== 'attack') return false;
+    if (!this.spendBoost(f)) return false;
+    const i = f.inp ?? {};
+    let dx = (i.right ? 1 : 0) - (i.left ? 1 : 0);
+    const dy = (i.down ? 1 : 0) - (i.up ? 1 : 0);
+    if (!dx && !dy) dx = f.facing;
+    f.vx = dx * BOOST_DASH_VX;
+    f.vy = dy * BOOST_DASH_VY;
+    if (dx) f.facing = dx;
+    if (dy < 0 || !f.onGround) f.onGround = false;
+    f.move = null; f.moveId = null;
+    f.setState(f.onGround ? 'idle' : 'air');
+    f.invuln = Math.max(f.invuln, BOOST_IFRAMES);
+    f.dashLock = BOOST_LOCK;
+    this.events.push({ type: 'dash', x: f.x, y: f.y - 60, dx, dy });
+    return true;
+  }
+
+  /** เริ่มโอเวอร์คล็อก — ล้างสถานะที่ติดอยู่ทีเดียวตอนกด
+   *
+   *  **ล้างทีเดียว ไม่ใช่กันตลอดช่วง** — "กันสถานะทุกอย่าง" เป็นของวงฝุ่นของ Alecto อยู่แล้ว
+   *  (ดู dustGuard) ให้ตัวนี้แบบติดตัวเคลื่อนที่ได้ = ของเธอเวอร์ชันดีกว่า
+   *  และ 3 วินาทีคือการปิดสวิตช์กิตของเธอกับ Orpheus ไปทั้งดุ้น
+   *  ล้างทีเดียวให้ความรู้สึกเดียวกัน (ไฟดับ รอยแส้หาย) แต่เป็นการกดถูกจังหวะ
+   */
+  startOverclock(f, frames) {
+    f.overclock = frames;
+    f.burn = 0; f.lash = 0;
+    f.armorLeft = Math.max(f.armorLeft, OVERCLOCK_ARMOR);
+    this.events.push({ type: 'overclock', x: f.x, y: f.y - 70, frames });
+  }
+
+  /** เริ่มลากคนที่อยู่ในกรอบท่านี้ไปด้วย */
+  startCarry(a, spec) {
+    for (const d of this.foes(a)) {
+      if (d.hp <= 0 || d.invuln > 0 || d.carriedBy) continue;
+      const hb = a.hitbox(); if (!hb || !overlap(hb, d.hurtbox())) continue;
+      d.carriedBy = a.id;
+      d.carryLeft = spec.frames;
+      d.mashOut = spec.mash;
+      d.move = null; d.moveId = null; d.setState('hitstun');
+      d.stun = spec.frames;
+      a.carrying.push(d.id);
+      this.events.push({ type: 'grab', x: d.x, y: d.y - 70 });
+    }
+  }
+
+  /** เดินการลากหนึ่งเฟรม — ผูกตำแหน่งคนที่ถูกลากไว้กับคนลาก
+   *
+   *  **ต้องมีทางดิ้นเสมอ** ลากไกลแปลว่าคนโดนนั่งมือเปล่าอยู่หลายสิบเฟรม
+   *  ซึ่งเป็นความรู้สึกที่แย่ที่สุดในเกมต่อสู้ · กดปุ่มไหนก็ได้นับเป็นการดิ้นหนึ่งที
+   *  (อัลติตั้ง mash: 0 = ดิ้นไม่หลุด แลกกับที่มันกิน ki เต็มหลอด)
+   */
+  updateCarry() {
+    for (const d of this.fighters) {
+      if (!d.carriedBy) continue;
+      const a = this.fighterById(d.carriedBy);
+      // คนลากหลุดท่าไปแล้ว (โดนสวน/ท่าจบ) = ปล่อยทันที ไม่ใช่ลากต่อด้วยผี
+      if (!a || a.state !== 'attack' || a.hp <= 0) { this.dropCarry(d); continue; }
+      if (d.mashOut > 0 && this.mashPressed(d)) {
+        d.mashOut--;
+        if (d.mashOut <= 0) { this.events.push({ type: 'breakOut', x: d.x, y: d.y - 70 }); this.dropCarry(d); continue; }
+      }
+      if (--d.carryLeft <= 0) { this.dropCarry(d); continue; }
+      // ผูกตำแหน่งไว้ข้างหน้าคนลาก ไม่ใช่ทับกันพอดี — ทับกันแล้วสไปรท์ซ้อนจนดูไม่ออกว่าใครเป็นใคร
+      const half = PHYS.width / 2;
+      d.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, a.x + a.facing * CARRY_GAP));
+      d.y = a.y;
+      d.vx = 0; d.vy = 0; d.onGround = a.onGround;
+      d.facing = -a.facing;
+      d.stun = Math.max(d.stun, 2);
+    }
+  }
+
+  dropCarry(d) {
+    const a = this.fighterById(d.carriedBy);
+    if (a) a.carrying = a.carrying.filter((id) => id !== d.id);
+    d.carriedBy = null; d.carryLeft = 0; d.mashOut = 0;
+  }
+
+  /** ทุบพื้น — คนที่ยังถูกลากอยู่กินเต็ม ที่เหลือกินคลื่นตามพื้น
+   *
+   *  คลื่นโดน **เฉพาะคนที่ยืนอยู่บนพื้น** — นั่นคือสิ่งที่ทำให้อีกฝั่งต้องกระโดดหนี
+   *  ซึ่งพาทุกคนขึ้นฟ้ามาอยู่ในสนามของเขาพอดี อัลติของเขาสร้างสถานการณ์ที่เขาเก่งที่สุด
+   */
+  slam(a, spec) {
+    this.events.push({ type: 'slam', x: a.x, y: STAGE.groundY, r: spec.half });
+    const held = this.fighters.filter((d) => d.carriedBy === a.id);
+    // จับได้หลายคนก็หารกัน ไม่งั้นสกิล 1 จะแรงกว่าอัลติ ซึ่งกลับหัวกลับหาง
+    const each = held.length ? Math.max(1, Math.round(spec.dmg / held.length)) : 0;
+    for (const d of held) {
+      this.dropCarry(d);
+      this.hurt(a, d, each, spec.stun, spec.kb);
+    }
+    // คลื่นตามพื้น — ไม่โดนคนที่เพิ่งกินหมัดไปแล้ว และไม่โดนคนที่ลอยอยู่
+    for (const d of this.foes(a)) {
+      if (d.hp <= 0 || d.invuln > 0 || !d.onGround || held.includes(d)) continue;
+      if (Math.abs(d.x - a.x) > spec.half) continue;
+      this.hurt(a, d, Math.round(spec.dmg * SLAM_WAVE), spec.stun, spec.kb);
+    }
+  }
+
+  /** ทำดาเมจตรง ๆ โดยไม่ผ่านกรอบชน — ใช้กับของที่คิดระยะเอง (ทุบพื้น) */
+  hurt(a, d, dmg, stun, kb) {
+    const dir = d.x >= a.x ? 1 : -1;
+    const real = Math.max(1, Math.round(dmg * d.resist * (d.dustGuard ? DUST_DR : 1)));
+    d.hp = Math.max(0, d.hp - real);
+    d.lastHitF = this.frame;
+    d.stun = Math.max(d.stun, stun);
+    d.move = null; d.moveId = null; d.setState('hitstun');
+    d.vx = dir * kb[0]; d.vy = kb[1];
+    if (kb[1] < 0) d.onGround = false;
+    d.hitstop = 4;
+    this.events.push({ type: 'hit', x: d.x, y: d.y - 70, dmg: real, heavy: true, launch: kb[1] < 0 });
   }
 
   /** ศัตรูที่ใกล้ที่สุด — นิยามนี้ใช้ได้ทั้ง 1v1 และ 2v2 โดยไม่ต้องแยกเคส
@@ -1157,36 +1335,7 @@ class Game {
 
   // วาร์ปไปโผล่ "อีกฝั่ง" ของคู่ต่อสู้ — เรียกสองจังหวะติดกันจึงสลับข้างไปมาเอง
   // ไกลเกินระยะก็ไม่วาร์ป พุ่งไปข้างหน้าเฉย ๆ กันไม่ให้เป็นการเทเลพอร์ตข้ามเวที
-  /** วาร์ปขึ้นไปยืนบนแพลตฟอร์มที่สูงที่สุดของเวที — ใช้กับอัลติของ Momus
-   *
-   *  หาเองจาก `STAGE.platforms` ไม่ได้ฮาร์ดโค้ดเลขชั้น ถ้าวันหลังจัดเวทีใหม่
-   *  อัลติก็ยังหาชั้นบนสุดถูกโดยไม่ต้องกลับมาแก้ตรงนี้
-   *
-   *  ทำไมต้องวาร์ปก่อนโปรย: ท่านี้เงื้อ 10 เฟรมแล้วต่ออีก 8 = 18 เฟรมยืนนิ่ง
-   *  ในเกมที่เร็วขนาดนี้คือโดนสวนฟรี อัลติที่กดแล้วโดนตีหลุดคืออัลติที่ไม่มีใครกด
-   *
-   *  ไม่ได้ทำให้เขาปลอดภัย — ไหที่โปรยลงมาจุดชนวนจากคนที่ "ยืนบนพื้น" ไม่ว่าพื้นชั้นไหน
-   *  เขายืนบนชั้นบนสุดซึ่งแคบที่สุด (240 px) ก็ต้องกระโดดหลบเหมือนกัน
-   *
-   *  ชั้นบนสุดมีสองแท่น (ซ้าย-ขวา สูงเท่ากัน) ตั้งแต่เวทีเหลือสามชั้น — ต้องมีกติกาตัดสิน
-   *  เลือก "แท่นที่ใกล้ตัวที่สุด" ไม่ใช่แท่นแรกในลิสต์ ไม่งั้นอัลติจะพาไปทางซ้ายเสมอ
-   *  ซึ่งทั้งอ่านไม่ออกว่าทำไม และทำให้ครึ่งขวาของเวทีใช้อัลติแล้วเสียเปรียบฟรี
-   *  ตัดสินด้วยระยะล้วน ไม่มีสุ่ม เสมอกันเอาคนที่มาก่อนในลิสต์ — สองเครื่องจึงได้ผลเดียวกันเสมอ
-   */
-  warpStage(f) {
-    let top = null, best = Infinity;
-    for (const p of STAGE.platforms) {
-      if (top && p.y > top.y) continue;               // ชั้นต่ำกว่า = ไม่สน
-      const d = Math.abs((p.x1 + p.x2) / 2 - f.x);
-      if (!top || p.y < top.y || d < best) { top = p; best = d; }   // สูงกว่าชนะ · สูงเท่ากันใกล้กว่าชนะ
-    }
-    if (!top) return;
-    this.events.push({ type: 'vanish', x: f.x, y: f.y });
-    f.x = (top.x1 + top.x2) / 2;
-    f.y = top.y; f.vx = 0; f.vy = 0; f.onGround = true;
-    this.events.push({ type: 'appear', x: f.x, y: f.y });
-  }
-
+  
   warp(f) {
     const o = this.foe(f);
     this.events.push({ type: 'vanish', x: f.x, y: f.y });
@@ -1349,26 +1498,6 @@ class Game {
     this.events.push({ type: 'lash', x: d.x, y: d.y - 110, n: d.lash });
   }
 
-  /** วางกล่องระเบิดหนึ่งใบ — วางเกินโควต้าแล้วใบเก่าสุดหายไป ไม่ใช่วางไม่ได้
-   *
-   *  เลือกให้ใบเก่าหายเพราะ "กดแล้วไม่เกิดอะไร" เป็นความรู้สึกที่แย่ที่สุดในเกมต่อสู้
-   *  คนเล่นจะไม่รู้ว่าติดโควต้าอยู่ เห็นแค่ว่ากดสกิลแล้วเสียจังหวะไปเปล่า ๆ
-   */
-  dropBox(x, owner, fuse = BOX_FUSE) {
-    this.boxes.push({
-      x: Math.max(STAGE.wallL + 20, Math.min(STAGE.wallR - 20, x)),
-      owner, fuse, arm: BOX_ARM,
-    });
-    if (this.boxes.length > BOX_MAX) this.boxes.shift();
-    this.events.push({ type: 'box', x: this.boxes[this.boxes.length - 1].x, y: STAGE.groundY });
-  }
-
-  /** ระเบิดหนึ่งครั้งที่จุด x — **ไล่เช็กทุกคน ไม่ใช่แค่ฝ่ายตรงข้าม**
-   *
-   *  ตรงนี้คือกฎเหล็กของตัวละครทั้งตัว: เจ้าของโดนระเบิดตัวเองด้วย
-   *  กองไฟของ Alecto เขียนว่า `fire.owner === 'p1' ? this.p2 : this.p1` ซึ่งข้ามเจ้าของไป
-   *  ถ้าลอกมาตรง ๆ ตัวนี้จะกลายเป็นตัววางระเบิดที่ปลอดภัยเสมอ ซึ่งพลาดทั้งคอนเซปต์
-   */
   /** ระเบิดวงกลม — คืนจำนวน "คู่ต่อสู้" ที่โดนจริง (ไม่นับเจ้าของ)
    *
    *  เจ้าของระเบิด **โดนแรงกระแทกแต่ไม่เสียเลือด**
@@ -1425,87 +1554,6 @@ class Game {
       this.events.push({ type: 'hit', x: f.x, y: f.y - 70, dmg: real, heavy: true, launch: kb[1] < 0 });
     }
     return hitFoes;
-  }
-
-  /** ได้ชั้น "โรงเต็ม" หนึ่งชั้น — เรียกเฉพาะตอนไหระเบิดโดนคู่ต่อสู้จริง ๆ */
-  gainHouse(ownerId) {
-    const f = ownerId === this.p1.id ? this.p1 : ownerId === this.p2.id ? this.p2 : null;
-    if (!f || f.house >= HOUSE_MAX) return;
-    f.house++;
-    this.events.push({ type: 'house', x: f.x, y: f.y - 130, n: f.house });
-  }
-
-  /** เดินกล่องทุกใบหนึ่งเฟรม — นับถอยหลังด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง */
-  updateBoxes() {
-    if (!this.boxes.length) return;
-    const live = [];
-    for (const b of this.boxes) {
-      if (b.arm > 0) b.arm--;
-      b.fuse--;
-      // ติดชนวนแล้วใครเดินเข้ามาใกล้ก็ระเบิดทันที ไม่ต้องรอครบเวลา — รวมเจ้าของ
-      const touched = b.arm === 0 && this.fighters.some(
-        (f) => f.onGround && f.invuln <= 0 && Math.abs(f.x - b.x) <= BOX_TRIGGER);
-      if (b.fuse > 0 && !touched) { live.push(b); continue; }
-      // ได้ชั้นเฉพาะตอน "ไหโดนคู่ต่อสู้" — ไหคือกับดัก คนมีสายตาจะไม่เดินเข้าไปเอง
-      // ต้องต้อนเขาเข้าไปด้วยท่าปกติ นั่นคือที่มาของความยาก และเป็นความยากที่มาจากการอ่านเกม
-      if (this.blast(b.x, BOX_HALF, BOX_DMG, BOX_STUN, BOX_KB, b.owner) > 0) this.gainHouse(b.owner);
-    }
-    this.boxes = live;
-  }
-
-  /** ทิ้งตัวแสดงแทนไว้ตรงที่ยืน แล้วหลุดถอยหลังออกไป
-   *
-   *  ย้ายตัวทันทีไม่ใช่กระโดดจริง — ท่านี้ startup 3 เฟรม เป็นปุ่มหนีตอนโดนต้อนติดมุม
-   *  ถ้าเป็นการกระโดดจริงจะโดนขัดกลางทางได้ และติดกำแพงตอนที่ต้องใช้มากที่สุดพอดี
-   *  ระยะคงที่ ไม่มีสุ่ม สองเครื่องจึงได้ตำแหน่งตรงกันเป๊ะ
-   */
-  dropDecoy(f) {
-    const half = PHYS.width / 2;
-    this.decoy = { x: f.x, y: f.y, owner: f.id, facing: f.facing, life: DECOY_LIFE };
-    this.events.push({ type: 'decoy', x: f.x, y: f.y });
-    this.events.push({ type: 'vanish', x: f.x, y: f.y });
-    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, f.x - f.facing * DECOY_SLIP));
-    this.events.push({ type: 'appear', x: f.x, y: f.y });
-  }
-
-  /** หุ่นหมดอายุ — หายเฉย ๆ ไม่ระเบิด (ดูเหตุผลที่ท่า hide1) */
-  updateDecoy() {
-    if (!this.decoy) return;
-    if (--this.decoy.life <= 0) {
-      this.events.push({ type: 'decoyGone', x: this.decoy.x, y: this.decoy.y });
-      this.decoy = null;
-    }
-  }
-
-  /** คู่ต่อสู้ตีโดนหุ่น — หุ่นแตกแล้วระเบิด
-   *
-   *  เรียก **ก่อน** resolveHit ตั้งใจ: ระเบิดทำให้คนตีเข้า hitstun ท่าที่กำลังออกจึงหลุด
-   *  = ต่อยหุ่นแล้วมันระเบิดใส่หน้า ซึ่งคือรางวัลของการหลอกสำเร็จ
-   *
-   *  ไม่กินการโจมตีทิ้ง — ถ้าท่านั้นยาวพอจะถึงตัวจริงด้วยก็ยังถึง หุ่นเป็นของล่อ ไม่ใช่โล่
-   */
-  hitDecoy(a) {
-    const dc = this.decoy;
-    if (!dc || a.id === dc.owner || a.hitList.has('decoy')) return;
-    const hb = a.hitbox(); if (!hb) return;
-    if (!overlap(hb, { x: dc.x - DECOY_W / 2, y: dc.y - DECOY_H, w: DECOY_W, h: DECOY_H })) return;
-    a.hitList.add('decoy');
-    this.decoy = null;
-    this.events.push({ type: 'decoyPop', x: dc.x, y: dc.y });
-    this.blast(dc.x, DECOY_HALF, DECOY_DMG, DECOY_STUN, DECOY_KB, dc.owner);
-  }
-
-  /** โปรยกล่องทั่วเวที ชนวนเหลื่อมกันทีละใบ = ระเบิดไล่กันเป็นทอด ๆ
-   *  ตำแหน่งคิดจากความกว้างเวทีล้วน ไม่มีสุ่ม สองเครื่องจึงได้กล่องตรงกันเป๊ะ */
-  rainBoxes(f, n) {
-    const span = STAGE.wallR - STAGE.wallL;
-    for (let i = 0; i < n; i++) {
-      const x = STAGE.wallL + span * (i + 0.5) / n;
-      // ใบที่อยู่ใกล้เขาที่สุดติดชนวนช้าที่สุด = เขาได้เปรียบเรื่องจังหวะ ไม่ใช่เรื่องความปลอดภัย
-      this.boxes.push({ x, owner: f.id, fuse: 40 + i * RAIN_STEP, arm: BOX_ARM });
-    }
-    this.events.push({ type: 'rain', x: f.x, y: f.y - 120, n });
-    f.house = 0;                     // จบการแสดงแล้ว โรงก็ว่าง เริ่มเก็บใหม่
   }
 
   /** กองไฟบนพื้น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน */
@@ -1657,8 +1705,12 @@ class Game {
   doJump(f, inp) {
     if (f.onGround || f.coyote > 0) {
       f.vy = PHYS.jumpV; f.onGround = false; f.coyote = 0;
-    } else if (f.jumpsLeft > 0) {
-      f.jumpsLeft--; f.vy = PHYS.dJumpV;
+    } else if (f.jumpsLeft > 0 || (f.boostJump && f.boost > 0)) {
+      // DEAR: ดับเบิลจัมพ์หมดแล้วยังกระโดดต่อได้ ถ้ายังมีไอพ่นเหลือ — กินขีดละครั้ง
+      // ไม่ใช่ปุ่มใหม่ ใช้ปุ่มกระโดดเดิม ต่อเมื่อไม่มีอย่างอื่นให้ใช้แล้วเท่านั้น
+      if (f.jumpsLeft > 0) f.jumpsLeft--;
+      else if (!this.spendBoost(f)) return false;
+      f.vy = PHYS.dJumpV;
       const dir = (inp.right ? 1 : 0) - (inp.left ? 1 : 0);
       if (dir) { f.vx = dir * PHYS.airMax; f.facing = dir; }
       this.events.push({ type: 'djump', x: f.x, y: f.y });
@@ -1754,7 +1806,9 @@ class Game {
     if (f.onGround) {
       // กัน + กดลง = ก้มกัน (กรอบเตี้ยลงเท่าท่าย่อ) · กันเฉย ๆ = กันยืนเหมือนเดิม
       // เช็ค block ก่อน down เหมือนเดิม ท่าย่อธรรมดาจึงไม่เปลี่ยนพฤติกรรม
-      if (inp.block) { f.setState(inp.down ? 'blockcrouch' : 'block'); f.vx *= PHYS.stopFric; return; }
+      // โอเวอร์คล็อก = แขนล็อกอยู่โหมดโจมตี **กันไม่ได้เลย** ซึ่งเป็นราคาของเกราะที่ได้มา
+      // เกราะที่ไม่มีราคาคือบัฟฟรี และกดแล้วไม่มีทางถอยคือสิ่งที่ทำให้สกิลนี้บู๊
+      if (inp.block && f.overclock <= 0) { f.setState(inp.down ? 'blockcrouch' : 'block'); f.vx *= PHYS.stopFric; return; }
       if (inp.down) { f.setState('crouch'); f.vx *= PHYS.stopFric; return; }
       if (dir !== 0) {
         f.facing = dir;
@@ -1902,7 +1956,12 @@ class Game {
     if (m && m.imp && f.moveF === m.imp.f) {
       if (m.imp.vx !== undefined) f.vx = f.facing * m.imp.vx;
       if (m.imp.vxMul !== undefined) f.vx *= m.imp.vxMul;
-      if (m.imp.vy !== undefined) f.vy = m.imp.vy;
+      if (m.imp.vy !== undefined) {
+        f.vy = m.imp.vy;
+        // แรงส่งขึ้นต้องพาตัวหลุดพื้นด้วย ไม่งั้นบรรทัดจัดการพื้นข้างล่างจะล้าง vy ทิ้งทันที
+        // แล้วท่าที่ "พุ่งขึ้น" จะยืนอยู่กับที่เฉย ๆ (เจอตอนทำอัลติของ DEAR)
+        if (m.imp.vy < 0) { f.onGround = false; f.coyote = 0; }
+      }
     }
     if (!f.onGround) {
       let g = PHYS.gravity;
@@ -1937,7 +1996,10 @@ class Game {
     const wasGround = f.onGround;
     f.onGround = false;
     if (f.y >= STAGE.groundY) { f.y = STAGE.groundY; f.onGround = true; }
-    else if (f.vy >= 0 && f.dropT === 0) {
+    // ghost = ท่าที่ "ทะลุชานได้" — อัลติ METEOR ที่พุ่งขึ้นแล้วดิ่งลง ต้องจบที่พื้นจริงเสมอ
+    // ถ้าปล่อยให้ชานรับไว้ ท่าจะถูกยกเลิกกลางอากาศแล้วอัลติหายไปทั้งดุ้น (แพ้ตรงที่ยืนกดพอดี)
+    // อีกอย่าง คลื่นตามพื้นวัดจาก STAGE.groundY อยู่แล้ว ลงกลางอากาศจึงเป็นภาพที่ไม่ตรงกับผล
+    else if (f.vy >= 0 && f.dropT === 0 && !f.move?.ghost) {
       for (const pl of STAGE.platforms) {
         if (f.x >= pl.x1 && f.x <= pl.x2 && prevY <= pl.y && f.y >= pl.y) { f.y = pl.y; f.onGround = true; break; }
       }
@@ -1945,6 +2007,9 @@ class Game {
     if (f.onGround) {
       if (!wasGround) this.onLand(f, prevY);
       f.vy = 0; f.jumpsLeft = 1;
+      // แตะพื้น = เติมไอพ่นเต็มและล้างเพดานต่อช่วงลอย
+      // ไม่มีทางตันแน่นอน: ต่อให้พลาดทุกหมัด ลงพื้นแล้วก็ได้ของครบกลับมา
+      if (f.boostJump) { f.boost = BOOST_MAX; f.boostGain = 0; }
     } else if (wasGround && f.vy >= 0) {
       f.coyote = PHYS.coyote; // walked off a ledge
       if (ACTIONABLE.has(f.state)) f.setState('air');
@@ -1968,6 +2033,9 @@ class Game {
       f.techBuf = 0; f.techLock = 0; return;
     }
     if (f.state === 'attack') {
+      // ท่าที่ "ทุบตอนแตะพื้น" ต้องทุบตรงนี้ ไม่ใช่รอให้ advanceMove เห็น onGround ในเฟรมถัดไป —
+      // เพราะบรรทัดล่างล้าง f.move ทิ้งในเฟรมเดียวกัน ท่าจึงจบก่อนที่คลื่นจะได้ออก
+      if (f.move.slam?.onLand && !f.slammed) { f.slammed = 1; this.slam(f, f.move.slam); }
       const lag = f.move.untilLand ? f.move.landLag : 5;
       f.move = null; f.moveId = null; f.setState('landing'); f.stun = lag; f.used.clear(); return;
     }
@@ -1997,17 +2065,19 @@ class Game {
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
-      if (m.boxDrop && f.moveF === m.boxDrop.at) this.dropBox(f.x + f.facing * m.boxDrop.dx, f.id);
-      if (m.decoyDrop && f.moveF === m.decoyDrop.at) this.dropDecoy(f);
-      // จำนวนไหคิดตอนใช้จริง ไม่ใช่เลขตายตัวในตารางท่า — ki บอกว่า "ใช้ได้ไหม"
-      // ส่วนชั้นที่สะสมไว้บอกว่า "ใหญ่แค่ไหน" คนที่โดนไล่ตีทั้งยกจึงยังได้ใช้อัลติ แค่ได้โรงว่าง
-      if (m.boxRain && f.moveF === m.boxRain.at)
-        this.rainBoxes(f, Math.min(RAIN_BASE + f.house, RAIN_BASE + HOUSE_MAX));
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
       if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
       if (m.dustPool && f.moveF === m.dustPool.at) {
         this.dust = { x: f.x, owner: f.id, life: DUST_LIFE };
         this.events.push({ type: 'dust', x: f.x, y: STAGE.groundY });
+      }
+      if (m.overclock && f.moveF === m.overclock.at) this.startOverclock(f, m.overclock.frames);
+      // คว้าได้ตลอดช่วง active ไม่ใช่เฟรมเดียว — ไถผ่านใครก็ติดคนนั้น ซึ่งคือความหมายของท่า
+      if (m.carry && f.phase() === 'active') this.startCarry(f, m.carry);
+      // ทุบพื้น: ท่าที่ระบุเฟรม (drag2) ทุบตอนนั้น · ท่าที่ระบุ onLand (meteor3) รอแตะพื้นก่อน
+      if (m.slam && !f.slammed && (m.slam.onLand ? f.onGround : f.moveF === m.slam.at)) {
+        f.slammed = 1;
+        this.slam(f, m.slam);
       }
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
@@ -2036,7 +2106,10 @@ class Game {
         if (m.onHit && f.onGround && f.hitConfirmed) { this.startMove(f, m.onHit, f.facing); return; }
         // ท่าที่มี autoChain ต่อท่าถัดไปเองโดยไม่ต้องกดซ้ำ — ใช้ทำคอมโบสกิลกดครั้งเดียวจบชุด
         // ต่อเฉพาะตอนยังยืนอยู่บนพื้น ถ้าโดนตีจนหลุด state หรือตกลงมา คอมโบก็ขาดตามธรรมชาติ
-        if (m.autoChain && f.onGround) { this.startMove(f, m.autoChain, f.facing); return; }
+        //
+        // ยกเว้นท่าที่ติดธง airChain ไว้ — ชุดที่ "ตั้งใจให้เล่นกลางอากาศ" อย่างอัลติ METEOR
+        // ที่พาตัวเองลอยขึ้นไปแล้วต่อท่าบนฟ้า ถ้าใช้กติกาพื้นมันจะขาดทันทีที่เท้าลอย
+        if (m.autoChain && (f.onGround || m.airChain)) { this.startMove(f, m.autoChain, f.facing); return; }
         f.move = null; f.moveId = null; f.used.clear();
         f.setState(f.onGround ? 'idle' : 'air');
       }
@@ -2067,10 +2140,14 @@ class Game {
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
     // ท่าที่ติดธง lashDmg แรงขึ้นตามตราที่เป้ามีอยู่ (ท่าแส้ทุกท่า)
     const lash = (m.lash || m.lashDmg) ? this.lashMul(d) : 1;
-    const dmg = Math.max(1, Math.round(m.dmg * scale * lash * (d.dustGuard ? DUST_DR : 1)));
+    // โอเวอร์คล็อกแรงขึ้นทุกหมัดที่โดนตรง ๆ **แต่ไม่รวมการทุบพื้น** ซึ่งเดินผ่าน hurt() คนละทาง
+    // ตั้งใจแยกแบบนี้: กดบัฟแล้วกดอัลติทันทีต้องไม่ใช่สูตรตายตัวที่คิดเลขครั้งเดียวจบ
+    const over = a.overclock > 0 ? OVERCLOCK_DMG : 1;
+    const dmg = Math.max(1, Math.round(m.dmg * scale * lash * over * (d.dustGuard ? DUST_DR : 1)));
     // เกราะกินไว้: เจ็บลดลง ไม่เข้า hitstun ท่าของเขาเดินต่อ
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
+    if (a.boostJump) this.gainBoost(a);            // ต่อยโดน = เติมน้ำมัน (ดู gainBoost)
     if (m.lash && !d.dustGuard) this.addLash(d);   // ในวงฝุ่นกันสถานะทุกชนิด
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));

@@ -56,7 +56,11 @@ const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
-  f.char, f.lash, f.lashF, f.house, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard, f.caged,
+  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard, f.caged,
+  // DEAR: ไอพ่น/การลาก/โอเวอร์คล็อก — ทั้งสามเป็นสถานะที่ตัดสินผลการชน
+  // ไม่เทียบแล้วสองเครื่องจะเดินคนละเกมโดยที่ตำแหน่งกับเลือดยังดูตรงกันอยู่
+  f.boost, f.boostGain, f.overclock, f.carriedBy ?? '-', f.carryLeft, f.mashOut,
+  f.carrying.join('+') || '-', f.dashTap, f.dashTapF, f.dashLock, f.slammed,
   // เพื่อน AI คิดในซิม แผนของมันจึงเป็นสถานะที่ต้องตรงกันเหมือนตำแหน่งและเลือด
   f.ai ? 1 : 0, f.aiNext, JSON.stringify(f.aiPlan),
   // อาวุธที่ถืออยู่ (Alecto สลับแส้/ไรเฟิล) — ถ้าไม่เทียบ สองเครื่องถืออาวุธคนละชุด
@@ -70,11 +74,6 @@ const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   g.match.round, g.match.freeze, g.match.winner ?? '-', g.match.bars.join(','),
   g.fires.length,
   ...g.fires.map((fi) => [fi.owner, Math.round(fi.x * 1000), fi.life, fi.t].join(",")),
-  // กล่องระเบิดของ Momus: ชนวนคลาดกันเฟรมเดียว = ระเบิดคนละจังหวะ ซึ่งเปลี่ยนผลทั้งยก
-  g.boxes.length,
-  ...g.boxes.map((b) => [b.owner, Math.round(b.x * 1000), b.fuse, b.arm].join(",")),
-  // ตัวแสดงแทนของ Momus — ของบนเวทีที่ sim เป็นคนคิด ต้องอยู่ในสแนปช็อตเหมือนกล่องกับวงฝุ่น
-  g.decoy ? [g.decoy.owner, Math.round(g.decoy.x * 1000), g.decoy.life, g.decoy.facing].join(",") : '-',
 ].join("|");
 
 /** เล่นสองเครื่องด้วยสคริปต์ปุ่มที่กำหนด แล้วคืนว่าสถานะตรงกันตลอดไหม */
@@ -206,14 +205,16 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
     `จบแล้วถืออาวุธชุดเดียวกันทั้งสองเครื่อง (p1=${swap.gA.p1.alt} p2=${swap.gA.p2.alt})`);
   ok(swap.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
 
-  // Momus: กล่องระเบิดเป็นสถานะที่อยู่บนเวที ไม่ได้ติดกับตัวใคร และระเบิดใส่ทุกคน
-  // ชนวนคลาดกันเฟรมเดียวก็ระเบิดคนละจังหวะ ซึ่งเปลี่ยนผลทั้งยกได้เลย
-  const momus = playApart(busy(1, 1), busy(2, -1), { lagA: 2, lagB: 5, c1: 'momus', c2: 'momus', frames: 420 });
-  ok((momus.tally.a.box ?? 0) > 0, `มีกล่องถูกวางจริงระหว่างทดสอบ (${momus.tally.a.box} ใบ)`);
-  ok((momus.tally.a.blast ?? 0) > 0, `และมีระเบิดจริง (${momus.tally.a.blast} ครั้ง)`);
-  ok((momus.tally.a.box ?? 0) === (momus.tally.b.box ?? 0)
-    && (momus.tally.a.blast ?? 0) === (momus.tally.b.blast ?? 0), "กล่องและระเบิดตรงกันสองเครื่อง");
-  ok(momus.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
+  // DEAR: ไอพ่นกับการลากเป็นสถานะที่ตัดสินผลการชน แต่ **ไม่โผล่ในตำแหน่งหรือเลือด**
+  // ขีดไอพ่นคลาดกันขีดเดียว = อีกเฟรมหนึ่งคนหนึ่งพุ่งได้อีกคนพุ่งไม่ได้ แล้วแยกกันไปเลย
+  // โดยที่เฟรมก่อนหน้าทุกค่ายังตรงกันหมด — เป็น desync ที่ไล่ย้อนหาต้นตอยากที่สุดแบบหนึ่ง
+  const dear = playApart(busy(1, 1), busy(2, -1), { lagA: 2, lagB: 5, c1: 'momus', c2: 'momus', frames: 420 });
+  ok((dear.tally.a.boost ?? 0) + (dear.tally.a.boostGain ?? 0) > 0,
+    `มีการใช้/เติมไอพ่นจริงระหว่างทดสอบ (ใช้ ${dear.tally.a.boost ?? 0} · เติม ${dear.tally.a.boostGain ?? 0})`);
+  ok((dear.tally.a.grab ?? 0) > 0, `และมีการคว้าลากจริง (${dear.tally.a.grab} ครั้ง)`);
+  ok((dear.tally.a.boost ?? 0) === (dear.tally.b.boost ?? 0)
+    && (dear.tally.a.grab ?? 0) === (dear.tally.b.grab ?? 0), "ไอพ่นและการคว้าตรงกันสองเครื่อง");
+  ok(dear.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
 
   // Orpheus: บัฟไฟอยู่ที่คนฟาด ไฟที่ติดตัวอยู่ที่คนโดน — สองอย่างนี้เพิ่งเพิ่มเข้ามา
   const orph = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'orpheus', c2: 'orpheus', frames: 420 });

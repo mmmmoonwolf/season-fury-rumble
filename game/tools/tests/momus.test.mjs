@@ -1,13 +1,16 @@
-// ทดสอบกลไกเฉพาะตัวของ Momus — กล่องระเบิดที่ไม่เลือกข้าง ดีดนิ้วสลับที่ และอัลติโปรยกล่อง
-const fs = await import("fs");
+// ทดสอบกลไกเฉพาะตัวของ DEAR — ไอพ่น · การลาก(+ปุ่มดิ้น) · โอเวอร์คล็อก · อัลติ METEOR
 // รัน: node tools/tests/momus.test.mjs   (จากโฟลเดอร์ game)
+//
+// ชื่อไฟล์ยังเป็น momus เพราะ **`id` ของตัวละครยังเป็น 'momus'** ซึ่งห้ามเปลี่ยน —
+// มันคือคีย์ของอัตลาส (`scmomus`) ชื่อไฟล์ชีตใน tools/ และค่าที่ส่งข้ามเน็ตตอนเลือกตัว
+// (เวอร์ชันตัวตลกเดิมอยู่ที่ docs/archive/MOMUS_KIT_jester.md — ถอดออกหมดแล้ว)
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
-const { Game, CHARACTERS, KI_MAX, STAGE } = await import(G + "/core.js");
+const { Game, CHARACTERS, KI_MAX, STAGE, PHYS } = await import(G + "/core.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
-const mk = (gap = 200, foe = "helios") => {
+const mk = (gap = 160, foe = "helios") => {
   const g = new Game(); g.p1.char = "momus"; g.p2.char = foe;
   g.resetPositions(); g.p1.x = g.p2.x - gap; return g;
 };
@@ -16,467 +19,253 @@ const run = (g, n, a = () => inp(), b = () => inp()) => {
   for (let i = 0; i < n; i++) { g.step(a(i), b(i)); ev.push(...g.events); }
   return ev;
 };
+const MAX = CHARACTERS.momus ? 3 : 3;   // BOOST_MAX — core ไม่ export ค่าภายใน
 
-// ── กฎเหล็ก: ระเบิดของเขาโดนตัวเขาเอง แต่ "ไม่หักเลือด" ──
+// ══ ชุดท่าใหม่ต้องเข้ามาแทนของเก่าจริง ไม่ใช่เหลือค้างทั้งสองชุด ═══════════════
+{
+  const m = CHARACTERS.momus;
+  ok(m.label === 'DEAR', `ชื่อที่โชว์คือ DEAR (${m.label})`);
+  ok(m.id === 'momus', "id ยังเป็น momus — เปลี่ยนแล้วอาร์ตหายทั้งตัวและเล่นกับแท็บเก่าไม่ได้");
+  ok(m.boost === true, "ติดธงว่าใช้ระบบไอพ่น");
+  ok(m.skills.join() === 'drag1,over1,meteor1', `สกิลสามช่องเป็นชุดใหม่ (${m.skills.join()})`);
+  const gone = ['box1', 'box2', 'snap1', 'snap2', 'full1', 'full2', 'jab5', 'jab6']
+    .filter((k) => m.moves[k]);
+  ok(gone.length === 0, `ท่าของตัวตลกถูกถอดออกหมด (เหลือ: ${gone.join() || 'ไม่มี'})`);
+  const g = new Game();
+  ok(g.boxes === undefined && g.decoy === undefined,
+    "กล่องระเบิดกับหุ่นแสดงแทนไม่มีอยู่ในซิมแล้ว");
+  ok(g.p1.house === undefined, "ชั้น House ถูกถอดออกจากตัวละครแล้ว");
+}
+
+// ══ ไอพ่น: ต่อยโดนเพื่อเติม · แตะพื้นเติมเต็ม · มีเพดานต่อหนึ่งช่วงลอย ═══════════
+{
+  const g = mk();
+  ok(g.p1.boost === MAX, `เริ่มมาไอพ่นเต็ม (${g.p1.boost}/${MAX})`);
+
+  // ใช้ไปแล้วต้องลด
+  g.p1.onGround = false; g.p1.y = STAGE.groundY - 200; g.p1.jumpsLeft = 0;
+  const before = g.p1.boost;
+  g.doJump(g.p1, inp());
+  ok(g.p1.boost === before - 1, `ดับเบิลจัมพ์หมดแล้วกระโดดต่อได้ กินไอพ่นหนึ่งขีด (${before} -> ${g.p1.boost})`);
+
+  // ไอพ่นหมดแล้วกระโดดต่อไม่ได้ — ต้องร่วงลงพื้น ซึ่งคือราคาของตัวละครทั้งตัว
+  g.p1.boost = 0; g.p1.jumpsLeft = 0; g.p1.onGround = false;
+  ok(g.doJump(g.p1, inp()) === false, "ไอพ่นหมดแล้วกระโดดต่อไม่ได้");
+
+  // แตะพื้น = เติมเต็ม ไม่มีทางตัน
+  g.p1.onGround = false; g.p1.y = STAGE.groundY - 30; g.p1.vy = 8;
+  run(g, 20);
+  ok(g.p1.onGround && g.p1.boost === MAX, `แตะพื้นแล้วเติมเต็มทันที (${g.p1.boost}/${MAX})`);
+}
+
+// ── ต่อยโดนคืนขีด แต่โดนบล็อกไม่คืน ──
 //
-// เขายังต้องโดนแรงกระแทก ไม่งั้นระเบิดกลายเป็นของฟรีที่วางทิ้งไว้โดยไม่ต้องคิดว่าตัวเองอยู่ไหน
-// และที่แย่กว่านั้นคือเอาระเบิดตัวเองดีดหนีได้ ซึ่งกลับหัวความหมายของท่าทั้งท่า
+// ถ้าโดนบล็อกก็คืน = ตีใส่คนที่กันอยู่เฉย ๆ ก็เติมน้ำมันได้ไม่จำกัด
+// ซึ่งลบเงื่อนไข "ห้ามพลาด" ที่เป็นราคาทั้งหมดของตัวละครทิ้ง
 {
-  const g = mk(600);                       // คู่ต่อสู้อยู่ไกลจนไม่เกี่ยวข้อง
-  run(g, 1, () => inp({ skill1: 1, p: { skill1: 1 } }));
-  const before = g.p1.hp;
-  let launched = false;
-  for (let i = 0; i < 240; i++) {
-    g.step(inp({ right: 1 }), inp());      // ขว้างแล้วเดินตามไปเหยียบเอง
-    if (g.events.some((e) => e.type === 'hit' && e.self)) launched = true;
-  }
-  ok(launched, "เหยียบไหตัวเองแล้วโดนแรงกระแทกจริง");
-  ok(g.p1.hp === before, `แต่ไม่เสียเลือดสักหน่วย (${g.p1.hp}/${g.p1.maxHp})`);
-}
+  const g = mk(70);
+  g.p1.boost = 1; g.p1.onGround = false; g.p1.y = STAGE.groundY - 120;
+  g.p2.onGround = false; g.p2.y = STAGE.groundY - 120;
+  run(g, 30, () => inp({ attack: 1, p: { attack: 1 } }));
+  ok(g.p1.boost > 1, `ต่อยโดนแล้วได้ไอพ่นคืน (${g.p1.boost})`);
 
-// ── แต่ยังโดนคู่ต่อสู้ด้วย ไม่ใช่ท่าทำร้ายตัวเองเปล่า ๆ ──
-{
-  const g = mk(150);
-  run(g, 240, (i) => inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}));
-  ok(g.p2.hp < 100, `คู่ต่อสู้ที่ยืนใกล้กล่องก็โดน (${g.p2.hp}/100)`);
-}
-
-// ── กล่องต้องไม่ติดชนวนทันทีที่ขว้าง ──
-// ไม่งั้นมันระเบิดใส่หน้าตัวเองทุกครั้งที่กด = กดไม่ได้เลย
-{
-  const M = CHARACTERS.momus.moves;
-  const g = mk(600);
-  run(g, 1, () => inp({ skill1:1, p:{ skill1:1 } }));
-  run(g, M.box1.boxDrop.at + 2, () => inp());
-  const b = g.boxes[0];
-  ok(b && b.arm > 0, `เพิ่งขว้างออกไปยังไม่ติดชนวน (เหลืออีก ${b?.arm} เฟรม)`);
-  ok(b.x > g.p1.x, "กล่องไปตกข้างหน้า ไม่ใช่ที่เท้าตัวเอง");
-}
-
-// ── ครบเวลาแล้วระเบิดเอง แม้ไม่มีใครแตะ ──
-{
-  const g = mk(900);
-  const ev = run(g, 260, (i) => inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}));
-  ok(ev.some((e) => e.type === "blast"), "ไม่มีใครแตะก็ระเบิดเองเมื่อครบเวลา");
-  ok(g.boxes.length === 0, "ระเบิดแล้วกล่องหายไปจริง");
-}
-
-// ── วางเกินโควต้าแล้วใบเก่าสุดหายไป ไม่ใช่กดไม่ติด ──
-// "กดแล้วไม่เกิดอะไร" เป็นความรู้สึกที่แย่ที่สุดในเกมต่อสู้ คนเล่นจะไม่รู้ว่าติดโควต้าอยู่
-{
-  const g = mk(900);
-  for (let k = 0; k < 4; k++) {
-    g.p1.cd[0] = 0;
-    run(g, 40, (i) => inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}));
-  }
-  ok(g.boxes.length <= 2, `วางพร้อมกันได้ไม่เกินสองใบ (ตอนนี้ ${g.boxes.length})`);
-  ok(g.boxes.length > 0, "และยังมีกล่องอยู่จริง ไม่ใช่กดไม่ติดทั้งหมด");
-}
-
-// ══ สกิล 2 Understudy: ทิ้งตัวแสดงแทนไว้ แล้วหลุดออกไป ═══════════════════════
-//
-// ท่านี้มาแทน "ดีดนิ้วสลับที่" ของเดิม เหตุผลคือการสลับที่ถูกย้ายไปรวมกับอัลติแล้ว
-// (อัลติวาร์ปขึ้นชั้นบนสุด) ถ้าไม่มีอะไรมาแทน เขาจะไม่มีปุ่มหนีตอนโดนต้อนติดมุมเลย
-// เพราะอัลติใช้หลอดเต็ม ซึ่งตอนโดนไล่มักจะไม่มี
-
-// ── ต้องขยับตัวเขาด้วย ไม่ใช่แค่วางหุ่น ──
-// นี่คือเหตุผลทั้งหมดที่มีท่านี้ ถ้าไม่ขยับก็ไม่ใช่ปุ่มหนี
-{
-  const g = mk(220);
-  const x1 = g.p1.x;
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  ok(g.decoy != null, "มีตัวแสดงแทนยืนอยู่");
-  ok(Math.abs(g.decoy.x - x1) < 1, `หุ่นยืนอยู่ตรงที่เขาเคยยืน (${Math.round(g.decoy.x)})`);
-  ok(Math.abs(g.p1.x - x1) > 100, `ตัวจริงหลุดออกไปไกลพอ (${Math.round(x1)} -> ${Math.round(g.p1.x)})`);
-  ok(g.p1.onGround, "ยังยืนพื้นอยู่ ไม่ได้ลอยค้าง");
-}
-
-// ── ออกไวที่สุดในเกมเท่าเดิม ──
-// ปุ่มหนีที่ออกช้าคือปุ่มหนีที่ใช้ไม่ทัน
-{
-  const M = CHARACTERS.momus.moves;
-  ok(M.snap1.startup <= 3, `ออกภายใน 3 เฟรม (${M.snap1.startup})`);
-}
-
-// ── มีได้ทีละตัวเดียว ──
-{
-  const g = mk(220);
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  const first = g.decoy.x;
-  run(g, 30, () => inp());          // รอให้ท่าเดินจบก่อน (snap1 -> snap2 รวม ~27 เฟรม)
-  g.p1.cd[1] = 0;
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  ok(g.decoy != null && Math.abs(g.decoy.x - first) > 50,
-    `กดซ้ำแล้วได้หุ่นตัวใหม่ ตัวเก่าหายไป (${Math.round(first)} -> ${Math.round(g.decoy.x)})`);
-}
-
-// ── หมดเวลาแล้วหายเฉย ๆ ไม่ระเบิด ──
-//
-// ถ้าระเบิดเองด้วย มันจะกลายเป็นระเบิดใบที่สองที่วางแล้วเดินหนีได้
-// รางวัลของท่านี้ต้องอยู่ที่ "หลอกเขาสำเร็จ" ไม่ใช่ที่ "วางไว้เฉย ๆ"
-{
-  const g = mk(600);
-  const ev = [];
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  for (let i = 0; i < 200; i++) { g.step(inp(), inp()); ev.push(...g.events); }
-  ok(g.decoy === null, "หมดเวลาแล้วหุ่นหายไป");
-  ok(ev.some((e) => e.type === 'decoyGone'), "หายแบบหมดอายุ");
-  ok(!ev.some((e) => e.type === 'decoyPop'), "ไม่ระเบิดตอนหมดอายุ");
-  ok(g.p2.hp === g.p2.maxHp, `คู่ต่อสู้ที่ยืนเฉย ๆ ไม่เสียเลือดเลย (${g.p2.hp}/${g.p2.maxHp})`);
-}
-
-// ── ตีโดนหุ่นแล้วมันระเบิดใส่คนตี ──
-{
-  const g = mk(220);
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  const dx = g.decoy.x;
-  g.p2.x = dx + 60; g.p2.facing = -1;          // ยืนประชิดหุ่นแล้วต่อย
-  const before = g.p2.hp;
-  const ev = [];
+  // ต้องตรึงให้ลอยอยู่ตลอด ไม่งั้นแตะพื้นแล้วเติมเต็มเอง แล้วด่านนี้จะวัดคนละเรื่อง
+  const b = mk(70);
+  b.p1.boost = 1;
   for (let i = 0; i < 30; i++) {
-    g.step(inp(), inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
-    ev.push(...g.events);
+    b.p1.onGround = false; b.p1.y = STAGE.groundY - 120; b.p1.vy = 0;
+    b.step(inp({ attack: 1, p: { attack: 1 } }), inp({ block: 1 }));
   }
-  ok(ev.some((e) => e.type === 'decoyPop'), "ต่อยหุ่นแล้วหุ่นแตก");
-  ok(g.decoy === null, "หุ่นหายหลังแตก");
-  ok(g.p2.hp < before, `คนที่ต่อยเสียเลือดจากระเบิด (${before} -> ${g.p2.hp})`);
+  ok(b.p1.boost === 1, `ตีใส่คนที่กันอยู่ไม่ได้ไอพ่นคืน (${b.p1.boost})`);
 }
 
-// ── เจ้าของตีหุ่นตัวเองไม่ได้ ──
-// ไม่งั้นเขาเอาหุ่นของตัวเองเป็นระเบิดกดใส่เมื่อไหร่ก็ได้ ซึ่งไม่ใช่ท่าหลอก แต่เป็นท่าตี
+// ── เพดานต่อหนึ่งช่วงลอย — ชั้นกันคอมโบอากาศไม่รู้จบ ──
 {
-  const g = mk(600);
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  const dx = g.decoy.x;
-  g.p1.x = dx - 50; g.p1.facing = 1;
-  for (let i = 0; i < 30; i++) g.step(inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}), inp());
-  ok(g.decoy != null, "ตีหุ่นของตัวเองแล้วไม่แตก");
+  const g = mk(70);
+  g.p1.boost = 0; g.p1.boostGain = 0;
+  g.p1.onGround = false; g.p1.y = STAGE.groundY - 200;
+  for (let i = 0; i < 10; i++) g.gainBoost(g.p1);
+  ok(g.p1.boost <= 2, `ลอยอยู่คืนได้มากสุดสองขีด (${g.p1.boost})`);
+  g.p1.onGround = true;
+  for (let i = 0; i < 10; i++) g.gainBoost(g.p1);
+  ok(g.p1.boost === MAX, `อยู่บนพื้นไม่ติดเพดาน (${g.p1.boost}/${MAX})`);
 }
 
-// ── ระเบิดของหุ่นไม่หักเลือดเจ้าของ ตามกติกาเดียวกับไห ──
+// ══ สกิล 1: ไถลาก แล้วทุบ — และ **ต้องดิ้นหลุดได้** ═══════════════════════════
+//
+// ลากไกลแปลว่าคนโดนนั่งมือเปล่าอยู่หลายสิบเฟรม ซึ่งเป็นความรู้สึกที่แย่ที่สุดในเกมต่อสู้
 {
-  const g = mk(220);
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  const dx = g.decoy.x;
-  g.p1.x = dx + 20;                            // ยืนติดหุ่นตัวเอง
-  g.p2.x = dx + 60; g.p2.facing = -1;
-  const before = g.p1.hp;
-  for (let i = 0; i < 30; i++) g.step(inp(), inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
-  ok(g.p1.hp === before, `เจ้าของยืนติดหุ่นตอนมันแตกก็ไม่เสียเลือด (${g.p1.hp}/${g.p1.maxHp})`);
+  const g = mk(80);
+  const ev = run(g, 14, () => inp({ skill1: 1, p: { skill1: 1 } }));
+  ok(ev.some((e) => e.type === 'grab'), "ไถผ่านแล้วคว้าติด");
+  ok(g.p2.carriedBy === g.p1.id, `คนโดนถูกผูกไว้กับคนลาก (${g.p2.carriedBy})`);
+  ok(g.p1.carrying.includes(g.p2.id), "และคนลากรู้ว่ากำลังลากใครอยู่");
+
+  // ตำแหน่งต้องตามไปด้วยจริง ไม่ใช่แค่ติดธง
+  const dx0 = Math.abs(g.p2.x - g.p1.x);
+  run(g, 8);
+  ok(Math.abs(Math.abs(g.p2.x - g.p1.x) - dx0) < 8, "ถูกลากไปด้วย ระยะห่างคงที่");
+
+  // สุดทางแล้วทุบ — คนที่ยังถูกลากอยู่กินเต็ม
+  const hp0 = g.p2.hp;
+  const slam = run(g, 60);
+  ok(slam.some((e) => e.type === 'slam'), "สุดทางแล้วทุบพื้นจริง");
+  ok(g.p2.hp < hp0 - 10, `คนที่ถูกลางอยู่กินหมัดทุบเต็ม (${hp0} -> ${g.p2.hp})`);
+  ok(!g.p2.carriedBy, "ทุบแล้วปล่อย ไม่ลากค้าง");
 }
 
-// ── ระเบิดหุ่นไม่ให้ชั้น House ──
-// ชั้นมาจากไหอย่างเดียว ไม่งั้นเก็บง่ายเกินไปและเสียความหมายของ "ต้องต้อนเขาเข้าไห"
+// ── ปุ่มดิ้น: รัวปุ่มแล้วหลุดก่อนถึงปลายทาง กินแค่ดาเมจตอนคว้า ──
 {
-  const g = mk(220);
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
-  g.p2.x = g.decoy.x + 60; g.p2.facing = -1;
-  for (let i = 0; i < 30; i++) g.step(inp(), inp(i === 0 ? { attack: 1, p: { attack: 1 } } : {}));
-  ok(g.p1.house === 0, `ระเบิดหุ่นไม่ให้ชั้น (${g.p1.house})`);
+  const g = mk(80);
+  run(g, 12, () => inp({ skill1: 1, p: { skill1: 1 } }));
+  ok(g.p2.carriedBy === g.p1.id, "คว้าติดก่อน");
+  const hp0 = g.p2.hp;
+  // รัวปุ่มตีทุกเฟรม — mashPressed อ่านจากบิต "เพิ่งกด" เหมือนท่ารัวของ Helios
+  const ev = run(g, 40, () => inp(), () => inp({ p: { attack: 1 } }));
+  ok(ev.some((e) => e.type === 'breakOut'), "รัวปุ่มแล้วหลุดจริง");
+  ok(!g.p2.carriedBy, "หลุดแล้วไม่ถูกลากต่อ");
+  const escaped = hp0 - g.p2.hp;
+
+  // ไม่ดิ้นเลย = กินเต็ม — พิสูจน์ว่าข้อบนไม่ได้ผ่านเพราะหมัดทุบไม่ทำงาน
+  const q = mk(80);
+  run(q, 12, () => inp({ skill1: 1, p: { skill1: 1 } }));
+  const qhp = q.p2.hp;
+  run(q, 60);
+  const full = qhp - q.p2.hp;
+  ok(full > 10, `ไม่ดิ้นเลยกินเต็ม (${full} ดาเมจ)`);
+  // หลุดแล้วยังกินคลื่นตามพื้นได้ถ้ายืนอยู่ข้าง ๆ — หนีหมัดทุบพ้น ไม่ได้หนีคลื่นพ้น
+  ok(escaped < full / 2, `ดิ้นหลุดแล้วเจ็บน้อยกว่าครึ่ง (${escaped} เทียบ ${full})`);
 }
 
-// ── รีเซ็ตทุกยก ──
+// ── 2v2: ไถผ่านสองคนแล้วหารดาเมจ ไม่งั้นสกิล 1 แรงกว่าอัลติ ──
 {
-  const g = mk(220);
-  run(g, 6, (i) => inp(i === 0 ? { skill2: 1, p: { skill2: 1 } } : {}));
+  const g = new Game(); g.setRoster(4);
+  for (const f of g.fighters) f.ai = false;
+  g.fighters[0].char = 'momus';
   g.resetPositions();
-  ok(g.decoy === null, "ขึ้นยกใหม่แล้วหุ่นหายไปด้วย");
+  // เอาคู่ต่อสู้สองคนมายืนซ้อนกันข้างหน้า
+  g.fighters[1].x = g.fighters[0].x + 80;
+  g.fighters[3].x = g.fighters[0].x + 90;
+  const hp = g.fighters.map((f) => f.hp);
+  run(g, 90, () => inp({ skill1: 1, p: { skill1: 1 } }));
+  const took = g.fighters.map((f, i) => hp[i] - f.hp);
+  ok(took[1] > 0 && took[3] > 0, `จับได้ทั้งสองคน (${took[1]} · ${took[3]})`);
+
+  const solo = mk(80);
+  run(solo, 90, () => inp({ skill1: 1, p: { skill1: 1 } }));
+  const one = 100 - solo.p2.hp;
+  ok(took[1] < one, `จับสองคนแล้วคนละน้อยกว่าจับคนเดียว (${took[1]} < ${one})`);
 }
 
-// ── อัลติ: โปรยกล่องทั่วเวที ──
+// ══ สกิล 2 OVERCLOCK: เกราะทุกท่า · หมัดแรงขึ้น · ล้างสถานะ · **บล็อกไม่ได้** ═══
 {
-  const g = mk(300); g.p1.ki = KI_MAX;
-  run(g, 40, (i) => inp(i === 0 ? { skill3:1, p:{ skill3:1 } } : {}));
-  ok(g.boxes.length === 4, `โรงว่าง (0 ชั้น) ได้ 4 ไห — ใช้อัลติได้เสมอ แค่ได้เล็ก (${g.boxes.length})`);
-  const xs = g.boxes.map((b) => b.x);
-  const span = Math.max(...xs) - Math.min(...xs);
-  ok(span > (STAGE.wallR - STAGE.wallL) * 0.7, `กระจายทั่วเวทีจริง (กว้าง ${Math.round(span)} px)`);
-  const fuses = g.boxes.map((b) => b.fuse);
-  ok(new Set(fuses).size === fuses.length, "ชนวนเหลื่อมกันทุกใบ = ระเบิดไล่กันเป็นทอด ๆ ไม่ใช่ตูมเดียว");
+  const g = mk();
+  g.p1.burn = 60; g.p1.lash = 3;
+  run(g, 10, () => inp({ skill2: 1, p: { skill2: 1 } }));
+  ok(g.p1.overclock > 0, `บัฟติดแล้ว (เหลือ ${g.p1.overclock} เฟรม)`);
+  ok(g.p1.burn === 0 && g.p1.lash === 0, "ล้างไฟกับรอยแส้ที่ติดอยู่ทิ้งตอนกด");
+
+  // เกราะติด **ทุกท่า** ไม่ใช่เฉพาะท่าที่ประกาศเกราะไว้เอง
+  g.p1.move = null; g.p1.moveId = null; g.p1.setState('idle');
+  g.startMove(g.p1, 'jab1', 1);
+  ok(g.p1.armorLeft > 0, `ท่าจิ้มธรรมดาก็มีเกราะระหว่างติดบัฟ (${g.p1.armorLeft})`);
+
+  // บล็อกไม่ได้ — นี่คือราคาของเกราะ
+  const b = mk();
+  run(b, 10, () => inp({ skill2: 1, p: { skill2: 1 } }));
+  run(b, 20, () => inp({ block: 1 }));
+  ok(b.p1.state !== 'block' && b.p1.state !== 'blockcrouch',
+    `ติดบัฟแล้วกันไม่ได้เลย (state=${b.p1.state})`);
+
+  // หมดเวลาแล้วต้องกลับมากันได้ และเกราะต้องหาย
+  b.p1.overclock = 1;
+  run(b, 3);
+  ok(b.p1.overclock === 0, "หมดเวลาแล้วบัฟหลุด");
+  run(b, 10, () => inp({ block: 1 }));
+  ok(b.p1.state === 'block', `หมดบัฟแล้วกลับมากันได้ (state=${b.p1.state})`);
 }
 
-// ── อัลติก็ไม่เลือกข้าง เจ้าของโดนแรงกระแทก แต่ไม่เสียเลือด ──
+// ── หมัดแรงขึ้นจริง วัดจากเลือดที่หายไป ไม่ใช่จากตัวเลขในตาราง ──
 {
-  // ต้องใช้โรงเต็ม เพราะโรงว่าง (4 ไห) ยังมีช่องว่างให้ยืนได้จริง — ดูข้อ "ความครอบคลุม" ข้างล่าง
-  const g = mk(300); g.p1.ki = KI_MAX; g.p1.house = 5;
-  const before = g.p1.hp;
-  let launched = false;
-  for (let i = 0; i < 300; i++) {
-    g.step(inp(i === 0 ? { skill3:1, p:{ skill3:1 } } : {}), inp());
-    if (g.events.some((e) => e.type === 'hit' && e.self)) launched = true;
-  }
-  ok(launched, "ยืนอยู่กลางฝนไหตัวเองแล้วโดนดีดจริง");
-  ok(g.p1.hp === before, `อัลติไม่หักเลือดตัวเอง (${g.p1.hp}/${g.p1.maxHp})`);
-  ok(g.p2.hp < g.p1.hp, `แต่คู่ต่อสู้ที่ยืนนิ่งเจ็บกว่า (${g.p2.hp} เทียบ ${g.p1.hp})`);
+  const plain = mk(70);
+  const hp0 = plain.p2.hp;
+  run(plain, 20, () => inp({ attack: 1, p: { attack: 1 } }), () => inp());
+  const base = hp0 - plain.p2.hp;
+
+  const buff = mk(70);
+  buff.p1.overclock = 300;
+  const hp1 = buff.p2.hp;
+  run(buff, 20, () => inp({ attack: 1, p: { attack: 1 } }), () => inp());
+  const boosted = hp1 - buff.p2.hp;
+  ok(base > 0 && boosted > base, `ติดบัฟแล้วหมัดแรงขึ้นจริง (${base} -> ${boosted})`);
 }
 
-// ── กันได้ ระเบิดไม่ใช่ของที่กันไม่ได้ ──
+// ══ อัลติ METEOR: อมตะขาขึ้น · จับขึ้นฟ้า · อัดพื้นแล้วมีคลื่น ═════════════════
 {
-  const hit = (block) => {
-    const g = mk(150);
-    run(g, 240, (i) => inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}), () => inp(block ? { block: 1 } : {}));
-    return 100 - g.p2.hp;
-  };
-  const open = hit(false), guard = hit(true);
-  ok(open > 0 && guard < open, `กันแล้วเจ็บน้อยลงชัดเจน (${guard} เทียบ ${open})`);
+  const g = mk(80);
+  g.p1.ki = KI_MAX;
+  run(g, 2, () => inp({ skill3: 1, p: { skill3: 1 } }));
+  ok(g.p1.invuln > 0, `อมตะตั้งแต่เฟรมแรกของขาขึ้น (invuln ${g.p1.invuln})`);
+  // หมัดที่คว้าติดทำให้เกิด hitstop ซึ่งแช่ moveF ไว้หลายเฟรม แรงส่งขึ้นจึงมาทีหลัง
+  run(g, 20);
+  ok(g.p2.carriedBy === g.p1.id, "คว้าคนข้างหน้าติดขึ้นไปด้วย");
+  ok(!g.p1.onGround && g.p1.y < STAGE.groundY - 40,
+    `พุ่งขึ้นจริง (y ${Math.round(g.p1.y)} · vy ${g.p1.vy.toFixed(1)})`);
+
+  const hp0 = g.p2.hp;
+  const ev = run(g, 200);
+  ok(ev.some((e) => e.type === 'slam'), "ลงมาอัดพื้นจริง");
+  ok(g.p2.hp < hp0 - 15, `คนที่ถูกจับกินเต็ม (${hp0} -> ${g.p2.hp})`);
 }
 
-// ── ท่าตีปกติต้องเบาแต่รัว ไม่ใช่หนักและช้า ──
-// เกมนี้เร็วและคนใส่กันรัว ท่าที่เงื้อนานคือท่าที่ไม่มีวันได้ใช้
-{
-  const M = CHARACTERS.momus.moves;
-  const span = (m) => m.startup + m.active + m.recovery;
-  const others = ["nyx", "helios", "alecto", "atlas", "orpheus"].map((c) => span(CHARACTERS[c].moves.jab1));
-  ok(span(M.jab1) <= Math.min(...others), `จิ้มของเขาสั้นที่สุดในโรสเตอร์ (${span(M.jab1)} เฟรม · รองลงมา ${Math.min(...others)})`);
-  ok(M.jab1.dmg <= 3 && M.jab2.dmg <= 3, `แลกกับดาเมจที่เบา (${M.jab1.dmg}/${M.jab2.dmg})`);
-}
-
-// ── กับดักที่กัดมาแล้วห้ารอบ: ท่ากลางคอมโบห้ามถีบขึ้น ──
-{
-  const M = CHARACTERS.momus.moves;
-  const mid = ["jab1", "jab2", "jab3", "side"];
-  const bad = mid.filter((k) => M[k].kb[1] !== 0);
-  ok(bad.length === 0, `ท่ากลางคอมโบไม่มีท่าไหนถีบขึ้น${bad.length ? " (เจอ " + bad.join(",") + ")" : ""}`);
-}
-
-// ── ห้ามตั้ง active: 0 — phase() จะข้ามช่วง active ทั้งช่วง เฟรมอาร์ตกลางไม่ถูกวาด ──
-{
-  const M = CHARACTERS.momus.moves;
-  const zero = Object.keys(M).filter((k) => M[k].active === 0);
-  ok(zero.length === 0, `ไม่มีท่าไหนตั้ง active เป็น 0${zero.length ? " (เจอ " + zero.join(",") + ")" : ""}`);
-}
-
-// ── กล่องต้องอยู่ในกำแพงเวทีเสมอ ──
-// ขว้างตอนยืนติดขอบแล้วกล่องหลุดออกไปนอกจอ = กดสกิลทิ้งไปเปล่า ๆ โดยไม่รู้ตัว
-{
-  const g = mk(300);
-  g.p1.x = STAGE.wallR - 10; g.p1.facing = 1;
-  run(g, 20, (i) => inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}));
-  ok(g.boxes.length === 1 && g.boxes[0].x <= STAGE.wallR && g.boxes[0].x >= STAGE.wallL,
-    `ขว้างติดขอบแล้วกล่องยังอยู่ในเวที (x=${Math.round(g.boxes[0]?.x)} · ขอบ ${STAGE.wallR})`);
-}
-
-// ── รีเซ็ตยกแล้วกล่องต้องหายหมด ──
-// ไม่งั้นยกใหม่เริ่มมาพร้อมระเบิดค้างจากยกที่แล้ว ซึ่งไม่มีใครรู้ว่ามันอยู่ตรงไหน
-{
-  const g = mk(300);
-  run(g, 20, (i) => inp(i === 0 ? { skill1:1, p:{ skill1:1 } } : {}));
-  ok(g.boxes.length > 0, "มีกล่องอยู่ก่อนรีเซ็ต");
+// ── คลื่นโดน **เฉพาะคนที่ยืนอยู่บนพื้น** — นั่นคือเหตุผลที่อีกฝั่งต้องกระโดดหนี ──
+//
+// ทั้งสองเคสวางเป้าไว้ที่ระยะเดียวกัน (+200) ซึ่งอยู่ **นอกกรอบคว้าของขาขึ้น** แต่ **ในรัศมีคลื่น**
+// ถ้าวางใกล้กว่านี้ เป้าจะโดนหมัดคว้าติดขึ้นฟ้าไปด้วย แล้วเลือดที่หายจะไม่ได้มาจากคลื่นอีกต่อไป
+const waveTest = (airborne) => {
+  const g = new Game(); g.setRoster(4);
+  for (const f of g.fighters) f.ai = false;
+  g.fighters[0].char = 'momus';
   g.resetPositions();
-  ok(g.boxes.length === 0, "รีเซ็ตยกแล้วกล่องหายหมด");
+  g.fighters[0].ki = KI_MAX;
+  const t = g.fighters[3];
+  const tx = g.fighters[0].x + 200;
+  t.x = tx;
+  const hp0 = t.hp;
+  for (let i = 0; i < 200; i++) {
+    if (airborne) { t.x = tx; t.onGround = false; t.y = STAGE.groundY - 260; t.vy = 0; }
+    g.step(inp({ skill3: 1, p: { skill3: 1 } }), inp());
+  }
+  return [hp0, t.hp];
+};
+{
+  const [hp0, hp1] = waveTest(false);
+  ok(hp1 < hp0, `คนที่ยืนพื้นข้าง ๆ กินคลื่น (${hp0} -> ${hp1})`);
+  const [hp2, hp3] = waveTest(true);
+  ok(hp3 === hp2, `คนที่ลอยอยู่ไม่โดนคลื่น (${hp2} -> ${hp3})`);
 }
 
-// ── ไม้จบ "ยัดหีบ" — ภาพจำของตัวละคร ──
+// ── อัลติกดสวนได้ตอนโดนต้อน — อมตะขาขึ้นคือสิ่งที่ทำให้มันมีค่าทั้งยก ──
 //
-// jab4 คือ "คว้า" · jab5/jab6 ต่อเฉพาะตอนคว้าติด ไม่ใช่ autoChain
-// ท่าจับที่พลาดแล้วยังเล่นท่ายัดต่อ จะดูเหมือนจับติดทั้งที่ไม่โดน
-// คนเล่นทั้งสองฝั่งอ่านผิดพร้อมกัน — คนจับนึกว่าได้ คนโดนนึกว่าโดน แล้วตัดสินใจผิดทั้งคู่
+// อัลติที่กดได้เฉพาะตอนกำลังชนะคืออัลติที่ไม่มีใครกด
 {
-  const chainOf = (gap) => {
-    const g = mk(gap);
-    const seen = [];
-    for (let i = 0; i < 180; i++) {
-      g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
-      if (g.p1.moveId && seen.at(-1) !== g.p1.moveId) seen.push(g.p1.moveId);
-    }
-    return seen;
-  };
-  const hit = chainOf(90), miss = chainOf(600);
-  ok(hit.slice(0, 6).join(",") === "jab1,jab2,jab3,jab4,jab5,jab6",
-    `คว้าติดแล้วต่อครบหกจังหวะ (${hit.slice(0, 6).join(" -> ")})`);
-  ok(!miss.includes("jab5") && !miss.includes("jab6"),
-    `คว้าไม่โดนก็จบแค่ท่าคว้า ไม่ยัดหีบให้อากาศ (${miss.slice(0, 4).join(" -> ")})`);
-  ok(miss.includes("jab4"), "แต่ท่าคว้ายังออกได้ตามปกติ — ไม่ใช่กดแล้วไม่มีอะไรเกิด");
+  const g = mk(60);
+  g.p1.ki = KI_MAX;
+  const hp0 = g.p1.hp;
+  // อีกฝั่งรัวตีใส่ตลอด — ขาขึ้นต้องไม่โดนสักที
+  run(g, 20, (i) => inp(i === 0 ? { skill3: 1, p: { skill3: 1 } } : {}),
+    () => inp({ attack: 1, p: { attack: 1 } }));
+  ok(g.p1.hp === hp0, `โดนรัวใส่ตลอดขาขึ้นแล้วไม่เสียเลือดเลย (${hp0} -> ${g.p1.hp})`);
 }
 
-// ── ท่าจับต้องลากเข้าหาตัว ไม่ใช่ผลักออก ──
+// ── ไม่มีท่าไหนแตะเลย์เอาต์เวทีอีกแล้ว ──
 //
-// ตั้ง kb เป็นบวกตอนแรกแล้ววัดได้ว่าระยะห่างไต่ขึ้นทุกหมัด (90 -> 114 -> 125)
-// จน jab6 เอื้อมไม่ถึง คอมโบขาดที่จังหวะห้าทุกครั้งทั้งที่คว้าติดแล้ว
+// อัลติเดิมวาร์ปขึ้น "ชั้นบนสุด" ซึ่งพังทันทีที่เวทีเปลี่ยนจากห้าชั้นเหลือสามชั้น
+// (ชั้นบนสุดกลายเป็นสองแท่น ต้องมากำหนดกติกาตัดสินใหม่) ชุดใหม่ต้องไม่ผูกกับ STAGE เลย
 {
-  const M = CHARACTERS.momus.moves;
-  ok(M.jab4.kb[0] < 0 && M.jab5.kb[0] < 0,
-    `สองจังหวะแรกของไม้จบลากเข้า (${M.jab4.kb[0]} / ${M.jab5.kb[0]})`);
-
-  const g = mk(90);
-  let hits = 0, last = 0;
-  for (let i = 0; i < 180; i++) {
-    g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp());
-    for (const e of g.events) if (e.type === "comboEnd" && e.hits > last) { hits = e.hits; last = e.hits; }
-  }
-  ok(hits >= 6, `ต่อครบหกจังหวะได้จริงตอนวัดทั้งคอมโบ (ยาวสุด ${hits} hit)`);
-}
-
-// ── ไม้จบถีบขึ้นได้ แต่จังหวะก่อนหน้าห้าม ──
-// jab6 จบคอมโบตรงนั้นพอดี จึงลอยได้ · jab4/jab5 อยู่กลางชุด ลอยเมื่อไหร่คอมโบขาด
-{
-  const M = CHARACTERS.momus.moves;
-  ok(M.jab4.kb[1] === 0 && M.jab5.kb[1] === 0, "ท่าคว้ากับท่ายัดไม่ถีบขึ้น");
-  ok(M.jab6.kb[1] < 0, `ไม้จบถีบขึ้นได้ (${M.jab6.kb[1]})`);
-}
-
-// ── ท่าจับต้องกันได้ ไม่ใช่ของที่กันไม่ได้ ──
-// ตัวนี้ไม่มีอะไรการันตีดาเมจเลย ถ้าไม้จบกันไม่ได้ก็ผิดคอนเซปต์ทั้งตัว
-{
-  const dmgOf = (block) => {
-    const g = mk(90);
-    for (let i = 0; i < 180; i++)
-      g.step(inp(i % 7 === 0 ? { attack:1, p:{ attack:1 } } : {}), inp(block ? { block: 1 } : {}));
-    return 100 - g.p2.hp;
-  };
-  const open = dmgOf(false), guard = dmgOf(true);
-  ok(guard < open, `กันไว้แล้วเจ็บน้อยกว่ามาก (${guard} เทียบ ${open})`);
-}
-
-// ══ ชั้น "โรงเต็ม" — ki บอกว่าใช้อัลติได้ไหม ชั้นบอกว่าอัลติใหญ่แค่ไหน ══════════════
-//
-// แยกสองอย่างนี้ออกจากกันโดยตั้งใจ ถ้าชั้นเป็นตัว "ปลดล็อก" อัลติ แล้วชั้นเก็บยาก
-// คนที่โดนไล่ตีทั้งยกจะไม่มีวันได้ใช้อัลติเลย ซึ่งแย่ที่สุดสำหรับตัวละครที่อัลติคือช่วงเวลาของเขา
-{
-  // ── ได้ชั้นเฉพาะตอนไหระเบิด "โดนคู่ต่อสู้" ──
-  // ไหคือกับดัก คนมีสายตาจะไม่เดินเข้าไปเอง ต้องต้อนเขาเข้าไป นั่นคือที่มาของความยาก
-  {
-    const g = mk(600);
-    run(g, 1, () => inp({ skill1: 1, p: { skill1: 1 } }));
-    run(g, 240, () => inp({ right: 1 }));        // เหยียบเอง คู่ต่อสู้อยู่ไกล
-    ok(g.p1.house === 0, `ระเบิดโดนตัวเองไม่ได้ชั้น (${g.p1.house})`);
-  }
-  {
-    const g = mk(150);                            // คู่ต่อสู้อยู่ในระยะที่ไหจะไปถึง
-    run(g, 1, () => inp({ skill1: 1, p: { skill1: 1 } }));
-    run(g, 240, () => inp());
-    ok(g.p1.house >= 1, `ไหระเบิดโดนคู่ต่อสู้แล้วได้ชั้น (${g.p1.house})`);
-  }
-
-  // ── ชั้นขยายอัลติจริง และมีเพดาน ──
-  const rain = (house) => {
-    const g = mk(300); g.p1.ki = KI_MAX; g.p1.house = house;
-    run(g, 40, (i) => inp(i === 0 ? { skill3: 1, p: { skill3: 1 } } : {}));
-    return g;
-  };
-  ok(rain(0).boxes.length === 4, "โรงว่าง = 4 ไห");
-  ok(rain(5).boxes.length === 9, "โรงเต็ม = 9 ไห");
-  ok(rain(99).boxes.length === 9, "เกินเพดานแล้วไม่โตต่อ — กันกรณีที่ชั้นหลุดไปมากกว่าเพดาน");
-  for (let h = 0; h <= 5; h++)
-    ok(rain(h).boxes.length === 4 + h, `${h} ชั้น -> ${4 + h} ไห`);
-
-  // ── ใช้อัลติแล้วโรงว่าง เริ่มเก็บใหม่ ──
-  {
-    const g = rain(5);
-    ok(g.p1.house === 0, `ใช้อัลติแล้วชั้นกลับเป็นศูนย์ (${g.p1.house})`);
-  }
-
-  // ── รีเซ็ตทุกยก ──
-  // เป็นของที่สะสมเพื่อจังหวะเดียว ไม่ใช่สถานะถาวร ข้ามยกไปได้คือกดอัลติเต็มทันทีที่ยกใหม่เริ่ม
-  {
-    const g = mk(300); g.p1.house = 4;
-    g.resetPositions();
-    ok(g.p1.house === 0, "ขึ้นยกใหม่แล้วโรงว่าง");
-  }
-
-  // ── เพดานเท่าตราแส้ของ Alecto ──
-  // ตัวเลขเดียวกันทั้งเกมทำให้คนเล่นเดาถูกโดยไม่ต้องจำแยก
-  {
-    const src = fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url), "utf8");
-    const houseMax = +(src.match(/const HOUSE_MAX = (\d+)/)?.[1] ?? 0);
-    const lashMax = +(src.match(/const LASH_MAX = (\d+)/)?.[1] ?? 0);
-    ok(houseMax === lashMax, `เพดานชั้นเท่าตราแส้ (${houseMax} = ${lashMax})`);
-  }
-}
-
-// ══ อัลติ: วาร์ปขึ้นชั้นบนสุดก่อนโปรย ══════════════════════════════════════════
-//
-// ที่ต้องวาร์ปก่อน เพราะท่านี้เงื้อ 10 เฟรมแล้วต่ออีก 8 = 18 เฟรมยืนนิ่ง
-// ในเกมที่เร็วขนาดนี้คือโดนสวนฟรี อัลติที่กดแล้วโดนตีหลุดคืออัลติที่ไม่มีใครกด
-{
-  const topY = Math.min(...STAGE.platforms.map((p) => p.y));
-  const tops = STAGE.platforms.filter((p) => p.y === topY);
-  const mids = tops.map((p) => (p.x1 + p.x2) / 2);
-  /** กดอัลติหนึ่งเฟรมจากตำแหน่ง x ที่กำหนด */
-  const ult = (x) => {
-    const g = mk(300); g.p1.ki = KI_MAX; g.p1.x = x;
-    run(g, 1, () => inp({ skill3: 1, p: { skill3: 1 } }));
-    return g.p1;
-  };
-
-  {
-    const g = mk(300); g.p1.ki = KI_MAX;
-    const y0 = g.p1.y;
-    run(g, 1, () => inp({ skill3: 1, p: { skill3: 1 } }));
-    ok(g.p1.y === topY, `วาร์ปขึ้นชั้นบนสุดทันทีที่กด (${y0} -> ${g.p1.y} · ชั้นบนสุด ${topY})`);
-    ok(mids.includes(g.p1.x), `ยืนกลางแท่นเป๊ะ (${g.p1.x}) — ไม่มีสุ่ม สองเครื่องจึงตรงกัน`);
-    ok(g.p1.onGround && g.p1.vx === 0 && g.p1.vy === 0, "ยืนนิ่งบนแท่น ไม่ได้ค้างความเร็วเดิมไว้");
-  }
-
-  // ── ชั้นบนสุดมีหลายแท่น = ต้องไปแท่นที่ใกล้ตัวที่สุด ไม่ใช่แท่นแรกในลิสต์ ──
-  //
-  // ตั้งแต่เวทีเหลือสามชั้น ชั้นบนสุดเป็นแท่นซ้ายกับขวาที่สูงเท่ากัน
-  // ถ้าตัดสินด้วยลำดับในลิสต์ อัลติจะพาไปทางซ้ายเสมอ = อยู่ครึ่งขวาของเวทีแล้วกดอัลติคือเสียเปรียบฟรี
-  if (tops.length > 1) {
-    const near = (x) => mids.reduce((a, m) => (Math.abs(m - x) < Math.abs(a - x) ? m : a));
-    let wrong = [];
-    for (const x of [STAGE.wallL + 30, 400, 640, 900, STAGE.wallR - 30]) {
-      const got = ult(x).x, want = near(x);
-      if (got !== want) wrong.push(`x=${x}: ไป ${got} ควรไป ${want}`);
-    }
-    ok(wrong.length === 0, wrong.length
-      ? `ไปผิดแท่น — ${wrong.join(' · ')}`
-      : `ไปแท่นที่ใกล้ตัวที่สุดทุกตำแหน่ง (แท่นบนสุด ${mids.join(' และ ')})`);
-    // และต้องเลือกคนละแท่นจริง ๆ ไม่ใช่บังเอิญตรงเพราะมีแท่นเดียว
-    ok(ult(STAGE.wallL + 30).x !== ult(STAGE.wallR - 30).x, "ยืนคนละฝั่งเวทีได้คนละแท่นจริง");
-  }
-
-  // ── อมตะระหว่างขึ้น ไม่งั้นวาร์ปแล้วโดนตีหลุดกลางทางก็เท่าเดิม ──
-  {
-    const g = mk(300); g.p1.ki = KI_MAX;
-    run(g, 1, () => inp({ skill3: 1, p: { skill3: 1 } }));
-    ok(g.p1.invuln > 0, `อมตะตอนเพิ่งขึ้นไป (invuln ${g.p1.invuln})`);
-  }
-
-  // ── แต่ไม่ได้แปลว่าปลอดภัย: ไหจุดชนวนจากคนที่ยืนบน "พื้นชั้นไหนก็ได้" ──
-  //
-  // กลไกนี้มีอยู่แล้วในโค้ดและไม่ได้เช็คความสูงเลย ข้อนี้ล็อกไว้ว่าต้องเป็นแบบนั้นต่อไป
-  // เพราะมันคือสิ่งที่ทำให้ "หนีขึ้นที่สูง" ไม่ใช่คำตอบสำเร็จรูปของทั้งเกม
-  {
-    const g = mk(300);
-    const cx = mids[0];
-    g.boxes.push({ x: cx, owner: 'p2', fuse: 200, arm: 0 });
-    g.p1.x = cx; g.p1.y = topY; g.p1.onGround = true;
-    const before = g.p1.hp;
-    run(g, 6, () => inp());
-    ok(g.p1.hp < before, `ยืนบนชั้นบนสุดก็ยังโดนไหที่อยู่แนวเดียวกัน (${before} -> ${g.p1.hp})`);
-  }
-
-  // ── ทางหนีคือ "ลอยอยู่กลางอากาศ" ไม่ใช่ "ขึ้นที่สูง" ──
-  {
-    const g = mk(300);
-    g.boxes.push({ x: g.p1.x, owner: 'p2', fuse: 200, arm: 0 });
-    g.p1.onGround = false; g.p1.y = STAGE.groundY - 120;
-    const before = g.p1.hp;
-    run(g, 6, () => inp());
-    ok(g.p1.hp === before, "ลอยอยู่ไม่โดน — จังหวะกระโดดคือทางหนีจริงของท่านี้");
-  }
-}
-
-// ══ ความครอบคลุมของฝน — เส้นแบ่งอยู่ที่ 2 ชั้น ══════════════════════════════════
-//
-// ไม่ได้ออกแบบมา แต่โผล่ออกมาจากตัวเลขเอง แล้วกลายเป็นของดี:
-//   โรงว่าง (4 ไห)  ห่างกัน 300px วงระเบิดกว้าง 216px -> เหลือช่องยืนได้ 84px
-//   2 ชั้น (6 ไห)   ห่างกัน 200px -> วงทับกันหมด ไม่มีที่ยืน กระโดดอย่างเดียว
-//
-// แปลว่า **2 ชั้นคือจุดที่อัลติเปลี่ยนจาก "หลบได้ด้วยการยืนถูกที่" เป็น "ต้องกระโดด"**
-// ล็อกไว้เพราะถ้าวันหลังมีคนจูน BOX_HALF หรือ RAIN_BASE เส้นนี้จะเลื่อนแบบเงียบ ๆ
-{
-  const span = STAGE.wallR - STAGE.wallL;
-  const gapFor = (n) => span / n;                  // ระยะห่างระหว่างไหสองใบที่ติดกัน
+  const fs = await import("fs");
   const src = fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url), "utf8");
-  const half = +(src.match(/const BOX_HALF = (\d+)/)?.[1] ?? 0);
-  const base = +(src.match(/const RAIN_BASE = (\d+)/)?.[1] ?? 0);
-
-  ok(gapFor(base) > half * 2,
-    `โรงว่าง (${base} ไห) ยังมีช่องให้ยืน — อัลติที่ไม่ได้เตรียมมาไม่ควรปิดทางหนีทั้งหมด`);
-  ok(gapFor(base + 2) <= half * 2,
-    `2 ชั้น (${base + 2} ไห) ปิดพื้นสนิท — ต้องกระโดดอย่างเดียว`);
-  for (let h = 2; h <= 5; h++)
-    ok(gapFor(base + h) <= half * 2, `${h} ชั้น (${base + h} ไห) ยังปิดสนิทอยู่`);
+  ok(!/warpStage/.test(src), "ไม่มี warpStage หลงเหลือในซิมแล้ว");
+  const blk = src.slice(src.indexOf('const MOMUS_MOVES'), src.indexOf('const MOMUS_SKILLS'));
+  ok(!/STAGE\./.test(blk), "ตารางท่าของ DEAR ไม่อ้าง STAGE เลยสักท่า");
 }

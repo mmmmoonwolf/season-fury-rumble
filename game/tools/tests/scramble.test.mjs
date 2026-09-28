@@ -18,6 +18,16 @@ const PENDING_ART_BY_CHAR = {
   helios: new Set(),
 };
 
+/** แผนที่ "ชื่อท่า -> ชื่อเฟรมที่ยืมมาใช้" ของตัวละครนั้น (artAs ใน CHAR_ART)
+ *  มีไว้ให้รีเวิร์คตัวละครได้โดยไม่ต้องรอชีตใหม่เสร็จก่อน — ดูคอมเมนต์ที่ CHAR_ART */
+function aliasOf(scene, id) {
+  const blk = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?artAs:\\s*\\{([\\s\\S]*?)\\}`));
+  if (!blk) return {};
+  const out = {};
+  for (const m of blk[1].matchAll(/(\w+):\s*'([^']+)'/g)) out[m[1]] = m[2];
+  return out;
+}
+
 const NONE = { left: 0, right: 0, up: 0, down: 0, jump: 0, attack: 0, block: 0, run: 0, skill1: 0, skill2: 0, skill3: 0 };
 const inp = (o = {}) => ({ ...NONE, ...o, p: { ...(o.p ?? {}) } });
 /** เดิน n เฟรมด้วย input เดิม (เฟรมแรกเท่านั้นที่นับเป็น "เพิ่งกด") */
@@ -783,11 +793,17 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
     if (!blk) continue;
     const listed = new Set((blk[1].match(/"[^"]+"/g) || []).map((x) => x.replace(/"/g, "")));
     const pending = PENDING_ART_BY_CHAR[id] ?? new Set();
-    const missing = Object.keys(ch.moves).filter((k) => !listed.has(k) && !pending.has(k));
+    // ท่าที่ยืมเฟรมของท่าอื่นไปใช้ชั่วคราว (artAs) ถือว่ามีอาร์ตแล้ว — ฉากเปลี่ยนชื่อให้ตอนวาด
+    // ชีตใหม่มาถึงเมื่อไหร่ ลบ artAs ทิ้งแล้วด่านนี้จะบังคับให้เติมชื่อจริงลง attacks เอง
+    const alias = aliasOf(scene, id);
+    const artOf = (k) => alias[k] ?? k;
+    const missing = Object.keys(ch.moves).filter((k) => !listed.has(artOf(k)) && !pending.has(k));
     ok(missing.length === 0, `'${id}': ทุกท่าลงทะเบียนอาร์ตครบ (ขาด: ${missing.join(", ") || "ไม่มี"})`);
-    const early = [...pending].filter((k) => listed.has(k));
+    const early = [...pending].filter((k) => listed.has(artOf(k)));
     ok(early.length === 0, `'${id}': ท่าที่ยังไม่มีอาร์ตต้องไม่อยู่ในรายชื่อ (เจอ: ${early.join(", ") || "ไม่มี"})`);
-    const ghost = [...listed].filter((k) => !ch.moves[k]);
+    // ชื่อในรายชื่ออาร์ตต้องเป็นชื่อท่าจริง หรือเป็นเฟรมที่มีท่าอื่นยืมไปใช้อยู่
+    const used = new Set(Object.values(alias));
+    const ghost = [...listed].filter((k) => !ch.moves[k] && !used.has(k));
     ok(ghost.length === 0, `'${id}': ไม่มีชื่อท่าที่ไม่มีอยู่จริงในรายชื่ออาร์ต (เจอ: ${ghost.join(", ") || "ไม่มี"})`);
   }
 }
@@ -803,10 +819,12 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
     if (!m) { ok(false, `หา atlas ของ '${id}' ไม่เจอ`); continue; }
     const atlas = JSON.parse(fs.readFileSync(new URL("../../" + m[1], import.meta.url), "utf8"));
     const pending = PENDING_ART_BY_CHAR[id] ?? new Set();
+    const alias = aliasOf(scene, id);
     const missing = [];
     for (const k of Object.keys(ch.moves)) {
       if (pending.has(k)) continue;
-      for (const n of [1, 2, 3]) if (!atlas.frames[`${k}_${n}.png`]) missing.push(`${k}_${n}`);
+      const art = alias[k] ?? k;      // ยืมเฟรมของท่าอื่นอยู่ก็ตรวจเฟรมที่ยืมมาแทน
+      for (const n of [1, 2, 3]) if (!atlas.frames[`${art}_${n}.png`]) missing.push(`${art}_${n}`);
     }
     ok(missing.length === 0, `'${id}': ทุกท่ามีอาร์ตครบ 3 เฟรม (ขาด: ${missing.join(", ") || "ไม่มี"})`);
     const arrived = [...pending].filter((k) => atlas.frames[`${k}_2.png`]);
@@ -1238,4 +1256,32 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/setTintFill\(0xffffff\)/.test(scr), "ใช้ setTintFill ไม่ใช่ setTint (คูณขาวแล้วไม่เห็นอะไร)");
   ok(/setTintFill\(0xffc24a\)/.test(scr), "เกราะแฟลชคนละสี — โดนแล้วแต่ท่าไม่ขาด เป็นคนละเรื่องกับโดนแล้วเซ");
   ok(/if \(f\.hitstop <= 0\) \{ sp\.clearTint\(\); return; \}/.test(scr), "หมด hitstop แล้วล้างสีคืน ไม่ค้างขาว");
+}
+
+// ── ฝั่งวาดต้องไม่อ่านสถานะที่ซิมไม่มีแล้ว ──
+//
+// ตอนถอดระบบกล่อง/ตัวแสดงแทนของ Momus ทิ้ง โค้ดวาดยังวนอยู่บน s.boxes ค้างไว้
+// ทั้งชุดเทสต์ 1753 ข้อผ่านหมด เพราะไม่มีข้อไหนเดินเส้นทางวาดจริง — เจอก็ต่อเมื่อเปิดเกม
+// แล้วมันพังทั้งหน้า (TypeError กลางลูปวาด = เกมค้างตั้งแต่เฟรมแรก ไม่ใช่ภาพเพี้ยนนิดหน่อย)
+//
+// ข้อนี้จึงเทียบ "ชื่อที่ฝั่งวาดอ่านจากซิม" กับ "ของที่มีจริงบน Game ที่เพิ่งสร้าง"
+// ถูกกว่าการสตับ Phaser ทั้งตัวเพื่อเดินลูปวาด และจับบั๊กชนิดเดียวกันได้
+{
+  const fs = await import("fs");
+  const { Game } = await import(G + "/core.js");
+  const lines = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8").split("\n");
+  const reads = new Map();
+  for (let i = 0; i < lines.length; i++) {
+    const ln = lines[i];
+    // ข้ามบรรทัดที่ประกาศตัวแปรชื่อ s ของตัวเอง (เช่น for (const s of this.sparks))
+    // ยกเว้นบรรทัดที่ประกาศว่า s คือซิมจริง ๆ ซึ่งเป็นสำนวนที่ใช้ทั้งไฟล์
+    if (/\b(?:const|let|for)\s*\(?\s*const?\s*s\b|\bs\s*=>/.test(ln) && !/const s = this\.sim/.test(ln)) continue;
+    for (const m of ln.matchAll(/\b(?:s|sim|this\.sim)\.([a-zA-Z_]\w*)/g))
+      if (!reads.has(m[1])) reads.set(m[1], i + 1);
+  }
+  const g = new Game();
+  const missing = [...reads].filter(([n]) => !(n in g));
+  ok(reads.size > 10, `เก็บชื่อที่ฝั่งวาดอ่านจากซิมได้จริง (${reads.size} ชื่อ)`);
+  ok(missing.length === 0,
+    `ฝั่งวาดไม่อ่านของที่ซิมถอดไปแล้ว${missing.length ? ' — ' + missing.map(([n, l]) => `s.${n} บรรทัด ${l}`).join(', ') : ''}`);
 }

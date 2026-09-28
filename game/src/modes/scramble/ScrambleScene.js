@@ -126,7 +126,19 @@ const STICK_R = 52, STICK_DEAD = 13, STICK_DEADY = 24;
  *
  * `anims`   = ชื่อท่า -> จำนวนเฟรม (ลงทะเบียนเป็น animation ที่เล่นตามเวลา)
  * `attacks` = ท่าโจมตีที่มีอาร์ตแล้ว 3 เฟรมต่อท่า เลือกเฟรมจาก phase() ไม่ใช่ตามเวลา
+ * `artAs`   = ชื่อท่าในซิม -> ชื่อเฟรมในชีต (ดูข้างล่าง) ไม่มีก็ใช้ชื่อท่าตรง ๆ
  * ตัวที่ไม่อยู่ในทะเบียนนี้ (หุ่นซ้อม) วาดเป็นกล่องเหมือนเดิม
+ *
+ * ── ทำไมต้องมี `artAs` ──
+ *
+ * ชื่อท่าในซิม **คือชื่อเฟรมในชีต** (`sp.setFrame(moveId + '_2.png')`) เปลี่ยนชื่อท่าเมื่อไหร่
+ * อาร์ตของท่านั้นหายทันที ซึ่งแปลว่า **รีเวิร์คตัวละครต้องรอชีตใหม่เสร็จก่อนเสมอ**
+ *
+ * แต่ลำดับที่ถูกคือกลับกัน: ทำกลไกก่อน เล่นจริง จูนให้สนุก **แล้วค่อยลงทุนวาด 76 เฟรม**
+ * ไม่ใช่วาดเสร็จแล้วค่อยพบว่าไม่สนุก
+ *
+ * `artAs` เป็นสะพานชั่วคราวระหว่างสองอย่างนั้น: ซิมใช้ชื่อจริงของท่าใหม่ได้เลย
+ * ส่วนภาพยืมเฟรมเก่าไปพลาง · ชีตใหม่มาถึงเมื่อไหร่ **ลบทั้งก้อนทิ้ง** ไม่ต้องแก้อย่างอื่น
  */
 /** เวลาต่อรอบของแต่ละท่า (วินาที) — ใช้ร่วมกันทุกตัวละคร ตั้งเป็นเวลาไม่ใช่ fps
  *  เพิ่ม/ลดเฟรมในท่าแล้วจังหวะไม่เปลี่ยน และตรงกับเวลาที่เอนจิ้นถือ state นั้นไว้ */
@@ -195,14 +207,31 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_momus.png',
     data: 'assets/characters/scramble_momus.json',
     runStride: 86,
-    title: 'Momus',
-    role: 'สายป่วนสนาม',
-    tip: 'ระเบิดของเขาไม่เลือกข้าง โดนตัวเองด้วย — ชนะเพราะรู้ว่าระเบิดจะลงตรงไหน',
+    title: 'Hephaestus',
+    role: 'สายบุกทางอากาศ',
+    tip: 'ต่อยโดนเพื่อเติมไอพ่น ไอพ่นเพื่ออยู่บนฟ้า — พลาดเมื่อไหร่ร่วงลงมาสู้บนพื้นไม่ได้',
     anims: { idle: 1, run: 10, jump: 3, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
-    attacks: new Set(["jab1", "jab2", "jab3", "jab4", "jab5", "jab6",
+    attacks: new Set(["jab1", "jab2", "jab3", "jab4", "jab5",
       "side", "up", "down", "nair", "sair", "dair",
-      "box1", "box2", "snap1", "snap2", "full1", "full2"]),
+      "box1", "snap1", "snap2", "full1", "full2"]),
+    /* ── อาร์ตชั่วคราว: ยืมเฟรมของตัวตลกมาใช้ไปก่อน ──
+     *
+     * ชีตของตัวนี้ยังเป็นตัวตลกอยู่ทั้ง 76 เฟรม ซึ่งไม่ตรงกับท่าใหม่สักท่า
+     * แต่รอชีตใหม่ก่อนแล้วค่อยพบว่ากลไกไม่สนุกคือเสียเปล่าที่สุด — ทำกลไกก่อน จูนให้สนุก
+     * **แล้วค่อยลงทุนวาด 76 เฟรม** ดู `docs/MOMUS_KIT.md` หัวข้อ "ลำดับการลงมือ"
+     *
+     * จับคู่ให้ใกล้ความหมายที่สุดเท่าที่เฟรมเดิมจะให้ได้:
+     *   ไถลาก -> ท่าขว้าง (เหวี่ยงแขนไปข้างหน้า) · ทุบ -> ท่านั่งทับหีบ (ลงน้ำหนัก)
+     *   โอเวอร์คล็อก -> ท่าดีดนิ้ว (สั่งให้เครื่องทำงาน) · อัลติ -> ท่าเหวี่ยงกระสอบ + กางแขน
+     *
+     * **ชีตใหม่มาถึงเมื่อไหร่ ลบทั้งก้อนนี้ทิ้ง** แล้วเติมชื่อท่าจริงลงใน `attacks` แทน
+     */
+    artAs: {
+      drag1: 'box1', drag2: 'jab5',
+      over1: 'snap1',
+      meteor1: 'full1', meteor2: 'snap2', meteor3: 'full2',
+    },
   },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
   // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
@@ -345,6 +374,10 @@ const POD = {
   full: 0xe9e3d6, low: 0xe05a57, dim: 0x0c111c,
   gold: 0xffd166, ki: 0x5aa0ff, kiFull: 0xe05a57,
 };
+
+/** ขีดไอพ่นสูงสุดที่ HUD วาด — ตรงกับ BOOST_MAX ในซิม แต่ฝั่งวาดไม่ import ค่าจาก core
+ *  (core ตั้งใจไม่ export ของภายใน) ไม่ตรงกันเมื่อไหร่ เทสต์ hud_pods จะฟ้อง */
+const BOOST_MAX_UI = 3;
 
 const TAG = {
   rise: 30,        // สูงจากหัวเท่าไหร่ (หัวอยู่ที่ f.y - PHYS.standH)
@@ -1550,6 +1583,18 @@ class ScrambleScene extends Phaser.Scene {
         }
       }
 
+      // ขีดไอพ่นของ DEAR — วางใต้วงเหมือนจุดบอกยก ไม่ได้เพิ่มหลอดใหม่บน HUD
+      // โชว์เฉพาะตัวที่ใช้ระบบนี้ ตัวอื่นไม่มีอะไรเปลี่ยน
+      if (sp.f.boostJump) {
+        const n = BOOST_MAX_UI, gap = POD.pip * 3.4;
+        const x0 = sp.x - gap * (n - 1) / 2, py = sp.y + rr + POD.ring / 2 + (s.match.on ? 18 : 7);
+        for (let b = 0; b < n; b++) {
+          const px = x0 + b * gap;
+          hud.fillStyle(POD.dim, 0.7); hud.fillCircle(px, py, POD.pip - 0.5);
+          if (b < sp.f.boost) { hud.fillStyle(0x7fe3ff, 1); hud.fillCircle(px, py, POD.pip - 2); }
+        }
+      }
+
       // จุดบอกยกที่เหลือ วางใต้วง — จุดที่เสียไปเหลือแต่โครง
       if (s.match.on) {
         const left = s.match.bars[sp.f.team] ?? 0;
@@ -1562,6 +1607,27 @@ class ScrambleScene extends Phaser.Scene {
         }
       }
     });
+  }
+
+  /** ขอบเรืองรอบตัวคนที่ติดโอเวอร์คล็อก — ค้างตลอดช่วงบัฟ ไม่ใช่วาบเดียวตอนกด
+   *
+   *  **นี่คือกติกา ไม่ใช่ของประดับ** ระหว่างนี้เขามีเกราะติดทุกท่า อีกฝั่งต้องไม่เข้ามาตี
+   *  ถ้ามองไม่ออกว่าใครติดบัฟอยู่ เกมนั้นไม่ยุติธรรม
+   *
+   *  เต้นตามเลขเฟรมของซิม ไม่ใช่เวลาจริง — สองเครื่องที่ต่อเน็ตจึงเห็นจังหวะเดียวกัน
+   *  และ **กะพริบเร็วขึ้นตอนใกล้หมด** เพื่อให้ทั้งสองฝั่งอ่านออกว่าเหลือไม่นานแล้ว
+   */
+  _overclockAura(s, fx) {
+    for (const f of s.fighters) {
+      if (f.overclock <= 0) continue;
+      const near = f.overclock < 45;                    // เหลือไม่ถึง 0.75 วิ = เร่งจังหวะ
+      const t = Math.abs(Math.sin(s.frame * (near ? 0.34 : 0.14)));
+      const cy = f.y - PHYS.standH / 2;
+      fx.lineStyle(2.5, 0x7fe3ff, 0.35 + t * 0.4);
+      fx.strokeEllipse(f.x, cy, PHYS.width * 2.1, PHYS.standH * 1.18);
+      fx.lineStyle(1.5, 0xfff2d0, 0.22 + t * 0.3);
+      fx.strokeEllipse(f.x, cy, PHYS.width * 2.1 - 7, PHYS.standH * 1.18 - 7);
+    }
   }
 
   /** ลูกศรเหนือหัวทุกคน — ดู TAG ว่าทำไมต้องมีและทำไมสีตามทีม
@@ -2121,12 +2187,6 @@ class ScrambleScene extends Phaser.Scene {
       }
       if (e.type === 'throw') { this.spark(e.x, e.y, 7, 0xc9a227); this._sfx('whoosh', { vol: 0.7 }); }
       if (e.type === 'lash') { this.popup(e.x, e.y, '\u00d7' + e.n, '#ff9a97'); this._sfx('tick'); }
-      // ชั้น "โรงเต็ม" ของ Momus — ต้องเห็นตอนได้ ไม่งั้นคนเล่นไม่รู้ว่าอัลติจะใหญ่แค่ไหน
-      if (e.type === 'house') {
-        this.popup(e.x, e.y, 'House \u00d7' + e.n, '#ffd166');
-        this._sfx('tick', { vol: 1.4 });
-        this.emit('ring', e.x, e.y + 40, { scale: 0.18, life: 14, grow: 1.5, tint: 0xffd166 });
-      }
       if (e.type === 'burn') {
         this.popup(e.x, e.y - 20, String(e.dmg), '#ffb03a');
         this.emit('flame', e.x + (Math.random() - 0.5) * 30, e.y, { scale: 0.20, life: 20, grow: 0.5,
@@ -2140,17 +2200,6 @@ class ScrambleScene extends Phaser.Scene {
             life: 16 + Math.round(Math.random() * 14), grow: 0.6, vy: -1.6 - Math.random(), tint: 0xffb03a });
         this.emit('burst', e.x, e.y - 26, { scale: 0.42, life: 13, grow: 1.1, tint: 0xffd166 });
       }
-      if (e.type === 'decoy') { this.popup(e.x, e.y - 120, 'Understudy', '#d8b24a'); this._sfx('thud'); }
-      if (e.type === 'decoyPop') {
-        this._shake(70, 0.004);
-        this._sfx('blast', { vol: 0.55 });
-        this.emit('burst', e.x, e.y - 60, { scale: 0.34, life: 12, grow: 1.2, tint: 0xffd166 });
-        for (let i = 0; i < 4; i++)
-          this.emit('smokeCurl', e.x + (i - 1.5) * 16, e.y - 50 - Math.random() * 30,
-            { scale: 0.2, life: 24, grow: 1.0, vy: -0.8, alpha: 0.45, tint: 0x9aa3b5,
-              blend: Phaser.BlendModes.NORMAL, depth: 6 });
-      }
-      if (e.type === 'box') { this.spark(e.x, e.y - 20, 8, 0xc9a227); this.popup(e.x, e.y - 60, 'Jack-in-the-Box', '#d8b24a'); this._sfx('thud', { vol: 0.8 }); }
       if (e.type === 'blast') {
         this._shake(110, 0.007);
         this._sfx('blast');
@@ -2162,7 +2211,75 @@ class ScrambleScene extends Phaser.Scene {
             { scale: 0.25 + Math.random() * 0.2, life: 30 + Math.round(Math.random() * 20), grow: 1.1,
               vy: -0.7, alpha: 0.5, tint: 0x9aa3b5, blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
-      if (e.type === 'rain') { this.popup(e.x, e.y, 'Full House', '#ffd166'); this._shake(160, 0.006); this._sfx('blast', { vol: 1.1 }); }
+      /* ══ DEAR: ไอพ่น · การลาก · โอเวอร์คล็อก ══════════════════════════════
+       *
+       * สีฟ้าอมเขียว (0x7fe3ff) ทั้งชุด — เป็นสีของโครงแขนกลในอาร์ต ไม่ได้เลือกใหม่ลอย ๆ
+       * เหมือนที่รอยฟาดของ Alecto ใช้สีแส้ของเธอ
+       */
+      // พุ่ง: เปลวสั้นพุ่งสวนทาง + เส้นลากท้าย บอกทั้ง "พุ่งไปทางไหน" และ "ใช้น้ำมันไปแล้ว"
+      if (e.type === 'dash') {
+        this._sfx('whoosh', { vol: 0.8 });
+        this.emit('streak', e.x, e.y, { scale: 0.5, life: 12, grow: 1.3, tint: 0x7fe3ff,
+          rot: Math.atan2(e.dy, e.dx || 1) });
+        for (let i = 0; i < 5; i++)
+          this.emit('flame', e.x - (e.dx || 0) * (8 + i * 9), e.y - (e.dy || 0) * (8 + i * 9),
+            { scale: 0.16, life: 10 + i * 2, grow: 0.7, tint: 0x7fe3ff });
+      }
+      // ใช้/เติมไอพ่น: จิ๊ดเล็ก ๆ พอให้รู้ว่าเกิดขึ้น ไม่ใช่จังหวะสำคัญที่ต้องดังกลบอย่างอื่น
+      if (e.type === 'boost') this._sfx('tick', { vol: 0.5 });
+      if (e.type === 'boostGain') {
+        this._sfx('tick', { vol: 0.9 });
+        this.emit('glow', e.x, e.y, { scale: 0.16, life: 12, grow: 1.6, tint: 0x7fe3ff });
+      }
+      // คว้าติด: ต้องอ่านออกทันทีว่า "โดนจับแล้ว" เพราะอีกฝั่งต้องเริ่มรัวปุ่มดิ้นเดี๋ยวนั้น
+      if (e.type === 'grab') {
+        this._sfx('metal', { vol: 1.1 });
+        this.popup(e.x, e.y - 30, 'รัวปุ่มเพื่อหลุด!', '#7fe3ff');
+        this.emit('ring', e.x, e.y, { scale: 0.26, life: 16, grow: 2.0, tint: 0x7fe3ff });
+      }
+      if (e.type === 'breakOut') {
+        this._sfx('block', { vol: 1.1 });
+        this.popup(e.x, e.y - 30, 'หลุด!', '#ffd166');
+        this.emit('burst', e.x, e.y, { scale: 0.34, life: 12, grow: 1.6, tint: 0xffd166 });
+      }
+      // ทุบพื้น: คลื่นวิ่งตามพื้นสองข้าง — ต้องเห็นขอบเขตชัดว่าไกลแค่ไหน ไม่งั้นมันคือกับดักที่มองไม่เห็น
+      if (e.type === 'slam') {
+        this._shake(200, 0.012);
+        this._sfx('blast', { vol: 1.15 });
+        this.emit('burst', e.x, e.y - 30, { scale: 0.6, life: 16, grow: 1.6, tint: 0xfff2d0 });
+        for (const dir of [-1, 1])
+          this.emit('ring', e.x + dir * e.r * 0.5, e.y - 16,
+            { scale: 0.34, life: 20, grow: 2.8, tint: 0x7fe3ff });
+        for (let i = 0; i < 6; i++)
+          this.emit('spike', e.x + (i - 2.5) * (e.r / 3), e.y - 20 - Math.random() * 20,
+            { scale: 0.22, life: 22, grow: 0.9, vy: -2.2 - Math.random(), tint: 0xd8c9a8,
+              blend: Phaser.BlendModes.NORMAL, depth: 6 });
+      }
+      /* โอเวอร์คล็อก: **บาเรียต้องอ่านออกจากหางตา**
+       *
+       * 3 วินาทีคือช่วงที่อีกฝั่งต้อง *ไม่* เข้ามาตี (เขามีเกราะติดทุกท่า)
+       * ถ้ามองไม่ออกว่าเขาติดบัฟอยู่ เกมนั้นไม่ยุติธรรม — เอฟเฟคนี้เป็นกติกา ไม่ใช่ของประดับ
+       * วาบใหญ่ตอนกดให้สะดุดตา แล้วเหลือขอบเรืองค้างไว้ (ดู _overclockAura) ตลอดช่วงบัฟ
+       */
+      if (e.type === 'overclock') {
+        this._shake(90, 0.005);
+        this._sfx('metal', { vol: 1.2 });
+        this.popup(e.x, e.y - 40, 'OVERCLOCK', '#7fe3ff');
+        this.emit('ring', e.x, e.y, { scale: 0.2, life: 22, grow: 4.2, tint: 0x7fe3ff });
+        this.emit('ring', e.x, e.y, { scale: 0.5, life: 26, grow: 2.2, tint: 0xfff2d0 });
+        for (let i = 0; i < 8; i++) {
+          const a = i / 8 * Math.PI * 2;
+          this.emit('diamond', e.x + Math.cos(a) * 54, e.y + Math.sin(a) * 54,
+            { scale: 0.22, life: 24, grow: 0.8, tint: 0x7fe3ff, rot: a });
+        }
+      }
+      if (e.type === 'overclockEnd') {
+        this._sfx('whoosh', { vol: 0.5 });
+        for (let i = 0; i < 5; i++)
+          this.emit('smokeWisp', e.x + (i - 2) * 14, e.y - Math.random() * 40,
+            { scale: 0.18, life: 22, grow: 1.1, vy: -1.0, alpha: 0.4, tint: 0x9aa3b5,
+              blend: Phaser.BlendModes.NORMAL, depth: 6 });
+      }
       if (e.type === 'anchor') { this.spark(e.x, e.y, 10, 0xe05a57); this.popup(e.x, e.y - 26, 'กดซ้ำเพื่อวาร์ป', '#e0a0a0'); this._sfx('tick'); }
       if (e.type === 'mark') { this.spark(e.x, e.y, 13, 0xe05a57); this.popup(e.x, e.y - 34, 'หมายหัว', '#ff9a97'); this._sfx('tick', { vol: 1.2 }); }
       if (e.type === 'ult') {
@@ -2179,7 +2296,6 @@ class ScrambleScene extends Phaser.Scene {
       // สลับอาวุธของ Alecto — เสียงบอกว่าสลับแล้ว สำคัญเพราะปุ่มตีชุดเดิมออกคนละท่า
       if (e.type === 'swap') this._sfx('metal', { vol: 0.7 });
       if (e.type === 'dust') this._sfx('whoosh', { vol: 0.6 });
-      if (e.type === 'decoyGone') this._sfx('whoosh', { vol: 0.45 });
       if (e.type === 'ko') this._sfx('ko');
       if (e.type === 'matchEnd') this._sfx('ko', { vol: 1.2 });
       if (e.type === 'roundStart') this._sfx('roundStart');
@@ -2814,7 +2930,8 @@ class ScrambleScene extends Phaser.Scene {
     const sp = rig.sprite;
     sp.anims.timeScale = 1;   // ท่าที่หรี่ความเร็วเองจะตั้งทับทีหลัง
 
-    if (f.state === 'attack' && art.attacks.has(f.moveId)) {
+    const artId = art.artAs?.[f.moveId] ?? f.moveId;
+    if (f.state === 'attack' && art.attacks.has(artId)) {
       // รอยฟาดปล่อยที่ "เฟรมแรกของช่วง active" เฟรมเดียว ไม่ใช่ทุกเฟรมที่ยังอยู่ในท่า
       // ปล่อยทุกเฟรมจะซ้อนกันเป็นแผ่นทึบ และปล่อยตอนเริ่มท่าจะมาก่อนกรอบโจมตีจริง
       // ซึ่งสอนคนเล่นผิดว่าโดนได้ตั้งแต่ตอนเงื้อ
@@ -2842,8 +2959,8 @@ class ScrambleScene extends Phaser.Scene {
       const i = { startup: 1, active: 2, recovery: 3 }[f.phase()] ?? 1;
       this._applyCharTransform(f);
       sp.anims.stop();
-      sp.setFrame(`${f.moveId}_${i}.png`);
-      rig.lastState = 'attack:' + f.moveId + i;
+      sp.setFrame(`${artId}_${i}.png`);
+      rig.lastState = 'attack:' + artId + i;
       return true;
     }
 
@@ -2987,54 +3104,6 @@ class ScrambleScene extends Phaser.Scene {
       g.fillStyle(0xffb03a, 1); g.fillRect(x, y, w * Math.min(1, left / total), 5);
     }
 
-    // ── ตัวแสดงแทนของ Momus ──
-    //
-    // ใช้ "เฟรมแรกของท่ายืน" ของตัวละครจริง ไม่ใช่รูปวาดแยก — มันจึงเหมือนเขาจริง ๆ
-    // และ **ไม่ขยับเลยสักเฟรม** ซึ่งคือสิ่งที่ทำให้มันยุติธรรม: คนเล่นที่ตั้งใจดูจะแยกออก
-    // จากความนิ่ง แต่ในวินาทีที่กำลังรัวอยู่มันหลอกได้จริง
-    if (s.decoy) {
-      const art = CHAR_ART[(s.fighterById(s.decoy.owner) ?? s.p1).char];
-      if (art && !art.artPending) {
-        this.decoySprite ??= this._world(this.add.sprite(0, 0, art.atlasKey, 'idle_1.png').setDepth(3));
-        const m = art.meta, sp = this.decoySprite;
-        sp.setTexture(art.atlasKey, 'idle_1.png');
-        sp.setVisible(true).setScale(SPRITE_H / m.standing).setFlipX(s.decoy.facing < 0);
-        sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
-        sp.setPosition(s.decoy.x, s.decoy.y);
-        // จาง ๆ นิดเดียว พอให้คนที่มองหาจับได้ แต่ไม่ถึงกับประกาศว่าเป็นของปลอม
-        sp.setAlpha(0.88);
-      }
-    } else if (this.decoySprite) this.decoySprite.setVisible(false);
-
-    // กล่องระเบิดของ Momus — ชนวนต้องอ่านออกจากที่ไกล ๆ ไม่งั้นมันคือกับดักที่มองไม่เห็น
-    // ยิ่งใกล้ระเบิดยิ่งกะพริบถี่ขึ้น คนเล่นทั้งสองฝั่งจึงกะจังหวะหนีได้เท่ากัน
-    // (เจ้าของก็โดนระเบิดตัวเอง สัญญาณนี้จึงเป็นของทั้งสองฝ่ายจริง ๆ ไม่ใช่ของฝ่ายเดียว)
-    for (const b of s.boxes) {
-      const rate = b.fuse < 40 ? 0.45 : b.fuse < 90 ? 0.2 : 0.09;
-      const hot = Math.sin(s.frame * rate) > 0;
-      // ── วาดทุกชั้นที่อยู่ในแนวตั้งเดียวกัน ไม่ใช่แค่พื้นล่างสุด ──
-      //
-      // กลไกจุดชนวนของ sim **ไม่ได้เช็คความสูงเลย** — เงื่อนไขคือ "ยืนอยู่บนพื้น
-      // และอยู่ในระยะแนวนอน" เท่านั้น คนที่ยืนบนชั้น 5 จึงจุดชนวนกล่องที่พื้นล่างสุดได้
-      // ซึ่งถูกแล้วสำหรับอัลติ (ทั้งโรงโดน) แต่เดิมวาดไว้ที่พื้นอย่างเดียว
-      // คนบนชั้นบนจึงโดนระเบิดที่มองไม่เห็น = กับดักที่ไม่ยุติธรรม
-      //
-      // วาดให้ครบทุกชั้นแล้วภาพตรงกับกลไก และอ่านออกว่า "แนวนี้อันตรายทุกระดับ"
-      const surfaces = [STAGE.groundY];
-      for (const p of STAGE.platforms)
-        if (b.x >= p.x1 && b.x <= p.x2) surfaces.push(p.y);
-      for (const y of surfaces) {
-        fx.fillStyle(0x6b4a2a, 1); fx.fillRect(b.x - 24, y - 46, 48, 46);
-        fx.lineStyle(3, 0x3a2716, 1); fx.strokeRect(b.x - 24, y - 46, 48, 46);
-        fx.lineStyle(3, 0x8a6236, 1);
-        fx.lineBetween(b.x - 24, y - 46, b.x + 24, y);
-        fx.lineBetween(b.x + 24, y - 46, b.x - 24, y);
-        // ยังไม่ติดชนวน = ยังเหยียบผ่านได้ ต้องบอกให้รู้ ไม่งั้นคนเล่นจะเดาผิดทั้งสองทาง
-        fx.fillStyle(b.arm > 0 ? 0x9aa3b5 : (hot ? 0xffd166 : 0xc8323c), 1);
-        fx.fillCircle(b.x, y - 54, 7);
-      }
-    }
-
     // กองไฟจากมอลอตอฟ — ต้องเห็นขอบเขตชัดว่าตรงไหนเข้าไม่ได้ ไม่งั้นเป็นกับดักที่มองไม่เห็น
     // เปลวไฟใช้เลขเฟรมของ sim เป็นตัวขยับ ไม่ใช่เวลาจริง ภาพสองเครื่องจึงตรงกันด้วย
     for (const fire of s.fires) {
@@ -3079,6 +3148,7 @@ class ScrambleScene extends Phaser.Scene {
     }
 
     this._drawTags(s, fx);
+    this._overclockAura(s, fx);
 
     for (const f of s.fighters) {
       const box = f.hitbox();

@@ -173,7 +173,7 @@ const GROUND = STAGE.groundY;
 {
   const sc = mk(); place(sc, [[600, GROUND], [660, GROUND]]);
   const snapOf = (g) => JSON.stringify([g.frame, g.fighters.map((f) => [f.x, f.y, f.vx, f.vy, f.state, f.hp, f.facing, f.ki]),
-    g.shots.length, g.boxes.length, g.fires.length, g.match]);
+    g.shots.length, g.fires.length, g.match]);
   const before = snapOf(sc.sim);
   for (let i = 0; i < 120; i++) sc._stepCamera(sc.sim);
   ok(snapOf(sc.sim) === before, "เรียกกล้อง 120 รอบแล้ว sim ไม่เปลี่ยนแม้แต่ค่าเดียว");
