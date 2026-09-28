@@ -1,0 +1,392 @@
+# DEAR (Hephaestus) — prompt ชีตทั้งชุด
+
+> กลไกทั้งหมดเข้าเกมแล้วและเล่นได้จริง (ดู [`docs/MOMUS_KIT.md`](docs/MOMUS_KIT.md))
+> ตอนนี้ยืมอาร์ตตัวตลกเดิมอยู่ผ่าน `artAs` ใน `ScrambleScene.js` — **ชีตชุดนี้คือของจริงที่จะมาแทน**
+> เจนครบแล้ววางที่ `art_reference/dear_sheets/sheet_A.jpg` … `sheet_G.jpg`
+
+> 📎 **แนบภาพเด็กแขนกลที่อนุมัติไว้ไปกับทุก prompt** และเซฟไว้ที่
+> `art_reference/dear_idle_APPROVED.jpg` ก่อนเริ่ม — ทุกบล็อกในไฟล์นี้เขียนว่า
+> "the same character" ซึ่งแปลว่าไม่มีภาพอ้างอิง = ได้คนละคนทุกใบ
+
+---
+
+## อ่านก่อนสามข้อ (ทั้งสามเคยพังมาแล้วกับตัวอื่น)
+
+**1 · ห้ามมีเปลวไฟหลุดออกจากตัว**
+ตัวตัดชีตแยก "ก้อนที่ไม่ติดกับตัว" ออกแล้วทิ้ง ของเดิมเจนกล่องลอยมาจนต้องเขียนตัวกรองสีมาทิ้ง
+เปลวลอยจะโดนตัดทิ้ง หรือไม่ก็ถูกนับเป็นท่าหนึ่งท่า แล้วไม้บรรทัดวัดสเกลเพี้ยนทั้งใบ
+ทุก prompt จึงสั่งว่า **ไฟติดอยู่กับหัวฉีด สั้นกว่าครึ่งตัว**
+
+**2 · ห้ามมีบาเรียหรือวงพลังรอบตัว**
+บาเรียของ OVERCLOCK เป็นของที่เกมวาดเอง (`_overclockAura`) ต้องเปิด/ปิดตามเวลาได้
+ถ้าติดมาในชีต มันจะค้างอยู่ตลอดเกมแม้ตอนไม่ได้กดสกิล
+
+**3 · ห้ามมีฝุ่น รอยแตกพื้น เส้นความเร็ว**
+เกมวาดเองหมดแล้ว ซ้อนกันสองชั้นจะดูรก — **เขียนสั่งไว้ชัดแล้วก็ยังเจนมาอยู่ดี เผื่อใจไว้**
+
+---
+
+## ⚠️ ของที่ต้องแก้ในโค้ดก่อน build (ไม่ใช่เรื่องของ prompt)
+
+`tools/momus_sheets.py` คัดท่าจริงออกจากขยะด้วย **สัดส่วน "พิกเซลซีด"** (`PALE_MIN = 0.04`)
+ซึ่งเขียนไว้สำหรับหน้ากากขาวกับผ้าพันแผลของตัวตลก
+
+**ตัวใหม่เป็นชุดดำกับโครงเหล็กเทา ไม่มีพิกเซลซีดเลย — ตัวกรองนี้จะทิ้งทุกท่า**
+
+ต้องเปลี่ยนไม้วัดก่อนรัน `build_scramble_momus.py` เช่นใช้สัดส่วน **พิกเซลส้ม** (ผม) แทน
+แล้ววัดจริงจากชีตที่เจนมาว่าท่าจริงกับขยะห่างกันกี่เท่า ก่อนตั้งเกณฑ์ —
+อย่าตั้งตัวเลขจากการเดา นั่นคือวิธีที่ใช้กับทั้งสามตัวก่อนหน้า
+
+---
+
+## แผนชีต — 7 ใบ ใบละ 9 ท่า + ท่ายืน + คลิปวิ่ง = 74 เฟรม
+
+| ใบ | เนื้อหา | ไปเป็นท่าอะไร |
+|---|---|---|
+| A | เคลื่อนไหวและโดน | `jump` ×3 · `hurt` · `knockdown` · `techroll` · `tech` · `block` · `blockstun` |
+| B | หมัดลูกสูบสามจังหวะ | `jab1` · `jab2` · `jab3` |
+| C | ไม้จบส่งขึ้นฟ้า + พุ่งไหล่ + อัปเปอร์ | `jab4` · `side` · `up` |
+| D | ท่าต่ำ + ท่าย่อ + หมุนหมัด | `down` · `crouch`/`blockcrouch` · `nair` |
+| E | หมัดจรวด + ทุบลง + พุ่งไอพ่น | `sair` · `dair` · (สำรอง) |
+| F | สกิล 1 ลากทุบ + สกิล 2 โอเวอร์คล็อก | `drag1` · `drag2` · `over1` |
+| G | อัลติ METEOR สามจังหวะ | `meteor1` · `meteor2` · `meteor3` |
+
+> ใบ E สามท่าสุดท้ายเป็น **ท่าพุ่งด้วยไอพ่น** ซึ่งซิมยังไม่มีไอดีท่าให้ (การพุ่งใช้เฟรมลอยอยู่)
+> เก็บไว้เป็นของสำรอง ถ้าอยากตัดงบเจนลงหนึ่งใบ ตัดสามท่านี้ทิ้งได้โดยไม่กระทบอะไร
+
+---
+## 1. ขั้น 0 — ท่ายืน (ด่านกั้น · ต้องผ่านก่อนเจนอย่างอื่น)
+
+เจนใบนี้ใบเดียวก่อน แล้ว **เอาไปวางข้างตัวอื่นในโรสเตอร์เทียบขนาดจริง** ถึงค่อยเจนชีตต่อ
+สิ่งที่ต้องดู: สูงราว 2.5-2.8 หัว · เงาไม่แคบกว่าคนอื่น · ท่อนล่างต้องเข้มพอที่จะไม่จมพื้นฉาก
+(พื้นของเวทีอยู่ราว 150-190 บนสเกล 0-255 — ตัวที่ท่อนล่างเข้าใกล้ค่านั้นคือตัวที่จะหายไปกับพื้น)
+
+```
+A single full-body standing pose of this character, drawn in chibi game-sprite
+proportions: big head, short legs, compact body, the whole figure only about
+two and a half to three heads tall — but with oversized mechanical arms that
+break that rule on purpose and read as far too heavy for the boy carrying them.
+He stands upright in a loose ready stance, feet well apart, weight low, the
+big mechanical fists hanging at his sides, chin slightly down, eyes forward,
+calm rather than cheerful. One character only, one pose only. No turnaround,
+no multiple views, no text, no labels, no header bars.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 2. ขั้น 1 — คลิป ยืน → วิ่ง (ตัดเป็น 10 เฟรมทีหลัง)
+
+ท่าวิ่งมาจากคลิป ไม่ใช่ชีต เพราะ 10 เฟรมที่ลื่นจริงเจนเป็นตารางไม่ได้
+เซฟเฟรมที่ตัดแล้วไว้ที่ `art_reference/dear_clip/run_01.png` … `run_10.png` พร้อม `clip.json`
+
+```
+Animate this exact character: starts in the loose ready stance, holds it
+briefly, then runs forward to the right for at least three full strides.
+The run is driven by the rig — the ankle thrusters pulse and he skims forward
+in long low strides rather than pumping his legs like an ordinary runner.
+The heavy mechanical arms swing with obvious weight and lag slightly behind
+his body. Same art style, same proportions, same camera distance throughout.
+Pure white background, no shadow, no ground line. Full body always visible,
+never cropped.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 3. ชีต A — ท่าเคลื่อนไหวและท่าโดน (9 ท่า · 3 แถวแถวละ 3)
+
+หกท่าหลังเป็นท่า "โดน" ทั้งหมด ซึ่งเป็นท่าที่คนเล่นเห็นบ่อยที่สุดรองจากท่ายืน
+ต้องอ่านออกจากหางตาว่าโดนแล้ว ไม่ใช่แค่ยืนเอียง ๆ
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No motion lines, no impact effects — the game draws all of that.
+
+Pose 1 — launching upward, both knees tucked up, ankle thrusters firing
+straight down beneath him, arms held in close.
+Pose 2 — floating at the top of the jump, body compact, knees still up,
+mechanical fists drawn in near his chest.
+Pose 3 — falling, legs reaching down for the ground, arms out slightly for
+balance, body angled forward.
+Pose 4 — hit and staggering backward, head snapped back, one arm flung out,
+knees buckling, clearly taking damage.
+Pose 5 — knocked down and lying on his back, limbs slack, the heavy arms
+splayed out on the ground beside him.
+Pose 6 — rolling sideways along the ground, body curled into a tight ball
+around the rig, mid-roll.
+Pose 7 — pushing up off one knee getting back to his feet, one mechanical
+fist planted on the ground.
+Pose 8 — guarding: both mechanical forearms crossed in front of his face and
+chest like a shield, shoulders hunched, feet braced wide.
+Pose 9 — guard broken through: same crossed-arm guard but skidding backward,
+feet sliding, head turned aside from the force.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 4. ชีต B — หมัดลูกสูบสามจังหวะ (9 ท่า · 3 แถวแถวละ 3)
+
+**เกมนี้เร็วและคนใส่กันรัว ท่าที่เงื้อนานคือท่าที่ไม่มีวันได้ใช้**
+เซอร์โวเป็นคนออกแรง ไม่ใช่เด็ก — หมัดพวกนี้จึง **เร็วกว่าหมัดคน ไม่ใช่ช้ากว่า**
+สามท่าต่อหนึ่งหมัด: เงื้อสั้น ๆ → สุดแขน → ชักกลับ · ท่อลูกสูบยืดออกตอนหมัดสุดแขน
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+This is a FAST three-punch flurry thrown with the mechanical fists — snappy
+and mechanical, never heavy or wound up. He keeps his weight forward and his
+other fist up between punches, barely winding back at all. The hydraulic
+pistons along each forearm extend visibly at full reach and retract again.
+No motion lines, no impact effects, no sparks.
+
+Pose 1 — right mechanical fist pulled back only as far as his ribs, other
+fist up guarding, body compact and leaning in, already moving.
+Pose 2 — a straight right fully extended at chest height, the forearm
+pistons stretched out to full length, shoulder turned in behind it.
+Pose 3 — snapping the right arm back in, pistons collapsing, already
+rotating for the next punch.
+Pose 4 — left fist cocked at the ribs, torso turned the other way, compact.
+Pose 5 — a straight left fully extended, pistons at full stretch, shoulder
+driving behind it.
+Pose 6 — snapping the left arm back in, weight rolling onto the front foot.
+Pose 7 — both mechanical fists drawn back low at his hips, knees bent,
+shoulder plates flared, coiled to fire both at once.
+Pose 8 — both fists rammed straight forward together at chest height, arms
+locked out in parallel, pistons fully extended, body driving in behind them.
+Pose 9 — recovering with both fists back up at chin height, feet re-set wide.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 5. ชีต C — ไม้จบส่งขึ้นฟ้า · พุ่งไหล่ · อัปเปอร์ (9 ท่า · 3 แถวแถวละ 3)
+
+ท่า 1-3 คือ **Skyward** ไม้จบที่ส่งคู่ต่อสู้ขึ้นฟ้าแล้วเขากระโดดตามไปต่อบนอากาศ
+มันคือเครื่องยนต์คอมโบทั้งหมดของตัวนี้ — **หมัดต้องชี้ขึ้นชัด ๆ ไม่ใช่ชี้ไปข้างหน้า**
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No motion lines, no effects — the game draws all of that.
+
+Pose 1 — dropping into a deep crouch, both mechanical fists low at his
+knees, shoulder plates rising, gathering everything downward first.
+Pose 2 — a huge rising uppercut with one mechanical fist punched STRAIGHT UP
+far past his own head, arm fully extended vertically, pistons at full
+stretch, body stretched upward, back heel lifted, head thrown back.
+Pose 3 — still airborne from his own swing, fist high, feet just off the
+ground, starting to fall back down.
+Pose 4 — leaning far forward into a charge, both shoulder plates presented
+ahead of him, arms tucked back behind his body, back thruster flaring.
+Pose 5 — mid-charge with the leading shoulder plate rammed forward, body
+almost horizontal over a long low stride, arms still tucked back.
+Pose 6 — skidding out of the charge, feet planted wide and braced, torso
+straightening back up.
+Pose 7 — crouched with one fist cocked low beside his hip, other forearm up
+guarding, weight on the back foot.
+Pose 8 — a rising diagonal uppercut driven up and forward at head height,
+body lifting onto the toes behind it, pistons extended.
+Pose 9 — coming down out of the uppercut, knees absorbing the landing.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 6. ชีต D — ท่าต่ำ · ท่าย่อ · หมุนหมัด (9 ท่า · 3 แถวแถวละ 3)
+
+ท่าย่อ (4-6) **ต้องย่อลึกจริง** วัดแล้วสามตัวก่อนหน้าเจนมาตื้นทุกตัว (93% · 99% · 91%)
+ซึ่งบนจอไม่อ่านว่าย่อเลย เกณฑ์คือ **80% ของความสูงท่ายืน**
+
+ท่า 7-9 คือ `nair` ซึ่งเป็น **ปุ่มหลักตอนอยู่บนอากาศ** ของตัวนี้ — กินรอบตัว ไม่ใช่ทางเดียว
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No motion lines, no effects — the game draws all of that.
+
+Pose 1 — dropping low with one mechanical fist drawn back near the ground,
+knees deeply bent.
+Pose 2 — a low piston punch driven straight forward at ankle height, the arm
+extended flat and level just above the floor, pistons stretched, body low
+over a wide braced stance.
+Pose 3 — pulling the low arm back in and rising out of the stance.
+Pose 4 — crouched LOW and still, knees fully folded, forearms resting on his
+knees, head low.
+Pose 5 — crouched LOW in a guard, both mechanical forearms crossed in front
+of his face while still folded down, making a compact block.
+Pose 6 — crouched LOW and flinching, head turned aside, guard shaken but
+still down in the crouch.
+Pose 7 — airborne with knees tucked, both fists drawn in tight against his
+chest, body compact, winding up a spin.
+Pose 8 — airborne mid-spin with both mechanical arms flung straight out to
+either side horizontally, body rotating, legs tucked.
+Pose 9 — airborne pulling both arms back in from the spin, body compact
+again, starting to fall.
+
+Poses 4, 5 and 6 must be crouched LOW — total height only about 80% of the standing pose, clearly shorter, not a shallow knee-bend.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 7. ชีต E — หมัดจรวด · ทุบลง · พุ่งไอพ่น (9 ท่า · 3 แถวแถวละ 3)
+
+ท่า 4-6 คือ `dair` ซึ่งทุบโดนแล้ว **เด้งกลับขึ้นไปได้อีก** — ต้องเห็นว่าทุบลงแนวดิ่งจริง ๆ
+ไม่ใช่เตะเฉียง ๆ ไม่งั้นคนเล่นจะไม่เข้าใจว่าทำไมมันเด้ง
+
+ท่า 7-9 เป็นของสำรอง (ซิมยังไม่มีไอดีท่าให้) — ตัดทิ้งได้ถ้าอยากประหยัด
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+All nine poses are AIRBORNE — both feet off the ground, no ground contact
+in any pose. No motion lines, no effects.
+
+Pose 1 — airborne with one mechanical fist drawn back beside his ribs, body
+angled forward, back thruster flaring behind him.
+Pose 2 — airborne with that fist rammed straight forward at full reach, the
+forearm pistons stretched to maximum, the whole body strung out behind the
+punch in one line.
+Pose 3 — airborne retracting the arm, body folding back up.
+Pose 4 — airborne with both mechanical fists raised together high above his
+head, knees pulled up, coiled to drive them down.
+Pose 5 — airborne driving both fists STRAIGHT DOWN below his own feet, arms
+locked out vertically beneath him, body stacked directly above them, head
+down — a pure downward hammer, not a diagonal kick.
+Pose 6 — airborne and rebounding upward off that hammer, arms still down,
+body rising, knees drawing back up.
+Pose 7 — airborne and tucked tight in a dash, both arms folded in, back and
+ankle thrusters all firing at once behind him.
+Pose 8 — airborne streaking forward in that same tuck, body horizontal and
+level, head leading.
+Pose 9 — airborne breaking out of the dash, arms opening, body straightening
+back upright.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 8. ชีต F — สกิล 1 ลากทุบ · สกิล 2 โอเวอร์คล็อก (9 ท่า · 3 แถวแถวละ 3)
+
+**ห้ามวาดคู่ต่อสู้** ท่าลาก (1-3) ต้องอ่านออกว่ากำลังกวาดอะไรไปกับแขน โดยที่แขนว่าง
+
+ท่า 7-9 คือตอนกด OVERCLOCK — **ห้ามมีบาเรียหรือวงพลัง** เกมวาดเอง
+ความ "แรงขึ้น" ต้องมาจาก **ตัวเขาเอง**: แผ่นเกราะกางออก เส้นฟ้าสว่างขึ้น หัวฉีดเปิดหมด
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No opponent, no second character — he is alone in every pose.
+No motion lines, no effects — the game draws all of that.
+
+Pose 1 — crouched low and leaning hard forward, one mechanical arm swept out
+straight ahead at chest height like a plough, back thruster flaring.
+Pose 2 — skimming forward in a long low stance with that arm still swept out
+ahead, feet barely under him, clearly being carried by thrust not by steps.
+Pose 3 — still skimming, torso rotating and the swept arm beginning to rise
+overhead, winding up.
+Pose 4 — both mechanical fists raised together high overhead, body stretched
+up on the toes at the top of the wind-up.
+Pose 5 — both fists slammed straight down into the ground in front of his
+feet, arms locked out, knees deeply bent, head down over the impact.
+Pose 6 — holding the follow-through, fists still on the ground, shoulders
+hunched over them.
+Pose 7 — standing braced, head tipped back, arms held out slightly from his
+body, every shoulder and forearm plate flaring open like vents.
+Pose 8 — same braced stance with the plates fully open, every cyan light
+line on the rig burning at its brightest, all thruster nozzles wide open
+with their short attached flames at full size.
+Pose 9 — settling out of it into a forward-leaning fighting stance, plates
+still open, fists up, clearly wound up and unable to back off.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 9. ชีต G — อัลติ METEOR (9 ท่า · 3 แถวแถวละ 3)
+
+สามจังหวะ **กระโดด · ค้าง · ทุบ** ตามลำดับเป๊ะ
+
+ท่า 1-3 คือขาขึ้นที่ดูดทุกคนรอบตัวขึ้นไปด้วย — **ห้ามวาดคู่ต่อสู้ ห้ามวาดวงดูด** เกมวาดเอง
+สิ่งที่ต้องเห็นคือ **เขากำลังอ้าแขนกวาดเข้าหาตัวขณะพุ่งขึ้น** วงเป็นเรื่องของเกม
+
+```
+A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No opponent, no second character — he is alone in every pose.
+No energy ring, no shockwave, no vortex, no swirling lines — the game draws
+all of that. No motion lines, no effects.
+
+Pose 1 — crouched deep with both mechanical arms swung wide open to either
+side, palms turned inward, every thruster flaring downward, about to launch.
+Pose 2 — launching straight up with both arms sweeping inward across his
+chest as if gathering something in, legs trailing straight down beneath him.
+Pose 3 — climbing, body vertical and stretched, arms now crossed in against
+his chest, all thrusters firing straight down.
+Pose 4 — hanging at the very top, body upright and almost still, knees
+loosely tucked, arms beginning to open again.
+Pose 5 — at the peak with both mechanical fists hauled back and up over one
+shoulder together, torso wound around them, the whole rig cocked.
+Pose 6 — still at the peak, body beginning to pitch head-down, fists still
+held back, thrusters cutting out.
+Pose 7 — diving head-down with both fists aimed straight at the ground below
+him, arms locked out ahead, legs straight up behind, body in one rigid line.
+Pose 8 — the instant of impact: both fists driven into the ground, arms
+locked, knees deeply bent and braced, head down between his shoulders.
+Pose 9 — rising slowly out of the impact, fists lifting off the ground,
+shoulder plates settling back down.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. Bolted over it is a gunmetal exoskeleton rig: oversized blocky mechanical forearms and fists that reach past his knees, segmented shoulder plates, a compact thruster pack on his upper back, and smaller thruster nozzles on the outside of each ankle. Visible hydraulic pistons run along the outside of each mechanical forearm and extend when a punch reaches out. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## เช็กลิสต์ก่อน build
+
+1. ทุกใบเจนมาแล้ว **เปิดดูทีละใบ** ว่ามีเปลวไฟลอยหลุดตัวไหม / มีวงพลังไหม / มีฝุ่นไหม
+   ถ้ามี เจนใบนั้นใหม่ — ถูกกว่าการไปแก้ตัวตัดทีหลังเสมอ
+2. แก้ไม้วัด `PALE_MIN` ใน `tools/momus_sheets.py` ให้ตรงกับชุดสีใหม่ (ดูหัวข้อ ⚠️ ข้างบน)
+   **วัดจริงจากชีตก่อนตั้งเกณฑ์ อย่าเดาตัวเลข**
+3. รัน `build_scramble_momus.py` แล้วดูค่าไม้บรรทัดของทุกใบที่มันพิมพ์ออกมา
+   ใบไหนกระจายเกิน ±10% แปลว่ามีท่าที่กล้องเพี้ยน — หาว่าท่าไหนแล้วเจนเฉพาะท่านั้น
+4. เข้าเกมแล้วลองทุกท่าจริง โดยเฉพาะ **สามท่าของอัลติที่ต่อกันเอง**
+5. ลบ `artAs` ของ `momus` ออกจาก `ScrambleScene.js` ให้หมด — มันคือสะพานชั่วคราว
+   ถ้าลืมลบ ท่าใหม่จะไม่ถูกใช้เลยทั้งที่ชีตมาแล้ว
+6. เทียบท่ายืนข้างโรสเตอร์อีกครั้งหลัง build จริง ไม่ใช่แค่ตอนขั้น 0
+
+---
+
+## ตารางเทียบ: ท่าในชีต → ไอดีท่าในซิม
+
+ใช้ตอนเขียน `SEQ` ใน `build_scramble_momus.py`
+
+| ไอดี | ที่มา | เฟรม |
+|---|---|---|
+| `idle` | ขั้น 0 | 1 |
+| `run` | คลิป | 10 |
+| `jump` | A1-3 | 3 |
+| `hurt` · `knockdown` · `techroll` · `tech` | A4 · A5 · A6 · A7 | 4 |
+| `block` · `blockstun` | A8 · A9 | 2 |
+| `jab1` · `jab2` · `jab3` | B1-3 · B4-6 · B7-9 | 9 |
+| `jab4` (Skyward) | C1-3 | 3 |
+| `side` · `up` | C4-6 · C7-9 | 6 |
+| `down` | D1-3 | 3 |
+| `crouch` · `blockcrouch` | D4 · D5 (D6 สำรองไว้ทำท่าก้มกันแล้วเซ) | 2 |
+| `nair` | D7-9 | 3 |
+| `sair` · `dair` | E1-3 · E4-6 | 6 |
+| `drag1` · `drag2` | F1-3 · F4-6 | 6 |
+| `over1` | F7-9 | 3 |
+| `meteor1` · `meteor2` · `meteor3` | G1-3 · G4-6 · G7-9 | 9 |
+
+**รวม 70 เฟรมที่ใช้จริง** (+ E7-9 สำรองอีก 3 ถ้าเจน)

@@ -20,8 +20,8 @@
 |---|---|
 | [ALECTO_KIT.md](ALECTO_KIT.md) | Alecto — แส้/ไรเฟิล วงฝุ่น |
 | [ATLAS_KIT.md](ATLAS_KIT.md) | Atlas — เกราะกินหมัด |
-| [MOMUS_KIT.md](MOMUS_KIT.md) | **DEAR (Hephaestus)** — แขนกลไซเบอร์แวร์ บุกทางอากาศ · **รีเวิร์คทั้งตัว ยังไม่เขียนโค้ด** |
-| [archive/MOMUS_KIT_jester.md](archive/MOMUS_KIT_jester.md) | Momus เวอร์ชันตัวตลก (ไหระเบิด/ชั้น House/ตัวแสดงแทน) — ของที่ยังอยู่ในโค้ดตอนนี้ |
+| [MOMUS_KIT.md](MOMUS_KIT.md) | **DEAR (Hephaestus)** — แขนกลไซเบอร์แวร์ บุกทางอากาศ · **เข้าเกมแล้ว เล่นได้จริง** (อาร์ตยังยืมของตัวตลกผ่าน `artAs`) |
+| [archive/MOMUS_KIT_jester.md](archive/MOMUS_KIT_jester.md) | Momus เวอร์ชันตัวตลก (ไหระเบิด/ชั้น House/ตัวแสดงแทน) — **ถอดออกจากโค้ดแล้ว** เก็บไว้เพราะบทเรียนยังใช้ได้ |
 | [ORPHEUS_KIT.md](ORPHEUS_KIT.md) | Orpheus — กองไฟ |
 | [OLD_MODE_SKILLS.md](OLD_MODE_SKILLS.md) | ท่าของโหมดเก่าที่ถอดออกไปแล้ว (เก็บไว้เผื่อย้อนกลับ) |
 
@@ -30,6 +30,7 @@
 - `vendor/README.md` — ทำไมเก็บ Phaser/PeerJS ในรีโป ไม่ดึงจาก CDN
 - `vendor/fonts/README.md` — ฟอนต์ที่โค้ดอ้างไว้หกจุดแต่ไม่เคยถูกโหลด + สัญญาอนุญาต OFL
 - `art_prompts_*.md` (รากรีโป) — prompt ที่ใช้เจนอาร์ต แยกตามตัวละคร/รอบ
+  · ใบล่าสุดคือ `art_prompts_dear.md` (ชีตใหม่ของ DEAR 7 ใบ ยังไม่ได้เจน)
 - `docs/archive/` — เอกสารส่งต่อของรุ่นก่อน ๆ เก็บไว้อ้างอิง ไม่ได้อัปเดตแล้ว
 
 ## เทสต์
