@@ -35,8 +35,9 @@ function mkMenu() {
 }
 function mkScene(versus = 'solo') {
   const menu = mkMenu();
-  const sc = { versus, paused: false, menuEl: menu, opened: 0, syncTools() {}, openSelect() { this.opened++; } };
-  for (const m of ['_toggleMenu', '_openMenu', '_closeMenu', '_menuAct'])
+  const sc = { versus, paused: false, menuEl: menu, opened: 0, sent: [], syncTools() {},
+    openSelect() { this.opened++; }, netSend(pk) { this.sent.push(pk); } };
+  for (const m of ['_toggleMenu', '_openMenu', '_closeMenu', '_menuAct', 'toSelect'])
     sc[m] = ScrambleScene.prototype[m];
   return sc;
 }
@@ -63,7 +64,9 @@ function mkScene(versus = 'solo') {
   sc._openMenu();
   ok(sc.menuEl.cls.has('open'), "ต่อเน็ตก็เปิดเมนูได้");
   ok(sc.paused === false, "แต่ไม่หยุดเกม — ไม่งั้นอีกฝั่งค้างรอไปเรื่อย ๆ");
-  ok(sc.menuEl.fields.select.hidden === true, "ซ่อนปุ่มเลือกตัวละคร (เปลี่ยนข้างเดียวไม่ได้)");
+  ok(sc.menuEl.fields.select.hidden === false, "ต่อเน็ตก็กลับไปเลือกตัวละครได้ ไม่ต้องรีเฟรชเข้าห้องใหม่");
+  ok(/ทั้งสองฝั่ง/.test(sc.menuEl.fields.select.textContent),
+    `ปุ่มบอกว่ามันพาอีกฝั่งไปด้วย (${sc.menuEl.fields.select.textContent})`);
   ok(sc.menuEl.fields.quit.textContent === 'ออกจากห้อง', `ปุ่มออกเปลี่ยนคำตามโหมด (${sc.menuEl.fields.quit.textContent})`);
   ok(/เกมยังเดินอยู่/.test(sc.menuEl.fields.note.textContent), "บอกตรง ๆ ว่าเกมยังเดิน ไม่ปล่อยให้เข้าใจผิด");
   sc._closeMenu();
@@ -137,4 +140,69 @@ function mkScene(versus = 'solo') {
   ok(/body\.sc-net #sc-pause-btn/.test(scene), "และย้ายตำแหน่งให้ถูกตอนต่อเน็ต");
   ok(/#sc-pause \{[^}]*z-index:32/.test(scene), "ทับแผงเลือกตัว (z-index 30) ได้");
   ok(/e\.target === this\.menuEl/.test(scene), "แตะพื้นมืดนอกการ์ดก็ปิดเมนูได้");
+}
+
+// ══ กลับไปเลือกตัวละครตอนต่อเน็ต: ต้องพาอีกฝั่งไปด้วยเสมอ ═════════════════════
+//
+// ฝ่ายเดียวกลับไปเลือกตัวไม่ได้ — lockstep เดินด้วยอินพุตของทั้งสองฝั่ง
+// ฝั่งที่ยังอยู่ในสนามจะค้างรอเฟรมที่ไม่มีวันมา แล้วอ่านว่า "เกมแฮงก์" ไม่ใช่ "เพื่อนออกไปแล้ว"
+{
+  const sc = mkScene('net');
+  sc._openMenu();
+  sc._menuAct('select');
+  ok(sc.opened === 1, "ตัวเองไปหน้าเลือกตัว");
+  ok(sc.sent.filter((p) => p.t === 'lobby').length === 1, "และส่งคำสั่งให้อีกฝั่งตามไปด้วย หนึ่งครั้ง");
+  ok(!sc.menuEl.cls.has('open'), "ปิดเมนูด้วย");
+
+  // เล่นเครื่องเดียวต้องไม่ส่งอะไรออกไป — ไม่มีใครอยู่ปลายสาย
+  const solo = mkScene('solo');
+  solo._openMenu();
+  solo._menuAct('select');
+  ok(solo.opened === 1 && solo.sent.length === 0, "เล่นเครื่องเดียวไม่ส่งแพ็คเก็ตอะไรเลย");
+}
+
+// ══ จบแมตช์แล้วพากลับหน้าเลือกตัวเอง — นับเป็นเฟรมของซิม ไม่ใช่เวลาจริง ══════════
+//
+// นับด้วยเวลาจริงเมื่อไหร่ เครื่อง 60 Hz กับ 120 Hz จะกลับคนละจังหวะ
+// ฝั่งที่กลับก่อนหยุดส่งอินพุต อีกฝั่งจึงค้างอยู่หน้าจอจบไปอีกพักโดยไม่มีเหตุผล
+{
+  const HOLD = +(scene.match(/const MATCH_END_HOLD = (\d+)/)?.[1] ?? 0);
+  ok(HOLD > 0, `มีระยะค้างป้ายผู้ชนะจริง (${HOLD} เฟรม)`);
+
+  const mkFight = (versus = 'net') => {
+    const sc = mkScene(versus);
+    sc.phase = 'fight';
+    sc.sim = { frame: 0, match: { on: true, winner: null } };
+    sc.matchEndAt = null;
+    sc._maybeEndToSelect = ScrambleScene.prototype._maybeEndToSelect;
+    return sc;
+  };
+
+  // ยังไม่จบ = ไม่ไปไหน ต่อให้เดินนานแค่ไหน
+  const live = mkFight();
+  for (let i = 0; i < HOLD * 3; i++) { live.sim.frame++; live._maybeEndToSelect(); }
+  ok(live.opened === 0, "แมตช์ยังไม่จบก็ไม่พาไปไหน");
+
+  // จบแล้วต้องค้างป้ายไว้ก่อน แล้วค่อยไป — ไม่ใช่ไปทันทีจนอ่านไม่ทันว่าใครชนะ
+  const done = mkFight();
+  done.sim.match.winner = 0;
+  done._maybeEndToSelect();                       // เฟรมที่จบ = เริ่มจับเวลา
+  for (let i = 1; i < HOLD; i++) { done.sim.frame++; done._maybeEndToSelect(); }
+  ok(done.opened === 0, `ยังค้างป้ายผู้ชนะอยู่ที่เฟรม ${done.sim.frame}`);
+  done.sim.frame++; done._maybeEndToSelect();
+  ok(done.opened === 1, `ครบ ${HOLD} เฟรมแล้วพาไปหน้าเลือกตัว`);
+  ok(done.sent.filter((p) => p.t === 'lobby').length === 1, "และบอกอีกฝั่งให้ตามไปด้วย");
+
+  // ซ้อมกับหุ่น (match.on = false) ต้องไม่โดนพาไปไหนเลย — ไม่มีผู้ชนะให้ประกาศ
+  const training = mkFight('solo');
+  training.sim.match = { on: false, winner: null };
+  for (let i = 0; i < HOLD * 3; i++) { training.sim.frame++; training._maybeEndToSelect(); }
+  ok(training.opened === 0, "โหมดซ้อมไม่โดนเด้งออกจากสนาม");
+
+  // อยู่หน้าเลือกตัวอยู่แล้วต้องไม่เปิดซ้ำ ไม่งั้นส่ง 'lobby' วนไม่จบ
+  const already = mkFight();
+  already.phase = 'select';
+  already.sim.match.winner = 0;
+  for (let i = 0; i < HOLD * 3; i++) { already.sim.frame++; already._maybeEndToSelect(); }
+  ok(already.opened === 0 && already.sent.length === 0, "อยู่หน้าเลือกตัวแล้วไม่ทำอะไรซ้ำ");
 }

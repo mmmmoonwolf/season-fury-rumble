@@ -311,6 +311,15 @@ const COMING_SOON = [
  *  จางลงจึงได้ทั้งสองอย่าง: เห็นตัวเองแน่นอน และยังอ่าน HUD ไม่ถนัดเหมือนที่ตั้งใจไว้ */
 const HUD_BAND = 140, HUD_DIM = 0.26, HUD_FADE = 0.15;
 
+/** จบแมตช์แล้วค้างป้ายผู้ชนะไว้กี่เฟรมของ **ซิม** ก่อนพากลับไปหน้าเลือกตัว
+ *
+ *  ต้องนับเป็นเฟรมของซิม ไม่ใช่มิลลิวินาที — เฟรมของซิมคือเส้นเวลาเดียวที่สองเครื่องใช้ร่วมกัน
+ *  นับด้วยเวลาจริงเมื่อไหร่ เครื่อง 60 Hz กับ 120 Hz จะกลับหน้าเลือกตัวคนละจังหวะ
+ *  แล้วฝั่งที่กลับก่อนหยุดส่งอินพุต ทำให้อีกฝั่งค้างรออยู่หน้าจอจบไปอีกพักหนึ่งโดยไม่มีเหตุผล
+ *
+ *  180 เฟรม = 3 วินาที นานพอจะอ่านว่าใครชนะ สั้นพอจะไม่ต้องนั่งรอ */
+const MATCH_END_HOLD = 180;
+
 /** รอยฟาดต่อ "ชื่อท่า" ไม่ใช่ต่อตัวละคร
  *
  *  ทุกตัวใช้ชื่อท่าเดียวกันหมด (jab1/side/up/…) ตารางนี้จึงใช้ร่วมกันได้ทั้งโรสเตอร์
@@ -1190,7 +1199,10 @@ class ScrambleScene extends Phaser.Scene {
     const net = this.versus === 'net';
     // หยุด sim เฉพาะตอนเล่นเครื่องเดียว — ดูเหตุผลที่หัวเมธอด _wireMenu
     if (!net) this.paused = true;
-    this.menuEl.querySelector('[data-act="select"]').hidden = net;
+    // ตอนต่อเน็ตก็กลับไปเลือกตัวได้ — พากันกลับทั้งสองฝั่ง ไม่ใช่ฝ่ายเดียวหายไปจากเกม
+    this.menuEl.querySelector('[data-act="select"]').hidden = false;
+    this.menuEl.querySelector('[data-act="select"]').textContent =
+      net ? 'กลับไปเลือกตัวละคร (ทั้งสองฝั่ง)' : 'เลือกตัวละคร';
     this.menuEl.querySelector('[data-act="quit"]').textContent = net ? 'ออกจากห้อง' : 'ออกไปหน้าแรก';
     this.menuEl.querySelector('.note').textContent = net ? 'ต่อเน็ตหยุดเกมไม่ได้ — เกมยังเดินอยู่' : '';
     this.menuEl.classList.add('open');
@@ -1206,7 +1218,7 @@ class ScrambleScene extends Phaser.Scene {
 
   _menuAct(act) {
     if (act === 'resume') { this._closeMenu(); return; }
-    if (act === 'select') { this._closeMenu(); this.openSelect(); return; }
+    if (act === 'select') { this._closeMenu(); this.toSelect(); return; }
     if (act === 'quit') {
       // ไม่มีใครลงทะเบียนทางออกไว้ = อย่าปิดเมนูทิ้ง
       // ปิดแล้วผู้เล่นจะเห็นว่าเมนูหายแต่ยังอยู่ในเกม ซึ่งดูเหมือนปุ่มเสีย
@@ -1718,7 +1730,24 @@ class ScrambleScene extends Phaser.Scene {
       this.sim.step(inp, inp2);
       this._simEvents();
     }
+    this._maybeEndToSelect();
     this._ageFx();
+  }
+
+  /** จบแมตช์แล้วพากลับไปหน้าเลือกตัวเอง — เรียกหลังซิมเดินทุกครั้ง ทุกโหมด
+   *
+   *  **อ่านจากสถานะ ไม่ใช่จากอีเวนต์** เฟรมที่ต่อเน็ตติดใหม่หรือกระตุกอาจพลาดอีเวนต์ไปแล้ว
+   *  แต่ `match.winner` ยังถูกเสมอ (เหตุผลเดียวกับ _syncKoBanner)
+   *
+   *  นับเป็นเฟรมของซิม สองเครื่องจึงถึงเส้นพร้อมกันเป๊ะโดยไม่ต้องส่งอะไรคุยกันเลย
+   *  แพ็คเก็ต 'lobby' ที่ toSelect() ส่งเป็นแค่ตาข่ายรอง เผื่อฝั่งไหนไม่ถึงเส้นด้วยตัวเอง
+   */
+  _maybeEndToSelect() {
+    if (this.phase !== 'fight') return;
+    const m = this.sim.match;
+    if (!m.on || m.winner === null) { this.matchEndAt = null; return; }
+    if (this.matchEndAt === null || this.matchEndAt === undefined) { this.matchEndAt = this.sim.frame; return; }
+    if (this.sim.frame - this.matchEndAt >= MATCH_END_HOLD) this.toSelect();
   }
 
   /** แปลอีเวนต์ของซิม "หนึ่งเฟรม" เป็นภาพและเสียง — เรียกหลัง step() ทุกครั้ง ทุกโหมด
@@ -1877,8 +1906,22 @@ class ScrambleScene extends Phaser.Scene {
    *   โฮสต์เห็นพร้อมครบสองฝั่ง -> ส่ง 'go' พร้อมตัวละครและค่าปรับจูนชุดสุดท้าย แล้วเริ่มเอง
    *   แขกเริ่มก็ต่อเมื่อได้ 'go' เท่านั้น ไม่เริ่มเอง — นาฬิกาเฟรม 0 ต้องออกตัวพร้อมกัน
    */
+  /** กลับไปหน้าเลือกตัว **แล้วพาอีกฝั่งไปด้วยถ้าต่อเน็ตอยู่**
+   *
+   *  ต้องมีคู่กับ openSelect() ไม่ใช่รวมเป็นอันเดียว: openSelect() ถูกเรียกจากฝั่งที่ "ถูกพาไป"
+   *  ด้วย รวมกันเมื่อไหร่แพ็คเก็ตจะตีกลับไปกลับมาไม่รู้จบ (เราบอกเขา เขาบอกเรา เราบอกเขา...)
+   *
+   *  ฝ่ายเดียวกลับไปเลือกตัวไม่ได้ — lockstep เดินด้วยอินพุตของทั้งสองฝั่ง
+   *  ฝั่งที่เหลืออยู่ในสนามจะค้างรอเฟรมที่ไม่มีวันมา แล้วเห็นเป็น "เกมแฮงก์" ไม่ใช่ "เพื่อนออกไปแล้ว"
+   */
+  toSelect() {
+    if (this.versus === 'net') this.netSend?.({ t: 'lobby' });
+    this.openSelect();
+  }
+
   openSelect() {
     this.phase = 'select';
+    this.matchEndAt = null;
     this.selSide = this.versus === 'net' ? (this.isHost ? 0 : 1) : 0;
     this.myReady = false; this.foeReady = false;
     document.body.classList.add('sc-picking');
@@ -1929,7 +1972,8 @@ class ScrambleScene extends Phaser.Scene {
   _maybeStartNetMatch() {
     if (!this.isHost || this.phase !== 'select' || !this.myReady || !this.foeReady) return;
     const p1 = this.sim.p1.char, p2 = this.sim.p2.char;
-    this.netSend?.({ t: 'go', p1, p2, tune: tuneSnapshot() });
+    this.matchEpoch = (this.matchEpoch ?? 0) + 1;
+    this.netSend?.({ t: 'go', p1, p2, m: this.matchEpoch, tune: tuneSnapshot() });
     this.beginMatch();
   }
 
@@ -1942,9 +1986,17 @@ class ScrambleScene extends Phaser.Scene {
     if (this.versus === 'solo') this.sim.resetPositions();
     else this.sim.startMatch();
     this.comboFade = 0; this.netMsg = null;
+    this.matchEndAt = null;
     if (this.versus === 'net') {
       // นาฬิกาต้องเริ่มที่ศูนย์พร้อมกันทั้งสองเครื่อง — เลขเฟรมเป็นส่วนหนึ่งของเส้นเวลาที่ใช้ร่วมกัน
       this.sim.frame = 0;
+      // ล้างคิวเฉพาะตอนขึ้นแมตช์ใหม่จริง ๆ ไม่ใช่ทุกครั้งที่เริ่ม
+      // แมตช์แรกคิวยังสะอาดอยู่แล้ว **และอาจมีอินพุตของอีกฝั่งที่มาถึงก่อนเรากดเริ่มค้างอยู่**
+      // ล้างทิ้งตรงนั้นแปลว่าเฟรมต้น ๆ ของเขาหายไป แล้วสองฝั่งค้างรอกันตลอดกาล
+      // แมตช์ที่สองขึ้นไปต้องล้าง ไม่งั้นมันหยิบอินพุตของแมตช์ก่อนมาเดิน (ดู Lockstep.reset)
+      const ep = this.matchEpoch ?? 0;
+      if (this.net.epoch !== ep) this.net.reset(ep);
+      this.netPress = 0;
       this.net.primeStart();
     }
     this._syncSkillSlots();
@@ -2113,10 +2165,15 @@ class ScrambleScene extends Phaser.Scene {
     if (pk.t === 'go') {
       if (this.isHost || this.phase !== 'select') return;
       this.sim.p1.char = pk.p1; this.sim.p2.char = pk.p2;
+      // เลขแมตช์มาจากโฮสต์เสมอ ไม่ใช่ต่างคนต่างนับ — นับเองแล้วสองฝั่งเหลื่อมกันได้
+      // ถ้าเหลื่อม อินพุตของอีกฝั่งจะถูกทิ้งทั้งหมดเพราะ epoch ไม่ตรง = ค้างรอตลอดกาล
+      this.matchEpoch = pk.m ?? 0;
       applyTune(pk.tune);       // ฟิสิกส์ต้องเป็นชุดของโฮสต์ ไม่ใช่ที่เครื่องนี้เคยลากสไลเดอร์ไว้
       this.beginMatch();
       return;
     }
+    // อีกฝั่งกดกลับไปเลือกตัว (จากเมนู หรืออัตโนมัติตอนจบแมตช์) — ตามไปด้วย ไม่ต้องถาม
+    if (pk.t === 'lobby') { if (this.phase !== 'select') this.openSelect(); return; }
     this.net.onPacket(pk);
   }
 

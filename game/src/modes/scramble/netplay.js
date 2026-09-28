@@ -16,6 +16,11 @@
 
 export const NET_DELAY = 3;
 
+/** เก็บอินพุตของแมตช์ถัดไปที่มาถึงก่อนเวลาได้กี่แพ็คเก็ต (ดู Lockstep.onPacket)
+ *  ต้องมีเพดาน ไม่งั้นอีกฝั่งที่เดินหน้าไปแล้วแต่เราค้างอยู่จะทำให้คิวนี้โตไม่หยุด
+ *  พอสำหรับ delay เฟรมแรกของทุกที่นั่งหลายรอบ ซึ่งคือทั้งหมดที่จำเป็นจริง ๆ */
+const PENDING_MAX = 64;
+
 /** ปุ่มทั้งหมดที่ต้องส่ง — ลำดับนี้คือรูปแบบสายข้อมูล ห้ามสลับโดยไม่แก้ทั้งสองฝั่งพร้อมกัน */
 const HELD = ['left', 'right', 'up', 'down', 'jump', 'attack', 'block', 'skill1', 'skill2', 'skill3'];
 const PRESSED = ['left', 'right', 'jump', 'attack', 'block', 'skill1', 'skill2', 'skill3'];
@@ -49,15 +54,42 @@ export function unpackInput(v) {
  * ตอนนี้ `take()` คืนอินพุตเรียงตามที่นั่งเสมอ ทุกเครื่องจึงส่งเข้า `step()` ตรง ๆ เหมือนกันหมด
  */
 export class Lockstep {
-  constructor(send, { delay = NET_DELAY, seats = 2, seat = 0 } = {}) {
+  constructor(send, { delay = NET_DELAY, seats = 2, seat = 0, epoch = 0 } = {}) {
     this.send = send;
     this.delay = delay;
     this.seats = seats;
     this.seat = seat;        // ที่นั่งของเครื่องนี้
+    this.epoch = epoch;      // แมตช์ที่เท่าไหร่ — ดู reset()
     this.frame = 0;          // เฟรมถัดไปที่จะเดิน
     this.q = Array.from({ length: seats }, () => new Map());
     this.sent = -1;
     this.stalls = 0;         // นับไว้ดูว่ารออีกฝั่งบ่อยแค่ไหน (โชว์บนจอตอนดีบั๊ก)
+  }
+
+  /** เริ่มนับเฟรมใหม่สำหรับแมตช์ถัดไป — **จำเป็นเมื่อเล่นจบแล้วเล่นต่อในห้องเดิม**
+   *
+   *  ไม่มีเมธอดนี้ = เล่นได้แมตช์เดียวต่อหนึ่งห้อง แมตช์ที่สองจะหลุดกันทันที
+   *  เพราะเลขเฟรมของ sim ถูกตั้งกลับเป็น 0 แต่ `this.frame` ยังค้างอยู่ที่หลักพัน
+   *  `take()` จึงไปหยิบอินพุตเก่าของแมตช์ที่แล้วมาเดิน — ตรงกันทั้งสองเครื่องบ้างไม่ตรงบ้าง
+   *  แล้วแต่ว่าคิวของใครเหลืออะไรค้าง ซึ่งเป็น desync ที่ไม่มีทางไล่ย้อนหาเหตุได้เลย
+   *
+   *  **epoch คือกุญแจของความถูกต้อง** ตอนแมตช์ก่อนจบ อีกฝั่งอาจยังส่งอินพุตของเลขเฟรมเก่า
+   *  ค้างอยู่ในสาย ถ้าเราล้างคิวแล้วรับมันเข้าคิวใหม่ มันจะกลายเป็นอินพุตของแมตช์ใหม่
+   *  แปะเลขเฟรมทับกันพอดี — ตรวจไม่ได้ด้วยเลขเฟรมอย่างเดียว ต้องมีเลขแมตช์กำกับ
+   *  แพ็คเก็ตที่ไม่ใช่ epoch ปัจจุบันจึงถูกทิ้งใน onPacket()
+   */
+  reset(epoch = this.epoch + 1) {
+    this.epoch = epoch;
+    this.frame = 0;
+    this.sent = -1;
+    this.stalls = 0;
+    for (const m of this.q) m.clear();
+    // อินพุตของแมตช์นี้ที่มาถึงก่อนเราจะรู้ตัวว่าขึ้นแมตช์ใหม่ — เอาเข้าคิวเดี๋ยวนี้
+    // ไม่เก็บไว้ = อีกฝั่งที่เริ่มก่อนเราไม่กี่มิลลิวินาทีจะยิงเฟรม 0..delay-1 ทิ้งไปเปล่า ๆ
+    // แล้วสองฝั่งค้างรอกันตลอดกาล: เขารอเฟรม 0 ของเรา เรารอเฟรม 0 ของเขาที่ถูกทิ้งไปแล้ว
+    const wait = this.pending;
+    this.pending = [];
+    if (wait) for (const pk of wait) this.onPacket(pk);
   }
 
   /** คิวของเครื่องนี้ */
@@ -80,7 +112,7 @@ export class Lockstep {
     while (this.sent < this.frame + this.delay) {
       this.sent++;
       this.local.set(this.sent, v);
-      this.send({ t: 'i', s: this.seat, f: this.sent, v });
+      this.send({ t: 'i', s: this.seat, m: this.epoch, f: this.sent, v });
       queued++;
     }
     return queued;   // 0 = คิวเต็มอยู่แล้ว ผู้เรียกต้องเก็บปุ่มที่เพิ่งกดไว้ส่งรอบหน้า ไม่งั้นหาย
@@ -89,7 +121,7 @@ export class Lockstep {
   /** เติมเฟรมเปิดเกมให้ครบ delay แรก — ไม่งั้นเฟรม 0..delay-1 ไม่มีใครส่งให้ */
   primeStart() {
     for (let f = 0; f < this.delay; f++) {
-      if (!this.local.has(f)) { this.local.set(f, 0); this.send({ t: 'i', s: this.seat, f, v: 0 }); }
+      if (!this.local.has(f)) { this.local.set(f, 0); this.send({ t: 'i', s: this.seat, m: this.epoch, f, v: 0 }); }
     }
     this.sent = Math.max(this.sent, this.delay - 1);
   }
@@ -103,6 +135,17 @@ export class Lockstep {
    */
   onPacket(pk) {
     if (!pk || pk.t !== 'i') return;
+    // บิลด์เก่าไม่มีฟิลด์ `m` ถือว่าเป็นแมตช์ที่ 0 ซึ่งตรงกับค่าเริ่มต้น = เล่นกับแท็บเก่าได้เหมือนเดิม
+    const ep = pk.m ?? 0;
+    if (ep !== this.epoch) {
+      // แมตช์ก่อน = ทิ้ง ไม่งั้นมันไปนั่งทับเลขเฟรมของแมตช์ใหม่ (ดู reset)
+      // แมตช์ถัดไป = **เก็บไว้ก่อน** อีกฝั่งอาจกดเริ่มก่อนเราเสี้ยววินาที
+      if (ep > this.epoch) {
+        (this.pending ??= []).push(pk);
+        if (this.pending.length > PENDING_MAX) this.pending.shift();
+      }
+      return;
+    }
     const seat = typeof pk.s === 'number' ? pk.s
       : this.seats === 2 ? 1 - this.seat
       : -1;

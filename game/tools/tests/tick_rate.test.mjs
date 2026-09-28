@@ -36,6 +36,7 @@ function pair({ lag = 0 } = {}) {
     sc.tickNet = ScrambleScene.prototype.tickNet;
     sc.tick = ScrambleScene.prototype.tick;
     sc.sharedKeyboard = ScrambleScene.prototype.sharedKeyboard;
+    sc._maybeEndToSelect = function () {};
     sc.net.primeStart();
     return sc;
   };
@@ -114,6 +115,7 @@ function pair({ lag = 0 } = {}) {
       aged: 0, netTicks: 0, events: 0 };
     sc.tick = ScrambleScene.prototype.tick;
     sc.sharedKeyboard = ScrambleScene.prototype.sharedKeyboard;
+    sc._maybeEndToSelect = function () {};
     sc.tickNet = function () { this.netTicks++; };
     sc._ageFx = function () { this.aged++; };
     sc._simEvents = function () { this.events++; };
