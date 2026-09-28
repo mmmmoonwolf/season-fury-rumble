@@ -119,16 +119,32 @@ HAIR = lambda r, g, b: (r > 170) & (r - b > 80) & (r - g > 55)
 |---|---|---|
 | A เคลื่อนไหว/โดน | ✅ รับแล้ว | 9 ท่า · ไม่มีขยะ · ไม่ชนขอบ |
 | B หมัดสามจังหวะ | ✅ รับแล้ว | 9 ท่า · ไม่มีขยะ · ท่า 7-9 ชนขอบล่าง |
-| C Skyward/พุ่งไหล่/อัปเปอร์ | ❌ **ตีกลับ** | ท่า 2·3·7·8·9 **ไม่มีโครงหลังและแขนกล** เหลือแค่ถุงมือเล็ก |
+| C Skyward/พุ่งไหล่/อัปเปอร์ | 🟡 **ใช้ได้ 6 จาก 12 ท่า** | ท่าชกขึ้นยังไม่มีโครงหลัง (รอบสอง) — ชุดพุ่งไหล่ครบแล้ว ขาดแค่ท่าอัปเปอร์ |
+| C2 อัปเปอร์อย่างเดียว | ⬜ ต้องเจนเพิ่ม | 6 ท่า ดูหัวข้อ 10 |
 | D ท่าต่ำ/ท่าย่อ/หมุนหมัด | ✅ รับแล้ว | 9 ท่า · ไม่มีขยะ · ไม่ชนขอบ |
 | E อากาศ | ✅ รับแล้ว | 9 ท่า · ไม่มีขยะ · ไม่ชนขอบ |
 | F สกิล 1+2 | ✅ รับแล้ว | **10 ท่า** (เกินมา 1 ท่าไถลาก เลือกใช้ 9) · แถวล่าง 3 ท่าชนขอบล่าง |
 | G อัลติ METEOR | ✅ รับแล้ว | **10 ท่า** โดย 2 ท่าติดกันเป็นก้อนเดียว · ไม่ชนขอบ |
 
-### ❌ ใบ C ตีกลับ: โครงแขนกลหายไปกลางชีต
+### 🟡 ใบ C: โครงแขนกลหายเฉพาะ "ท่าที่ชกขึ้นฟ้า" — ไม่ใช่สุ่ม
 
-ห้าในเก้าท่าวาดเด็กใส่ชุดดำเฉย ๆ **ไม่มีเป้หลัง ไม่มีแขนกลสองข้าง เหลือแค่ถุงมือเล็ก ๆ**
+เจนสองรอบ เสียท่าแบบเดียวกันทั้งสองรอบ **ไม่มีเป้หลัง ไม่มีแขนกล เหลือแค่ถุงมือเล็ก ๆ**
 ซึ่งอ่านเป็นคนละตัวละคร ไม่ใช่ท่าอื่นของคนเดิม
+
+| ท่าที่เสียทั้งสองรอบ | ท่าที่ครบทุกรอบ |
+|---|---|
+| อัปเปอร์ชกขึ้นเหนือหัว · ชูหมัดขึ้น · ลอยหลังชกขึ้น | ย่อรวมพลัง · พุ่งไหล่ · ชกตรงไปข้างหน้า · ลงพื้นตั้งหลัก |
+
+**เห็นรูปแบบชัด: แขนที่ยกขึ้นเหนือไหล่คือจุดที่โครงหาย** แขนที่อยู่ระดับอกหรือต่ำกว่าไม่เคยเสียเลย
+เดาว่าเพราะพอแขนกางขึ้น กรอบภาพต้องสูงขึ้น ตัวเจนเลยย่อของทิ้งเพื่อให้ทุกอย่างอยู่ในช่อง
+
+**ใส่คำสั่งตัวใหญ่ในทุก anchor แล้วยังเสียเหมือนเดิม** — บทเรียนเดียวกับตอนสั่ง zoom out ให้เห็นพื้นรองเท้า
+สู้ด้วยคำอีกรอบก็แพ้อีก ต้องเปลี่ยนวิธี ไม่ใช่เปลี่ยนคำ
+
+**ทางที่เลือก:** เก็บ 6 ท่าที่ดีของใบนี้ไว้ (ชุดพุ่งไหล่ครบทั้งชุดแล้ว) แล้วเจน **ชีตเล็ก 6 ท่า
+เฉพาะอัปเปอร์** โดย (ก) เขียนสายเคเบิลกับเป้หลังลงไปใน**บรรทัดของทุกท่า** ไม่ใช่แค่ใน anchor
+และ (ข) **ไม่ให้หมัดขึ้นเหนือหัว** — สูงสุดแค่ระดับหน้า ซึ่งเป็นช่วงที่ตัวเจนวาดถูกมาตลอด
+ท่าส่งขึ้นฟ้าไม่ได้ต้องการหมัดเหนือหัว มันต้องการ **แรงพุ่งขึ้น** ซึ่งสื่อด้วยลำตัวยืดกับส้นเท้าลอยได้
 
 > **ข้อนี้ตัวเลขจับไม่ได้ ต้องเปิดดู** ผมลองสามไม้วัดแล้วไม่มีอันไหนแยกออก:
 > สัดส่วนพื้นที่ต่อผม · ทแยงกรอบต่อผม · สัดส่วนพิกเซลโลหะ — ท่าที่เสียอยู่ในช่วงเดียวกับ
@@ -495,6 +511,44 @@ Pose 8 — the instant of impact: both fists driven into the ground, arms
 locked, knees deeply bent and braced, head down between his shoulders.
 Pose 9 — rising slowly out of the impact, fists lifting off the ground,
 shoulder plates settling back down.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. A dark bronze laurel wreath sits on his hair. He has a flat, serious, unimpressed expression — never cheerful. Mounted on his back is a gunmetal exoskeleton rig carrying TWO HUGE INDEPENDENT MECHANICAL ARMS that arch up over his shoulders and hang down on either side of him. These are NOT his own arms: his own small human hands stay visible against his chest and at his side, and the big arms are suspended from the back rig by thick armoured cables and hoses, always staying physically connected to that rig. Each mechanical arm ends in a blocky fist as large as his whole torso. THE BACK RIG AND BOTH HUGE MECHANICAL ARMS MUST BE FULLY PRESENT AND CLEARLY VISIBLE IN EVERY SINGLE POSE — never draw him without the rig, never shrink the arms down to small hand gauntlets, and never omit the back-mounted pack, no matter what the pose is doing. Visible hydraulic pistons run along each mechanical arm and extend when it reaches out. He also wears segmented armour plates over both knees and shins above heavy armoured boots. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Leave a clear band of empty white space below the soles and above the highest part of the rig; the soles must be drawn complete with their whole bottom edge visible and must never touch or run off the edge of the image. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
+```
+
+---
+
+## 10. ชีต C2 — อัปเปอร์อย่างเดียว (6 ท่า · 2 แถวแถวละ 3)
+
+เจนแยกเพราะใบ C เสียเฉพาะท่ากลุ่มนี้สองรอบติด (ดูหัวข้อข้างบน)
+**ท่าน้อยลง = ตัวเจนใส่ใจต่อท่ามากขึ้น** และทุกบรรทัดย้ำเรื่องเป้หลังกับสายเคเบิลเอง
+
+```
+A 6-pose sprite sheet of the same character, arranged in 2 rows of 3, read
+left to right, top row first. Even spacing, no pose touching another.
+No motion lines, no effects — the game draws all of that.
+
+In every one of the six poses the gunmetal pack on his back and BOTH huge
+mechanical arms are fully drawn, with the thick armoured cables running from
+the pack down to each arm clearly visible. The arms never leave the frame and
+never shrink. No fist rises above the top of his own head in any pose.
+
+Pose 1 — crouched low, both mechanical fists pulled down beside his knees,
+the back pack hunched up behind his shoulders, cables taut, gathering to
+launch upward.
+Pose 2 — driving upward: one mechanical fist punched up to FACE HEIGHT and no
+higher, elbow still below the fist, pistons extended, his body stretched tall
+on the toes with the back heel lifted, ankle thrusters firing straight down,
+the back pack and cables fully visible behind him.
+Pose 3 — feet just off the ground from his own swing, that fist still at face
+height, the other arm hanging low, the pack and both cables clearly drawn.
+Pose 4 — crouched with one fist cocked low beside his hip, the other
+mechanical forearm raised across his chest guarding, weight on the back foot,
+pack and cables visible.
+Pose 5 — driving up and forward: that fist punched to CHEST-TO-CHIN HEIGHT and
+no higher, shoulder behind it, body lifting onto the toes, thrusters firing
+down, the pack and both arms fully in frame.
+Pose 6 — landing out of it, knees deeply bent absorbing the drop, both
+mechanical fists low in front of him, pack settled back down.
 
 Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. A dark bronze laurel wreath sits on his hair. He has a flat, serious, unimpressed expression — never cheerful. Mounted on his back is a gunmetal exoskeleton rig carrying TWO HUGE INDEPENDENT MECHANICAL ARMS that arch up over his shoulders and hang down on either side of him. These are NOT his own arms: his own small human hands stay visible against his chest and at his side, and the big arms are suspended from the back rig by thick armoured cables and hoses, always staying physically connected to that rig. Each mechanical arm ends in a blocky fist as large as his whole torso. THE BACK RIG AND BOTH HUGE MECHANICAL ARMS MUST BE FULLY PRESENT AND CLEARLY VISIBLE IN EVERY SINGLE POSE — never draw him without the rig, never shrink the arms down to small hand gauntlets, and never omit the back-mounted pack, no matter what the pose is doing. Visible hydraulic pistons run along each mechanical arm and extend when it reaches out. He also wears segmented armour plates over both knees and shins above heavy armoured boots. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Leave a clear band of empty white space below the soles and above the highest part of the rig; the soles must be drawn complete with their whole bottom edge visible and must never touch or run off the edge of the image. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
 ```
