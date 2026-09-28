@@ -48,25 +48,21 @@
 เขากว้าง **210 px** บนเวทีกว้าง 1280 ซึ่ง **เท่ากับ Atlas (205) ที่อยู่ในเกมมาแล้ว**
 (ตัวเลข 388 ข้างบนเป็นสเกล 240 ซึ่งไม่ใช่ขนาดที่ตาเห็น)
 
-### ⚠️ สามข้อที่ต้องจัดการ
+### สองข้อที่ต้องจัดการ (ข้อเดิมที่สามถอนแล้ว — ผมวัดผิดเอง)
 
-**1 · เท้าโดนตัดขอบล่าง — ข้อเดียวที่ต้องเจนใหม่**
-พื้นรองเท้าถูกตัดกลางทาง (ความกว้างแถวล่างสุดยังไล่จาก 234 ลง 80 แล้วจบห้วน)
-เฟรมนี้คือเฟรมที่ตั้ง **สเกลสัมบูรณ์ของทั้งตัว** และตั้ง `feetY` ที่ใช้วางเท้าบนพื้น
-ทุกเฟรมที่เหลืออ้างอิงจากมัน ผิดที่นี่ที่เดียวแล้วผิดทั้ง 74 เฟรม
-→ เจนใบขั้น 0 ซ้ำโดยเติมประโยคท้าย prompt (ดูบล็อกที่ 1 แก้ให้แล้ว)
+**1 · เท้าโดนตัดขอบล่าง — รับไว้อย่างนี้ ไม่ต้องเจนใหม่อีก**
+พื้นรองเท้ายังถูกตัด (ขอบว่างล่าง 0 px · ความกว้างแถวล่างสุดยังไล่ลงแล้วจบห้วนที่ 83)
+เจนซ้ำด้วยคำสั่ง "zoom out ให้มีขอบว่างใต้เท้า" แล้ว **กรอบออกมาเท่าเดิมเป๊ะ** ทั้งที่ภาพวาดใหม่จริง
+(ต่างกัน 63,234 พิกเซล) — ตัวเจนยึดองค์ประกอบของภาพอ้างอิงแน่นกว่าคำสั่ง สู้ด้วยคำต่อไปก็แพ้อีก
 
-**2 · โครงสูงล้ำหัวไปทางบน = ตัวเด็กจะเล็กกว่าคนอื่น 19%**
-กรอบภาพสูง 756 แต่ตัวเด็กจริง (ยอดผม → ส้นเท้า) สูง 616 — ไหล่ของโครงโผล่พ้นผมขึ้นไป
-ถ้า build ตั้ง `STANDING = 240` จากกรอบรวมตามสูตรเดิม ตัวเด็กจะสูงจริงแค่ **196 px**
-ยืนข้างคนอื่นที่สูง 240 เต็มแล้วดูเหมือนเด็กตัวเล็กผิดขนาด (เห็นชัดในภาพเทียบบนเวที)
+**แต่ที่สเกลจริงมันไม่เป็นปัญหา** เกมย่อเขาเหลือสูง 130 px รองเท้ากินราว 15 px
+ส่วนที่ขาดหายไปบางกว่า 1 พิกเซลบนจอ — ซูมดูที่สเกลนั้นแล้วอ่านเป็น "รองเท้าวางบนพื้น" ปกติ
+ที่เหลือชดเชยด้วย `feetY` ตอน build ได้ ซึ่งต้องตั้งเองอยู่แล้ว
 
-> **ข้อนี้แก้ที่ build ไม่ใช่ที่ prompt** และ **ห้ามแก้ด้วยการเจนใหม่**
-> เพราะท่าอย่างเงื้อหมัดเหนือหัว (C2 · F4 · G5) โครงต้องล้ำหัวอยู่แล้วโดยธรรมชาติ
-> `build_scramble_momus.py` ต้องวัด `STANDING` จาก **ยอดผมถึงส้นเท้า** ไม่ใช่จากกรอบรวม
-> ซึ่งแปลว่าต้องหาหัวให้เจอก่อน — ใช้ตัวเดียวกับไม้บรรทัดข้อ 3
+> เฟรมนี้เป็นเฟรมเดียวที่คับกรอบ เพราะเป็นภาพตัวเดียวเต็มกรอบ
+> ชีตที่เหลือเป็นตาราง 3×3 ซึ่งแต่ละท่าเล็กกว่ากรอบมาก ความเสี่ยงคนละเรื่องกัน
 
-**3 · ไม้บรรทัดวัดกล้องเดิมใช้กับตัวนี้ไม่ได้**
+**2 · ไม้บรรทัดวัดกล้องเดิมใช้กับตัวนี้ไม่ได้**
 `body_sqrt` (รากที่สองของพื้นที่ตัว) ตั้งอยู่บนสมมติฐานว่า **พื้นที่ตัวคงที่ทุกท่า**
 วัดแล้ว **แขนกลกินพื้นที่ 64.4%** ของทั้งตัว และมันยืด/หด/กางทุกท่า
 ไม้บรรทัดจะอ่านว่า "กล้องขยับ" ทั้งที่เขาแค่ต่อยหมัด แล้วขยายทั้งท่าผิดขนาด
@@ -74,7 +70,16 @@
 
 → ใช้ **พื้นที่ผมส้ม** เป็นไม้บรรทัดแทน หัวไม่เปลี่ยนขนาดและเห็นทุกท่า
 
----
+### ❌ ถอน: "โครงสูงล้ำหัวจนตัวเด็กเล็กกว่าคนอื่น 19%"
+
+**ข้อนี้ผมวัดผิดเอง ไม่ใช่ปัญหาของภาพ** ตัวจับ "ก้อนผม" ตัวแรกหลวมเกินไป
+มันไปจับ **ก้อนผิวหน้า** (y152-320) แทนก้อนผม แล้วผมเอา y152 มาเป็นยอดหัว
+ตัวเด็กเลยคำนวณได้ 616 px ทั้งที่ของจริงคือ 744
+
+วัดใหม่ด้วยเกณฑ์ที่เข้มขึ้น: **ยอดผมอยู่ที่ y24 · โครงล้ำหัวขึ้นไปแค่ 12 px (1.6%)**
+ตัวเด็กคือ **98% ของกรอบภาพ** — ตั้ง `STANDING` จากกรอบรวมตามสูตรเดิมได้เลย ไม่ต้องแก้อะไร
+
+บทเรียนที่ได้มาฟรีคือข้อถัดไป
 
 ## ⚠️ ของที่ต้องแก้ในโค้ดก่อน build (ไม่ใช่เรื่องของ prompt)
 
@@ -89,12 +94,19 @@
 
 ### ทางแก้: ใช้ผมส้มเป็นทั้งตัวคัดและไม้บรรทัด
 
-วัดจากภาพที่อนุมัติแล้ว **ก้อนผมส้ม = 3.18% ของพื้นที่ตัว** ส่วนขยะที่เป็นโลหะล้วนมี ~0%
+วัดจากภาพที่อนุมัติแล้ว **ก้อนผมส้ม = 2.5% ของพื้นที่ตัว** (วัดตรงกันทั้งสองใบ) ส่วนขยะที่เป็นโลหะล้วนมี ~0%
 ห่างกันพอจะตั้งเกณฑ์ได้ไม่ก้ำกึ่ง และก้อนผมยังบอก **ตำแหน่งหัว** ซึ่งต้องใช้ตั้ง `STANDING` อยู่แล้ว
 
 ```python
-ORANGE = lambda r, g, b: (r > 140) & (r - b > 45) & (g < r)
+HAIR = lambda r, g, b: (r > 170) & (r - b > 80) & (r - g > 55)
 ```
+
+> ⚠️ **เกณฑ์ต้องเข้มขนาดนี้ เกณฑ์หลวมกว่านี้ใช้ไม่ได้** เกณฑ์แรกที่ลอง
+> (`r>140 & r-b>45`) ไปจับผิวหน้าบ้าง จับโลหะสีทองแดงบ้าง แล้วให้คำตอบคนละอย่าง
+> ในภาพสองใบที่เป็นตัวละครเดียวกัน (ยอดผม y152 กับ y24) — ซึ่งคือที่มาของข้อที่ถอนไปข้างบน
+>
+> โลหะของเขาอมน้ำตาลพอจะหลุดเข้าเกณฑ์ส้มได้ง่าย ๆ **ทดสอบกับสองใบขึ้นไปเสมอ
+> แล้วดูว่าได้คำตอบตรงกันไหม** ใบเดียวผ่านไม่ได้แปลว่าเกณฑ์ถูก
 
 > 📌 **แต่ยังต้องวัดจริงจากชีตที่เจนมาก่อนตั้งเกณฑ์** ภาพเดียวไม่พอ
 > ท่าที่หันหลัง/ก้มหัวจะเห็นผมน้อยลง ตัวเลข 3.18% เป็นค่าจากท่ายืนตรงซึ่งเห็นผมเต็มที่
@@ -117,7 +129,9 @@ ORANGE = lambda r, g, b: (r > 140) & (r - b > 45) & (g < r)
 > เก็บไว้เป็นของสำรอง ถ้าอยากตัดงบเจนลงหนึ่งใบ ตัดสามท่านี้ทิ้งได้โดยไม่กระทบอะไร
 
 ---
-## 1. ขั้น 0 — ท่ายืน (ด่านกั้น · ต้องผ่านก่อนเจนอย่างอื่น)
+## 1. ขั้น 0 — ท่ายืน (ด่านกั้น · ✅ **ผ่านแล้ว ไม่ต้องเจนซ้ำ**)
+
+> เก็บ prompt ไว้เผื่อต้องเจนใหม่ทั้งตัว — ของที่ใช้จริงอยู่ที่ `art_reference/dear_idle_APPROVED.jpg`
 
 เจนใบนี้ใบเดียวก่อน แล้ว **เอาไปวางข้างตัวอื่นในโรสเตอร์เทียบขนาดจริง** ถึงค่อยเจนชีตต่อ
 สิ่งที่ต้องดู: สูงราว 2.5-2.8 หัว · เงาไม่แคบกว่าคนอื่น · ท่อนล่างต้องเข้มพอที่จะไม่จมพื้นฉาก
@@ -132,10 +146,6 @@ He stands upright in a loose ready stance, feet well apart, weight low, the
 big mechanical fists hanging at his sides, chin slightly down, eyes forward,
 calm rather than cheerful. One character only, one pose only. No turnaround,
 no multiple views, no text, no labels, no header bars.
-Leave a clear band of empty white space below the soles of his boots and
-above the highest part of the rig — the soles must be drawn complete with
-their whole bottom edge visible, never touching or running off the bottom of
-the image.
 
 Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference proportions exactly. Character: a small orange-haired boy wearing heavy cybernetic augments. His copper-orange hair lies FLAT against his skull with the hairline clearly visible, never a wide round frizzy halo. He wears a close-fitting charcoal-black bodysuit with dark grey panel seams. A dark bronze laurel wreath sits on his hair. He has a flat, serious, unimpressed expression — never cheerful. Mounted on his back is a gunmetal exoskeleton rig carrying TWO HUGE INDEPENDENT MECHANICAL ARMS that arch up over his shoulders and hang down on either side of him. These are NOT his own arms: his own small human hands stay visible against his chest and at his side, and the big arms are suspended from the back rig by thick armoured cables and hoses, always staying physically connected to that rig. Each mechanical arm ends in a blocky fist as large as his whole torso. Visible hydraulic pistons run along each mechanical arm and extend when it reaches out. He also wears segmented armour plates over both knees and shins above heavy armoured boots. Thin cyan light lines are inlaid along the rig's plating and along the pistons; they glow brighter when he exerts himself. Every nozzle carries a SHORT pale-cyan flame that stays attached to its nozzle and is never longer than half his body height. The mechanical arms are the largest and heaviest-reading things on him, and his silhouette is widest at the fists. He stands and moves with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props beyond those described, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Leave a clear band of empty white space below the soles and above the highest part of the rig; the soles must be drawn complete with their whole bottom edge visible and must never touch or run off the edge of the image. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. No detached flames, no floating fire, no flame breaking away from the body — all flame stays attached to a nozzle. No energy barrier, no bubble shield, no aura ring, no glowing sphere around him. No smoke, no dust, no cracked ground, no sparks, no motion lines, no speed lines, no impact effects — the game draws all of that.
 ```
