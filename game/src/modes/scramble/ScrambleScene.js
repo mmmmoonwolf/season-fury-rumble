@@ -2232,9 +2232,13 @@ class ScrambleScene extends Phaser.Scene {
         this.emit('glow', e.x, e.y, { scale: 0.16, life: 12, grow: 1.6, tint: 0x7fe3ff });
       }
       // คว้าติด: ต้องอ่านออกทันทีว่า "โดนจับแล้ว" เพราะอีกฝั่งต้องเริ่มรัวปุ่มดิ้นเดี๋ยวนั้น
+      //
+      // แต่ท่าที่ดิ้นไม่หลุด (อัลติ, mash 0) ต้องไม่ขึ้นป้ายเดียวกัน — ป้ายที่สั่งให้ทำของที่
+      // ไม่มีผลคือการโกหกที่แย่กว่าไม่บอกอะไรเลย คนเล่นจะรัวจนจบแล้วสรุปว่าปุ่มดิ้นพัง
       if (e.type === 'grab') {
         this._sfx('metal', { vol: 1.1 });
-        this.popup(e.x, e.y - 30, 'รัวปุ่มเพื่อหลุด!', '#7fe3ff');
+        if (e.mash > 0) this.popup(e.x, e.y - 30, 'รัวปุ่มเพื่อหลุด!', '#7fe3ff');
+        else this.popup(e.x, e.y - 30, 'ดิ้นไม่หลุด!', '#ffb03a');
         this.emit('ring', e.x, e.y, { scale: 0.26, life: 16, grow: 2.0, tint: 0x7fe3ff });
       }
       if (e.type === 'breakOut') {
@@ -2243,6 +2247,21 @@ class ScrambleScene extends Phaser.Scene {
         this.emit('burst', e.x, e.y, { scale: 0.34, life: 12, grow: 1.6, tint: 0xffd166 });
       }
       // ทุบพื้น: คลื่นวิ่งตามพื้นสองข้าง — ต้องเห็นขอบเขตชัดว่าไกลแค่ไหน ไม่งั้นมันคือกับดักที่มองไม่เห็น
+      /* วงดูดของอัลติ — วาดขอบจริงตามค่าที่ซิมส่งมา ไม่ใช่ขนาดที่เดาให้สวย
+       * ถ้าภาพกับกลไกไม่ตรงกัน คนเล่นจะเรียนรู้ระยะผิด แล้วโทษเกมทุกครั้งที่โดน
+       * ซึ่งแย่กว่าไม่มีวงเลย เพราะมันสอนของที่ผิด */
+      if (e.type === 'pull') {
+        this._shake(120, 0.008);
+        this._sfx('whoosh', { vol: 0.9 });
+        this._ringOfRadius(e.x, e.y - 70, e.r, { life: 16, grow: -0.85, tint: 0x7fe3ff });
+        this.emit('burst', e.x, e.y - 70, { scale: 0.5, life: 14, grow: 1.5, tint: 0xfff2d0 });
+        // เศษโลหะไหลเข้าหาศูนย์กลางจากขอบวง — ทิศเข้าในคือสิ่งที่บอกว่ามันคือ "ดูด" ไม่ใช่ "ระเบิด"
+        for (let i = 0; i < 8; i++) {
+          const dir = i % 2 ? 1 : -1, far = e.r * (0.45 + 0.55 * ((i >> 1) / 3));
+          this.emit('spike', e.x + dir * far, e.y - 40 - (i * 17) % (e.v * 0.6),
+            { scale: 0.2, life: 14, grow: 0.7, vx: -dir * (far / 14), tint: 0x7fe3ff, depth: 6 });
+        }
+      }
       if (e.type === 'slam') {
         this._shake(200, 0.012);
         this._sfx('blast', { vol: 1.15 });
@@ -2710,6 +2729,18 @@ class ScrambleScene extends Phaser.Scene {
    */
   //  ชื่อ `fx` ใช้ไม่ได้ — `this.fx` เป็นอ็อบเจกต์ graphics ที่ตั้งไว้ใน create() อยู่แล้ว
   //  เมธอดที่ชื่อซ้ำกับพรอเพอร์ตี้ของอินสแตนซ์จะถูกทับเงียบ ๆ แล้วพังตอนรันเท่านั้น
+  /** วงกลมที่ "รัศมีบนจอเท่ากับรัศมีในเกมจริง"
+   *
+   *  คิดสเกลจากความกว้างจริงของเฟรมในอัตลาส ไม่ใช่ค่าคงที่ที่จูนด้วยตาจนดูพอดี
+   *  เพราะค่าที่จูนด้วยตาจะผิดเงียบ ๆ ทันทีที่ชีตเอฟเฟกต์ถูกเจนใหม่ด้วยขนาดอื่น
+   *  แล้วคนเล่นจะเรียนรู้ระยะจากวงที่โกหก ซึ่งแย่กว่าไม่วาดวงเลย
+   */
+  _ringOfRadius(x, y, r, o = {}) {
+    const w = this.textures.get('vfx')?.get('ring.png')?.width;
+    if (!w) return null;
+    return this.emit('ring', x, y, { ...o, scale: (r * 2) / w });
+  }
+
   emit(frame, x, y, o = {}) {
     if (!this.textures.exists('vfx')) return null;
     this._fxPool ??= []; this._fxLive ??= [];

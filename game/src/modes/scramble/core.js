@@ -285,7 +285,11 @@ const OVERCLOCK_TIME = 180;  // 3 วินาที
 const OVERCLOCK_DMG = 1.4;   // ท่าปกติแรงขึ้นกี่เท่าระหว่างติดบัฟ
 const OVERCLOCK_ARMOR = 3;   // เกราะรับได้กี่ทีต่อหนึ่งท่า (เท่าท่าหนักของ Atlas)
 const CARRY_GAP = 52;        // ลากไว้ห่างจากตัวเท่าไหร่ — ทับกันแล้วสไปรท์ซ้อนจนดูไม่ออกว่าใครเป็นใคร
-const SLAM_WAVE = 0.45;      // คลื่นตามพื้นแรงกี่ส่วนของหมัดที่อัดคนที่จับไว้
+const SLAM_WAVE = 0.45;
+// รัศมีดูดของอัลติ METEOR — แนวนอนกว้างกว่าแนวตั้งเพราะเวทีกว้างกว่าสูง
+// และคนที่อยู่คนละชั้นควรต้องโดนดูดด้วย ไม่งั้นแค่ยืนบนชานก็ปลอดภัยฟรี
+const METEOR_PULL = 260;
+const METEOR_LIFT = 200;      // คลื่นตามพื้นแรงกี่ส่วนของหมัดที่อัดคนที่จับไว้
 const DUST_DR = 0.45;        // อยู่ในวงแล้วดาเมจที่รับเหลือเท่าไหร่
 const VEIL_TIME = 45;        // ออกจากวงแล้วยังจาง ๆ ต่ออีกกี่เฟรม — ช่วงนี้คือเวลาหนี
 
@@ -711,9 +715,11 @@ const MOMUS_MOVES = {
   //
   // **อมตะตลอดขาขึ้น** สำคัญที่สุดในท่า: อัลติที่กดได้เฉพาะตอนกำลังชนะคืออัลติที่ไม่มีใครกด
   // อันนี้กดสวนตอนโดนต้อนติดมุมได้ จึงเป็นปุ่มที่มีค่าตลอดทั้งยก
-  meteor1: { label: 'Meteor', kind: 'ground', startup: 4, active: 8, recovery: 6, dmg: 5,
-    hb: { x: 10, y: -150, w: 96, h: 120 }, kb: [0, 0], stun: 20,
-    carry: { frames: 999, mash: 0 },        // อัลติดิ้นไม่หลุด — แลกกับที่มันกิน ki เต็มหลอด
+  meteor1: { label: 'Meteor', kind: 'ground', startup: 4, active: 8, recovery: 6, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    // ดูดด้วยระยะรอบตัว ไม่ใช่กรอบชนข้างหน้า — อัลติที่ "เล็งไม่เข้า" แล้วหายทั้งหลอดคือราคาที่ไม่สมกัน
+    // ระยะกว้างพอที่คนยืนห่างครึ่งจอจะโดนดูด แต่ไม่กว้างจนทั้งเวทีหนีไม่ได้ (เวทีกว้าง 1280)
+    carry: { frames: 999, mash: 0, range: METEOR_PULL, vert: METEOR_LIFT, dmg: 5 },
     iframes: [0, 24], imp: { f: 4, vx: 0, vy: -30 }, autoChain: 'meteor2', airChain: true, ghost: true },
   // จุดสูงสุด: ลอยนิ่งเงื้อสองหมัด (จอมืดลงรอบตัวเป็นเรื่องฝั่งวาด ซิมไม่รู้เรื่อง)
   meteor2: { label: 'Meteor', kind: 'air', startup: 8, active: 4, recovery: 4, dmg: 0,
@@ -724,7 +730,9 @@ const MOMUS_MOVES = {
   meteor3: { label: 'Meteor', kind: 'air', startup: 3, active: 60, recovery: 0, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     imp: { f: 3, vx: 0, vy: 26 }, untilLand: true, landLag: 26, ghost: true,
-    slam: { onLand: true, dmg: 22, half: 260, stun: 40, kb: [8, -14] } },
+    // คลื่นกว้างกว่ารัศมีดูด (260) อยู่หนึ่งช่วง — วงในโดนดูดขึ้นฟ้า วงนอกโดนคลื่นตอนลง
+    // ถ้าสองค่าเท่ากัน คลื่นจะไม่มีงานทำเลย เพราะทุกคนในระยะถูกดูดไปหมดแล้วตั้งแต่ขาขึ้น
+    slam: { onLand: true, dmg: 22, half: 380, stun: 40, kb: [8, -14] } },
 };
 
 const MOMUS_SKILLS = ['drag1', 'over1', 'meteor1'];
@@ -1214,18 +1222,45 @@ class Game {
     this.events.push({ type: 'overclock', x: f.x, y: f.y - 70, frames });
   }
 
-  /** เริ่มลากคนที่อยู่ในกรอบท่านี้ไปด้วย */
+  /** เริ่มลากคนที่อยู่ในระยะของท่านี้ไปด้วย
+   *
+   *  มีสองแบบ เลือกจากว่าท่าประกาศ `range` ไว้หรือเปล่า:
+   *
+   *  - **ไม่มี `range` = ใช้กรอบชนของท่า** (สกิล 1) ต้องไถผ่านตัวเขาจริง ๆ ถึงจะติด
+   *    ซึ่งถูกแล้วสำหรับสกิลที่กดได้ทุก 2.5 วินาที — พลาดแล้วไม่เสียอะไรมาก
+   *
+   *  - **มี `range` = ดูดทุกคนรอบตัวในระยะนั้น** (อัลติ) ไม่สนว่าหันทางไหน
+   *    อัลติกิน ki เต็มหลอดและกดได้ครั้งเดียวต่อเกม การพลาดเพราะ "เล็งไม่เข้า"
+   *    จึงไม่ใช่ความผิดที่สมกับราคา — ที่ควรตัดสินคือ **กดตอนไหน** ไม่ใช่ยืนห่างกี่พิกเซล
+   *    (คนที่อมตะอยู่ยังรอดเหมือนเดิม ระยะไม่ได้แปลว่าหนีไม่ได้)
+   */
   startCarry(a, spec) {
+    const hb = spec.range ? null : a.hitbox();
+    if (!spec.range && !hb) return;
+    // บอกขนาดวงให้ฝั่งวาดรู้ **ทุกครั้งที่ดูด ไม่ใช่เฉพาะตอนดูดติด**
+    // วงที่โผล่เฉพาะตอนโดนคือกับดักที่มองไม่เห็น — อีกฝั่งไม่มีวันเรียนรู้ว่าต้องยืนห่างแค่ไหน
+    if (spec.range) this.events.push({ type: 'pull', x: a.x, y: a.y, r: spec.range, v: spec.vert });
     for (const d of this.foes(a)) {
       if (d.hp <= 0 || d.invuln > 0 || d.carriedBy) continue;
-      const hb = a.hitbox(); if (!hb || !overlap(hb, d.hurtbox())) continue;
+      if (spec.range) {
+        if (Math.abs(d.x - a.x) > spec.range) continue;
+        if (Math.abs(d.y - a.y) > spec.vert) continue;
+      } else if (!overlap(hb, d.hurtbox())) continue;
       d.carriedBy = a.id;
       d.carryLeft = spec.frames;
       d.mashOut = spec.mash;
       d.move = null; d.moveId = null; d.setState('hitstun');
       d.stun = spec.frames;
       a.carrying.push(d.id);
-      this.events.push({ type: 'grab', x: d.x, y: d.y - 70 });
+      // ท่าที่ดูดด้วยระยะไม่มีกรอบชน ดาเมจตอนคว้าจึงต้องจ่ายตรงนี้ ไม่ใช่ผ่าน resolveHit
+      if (spec.dmg) {
+        const real = Math.max(1, Math.round(spec.dmg * d.resist * (d.dustGuard ? DUST_DR : 1)));
+        d.hp = Math.max(0, d.hp - real);
+        d.lastHitF = this.frame;
+        this.events.push({ type: 'hit', x: d.x, y: d.y - 70, dmg: real });
+      }
+      // บอกจำนวนครั้งที่ต้องดิ้นไปด้วย — ท่าที่ดิ้นไม่หลุด (mash 0) ต้องไม่ขึ้นป้ายชวนให้รัวปุ่ม
+      this.events.push({ type: 'grab', x: d.x, y: d.y - 70, mash: spec.mash });
     }
   }
 
@@ -2073,7 +2108,12 @@ class Game {
       }
       if (m.overclock && f.moveF === m.overclock.at) this.startOverclock(f, m.overclock.frames);
       // คว้าได้ตลอดช่วง active ไม่ใช่เฟรมเดียว — ไถผ่านใครก็ติดคนนั้น ซึ่งคือความหมายของท่า
-      if (m.carry && f.phase() === 'active') this.startCarry(f, m.carry);
+      // ท่าไถ (สกิล 1) คว้าได้ตลอดช่วง active — ไถผ่านใครก็ติดคนนั้น ซึ่งคือความหมายของท่า
+      // ท่าดูดด้วยระยะ (อัลติ) ดูดครั้งเดียวที่เฟรมแรกของ active ตอนยังยืนอยู่ที่เดิม
+      // ถ้าปล่อยให้ดูดตลอดช่วง วงจะไต่ขึ้นไปพร้อมตัวจนคนบนชั้น 3 โดนด้วย = ไม่มีทางหนีจริง
+      // และ "ระยะที่กำหนด" จะกลายเป็นค่าที่อ่านจากจอไม่ได้ เพราะมันขยับทุกเฟรม
+      if (m.carry && (m.carry.range ? f.moveF === m.startup : f.phase() === 'active'))
+        this.startCarry(f, m.carry);
       // ทุบพื้น: ท่าที่ระบุเฟรม (drag2) ทุบตอนนั้น · ท่าที่ระบุ onLand (meteor3) รอแตะพื้นก่อน
       if (m.slam && !f.slammed && (m.slam.onLand ? f.onGround : f.moveF === m.slam.at)) {
         f.slammed = 1;
