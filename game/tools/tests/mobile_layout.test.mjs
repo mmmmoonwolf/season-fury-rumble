@@ -183,3 +183,29 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
   ok(/for \(const ev of \['touchstart', 'touchmove', 'touchend'\]\)[\s\S]{0,140}passive: false/.test(scr),
     "ดัก touch event ตัวจริงด้วย passive:false ไม่ได้พึ่งแค่ pointerdown");
 }
+
+// ══ ปุ่ม "เริ่ม" ต้องไม่ถูกการ์ดตัวละครดันตกขอบจอ ═══════════════════════════════
+//
+// คอมเมนต์เดิมในโค้ดเตือนไว้เองว่า "แถวที่สองดันปุ่มเริ่มตกขอบจอมือถือ"
+// แล้วเผื่อไว้แค่ 5 ใบ — ตอนนี้มี 8 ใบ (ตัวละครจริง 6 + ตัวที่ยังไม่ปล่อย 2)
+// ทางเดิมหมดอายุไปแล้วจริง ๆ และอาการคือเลือกตัวเสร็จแล้วกดเริ่มไม่ได้
+// ซึ่งเป็นทางตันที่ไม่มีอะไรบอกว่าเกิดอะไรขึ้น
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const grid = scr.match(/#sc-select \.grid \{([^}]*)\}/)?.[1] ?? "";
+  ok(grid.length > 0, "อ่านกฎของตารางการ์ดได้");
+
+  // ตารางต้องเลื่อนในกล่องของตัวเอง ไม่ใช่ดันของข้างล่างออกไป
+  ok(/max-height:/.test(grid), "ตารางการ์ดมีเพดานความสูง");
+  ok(/overflow-y:auto/.test(grid), "เกินเพดานแล้วเลื่อนในกล่องตัวเอง");
+  ok(/dvh/.test(grid), "เพดานคิดจากความสูงจอจริง (dvh) ไม่ใช่เลขตายตัว");
+  // iOS เลื่อนจนสุดแล้วจะไปเลื่อนของที่อยู่ข้างหลังต่อ ซึ่งคือแผงทั้งแผง
+  ok(/overscroll-behavior:contain/.test(grid), "เลื่อนสุดแล้วไม่ทะลุไปเลื่อนแผงข้างหลัง");
+
+  // จำนวนการ์ดจริงต้องมากกว่าที่แผนเดิมเผื่อไว้ — ยืนยันว่าข้อบนนี้ไม่ได้กันเคสที่ไม่มีจริง
+  const G2 = new URL("../../src/modes/scramble", import.meta.url).href;
+  const { CHARACTERS } = await import(G2 + "/core.js");
+  const soon = (scr.match(/const COMING_SOON = \[([\s\S]*?)\];/)?.[1].match(/pic:/g) ?? []).length;
+  const cards = Object.keys(CHARACTERS).length + soon;
+  ok(cards > 5, `การ์ดทั้งหมด ${cards} ใบ เกินที่แผนเดิมเผื่อไว้ (5) จริง`);
+}

@@ -261,6 +261,7 @@ const DEV_STORE = 'sfr.dev';
  */
 const COMING_SOON = [
   { pic: 'assets/ui/soon_01.png', name: 'เร็ว ๆ นี้', tip: 'ตัวละครใหม่กำลังมา' },
+  { pic: 'assets/ui/soon_02.png', name: 'เร็ว ๆ นี้', tip: 'ตัวละครใหม่กำลังมา' },
 ];
 
 /** แถวบนของ HUD กินลงมาถึง y เท่าไหร่ และจางเหลือเท่าไหร่ตอนมีคนยืนอยู่ในนั้น
@@ -614,9 +615,18 @@ body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
 #sc-select .rand:focus-visible { outline:2px solid var(--gold); outline-offset:2px; }
 
 /* การ์ดตัวละคร — เรียงแนวนอน ล้นแล้วตัดบรรทัดเอง ใส่ตัวใหม่ใน CHARACTERS แล้วโผล่เองไม่ต้องแก้ CSS */
-#sc-select .grid { display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:8px; }
-/* ความกว้างต้องพอให้การ์ดทุกใบอยู่แถวเดียว ไม่งั้นแถวที่สองดันปุ่ม "เริ่ม" ตกขอบจอมือถือ
-   เผื่อไว้ถึง 5 ตัว (5 x 23vw + ช่องไฟ < 100vw) เกินกว่านั้นค่อยเปลี่ยนเป็นเลื่อนแนวนอน */
+/* ── ตารางการ์ด ──
+   แผนเดิมคือ "ให้ทุกใบอยู่แถวเดียว" ซึ่งใช้ได้ถึง 5 ใบ ตอนนี้มี 8 ใบแล้ว
+   (ตัวละครจริง 6 + ตัวที่ยังไม่ปล่อย 2) ทางเดิมจึงหมดอายุไปแล้วจริง ๆ
+   ปัญหาที่คอมเมนต์เดิมเตือนไว้เป็นของจริง: การ์ดขึ้นแถวสองแล้วดันปุ่ม "เริ่ม" ตกขอบจอมือถือ
+   ซึ่งแปลว่าเลือกตัวเสร็จแล้วกดเริ่มไม่ได้ — เป็นทางตันที่ไม่มีอะไรบอก
+
+   ทางแก้: ให้ **ตารางเลื่อนในกล่องของตัวเอง** แทนที่จะดันของข้างล่างออกไป
+   ปุ่มเริ่มจึงอยู่ที่เดิมเสมอไม่ว่าจะมีการ์ดกี่ใบ เพิ่มตัวละครอีกสิบตัวก็ไม่กระทบ
+   overscroll-behavior:contain กันการเลื่อนทะลุไปเลื่อนแผงข้างหลัง (พฤติกรรมของ iOS) */
+#sc-select .grid { display:flex; flex-wrap:wrap; justify-content:center; align-items:stretch; gap:8px;
+  max-height:min(46dvh,320px); overflow-y:auto; overscroll-behavior:contain;
+  padding:2px; width:100%; }
 #sc-select .card { display:flex; gap:7px; align-items:center; width:clamp(155px,23vw,230px); padding:6px 8px 6px 5px;
   border:2px solid rgba(233,227,214,.22); border-radius:12px; background:rgba(233,227,214,.07); text-align:left; }
 #sc-select .card.on { border-color:#c8323c; background:rgba(200,50,60,.2); }
