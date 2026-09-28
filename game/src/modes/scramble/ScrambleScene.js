@@ -139,7 +139,7 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_nyx.png',
     data: 'assets/characters/scramble_nyx.json',
     runStride: 102,
-    title: 'The Fury of Silence',
+    title: 'Nyx',
     role: 'นักลอบสังหาร',
     tip: 'เข้าออกไว วาร์ปหาเป้า ดาเมจต่อคอมโบสูง แต่ตัวบาง',
     anims: { idle: 8, run: 10, hurt: 10, crouch: 3, jump: 5, knockdown: 2, techroll: 2, tech: 1,
@@ -155,7 +155,7 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_helios.png',
     data: 'assets/characters/scramble_helios.json',
     runStride: 85,
-    title: 'The Fury of a Hundred Suns',
+    title: 'Helios',
     role: 'นักสู้ระยะประชิด',
     tip: 'ต่อยเตะรัว กดต่อเนื่องได้ยาว ถนัดกดดันติดตัว',
     anims: { idle: 1, run: 11, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
@@ -170,7 +170,7 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_alecto.png',
     data: 'assets/characters/scramble_alecto.json',
     runStride: 86,
-    title: 'The Fury of the Burning Trail',
+    title: 'Alecto',
     role: 'สายคุมพื้นที่',
     tip: 'สลับแส้กับไรเฟิลได้ — แส้เจ็บกว่าและทำให้ช้า ไรเฟิลเดินยิงข้ามเวที',
     // ท่าเดินถือปืนยาว: รอบเดียว = สองก้าว (ชีตเป็นวงจรเดิน 4 ท่า ย่ำสลับซ้าย-ขวา)
@@ -195,7 +195,7 @@ const CHAR_ART = {
     texture: 'assets/characters/scramble_momus.png',
     data: 'assets/characters/scramble_momus.json',
     runStride: 86,
-    title: 'The Jester of Broken Rules',
+    title: 'Momus',
     role: 'สายป่วนสนาม',
     tip: 'ระเบิดของเขาไม่เลือกข้าง โดนตัวเองด้วย — ชนะเพราะรู้ว่าระเบิดจะลงตรงไหน',
     anims: { idle: 1, run: 10, jump: 3, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
@@ -214,7 +214,7 @@ const CHAR_ART = {
     data: 'assets/characters/scramble_atlas.json',
     runStride: 110,
     box: 0xe6e9ee, boxAccent: 0x8a6a4a,   // ขนเสือขาว ลายน้ำตาล
-    title: 'The Fury of the Unbroken',
+    title: 'Atlas',
     role: 'สายแท้งค์',
     tip: 'เลือด 130 · ท่าหนักมีเกราะ โดนตีแล้วไม่หลุดท่า เดินฝ่าเข้ามาได้',
     anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
@@ -229,7 +229,7 @@ const CHAR_ART = {
     data: 'assets/characters/scramble_orpheus.json',
     runStride: 96,
     box: 0x8a8f9a, boxAccent: 0xc08a3e,
-    title: 'The Fury of the Final Encore',
+    title: 'Orpheus',
     role: 'สายไล่หวดติดไฟ',
     tip: 'กดรัวแล้วหวดรัวห้าจังหวะ · ถอยหลังฟาดกีตาร์ลงพื้นทิ้งไฟไว้ให้คนที่ไล่',
     anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
@@ -558,10 +558,12 @@ const OVERLAY_CSS = `
    วางชิดซ้ายบนใต้แถบเลือด — มุมขวาบนมีปุ่มเต็มจอของเกมอยู่แล้ว */
 /* z-index สูงกว่าแผงเลือกตัว (30) โดยตั้งใจ — เพลงเริ่มเล่นตั้งแต่อยู่หน้าเลือกตัว
    ถ้าปุ่มอยู่ใต้แผง คนเล่นจะปิดเสียงไม่ได้จนกว่าจะเลือกตัวเสร็จ ซึ่งสายไปแล้ว */
-/* ต่ำกว่าแผงผู้เล่นทั้งก้อน (วง + จุดบอกยก + ชื่อ) ไม่ใช่แค่พ้นหลอดเลือด
-   ตอนเป็นหลอดยาวปุ่มอยู่ใต้หลอดพอดี แต่แผงกลมสูงกว่านั้นราว 60 px — ดู POD */
+/* ต่ำกว่าแผงผู้เล่นทั้งก้อน (วง + จุดบอกยก + ชื่อ) ซึ่งจบที่ราว y=125 ของผืนเกมสูง 720 = 17.4%
+   **คิดเป็นเปอร์เซ็นต์ของจอ ไม่ใช่ px** เพราะ px ของ DOM กับพิกัดที่ HUD วาดไม่ใช่หน่วยเดียวกัน:
+   ผืนเกมสูง 720 เสมอแล้วถูกย่อลงมาเท่าความสูงจอจริง (มือถือ 414 px = ย่อ 0.575 เท่า)
+   ตั้งเป็น px แล้วมันจะถูกบนคอมและต่ำเกินไปครึ่งหนึ่งบนมือถือ ซึ่งเคยเป็นแบบนั้นมาแล้ว */
 #sc-mute { position:absolute; z-index:31; left:calc(10px + env(safe-area-inset-left,0px));
-  top:calc(152px + env(safe-area-inset-top,0px)); width:38px; height:38px; border-radius:10px;
+  top:calc(18dvh + env(safe-area-inset-top,0px)); width:38px; height:38px; border-radius:10px;
   display:grid; place-items:center; font-size:17px; line-height:1; padding:0; }
 #sc-tune { display:none; position:absolute; right:calc(12px + env(safe-area-inset-right,0px)); top:calc(100px + env(safe-area-inset-top,0px)); width:250px; max-height:60%; overflow-y:auto; background:rgba(12,17,28,.9); border:1px solid rgba(233,227,214,.25); border-radius:12px; padding:10px 12px; font:13px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6; z-index:16; }
 #sc-tune.open { display:block; }
@@ -587,8 +589,12 @@ const OVERLAY_CSS = `
    จึงต้อง "ย่อฝั่งขวาก่อน" (ดู media query ข้างล่าง) แล้วค่อยยก เหลือ 20%
    ฝั่งซ้ายเป็นแป้นทิศสูงแค่ครึ่งเดียว ยกเพิ่มได้อีก จึงใส่ margin ให้ต่างหาก
    env() เป็นพื้นล่างเผื่อจอเตี้ยมาก ๆ · บรรทัด vh ไว้ให้เบราว์เซอร์เก่าที่ยังไม่รู้จัก dvh */
-#sc-touch { padding-bottom: max(20vh, calc(14px + env(safe-area-inset-bottom,0px))); }
-#sc-touch { padding-bottom: max(20dvh, calc(14px + env(safe-area-inset-bottom,0px))); }
+/* **เหตุผลที่ต้องยก 20% หมดอายุไปแล้ว** ตอนที่เขียนไว้ ตัวละครยืนอยู่ที่ 86% ของความสูงจอ
+   ซึ่งคือแถบเดียวกับที่นิ้วโป้งพาดอยู่พอดี ตอนนี้กล้องเล็งให้ลำตัวอยู่ที่ราว 53% แล้ว (ดู CAM.viewBot)
+   ใต้ตัวละครลงมาเป็นหมอกกับฟ้า ไม่ใช่พื้นที่เล่น นิ้วบังตรงนั้นไม่เสียอะไรเลย
+   เหลือไว้แค่พ้นแถบ gesture / ขีดโฮม ของมือถือ ซึ่งยังกินการแตะอยู่ถ้าชิดขอบเกินไป */
+#sc-touch { padding-bottom: max(7vh, calc(24px + env(safe-area-inset-bottom,0px))); }
+#sc-touch { padding-bottom: max(7dvh, calc(24px + env(safe-area-inset-bottom,0px))); }
 body.sc-touch #sc-touch { display:flex; }
 /* กล่องที่ห่อปุ่มต้องปิด double-tap zoom ด้วย ไม่ใช่แค่ตัวปุ่ม — นิ้วที่พลาดลงช่องว่างระหว่างปุ่ม
    สองทีติดกันคือสาเหตุที่จอซูมเองตอนกดรัว ๆ (ดูคอมเมนต์ touch-action ใน index.html) */
@@ -651,36 +657,40 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
    ปล่อยให้กล่องรับการแตะทั้งใบ = แตะที่ว่างแล้วโดนกลืนไปเฉย ๆ จึงให้เฉพาะตัวปุ่มรับ */
 #sc-touch .acts { --u:1; position:relative; pointer-events:none;
   width:calc(216px * var(--u)); height:calc(214px * var(--u)); }
-#sc-touch .hex { position:absolute; pointer-events:auto; padding:0; border:none; background:none; box-shadow:none;
-  display:grid; place-items:center; line-height:1; color:#f2ede3;
-  text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.6); }
-/* วงแหวนหกเหลี่ยม = ตัวปุ่มถูก clip เป็นหกเหลี่ยมสีทึบ แล้ว ::before เจาะกลางด้วยหกเหลี่ยมเล็กกว่า
-   ทำสองชั้นแบบนี้เพราะ border ไม่ตามรูป clip-path (มันตัดหลังวาดขอบ ขอบเลยหายไปครึ่งหนึ่ง) */
-#sc-touch .hex::before { content:''; position:absolute; inset:calc(3px * var(--u)); z-index:-1;
-  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
-  background:rgba(12,17,28,.62); }
-#sc-touch .hex { clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
-#sc-touch .hex:active::before { background:rgba(242,237,227,.3); }
+/* ── ปุ่มกลมแบบ Kenney ──
+   เคยเป็นหกเหลี่ยมโปร่งกลาง เปลี่ยนเป็นวงกลมทึบอ่อน ๆ ตามชุด Onscreen Controls ของ Kenney
+   ซึ่งเป็นภาษาปุ่มที่เกมมือถือใช้กันจนคนเล่นรู้จักอยู่แล้ว — ไม่ต้องเรียนรู้ใหม่
+   วาดด้วย CSS + SVG ในไฟล์ ไม่ได้โหลดรูปจากชุดของเขา (เลี่ยงไฟล์เพิ่มและเรื่องเครดิต)
+
+   พื้นเข้มโปร่ง + ขอบสว่างบาง ๆ ให้ลอยอยู่ได้ทั้งบนฟ้ากลางวันและบนหินเข้ม
+   **สียังแยกต่อท่าเหมือนเดิม** แต่ย้ายไปอยู่ที่ "ไอคอนกับขอบ" แทนที่จะถมทั้งปุ่ม
+   บนจอที่ไม่มีสัมผัสตอบกลับ คนเล่นจำ "ตำแหน่ง + สี" ทิ้งสีไปคือทิ้งครึ่งหนึ่งของสิ่งที่เขาจำ
+   แต่ถมทั้งปุ่มหกปุ่มก็บังพื้นที่เล่นมากเกิน — เอาสีไว้ที่ขอบได้ทั้งสองอย่าง */
+#sc-touch .hex { position:absolute; pointer-events:auto; padding:0; box-shadow:none;
+  display:grid; place-items:center; line-height:1; border-radius:50%;
+  background:rgba(16,20,30,.55); border:calc(2.5px * var(--u)) solid currentColor;
+  backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
+  box-shadow:0 calc(2px * var(--u)) calc(10px * var(--u)) rgba(0,0,0,.45), inset 0 0 calc(12px * var(--u)) rgba(0,0,0,.35);
+  transition:transform .06s ease, background .06s ease; }
+#sc-touch .hex svg { width:52%; height:52%; display:block; fill:currentColor;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
+/* กดแล้วต้องเห็นว่ากด — จอสัมผัสไม่มีแรงสะท้อนกลับ ปุ่มที่ไม่ตอบสนองอ่านว่า "กดไม่ติด" */
+#sc-touch .hex:active { background:rgba(242,237,227,.38); transform:scale(.93); }
 
 /* ชั้นใน — ท่าที่กดตลอดเวลา */
 #sc-touch .atk { width:calc(78px * var(--u)); height:calc(78px * var(--u));
-  right:calc(4px * var(--u)); bottom:calc(4px * var(--u));
-  font:700 calc(19px * var(--u))/1 var(--font); background:#c8323c; }
+  right:calc(4px * var(--u)); bottom:calc(4px * var(--u)); color:#ff6b73; }
 #sc-touch .jmp { width:calc(68px * var(--u)); height:calc(68px * var(--u));
-  right:calc(4px * var(--u)); bottom:calc(88px * var(--u));
-  font:700 calc(26px * var(--u))/1 var(--font); background:#5fd08a; }
+  right:calc(4px * var(--u)); bottom:calc(88px * var(--u)); color:#7fe3a6; }
 #sc-touch .blk { width:calc(68px * var(--u)); height:calc(68px * var(--u));
-  right:calc(88px * var(--u)); bottom:calc(14px * var(--u));
-  font:700 calc(17px * var(--u))/1 var(--font); background:#5aa0ff; }
+  right:calc(88px * var(--u)); bottom:calc(14px * var(--u)); color:#7fbaff; }
 
 /* ชั้นนอก — สกิลสามช่อง กดเป็นจังหวะ ไม่ใช่ทุกวินาที จึงเล็กกว่าและอยู่ไกลกว่า
    สล็อตที่ยังไม่มีสกิลขึ้นจางและกดไม่ได้ จะได้รู้ว่าเตรียมที่ไว้ให้แล้วแต่ยังว่าง */
 #sc-touch .skills { touch-action:none; }
 #sc-touch .sk { width:calc(52px * var(--u)); height:calc(52px * var(--u));
-  font:700 calc(17px * var(--u))/1 var(--font); background:#ffd166; color:#1a1208;
-  text-shadow:0 1px 2px rgba(255,255,255,.45); }
-#sc-touch .sk::before { background:rgba(12,17,28,.72); }
-#sc-touch .sk { color:#ffd166; }
+  font:700 calc(19px * var(--u))/1 var(--font); color:#ffd166;
+  text-shadow:0 1px 3px rgba(0,0,0,.9); }
 #sc-touch .s1 { right:calc(160px * var(--u)); bottom:calc(84px * var(--u)); }
 #sc-touch .s2 { right:calc(100px * var(--u)); bottom:calc(134px * var(--u)); }
 #sc-touch .s3 { right:calc(32px * var(--u)); bottom:calc(160px * var(--u)); }
@@ -729,8 +739,11 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
    แต่ "ออกจากห้อง" เป็นสิ่งที่ต้องทำได้ตอนต่อเน็ตมากกว่าตอนเล่นคนเดียวด้วยซ้ำ */
 #sc-pause-btn { position:absolute; z-index:31; width:38px; height:38px; border-radius:10px;
   display:grid; place-items:center; font-size:15px; line-height:1; padding:0;
-  left:calc(54px + env(safe-area-inset-left,0px)); top:calc(152px + env(safe-area-inset-top,0px)); }
-body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
+  left:calc(54px + env(safe-area-inset-left,0px)); top:calc(18dvh + env(safe-area-inset-top,0px)); }
+/* ตอนแผงเลือกตัวเปิดอยู่ ปุ่มสองตัวนี้ลอยทับการ์ดใบซ้ายบนพอดี (z-index สูงกว่าแผงโดยตั้งใจ
+   เพราะเพลงเล่นตั้งแต่หน้านี้ ต้องปิดเสียงได้) ย้ายไปมุมบนสุดซึ่งเป็นที่ว่างข้างหัวข้อแทนการซ่อน */
+body.sc-picking #sc-mute,
+body.sc-picking #sc-pause-btn { top:calc(6px + env(safe-area-inset-top,0px)); }
 
 #sc-select { position:absolute; inset:0; z-index:30; display:none; align-items:center; justify-content:center;
   background:rgba(8,12,20,.82); backdrop-filter:blur(3px); font:14px "Chakra Petch", system-ui, sans-serif; color:#e9e3d6;
@@ -780,10 +793,14 @@ body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
 #sc-select .card .pic { position:relative; overflow:hidden; flex:0 0 auto; width:clamp(44px,9vw,60px);
   height:clamp(58px,13dvh,84px); border-radius:8px; background:rgba(8,12,20,.5); }
 #sc-select .card .pic i { position:absolute; display:block; image-rendering:pixelated; background-repeat:no-repeat; }
+#sc-select .card .info { display:flex; flex-direction:column; gap:1px; min-width:0; }
 #sc-select .card .name { font-weight:700; font-size:clamp(13px,2.6dvh,17px); letter-spacing:.5px; }
+/* ฉายาคือชื่อในตำนาน (Nyx / Helios / ...) ส่วนชื่อใหญ่คือชื่อเล่นของคนที่เล่นตัวนั้น — ดู CHARACTERS */
 #sc-select .card .title { color:#ffd166; font-style:italic; font-size:clamp(10px,2dvh,12px); }
-#sc-select .card .skills b { color:#e9e3d6; font-weight:600; }
-#sc-select .card .skills { color:#9aa3b5; font-size:clamp(9px,1.8dvh,11px); line-height:1.35; margin-top:2px; }
+#sc-select .card .tip b { color:#e9e3d6; font-weight:600; }
+#sc-select .card .tip,
+#sc-select .card .skills { color:#9aa3b5; font-size:clamp(9px,1.8dvh,11px); line-height:1.35; }
+#sc-select .card .skills { margin-top:2px; color:#b9c1d0; }
 /* การ์ดตัวที่ยังไม่ปล่อย — ขอบประ + จางลง อ่านออกทันทีว่ายังกดไม่ได้ ไม่ต้องลองกดก่อน */
 #sc-select .card.soon { opacity:.5; border-style:dashed; cursor:default; }
 #sc-select .card.soon .name { color:#9aa3b5; letter-spacing:1px; }
@@ -791,6 +808,36 @@ body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
    แต่เงาเป็นภาพย่อธรรมดา เปิดพิกเซลไว้แล้วขอบหยักเป็นบันได */
 #sc-select .card.soon .pic i { inset:0; width:100%; height:100%;
   background-size:contain; background-position:center bottom; image-rendering:auto; }
+
+/* ── จอเตี้ย (มือถือแนวนอน สูงราว 390-420 px): การ์ดใหญ่ขึ้น เลื่อนน้อยลง ──
+   ผู้เล่นรายงานว่า "เอานิ้วเลื่อนลำบาก" ซึ่งมีสองสาเหตุคนละเรื่อง แก้แยกกัน:
+   1. **กล่องเลื่อนเตี้ยเกิน** (46dvh = 190 px) ต่ำกว่าความสูงการ์ดแถวเดียวนิดเดียว
+      นิ้วจึงต้องลากในช่องแคบ ๆ ซ้ำหลายครั้ง — ขยายกล่องแล้วเห็นเกือบครบในหน้าเดียว
+   2. **การ์ดสูงเพราะข้อความตัดบรรทัดเยอะ** การ์ดแคบ -> คำอธิบายไทยตัดเป็น 3-4 บรรทัด
+      ขยายการ์ดให้กว้างขึ้นทำให้ "เตี้ยลง" ซึ่งฟังดูย้อนแย้งแต่เป็นแบบนั้นจริง
+
+   ที่ว่างมาจากการซ่อนบรรทัดคำแนะนำ (แตะที่ช่องด้านบน...) ซึ่งอ่านครั้งเดียวก็พอ
+   และตัดคำอธิบายเหลือสองบรรทัด — ความสูงการ์ดจึงคาดเดาได้ ไม่ขึ้นกับความยาวข้อความของแต่ละตัว */
+@media (max-height: 520px) {
+  #sc-select .wrap { gap:max(.8dvh,4px); padding:max(1dvh,5px) 10px; }
+  #sc-select h2 { font-size:15px; }
+  #sc-select .hint { display:none; }
+  #sc-select .grid { max-height:66dvh; gap:7px; }
+  #sc-select .card { width:clamp(200px,31%,300px); padding:7px 10px 7px 6px; gap:9px; }
+  #sc-select .card .pic { width:58px; height:68px; }
+  #sc-select .card .name { font-size:16px; }
+  #sc-select .card .title { font-size:11px; }
+  #sc-select .card .tip, #sc-select .card .skills { font-size:10px; }
+  /* ตัดคำอธิบายที่สองบรรทัด ชื่อสกิลที่หนึ่งบรรทัด — การ์ดทุกใบจึงสูงเท่ากันเป๊ะ */
+  #sc-select .card .tip { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+    overflow:hidden; }
+  #sc-select .card .skills { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  /* บีบแถวอื่นให้เตี้ยลงทุกแถว เอาที่ว่างไปให้ตารางการ์ด — ตารางถูกบีบด้วยของรอบตัว
+     ไม่ได้ถูกบีบด้วย max-height ของมันเอง เพิ่ม max-height อย่างเดียวจึงไม่มีผล */
+  #sc-select .slot { padding:3px 8px; }
+  #sc-select .rand { padding:5px 14px; }
+  #sc-select .go { padding:7px 16px; }
+}
 
 #sc-select .modes { display:flex; gap:6px; }
 #sc-select button { font:600 clamp(12px,2.4dvh,15px) "Chakra Petch", system-ui, sans-serif; color:#e9e3d6;
@@ -854,9 +901,9 @@ const OVERLAY_HTML = `
 <div id="sc-touch">
   <div class="stick"><div class="ring"></div><div class="knob"></div></div>
   <div class="acts">
-    <button class="hex atk" data-code="KeyJ">ตี</button>
-    <button class="hex jmp" data-code="Space">&#8593;</button>
-    <button class="hex blk" data-code="KeyL">กัน</button>
+    <button class="hex atk" data-code="KeyJ" aria-label="ตี"><svg viewBox="0 0 24 24"><path d="M19.5 2.2 12 9.7l2.3 2.3 7.5-7.5-.2-2.3zM9.9 11.8 3.3 18.4l-.9 3.2 3.2-.9 6.6-6.6zM6.6 15.1l2.3 2.3-1.1 1.1-2.3-2.3z"/></svg></button>
+    <button class="hex jmp" data-code="Space" aria-label="กระโดด"><svg viewBox="0 0 24 24"><path d="M12 2.6 4.4 10.2l2.1 2.1L12 6.9l5.5 5.4 2.1-2.1zM12 11.3 4.4 18.9l2.1 2.1L12 15.6l5.5 5.4 2.1-2.1z"/></svg></button>
+    <button class="hex blk" data-code="KeyL" aria-label="กัน"><svg viewBox="0 0 24 24"><path d="M12 1.8 3.6 5v6.4c0 5.2 3.6 9.4 8.4 10.8 4.8-1.4 8.4-5.6 8.4-10.8V5zm0 2.4 6 2.3v4.9c0 4-2.6 7.2-6 8.4-3.4-1.2-6-4.4-6-8.4V6.5z"/></svg></button>
     <div class="skills">
       <button class="hex sk s1" data-code="Digit1" data-slot="1">1</button>
       <button class="hex sk s2" data-code="Digit2" data-slot="2">2</button>
@@ -1731,9 +1778,12 @@ class ScrambleScene extends Phaser.Scene {
       card.className = 'card';
       card.dataset.char = id;
       card.dataset.sfx = 'pick';
-      card.innerHTML = `<span class="pic"></span><span><span class="name">${ch.label}</span>`
-        + `<br><span class="title">${art.title ?? ''}</span>`
-        + `<br><span class="skills"><b>${art.role ?? ''}</b> · ${art.tip ?? ''}<br>${skills}</span></span>`;
+      // แยกเป็นชิ้น ๆ ไม่ใช้ <br> — จอเตี้ยต้องย่อ/ตัดบรรทัดทีละชิ้น ซึ่ง <br> ทำให้ทำไม่ได้
+      card.innerHTML = `<span class="pic"></span><span class="info">`
+        + `<span class="name">${ch.label}</span>`
+        + `<span class="title">${art.title ?? ''}</span>`
+        + `<span class="tip"><b>${art.role ?? ''}</b> · ${art.tip ?? ''}</span>`
+        + `<span class="skills">${skills}</span></span>`;
       card.addEventListener('pointerdown', (e) => { e.preventDefault(); this._pickChar(id); });
       this.selGrid.appendChild(card);
     }
@@ -1745,8 +1795,8 @@ class ScrambleScene extends Phaser.Scene {
       card.dataset.soon = '1';
       card.disabled = true;
       card.innerHTML = `<span class="pic"><i style="background-image:url(${soon.pic})"></i></span>`
-        + `<span><span class="name">${soon.name}</span>`
-        + `<br><span class="skills">${soon.tip}</span></span>`;
+        + `<span class="info"><span class="name">${soon.name}</span>`
+        + `<span class="tip">${soon.tip}</span></span>`;
       this.selGrid.appendChild(card);
     }
     // ฝั่งที่กำลังเลือก — ตอนต่อเน็ตล็อกไว้ที่ฝั่งตัวเอง กดสลับไม่ได้

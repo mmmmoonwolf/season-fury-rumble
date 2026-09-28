@@ -727,18 +727,26 @@ const MOMUS_SKILLS = ['box1', 'snap1', 'full1'];
 // สกิล 2 ถูกที่สุดเพราะเป็นปุ่มหนีด้วย แต่ก็ทิ้งระเบิดไว้สองจุดทุกครั้งที่กด
 const MOMUS_SKILL_CD = [150, 120, 0];
 
+/* ชื่อที่โชว์ (`label`) คือ **ชื่อเล่นของคนที่เล่นตัวนั้น** ไม่ใช่ชื่อในตำนาน
+ *
+ * เกมนี้ทำให้กลุ่มเพื่อนเล่นกันเอง ชื่อที่ควรขึ้นบนหัวจอตอนชนะจึงเป็นชื่อเพื่อน ไม่ใช่ชื่อเทพ
+ * ชื่อในตำนาน (Nyx / Helios / ...) ย้ายไปเป็น**ฉายา** ใต้ชื่อ (ดู CHAR_ART.title ใน ScrambleScene)
+ *
+ * **`id` ไม่เปลี่ยนเด็ดขาด** — มันคือคีย์ของอัตลาส (`scnyx`) ชื่อไฟล์ชีต และค่าที่ส่งข้ามเน็ต
+ * เปลี่ยนเมื่อไหร่ = อาร์ตหาย + แท็บที่เปิดค้างเล่นกับแท็บใหม่ไม่ได้
+ */
 const CHARACTERS = {
-  nyx: { id: 'nyx', label: 'NYX', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
-  helios: { id: 'helios', label: 'HELIOS', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
-  alecto: { id: 'alecto', label: 'ALECTO', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
+  nyx: { id: 'nyx', label: 'BOMB', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
+  helios: { id: 'helios', label: 'MARCH', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
+  alecto: { id: 'alecto', label: 'KUNJAE', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
     skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP, altMoves: ALECTO_ALT },
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
   // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
-  atlas: { id: 'atlas', label: 'ATLAS', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
+  atlas: { id: 'atlas', label: 'TEEMEE', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
     skillCd: ATLAS_SKILL_CD, hp: 130, resist: 0.5 },
-  orpheus: { id: 'orpheus', label: 'ORPHEUS', moves: ORPHEUS_MOVES, skills: ORPHEUS_SKILLS,
+  orpheus: { id: 'orpheus', label: 'OAT', moves: ORPHEUS_MOVES, skills: ORPHEUS_SKILLS,
     skillCd: ORPHEUS_SKILL_CD },
-  momus: { id: 'momus', label: 'MOMUS', moves: MOMUS_MOVES, skills: MOMUS_SKILLS,
+  momus: { id: 'momus', label: 'DEAR', moves: MOMUS_MOVES, skills: MOMUS_SKILLS,
     skillCd: MOMUS_SKILL_CD },
 };
 const DEFAULT_CHAR = 'nyx';

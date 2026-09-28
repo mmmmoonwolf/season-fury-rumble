@@ -5,6 +5,7 @@
 // พอช่องถูกสร้างจาก roster จริง ความถูกต้องย้ายไปอยู่ในโค้ดที่รันตอนกดปุ่ม
 // ซึ่งอ่านจากไฟล์ไม่เห็น — ต้องรันจริงถึงจะจับได้ว่ากดเปลี่ยนโหมดแล้วช่องไม่ตาม
 import "./phaser_stub.mjs";
+import fs from "fs";
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 
@@ -112,4 +113,62 @@ const whos = (sc) => sc.selSlots.map((sl) => sl.querySelector('.who').textConten
   const sc = mk('solo');
   sc._drawSelect();
   ok(tags(sc).join() === 'คุณ,หุ่นซ้อม', `โหมดซ้อมป้ายเดิม (${tags(sc).join()})`);
+}
+
+// ══ ชื่อที่โชว์คือชื่อเล่นของคนที่เล่น ฉายาคือชื่อในตำนาน ═══════════════════════
+//
+// เกมนี้ทำให้กลุ่มเพื่อนเล่นกันเอง ชื่อที่ควรขึ้นตอนชนะคือชื่อเพื่อน ไม่ใช่ชื่อเทพ
+// **แต่ `id` ห้ามเปลี่ยนเด็ดขาด** — มันคือคีย์ของอัตลาส (`scnyx`) ชื่อไฟล์ชีต และค่าที่ส่งข้ามเน็ต
+// เปลี่ยนเมื่อไหร่ = อาร์ตหายทั้งตัว และแท็บที่เปิดค้างเล่นกับแท็บใหม่ไม่ได้
+{
+  const { CHARACTERS } = await import(G + "/core.js");
+  const { SCRAMBLE_COLORS } = await import(G + "/ScrambleScene.js");
+  void SCRAMBLE_COLORS;
+  const src = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  /** ฉายาของตัวละครนั้นตามที่เขียนไว้ใน CHAR_ART */
+  const titleOf = (id) => {
+    const at = src.indexOf(`  ${id}: {`, src.indexOf("const CHAR_ART"));
+    return src.slice(at, at + 600).match(/title: '([^']+)'/)?.[1] ?? "";
+  };
+
+  const WANT = { nyx: ['BOMB', 'Nyx'], helios: ['MARCH', 'Helios'], alecto: ['KUNJAE', 'Alecto'],
+    atlas: ['TEEMEE', 'Atlas'], orpheus: ['OAT', 'Orpheus'], momus: ['DEAR', 'Momus'] };
+
+  const wrong = [];
+  for (const [id, [real, myth]] of Object.entries(WANT)) {
+    const ch = CHARACTERS[id];
+    if (!ch) { wrong.push(`${id}: ไม่มีตัวนี้แล้ว`); continue; }
+    if (ch.id !== id) wrong.push(`${id}: id เปลี่ยนเป็น ${ch.id} — อาร์ตจะหายทั้งตัว`);
+    if (ch.label !== real) wrong.push(`${id}: ชื่อเป็น ${ch.label} ควรเป็น ${real}`);
+    if (titleOf(id) !== myth) wrong.push(`${id}: ฉายาเป็น "${titleOf(id)}" ควรเป็น ${myth}`);
+  }
+  ok(wrong.length === 0, wrong.length ? `ชื่อไม่ตรง — ${wrong.join(' · ')}`
+    : `ทั้ง ${Object.keys(WANT).length} ตัวใช้ชื่อเล่นเป็นชื่อ และชื่อในตำนานเป็นฉายา`);
+
+  // ฉายาเดิม ("The Fury of ...") ต้องไม่หลงเหลืออยู่ในที่ที่คนเล่นเห็น
+  ok(!/title: 'The (Fury|Jester)/.test(src), "ไม่มีฉายา The Fury/The Jester หลงเหลือใน CHAR_ART");
+
+  // ชื่อห้ามซ้ำกัน — ซ้ำแล้วหน้าเลือกตัวกับป้ายผู้ชนะแยกไม่ออกว่าใครเป็นใคร
+  const labels = Object.values(CHARACTERS).map((c) => c.label);
+  ok(new Set(labels).size === labels.length, `ชื่อไม่ซ้ำกัน (${labels.join(', ')})`);
+}
+
+// ── การ์ดต้องแยกคำอธิบายกับชื่อสกิลออกจากกัน ──
+//
+// รวมอยู่ก้อนเดียวคั่นด้วย <br> แล้วจอเตี้ยย่อ/ตัดบรรทัดทีละชิ้นไม่ได้
+// ซึ่งคือสิ่งที่ทำให้การ์ดสูงจนต้องเลื่อนนิ้วในช่องแคบ ๆ (ผู้เล่นรายงานมาเอง)
+{
+  const src = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const build = src.slice(src.indexOf('card.className = \'card\''), src.indexOf('this.selGrid.appendChild(card)'));
+  ok(/class="tip"/.test(build) && /class="skills"/.test(build), "คำอธิบายกับชื่อสกิลเป็นคนละชิ้น");
+  // ตัดคอมเมนต์ทิ้งก่อน ไม่งั้นด่านนี้ไปจับคำว่า <br> ในคำอธิบายที่บอกว่า "ไม่ใช้ <br>" เอง
+  const code = build.replace(/\/\/[^\n]*/g, '');
+  ok(!/<br>/.test(code), "ไม่ใช้ <br> ในการ์ด — ตัดบรรทัดทีละชิ้นไม่ได้");
+  const short = src.match(/@media \(max-height: 520px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  ok(short.length > 0, "มีชุดกฎสำหรับจอเตี้ย");
+  ok(/-webkit-line-clamp:\s*2/.test(short), "จอเตี้ยตัดคำอธิบายที่สองบรรทัด การ์ดจึงสูงเท่ากันทุกใบ");
+  ok(/\.hint \{ display:none/.test(short), "ซ่อนบรรทัดคำแนะนำ เอาที่ว่างไปให้การ์ด");
+  const gridH = +(short.match(/\.grid \{ max-height:(\d+)dvh/)?.[1] ?? 0);
+  const baseH = +(src.match(/#sc-select \.grid \{[^}]*max-height:min\((\d+)dvh/)?.[1] ?? 0);
+  ok(gridH > baseH, `กล่องเลื่อนสูงขึ้นจากเดิม (${baseH}dvh -> ${gridH}dvh)`);
 }
