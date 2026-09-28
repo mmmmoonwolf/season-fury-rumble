@@ -42,6 +42,7 @@ const PRECACHE = [
   './src/modes/scramble/ScrambleScene.js',
   './assets/icons/icon-192.png',
   './assets/icons/icon-512.png',
+  './assets/ui/soon_01.png',   // เงาตัวที่ยังไม่ปล่อย อยู่ในแผงเลือกตัวที่เปิดออฟไลน์ก็เห็น
   // ฟอนต์ต้องอยู่ในนี้ ไม่งั้นเปิดออฟไลน์แล้วตัวหนังสือเปลี่ยนหน้าตาไปเป็นฟอนต์เครื่อง
   // ซึ่งดูเหมือนหน้าพัง มากกว่าดูเหมือน "ไม่มีเน็ต"
   './vendor/fonts/chakra-petch-400-latin.woff2',

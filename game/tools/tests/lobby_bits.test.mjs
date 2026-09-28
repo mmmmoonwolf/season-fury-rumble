@@ -140,3 +140,49 @@ const S = await import(new URL("../../src/net/session.js", import.meta.url).href
   off._pickRandom();
   ok(off.picked.length === 0, "กดตอนไม่ได้อยู่หน้าเลือกตัวแล้วไม่ทำอะไร");
 }
+
+// ══ การ์ดตัวละครที่ยังไม่ปล่อย (coming soon) ═══════════════════════════════════
+//
+// ของแบบนี้พังแบบเดียวกันเสมอ: เอาไปใส่ในรายชื่อตัวละครจริงเพื่อความง่าย
+// แล้วมันไหลไปทุกที่ที่อ่านรายชื่อ — ปุ่มสุ่ม · ปุ่มสลับตัว · ตัวโหลดอัตลาส · เทสต์อาร์ต
+// แล้วต้องไล่ใส่เงื่อนไขยกเว้นทีละที่ ซึ่งลืมง่ายกว่าการไม่ใส่ตั้งแต่แรก
+{
+  const G = new URL("../../src/modes/scramble", import.meta.url).href;
+  const { CHARACTERS } = await import(G + "/core.js");
+  const fsx = await import("fs");
+
+  const soon = scene.match(/const COMING_SOON = \[([\s\S]*?)\];/)?.[1] ?? "";
+  ok(soon.length > 0, "มีรายการตัวที่ยังไม่ปล่อย");
+  const pics = [...soon.matchAll(/pic: '([^']+)'/g)].map((m) => m[1]);
+  ok(pics.length >= 1, `มี ${pics.length} ตัว`);
+
+  // ห้ามอยู่ใน CHARACTERS — ข้อนี้คือข้อที่สำคัญที่สุดในก้อนนี้
+  const names = [...soon.matchAll(/name: '([^']+)'/g)].map((m) => m[1]);
+  for (const n of names)
+    ok(!Object.keys(CHARACTERS).includes(n), `"${n}" ไม่อยู่ในรายชื่อตัวละครจริง`);
+  ok(Object.keys(CHARACTERS).length === 6, `ตัวละครที่เล่นได้ยังมี ${Object.keys(CHARACTERS).length} ตัวเท่าเดิม`);
+
+  // ไฟล์เงาต้องมีจริง — ชี้ไปไฟล์ที่ไม่มี = การ์ดว่างเปล่า ดูเหมือนอาร์ตโหลดไม่ขึ้น
+  for (const pic of pics)
+    ok(fsx.existsSync(root + pic), `มีไฟล์ ${pic}`);
+  // อยู่นอก assets/characters/ เพราะโฟลเดอร์นั้น service worker ไม่โหลดล่วงหน้า (30 MB)
+  // แต่เงาต้องเห็นตั้งแต่เปิดแผงครั้งแรกแม้ไม่มีเน็ต
+  for (const pic of pics)
+    ok(!pic.includes('assets/characters/'), `${pic} ไม่ปนกับชีตตัวละครที่โหลดทีหลัง`);
+  const sw = fsx.readFileSync(root + "sw.js", "utf8");
+  for (const pic of pics)
+    ok(sw.includes(pic), `${pic} อยู่ในรายการโหลดล่วงหน้า`);
+
+  // การ์ดต้องกดไม่ได้จริง ไม่ใช่แค่ไม่ผูก event
+  ok(/card\.disabled = true;/.test(scene), "ตั้ง disabled จริง");
+  ok(/card\.dataset\.soon = '1';/.test(scene), "ทำเครื่องหมายไว้ให้โค้ดอื่นข้ามได้");
+  ok(/if \(card\.dataset\.soon\) continue;/.test(scene), "ตัววาดแผงข้ามการ์ดนี้ ไม่ไปหาตัวละครที่ไม่มี");
+  ok(/\.card\.soon \{[^}]*border-style:dashed/.test(scene), "ขอบประ อ่านออกว่ายังกดไม่ได้โดยไม่ต้องลองกด");
+  ok(/\.card\.soon \{[^}]*opacity:\.5/.test(scene), "และจางลง");
+  // .pic i ของการ์ดปกติตั้ง image-rendering:pixelated ไว้ให้เฟรมอัตลาสคม
+  // เงาเป็นภาพย่อธรรมดา เปิดพิกเซลไว้แล้วขอบหยักเป็นบันได
+  ok(/\.card\.soon \.pic i \{[^}]*image-rendering:auto/.test(scene), "ทับ image-rendering ของการ์ดปกติ");
+
+  // ปุ่มสุ่มต้องไม่สุ่มไปโดนตัวที่ยังไม่ปล่อย (มันสุ่มจาก CHARACTERS ซึ่งไม่มีตัวนี้อยู่แล้ว)
+  ok(/const ids = Object\.keys\(CHARACTERS\);/.test(scene), "ปุ่มสุ่มอ่านจาก CHARACTERS เท่านั้น");
+}

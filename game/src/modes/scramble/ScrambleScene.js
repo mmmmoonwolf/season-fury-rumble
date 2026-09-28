@@ -250,6 +250,19 @@ const SCRIM_TOP = 150, SCRIM_SOLID = 96, SCRIM_BOT = 96;
 /** คีย์จำโหมดนักพัฒนา — แยกจากคีย์ปิดเสียง (sfr.muted) คนละเรื่องกัน */
 const DEV_STORE = 'sfr.dev';
 
+/** ตัวละครที่ยังไม่ปล่อย — โชว์เป็นเงาในแผงเลือกตัว กดไม่ได้
+ *
+ *  **ไม่ได้อยู่ใน CHARACTERS โดยตั้งใจ** ใส่เข้าไปแล้วมันจะไหลไปทุกที่ที่อ่านรายชื่อตัวละคร:
+ *  ปุ่มสุ่ม · ปุ่มสลับตัว (C/V) · ตัวโหลดอัตลาส · เทสต์ที่ไล่ตรวจอาร์ตทุกตัว
+ *  แล้วต้องไปใส่เงื่อนไขยกเว้นทีละที่ ซึ่งลืมง่ายกว่าการไม่ใส่ตั้งแต่แรก
+ *
+ *  โชว์เป็น**เงา** ไม่ใช่รูปเต็ม — เกมต่อสู้ทำแบบนี้กันเพราะมันบอกว่า "มีคนมาเพิ่ม"
+ *  โดยไม่ผูกมัดกับอาร์ตชุดสุดท้าย ซึ่งยังเปลี่ยนได้ตลอดจนกว่าจะประกอบชีตเสร็จ
+ */
+const COMING_SOON = [
+  { pic: 'assets/ui/soon_01.png', name: 'เร็ว ๆ นี้', tip: 'ตัวละครใหม่กำลังมา' },
+];
+
 /** แถวบนของ HUD กินลงมาถึง y เท่าไหร่ และจางเหลือเท่าไหร่ตอนมีคนยืนอยู่ในนั้น
  *
  *  ชั้น 5 (เท้า y=160) สูงพอที่หัวตัวละครจะเข้ามาในแถบนี้ ซึ่ง**ตั้งใจให้เป็นที่เสี่ยง**
@@ -616,6 +629,13 @@ body.sc-net #sc-pause-btn { top:calc(60px + env(safe-area-inset-top,0px)); }
 #sc-select .card .title { color:#ffd166; font-style:italic; font-size:clamp(10px,2dvh,12px); }
 #sc-select .card .skills b { color:#e9e3d6; font-weight:600; }
 #sc-select .card .skills { color:#9aa3b5; font-size:clamp(9px,1.8dvh,11px); line-height:1.35; margin-top:2px; }
+/* การ์ดตัวที่ยังไม่ปล่อย — ขอบประ + จางลง อ่านออกทันทีว่ายังกดไม่ได้ ไม่ต้องลองกดก่อน */
+#sc-select .card.soon { opacity:.5; border-style:dashed; cursor:default; }
+#sc-select .card.soon .name { color:#9aa3b5; letter-spacing:1px; }
+/* ทับ image-rendering:pixelated ของการ์ดปกติ — นั่นมีไว้ให้เฟรมในอัตลาสคม
+   แต่เงาเป็นภาพย่อธรรมดา เปิดพิกเซลไว้แล้วขอบหยักเป็นบันได */
+#sc-select .card.soon .pic i { inset:0; width:100%; height:100%;
+  background-size:contain; background-position:center bottom; image-rendering:auto; }
 
 #sc-select .modes { display:flex; gap:6px; }
 #sc-select button { font:600 clamp(12px,2.4dvh,15px) "Chakra Petch", system-ui, sans-serif; color:#e9e3d6;
@@ -1284,6 +1304,18 @@ class ScrambleScene extends Phaser.Scene {
       card.addEventListener('pointerdown', (e) => { e.preventDefault(); this._pickChar(id); });
       this.selGrid.appendChild(card);
     }
+    // ต่อท้ายด้วยตัวที่ยังไม่ปล่อย — disabled จริง ๆ ไม่ใช่แค่ไม่ผูก event
+    // ปุ่มที่ disabled ถูกข้ามโดยตัวเล่นเสียงปุ่มด้วย (ดู wireUiSfx) จึงไม่มีเสียงตอนกดโดน
+    for (const soon of COMING_SOON) {
+      const card = document.createElement('button');
+      card.className = 'card soon';
+      card.dataset.soon = '1';
+      card.disabled = true;
+      card.innerHTML = `<span class="pic"><i style="background-image:url(${soon.pic})"></i></span>`
+        + `<span><span class="name">${soon.name}</span>`
+        + `<br><span class="skills">${soon.tip}</span></span>`;
+      this.selGrid.appendChild(card);
+    }
     // ฝั่งที่กำลังเลือก — ตอนต่อเน็ตล็อกไว้ที่ฝั่งตัวเอง กดสลับไม่ได้
     // ดักที่กล่องแม่เพราะช่องถูกสร้างใหม่ทุกครั้งที่จำนวนคนเปลี่ยน ผูกทีละช่องจะหลุด
     el.querySelector('.slots').addEventListener('pointerdown', (e) => {
@@ -1780,6 +1812,7 @@ class ScrambleScene extends Phaser.Scene {
     });
 
     for (const card of this.selGrid.children) {
+      if (card.dataset.soon) continue;     // ไม่มีตัวละครจริงให้วาด และไม่มีวันถูกเลือก
       card.classList.toggle('on', card.dataset.char === chars[this.selSide]);
       this._paintPortrait(card.querySelector('.pic'), card.dataset.char);
     }
