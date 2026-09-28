@@ -21,7 +21,7 @@ import { getSession, sendNetPacket } from "../../net/session.js";
 
 // ---------- อินพุต ----------
 // ปุ่มของสองฝั่งแยกกัน: ฝั่ง 1 = WASD + JKL + 123 · ฝั่ง 2 = ลูกศร + numpad
-// เล่นคนเดียวใช้ได้ทั้งสองชุด (ฝั่ง 1 รับลูกศรด้วย) เล่นสองคนบนคีย์บอร์ดเดียวจึงแยกมือกันได้
+// เล่นสองคนบนคีย์บอร์ดเดียวจึงแยกมือกันได้จริง (ซ้ายมือคนหนึ่ง ขวามือคนหนึ่ง)
 const BINDS = [
   { left: ['KeyA'], right: ['KeyD'], up: ['KeyW'], down: ['KeyS'],
     jump: ['Space', 'KeyK'], attack: ['KeyJ'], block: ['KeyL'],
@@ -30,10 +30,34 @@ const BINDS = [
     jump: ['Numpad0', 'Numpad2'], attack: ['Numpad1'], block: ['Numpad3'],
     skill1: ['Numpad4'], skill2: ['Numpad5'], skill3: ['Numpad6'] },
 ];
-// เล่นคนเดียว ฝั่ง 1 รับลูกศรด้วย จะได้ไม่ต้องจำว่าต้องใช้ WASD เท่านั้น
-const SOLO_EXTRA = { left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'] };
 
-const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(SOLO_EXTRA).flat()));
+/** ปุ่มที่ฝั่ง 1 ได้เพิ่ม **เฉพาะตอนเป็นคนเดียวบนคีย์บอร์ดนี้** (ซ้อม · ต่อเน็ต)
+ *
+ *  ── ทำไมต้องมีเงื่อนไข ──
+ *  numpad เป็นของฝั่ง 2 อยู่แล้วตอนเล่นสองคนคีย์บอร์ดเดียว ให้ฝั่ง 1 ใช้ด้วยไม่ได้
+ *  จะกลายเป็นปุ่มเดียวสั่งสองคนพร้อมกัน ซึ่งพังแบบที่ไม่มีใครเดาสาเหตุถูก
+ *  ตอนอยู่คนเดียวบนคีย์บอร์ดไม่มีใครแย่ง จึงยืมมาใช้ได้เต็ม ๆ
+ *
+ *  ── ทำไมถึงเป็น numpad ──
+ *  WASD อยู่ซ้าย มืออีกข้างจึงว่างอยู่ที่ numpad พอดี แทนที่จะต้องหุบมาเกาะ JKL กลางคีย์บอร์ด
+ *  ผังปุ่มคิดจากตำแหน่งนิ้ว ไม่ใช่จากเลข:
+ *
+ *      7  [8 กัน]  9        กันอยู่แถวบน = นิ้วกลางเอื้อมขึ้น ปลอดภัยจากการกดพลาดตอนรัวตี
+ *      4  [5 อัลติ] 6       อัลติอยู่กลาง = ต้องเล็งกด ไม่ใช่ปุ่มที่ปัดโดนได้
+ *   [1 ตี][2 สกิล1][3 สกิล2]  แถวล่างคือแถวที่รัวเร็วที่สุด ให้ท่าที่กดบ่อยที่สุด
+ *
+ *  ลูกศรยังอยู่ในชุดนี้เหมือนเดิม จะได้ไม่ต้องจำว่าต้องใช้ WASD เท่านั้น
+ *
+ *  JKL + 123 ของเดิม **ไม่ได้ถอดออก** — มันคือปุ่มที่ปุ่มบนจอ (มือถือ) ยิงเข้ามา
+ *  และคือปุ่มของฝั่ง 1 ตอนเล่นสองคนคีย์บอร์ดเดียว ซึ่งใช้ numpad ไม่ได้
+ */
+const ALONE_EXTRA = {
+  left: ['ArrowLeft'], right: ['ArrowRight'], up: ['ArrowUp'], down: ['ArrowDown'],
+  attack: ['Numpad1'], skill1: ['Numpad2'], skill2: ['Numpad3'], skill3: ['Numpad5'],
+  block: ['Numpad8'],
+};
+
+const GAME_KEYS = new Set(BINDS.flatMap((b) => Object.values(b).flat()).concat(Object.values(ALONE_EXTRA).flat()));
 const TOOL_KEYS = new Set(['KeyT','KeyH','Digit0','Digit4','KeyR','KeyP','KeyN','KeyO','KeyC','KeyV','KeyM','KeyB','KeyF','KeyZ','KeyG','Escape']);
 const held = new Set();
 let pressed = new Set();
@@ -48,12 +72,16 @@ const onKeyDown = (e) => {
 const onKeyUp = (e) => held.delete(e.code);
 const onBlur = () => held.clear();
 
-/** อ่านอินพุตของฝั่งที่ระบุ · solo = ฝั่ง 1 รับลูกศรเพิ่มด้วย */
-function readInput(side = 0, solo = false) {
+/** อ่านอินพุตของฝั่งที่ระบุ
+ *
+ *  @param alone ฝั่ง 1 เป็นคนเดียวบนคีย์บอร์ดนี้หรือเปล่า — ถ้าใช่จะได้ปุ่มชุด ALONE_EXTRA เพิ่ม
+ *  @param h,p  ชุดปุ่มที่กดค้าง/เพิ่งกด — รับเข้ามาได้เพื่อให้เทสต์ป้อนปุ่มเองได้โดยไม่ต้องมี DOM
+ */
+function readInput(side = 0, alone = false, h = held, p = pressed) {
   const b = BINDS[side];
-  const keysOf = (k) => (solo && side === 0 && SOLO_EXTRA[k] ? b[k].concat(SOLO_EXTRA[k]) : b[k]);
-  const any = (k) => keysOf(k).some((c) => held.has(c));
-  const anyP = (k) => keysOf(k).some((c) => pressed.has(c));
+  const keysOf = (k) => (alone && side === 0 && ALONE_EXTRA[k] ? b[k].concat(ALONE_EXTRA[k]) : b[k]);
+  const any = (k) => keysOf(k).some((c) => h.has(c));
+  const anyP = (k) => keysOf(k).some((c) => p.has(c));
   return {
     left: any('left'), right: any('right'), up: any('up'), down: any('down'),
     jump: any('jump'), attack: any('attack'), block: any('block'), run: 0,
@@ -1111,7 +1139,7 @@ class ScrambleScene extends Phaser.Scene {
     this.tCombo = T(1210, 150, '', 44, '#ffffff', 1).setFontStyle('700');
     this.tComboSub = T(1210, 200, '', 16, C.ink, 1);
     this.tMove = T(60, 646, '', 14, C.ink);
-    this.tHelp = T(W - 60, 688, isTouch ? '' : 'Move A D   Aim W S   Jump Space   Attack J   Block L   Skills 1 2 3', 12, C.dim, 1);
+    this.tHelp = T(W - 60, 688, isTouch ? '' : this.helpLine(), 12, C.dim, 1);
     this.tHelp2 = T(W - 60, 703, '', 12, C.dim, 1);   // ข้อความจริงตั้งใน _syncDevText()
     this.tStatus = T(W / 2, 90, '', 16, '#ffffff', 0.5);
     // ป้ายน็อก/ผู้ชนะ กลางจอ ตัวใหญ่ — อ่านออกจากอีกฝั่งโซฟาได้
@@ -1267,6 +1295,18 @@ class ScrambleScene extends Phaser.Scene {
     cam.centerOn(
       Math.max(artL + halfW, Math.min(artR - halfW, cx)),
       Math.max(halfH, Math.min(artB - halfH, cy)));
+  }
+
+  /** สองคนแชร์คีย์บอร์ดเดียวกันอยู่ไหม — ถ้าใช่ ฝั่ง 1 ยืม numpad ของฝั่ง 2 มาใช้ไม่ได้
+   *  (ดู ALONE_EXTRA) · ซ้อมกับหุ่นและต่อเน็ตต่างก็มีคนจริงคนเดียวต่อเครื่อง */
+  sharedKeyboard() { return this.versus === 'local' || this.versus === 'team'; }
+
+  /** บรรทัดบอกปุ่มท้ายจอ — เปลี่ยนตามว่าตอนนี้ฝั่ง 1 ใช้ numpad ได้หรือเปล่า
+   *  บอกปุ่มผิดแย่กว่าไม่บอก เพราะคนเล่นจะลองแล้วคิดว่าเกมเสีย ไม่ใช่คิดว่าตัวเองกดผิดปุ่ม */
+  helpLine() {
+    return this.sharedKeyboard()
+      ? 'P1  A D / W S / Space / J / L / 1 2 3      P2  ← → / ↑ ↓ / Num0 / Num1 / Num3 / Num4 5 6'
+      : 'Move A D   Aim W S   Jump Space   Attack Num1   Block Num8   Skills Num2 Num3 Num5';
   }
 
   /** จาง HUD แถวบนตอนมีคนยืนสูงพอจะถูกมันบัง — ดู HUD_BAND ว่าทำไมต้องมี */
@@ -1476,6 +1516,7 @@ class ScrambleScene extends Phaser.Scene {
         this._initSprites();
         if (this.selSide >= this.sim.fighters.length) this.selSide = 0;
         if (this.versus === 'solo') this.selSide = 0;
+        this._syncMatchHud();   // ผังปุ่มของฝั่ง 1 เปลี่ยนตามโหมด — บรรทัดบอกปุ่มต้องตามไปด้วย
         this._drawSelect();
       });
     }
@@ -1551,6 +1592,9 @@ class ScrambleScene extends Phaser.Scene {
     this.tP2.setText(this.versus === 'solo' ? 'Training dummy' : label(ts[1] ?? 1));
     this.tP1Sub?.setText(sub(ts[0] ?? 0));
     this.tP2Sub?.setText(this.versus === 'solo' ? '' : sub(ts[1] ?? 1));
+    // ผังปุ่มของฝั่ง 1 ต่างกันระหว่าง "อยู่คนเดียวบนคีย์บอร์ด" กับ "แชร์กับอีกคน" (ดู ALONE_EXTRA)
+    // ต้องอัปเดตตรงนี้ ไม่ใช่ตั้งครั้งเดียวตอนสร้างฉาก เพราะเปลี่ยนโหมดได้ตลอดจากแผงเลือกตัว
+    if (!isTouch) this.tHelp?.setText(this.helpLine());
     // แถวเครื่องมือซ้อมกินพื้นที่ครึ่งจอบนมือถือ และตอนต่อเน็ตก็กดไม่ได้อยู่แล้ว
     document.body.classList.toggle('sc-net', net);
     if (net) document.getElementById('sc-tune')?.classList.remove('open');
@@ -1667,7 +1711,7 @@ class ScrambleScene extends Phaser.Scene {
   tick() {
     if (this.net) this.tickNet();
     else {
-      const inp = readInput(0, this.versus === 'solo');
+      const inp = readInput(0, !this.sharedKeyboard());
       // 2v2: คนจริงคนละทีม (p1 กับ p2) ส่วน p3/p4 เดินด้วย AI — ส่ง null ให้ sim คุมเอง
       const inp2 = (this.versus === 'local' || this.versus === 'team') ? readInput(1) : null;
       pressed.clear();
@@ -2104,7 +2148,8 @@ class ScrambleScene extends Phaser.Scene {
    *  คือคิวของอีกฝั่งกองไว้เกินระยะจองล่วงหน้า (delay + 1) ซึ่งเกิดตอนเน็ตกระตุกแล้วแพ็คเก็ตมาเป็นก้อน
    */
   tickNet() {
-    const v = packInput(readInput(0, false));
+    // ต่อเน็ต = คนจริงคนเดียวต่อเครื่องเสมอ ฝั่ง 1 จึงได้ numpad เต็ม ๆ ไม่ต้องถามโหมด
+    const v = packInput(readInput(0, true));
     pressed.clear();
     // บิต "เพิ่งกด" ต้องเก็บค้างไว้จนกว่าจะเข้าคิวได้จริง
     // รอบวาดที่คิวเต็มอยู่แล้วจะไม่ได้จองเฟรมใหม่ ถ้าปล่อยผ่านตรงนี้การกดปุ่มจะหายเงียบ ๆ
@@ -2741,4 +2786,4 @@ class ScrambleScene extends Phaser.Scene {
   }
 }
 
-export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM };
+export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM, BINDS, ALONE_EXTRA, readInput };

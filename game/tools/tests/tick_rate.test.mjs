@@ -35,6 +35,7 @@ function pair({ lag = 0 } = {}) {
     };
     sc.tickNet = ScrambleScene.prototype.tickNet;
     sc.tick = ScrambleScene.prototype.tick;
+    sc.sharedKeyboard = ScrambleScene.prototype.sharedKeyboard;
     sc.net.primeStart();
     return sc;
   };
@@ -112,6 +113,7 @@ function pair({ lag = 0 } = {}) {
     const sc = { sim: new Game(), versus: net ? 'net' : 'solo', net: net ? {} : null,
       aged: 0, netTicks: 0, events: 0 };
     sc.tick = ScrambleScene.prototype.tick;
+    sc.sharedKeyboard = ScrambleScene.prototype.sharedKeyboard;
     sc.tickNet = function () { this.netTicks++; };
     sc._ageFx = function () { this.aged++; };
     sc._simEvents = function () { this.events++; };
