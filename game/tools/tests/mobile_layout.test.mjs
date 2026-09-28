@@ -209,3 +209,67 @@ console.log("\nMobile landscape: lobby fits and switches panels, canvas matches 
   const cards = Object.keys(CHARACTERS).length + soon;
   ok(cards > 5, `การ์ดทั้งหมด ${cards} ใบ เกินที่แผนเดิมเผื่อไว้ (5) จริง`);
 }
+
+// ══ ปุ่มท่าฝั่งขวา: วางตามนิ้วโป้ง ไม่ใช่ตาราง ══════════════════════════════════
+//
+// นิ้วโป้งหมุนรอบโคนนิ้วที่มุมขวาล่าง ปลายนิ้วจึงกวาดเป็นส่วนโค้ง ไม่ใช่สี่เหลี่ยม
+// ปุ่มที่อยู่มุมบนซ้ายของตารางคือปุ่มที่ต้องยืดนิ้วไปหา = ปุ่มที่กดพลาดบ่อยที่สุด
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  // ต้องยึดหัวบรรทัด ไม่งั้นไปเจอกฎรวม (#sc-tools, #sc-touch, ... .acts { touch-action:none })
+  // ซึ่งมีชื่อตัวเลือกเดียวกันอยู่กลางบรรทัด แล้วอ่านคุณสมบัติผิดกฎไปเลย
+  const rule = (sel) => scr.match(
+    new RegExp('^' + sel.replace(/[.#]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'm'))?.[1] ?? "";
+
+  // ทุกปุ่มวางด้วยพิกัดจากมุมขวาล่าง ไม่ใช่ไหลตามตาราง
+  for (const b of ['.atk', '.jmp', '.blk', '.s1', '.s2', '.s3']) {
+    const r = rule('#sc-touch ' + b);
+    ok(/right:/.test(r) && /bottom:/.test(r), `${b} วางด้วยพิกัดจากมุมขวาล่าง`);
+  }
+  ok(/position:absolute/.test(rule('#sc-touch .hex')), "ปุ่มเป็น absolute ทุกใบ");
+  ok(!/grid-template-columns/.test(rule('#sc-touch .acts')), "ไม่ใช่ตารางอีกแล้ว");
+
+  // "ตี" ต้องใหญ่ที่สุดและใกล้มุมที่สุด — เป็นปุ่มที่กดบ่อยที่สุดในเกม
+  const px = (r, k) => Number(r.match(new RegExp(k + ':calc\\((\\d+)px'))?.[1] ?? NaN);
+  const atk = rule('#sc-touch .atk'), jmp = rule('#sc-touch .jmp'), sk = rule('#sc-touch .sk');
+  ok(px(atk, 'width') > px(jmp, 'width'), `ปุ่มตีใหญ่กว่าปุ่มกระโดด (${px(atk, 'width')} > ${px(jmp, 'width')})`);
+  ok(px(jmp, 'width') > px(sk, 'width'), `ปุ่มกระโดดใหญ่กว่าปุ่มสกิล (${px(jmp, 'width')} > ${px(sk, 'width')})`);
+  const near = (r) => px(r, 'right') + px(r, 'bottom');
+  for (const b of ['.jmp', '.blk', '.s1', '.s2', '.s3'])
+    ok(near(atk) < near(rule('#sc-touch ' + b)), `ปุ่มตีอยู่ใกล้มุมกว่า ${b}`);
+  // สกิลอยู่ชั้นนอก กดเป็นจังหวะ ไม่ใช่ทุกวินาที
+  for (const b of ['.s1', '.s2', '.s3'])
+    ok(near(rule('#sc-touch ' + b)) > near(rule('#sc-touch .blk')), `${b} อยู่ไกลกว่าปุ่มหลัก`);
+
+  // ย่อทั้งชุดด้วยตัวคูณตัวเดียว ไม่ต้องไล่แก้ทุกปุ่มตอนจอเตี้ย
+  ok(/--u:1/.test(rule('#sc-touch .acts')), "มีตัวคูณขนาดทั้งชุด");
+  const short = scr.match(/@media \(max-height: 500px\) \{([\s\S]*?)\n\}/)?.[1] ?? "";
+  const u = Number(short.match(/--u:\.?(\d+)/)?.[0].split(':')[1]);
+  ok(short.includes('--u:'), "จอเตี้ยย่อด้วยการเปลี่ยนตัวคูณ");
+  ok(u > 0 && u < 1, `ย่อจริง (--u:${u})`);
+  // ปุ่มที่กดบ่อยที่สุดต้องยังเกินระยะแตะขั้นต่ำ 44 px ของ iOS แม้ย่อแล้ว
+  ok(px(atk, 'width') * u >= 44, `ปุ่มตีตอนย่อแล้วยังได้ ${Math.round(px(atk, 'width') * u)} px (ต้อง >= 44)`);
+
+  // แยกสีต่อท่า — บนจอที่ไม่มีสัมผัสตอบกลับ คนจำตำแหน่ง+สี ไม่ได้อ่านตัวหนังสือทุกครั้ง
+  const cols = ['.atk', '.jmp', '.blk', '.sk'].map((b) => rule('#sc-touch ' + b).match(/background:(#[0-9a-f]{6})/i)?.[1]);
+  ok(cols.every(Boolean), `ทุกท่ามีสีของตัวเอง (${cols.join(' ')})`);
+  ok(new Set(cols).size === cols.length, "และไม่มีสีซ้ำกัน");
+
+  // กล่อง .acts กว้างกว่าที่ปุ่มกินจริง ปล่อยให้รับการแตะทั้งใบ = แตะที่ว่างแล้วโดนกลืน
+  ok(/pointer-events:none/.test(rule('#sc-touch .acts')), "กล่องไม่รับการแตะ");
+  ok(/pointer-events:auto/.test(rule('#sc-touch .hex')), "เฉพาะตัวปุ่มที่รับ");
+}
+
+// ── ปุ่มต้องยังผูกกับปุ่มคีย์บอร์ดชุดเดิม ──
+//
+// เปลี่ยนหน้าตาปุ่มแล้วลืม data-code = ปุ่มสวยแต่กดไม่ติด ซึ่งดูเหมือนเกมค้าง
+{
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  const acts = scr.slice(scr.indexOf('<div class="acts">'), scr.indexOf('</div>`;'));
+  for (const code of ['KeyJ', 'Space', 'KeyL', 'Digit1', 'Digit2', 'Digit3'])
+    ok(acts.includes(`data-code="${code}"`), `ยังมีปุ่ม ${code}`);
+  for (const slot of ['1', '2', '3'])
+    ok(acts.includes(`data-slot="${slot}"`), `ช่องสกิล ${slot} ยังบอกเลขช่องไว้`);
+  ok(/querySelectorAll\('#sc-touch \.skills button'\)/.test(scr),
+    "ตัวหรี่ปุ่มสกิลยังหาปุ่มเจอ (.skills ยังเป็นตัวครอบอยู่)");
+}

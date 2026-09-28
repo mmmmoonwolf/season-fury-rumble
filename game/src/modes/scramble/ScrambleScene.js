@@ -531,13 +531,61 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
   background:radial-gradient(circle at 35% 30%, rgba(242,237,227,.55), rgba(12,17,28,.75));
   box-shadow:0 0 14px rgba(0,0,0,.5); }
 #sc-touch .stick.on .ring, #sc-touch .stick.on .knob { opacity:1; }
-#sc-touch .acts { display:grid; grid-template-columns:repeat(2,76px); gap:8px; pointer-events:auto; }
-#sc-touch .acts button { height:56px; }
-#sc-touch .acts .big { grid-column:span 2; height:62px; font-size:15px; }
-/* แถวสกิลสามปุ่ม เตี้ยกว่าปุ่มหลักเพราะกดไม่บ่อยเท่า แต่ยังกว้างพอตามระยะแตะขั้นต่ำ
-   สล็อตที่ยังไม่มีสกิลขึ้นเป็นสีจางและกดไม่ได้ จะได้รู้ว่าเตรียมที่ไว้ให้แล้วแต่ยังว่าง */
-#sc-touch .skills { grid-column:span 2; display:grid; grid-template-columns:repeat(3,1fr); gap:6px; touch-action:none; }
-#sc-touch .skills button { height:46px; font-size:14px; }
+/* ---------- ปุ่มท่าฝั่งขวา: วางเป็นส่วนโค้งตามนิ้วโป้ง ไม่ใช่ตาราง ----------
+
+   ของเดิมเป็นตาราง 2 คอลัมน์ ซึ่งคิดจาก "จัดของให้เป็นระเบียบ" ไม่ใช่จาก "นิ้วโป้งไปถึงตรงไหน"
+   นิ้วโป้งหมุนรอบโคนนิ้วที่มุมขวาล่าง ปลายนิ้วจึงกวาดเป็น**ส่วนโค้ง** ไม่ใช่สี่เหลี่ยม
+   ปุ่มที่อยู่มุมบนซ้ายของตารางคือปุ่มที่ต้องยืดนิ้วไปหา ซึ่งคือปุ่มที่กดพลาดบ่อยที่สุด
+
+   วางใหม่เป็นสองชั้นโค้ง:
+   - ชั้นใน (รัศมีสั้น) = ท่าที่กดตลอดเวลา — ตี · กระโดด · กัน
+   - ชั้นนอก (รัศมียาว) = สกิลสามช่อง ซึ่งกดเป็นจังหวะ ไม่ใช่ทุกวินาที
+   "ตี" อยู่ใกล้โคนนิ้วที่สุดและใหญ่ที่สุด เพราะเป็นปุ่มที่กดบ่อยที่สุดในเกม
+
+   หกเหลี่ยมโปร่งกลาง ไม่ใช่ปุ่มทึบ — ปุ่มทึบขนาดนี้หกปุ่มบังพื้นที่เล่นไปมาก
+   เห็นเกมผ่านปุ่มได้ทั้งที่ยังรู้ว่าปุ่มอยู่ตรงไหน
+
+   แยกสีต่อท่า เพราะบนจอที่ไม่มีสัมผัสตอบกลับ คนเล่นจำ "ตำแหน่ง + สี" ไม่ใช่อ่านตัวหนังสือทุกครั้ง
+   สีเอามาจากจานสีในเกมทั้งหมด ไม่ได้เลือกใหม่ลอย ๆ
+
+   --u คือตัวคูณขนาดทั้งชุด มือถือจอเตี้ยย่อด้วยการเปลี่ยนเลขตัวเดียว ไม่ต้องไล่แก้ทุกปุ่ม */
+/* กล่อง .acts กินพื้นที่ 216x214 แต่ปุ่มหกเหลี่ยมกินจริงแค่ส่วนโค้ง เหลือมุมล่างซ้ายว่างเยอะ
+   ปล่อยให้กล่องรับการแตะทั้งใบ = แตะที่ว่างแล้วโดนกลืนไปเฉย ๆ จึงให้เฉพาะตัวปุ่มรับ */
+#sc-touch .acts { --u:1; position:relative; pointer-events:none;
+  width:calc(216px * var(--u)); height:calc(214px * var(--u)); }
+#sc-touch .hex { position:absolute; pointer-events:auto; padding:0; border:none; background:none; box-shadow:none;
+  display:grid; place-items:center; line-height:1; color:#f2ede3;
+  text-shadow:0 1px 3px rgba(0,0,0,.9), 0 0 6px rgba(0,0,0,.6); }
+/* วงแหวนหกเหลี่ยม = ตัวปุ่มถูก clip เป็นหกเหลี่ยมสีทึบ แล้ว ::before เจาะกลางด้วยหกเหลี่ยมเล็กกว่า
+   ทำสองชั้นแบบนี้เพราะ border ไม่ตามรูป clip-path (มันตัดหลังวาดขอบ ขอบเลยหายไปครึ่งหนึ่ง) */
+#sc-touch .hex::before { content:''; position:absolute; inset:calc(3px * var(--u)); z-index:-1;
+  clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background:rgba(12,17,28,.62); }
+#sc-touch .hex { clip-path:polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+#sc-touch .hex:active::before { background:rgba(242,237,227,.3); }
+
+/* ชั้นใน — ท่าที่กดตลอดเวลา */
+#sc-touch .atk { width:calc(78px * var(--u)); height:calc(78px * var(--u));
+  right:calc(4px * var(--u)); bottom:calc(4px * var(--u));
+  font:700 calc(19px * var(--u))/1 var(--font); background:#c8323c; }
+#sc-touch .jmp { width:calc(68px * var(--u)); height:calc(68px * var(--u));
+  right:calc(4px * var(--u)); bottom:calc(88px * var(--u));
+  font:700 calc(26px * var(--u))/1 var(--font); background:#5fd08a; }
+#sc-touch .blk { width:calc(68px * var(--u)); height:calc(68px * var(--u));
+  right:calc(88px * var(--u)); bottom:calc(14px * var(--u));
+  font:700 calc(17px * var(--u))/1 var(--font); background:#5aa0ff; }
+
+/* ชั้นนอก — สกิลสามช่อง กดเป็นจังหวะ ไม่ใช่ทุกวินาที จึงเล็กกว่าและอยู่ไกลกว่า
+   สล็อตที่ยังไม่มีสกิลขึ้นจางและกดไม่ได้ จะได้รู้ว่าเตรียมที่ไว้ให้แล้วแต่ยังว่าง */
+#sc-touch .skills { touch-action:none; }
+#sc-touch .sk { width:calc(52px * var(--u)); height:calc(52px * var(--u));
+  font:700 calc(17px * var(--u))/1 var(--font); background:#ffd166; color:#1a1208;
+  text-shadow:0 1px 2px rgba(255,255,255,.45); }
+#sc-touch .sk::before { background:rgba(12,17,28,.72); }
+#sc-touch .sk { color:#ffd166; }
+#sc-touch .s1 { right:calc(160px * var(--u)); bottom:calc(84px * var(--u)); }
+#sc-touch .s2 { right:calc(100px * var(--u)); bottom:calc(134px * var(--u)); }
+#sc-touch .s3 { right:calc(32px * var(--u)); bottom:calc(160px * var(--u)); }
 #sc-touch .skills button[disabled] { opacity:.32; }
 /* ฝั่งซ้ายเตี้ยกว่าฝั่งขวาเท่าตัว จึงยกได้สูงกว่า — ผู้เล่นบ่นเรื่องนิ้วซ้ายบังก่อนเป็นอันดับแรก */
 
@@ -545,11 +593,10 @@ body.sc-dev #sc-tools .dev-toggle { opacity:1; }
    ยกขึ้นไม่ได้เลยถ้าไม่ย่อก่อน — ย่อแล้วเหลือ ~199 px ถึงจะมีที่ให้ยก
    ตัวเลขยังอยู่เหนือระยะแตะขั้นต่ำ 44 px ของ iOS ทุกปุ่ม ยกเว้นแถวสกิลที่กดไม่บ่อยเท่า */
 @media (max-height: 500px) {
-  #sc-touch .acts { grid-template-columns:repeat(2,72px); gap:5px; }
-  #sc-touch .acts .big { height:48px; font-size:14px; }
-  #sc-touch .acts button { height:48px; }
-  #sc-touch .skills { gap:5px; }
-  #sc-touch .skills button { height:40px; font-size:13px; }
+  /* ย่อทั้งชุดด้วยเลขตัวเดียว — ปุ่ม "ตี" ยังได้ 59 px ซึ่งเกินระยะแตะขั้นต่ำ 44 px ของ iOS
+     ปุ่มสกิลได้ 39 px ซึ่งต่ำกว่าเกณฑ์นิดหน่อย แลกมาโดยตั้งใจเพราะกดไม่บ่อยเท่า
+     และอยู่ห่างจากปุ่มอื่นพอที่นิ้วพลาดแล้วไม่ไปโดนปุ่มข้าง ๆ (เป็นของแถมจากการวางเป็นส่วนโค้ง) */
+  #sc-touch .acts { --u:.76; }
   #sc-touch .stick .ring { width:112px; height:112px; }
   #sc-touch .stick .knob { width:48px; height:48px; }
 }
@@ -709,12 +756,13 @@ const OVERLAY_HTML = `
 <div id="sc-touch">
   <div class="stick"><div class="ring"></div><div class="knob"></div></div>
   <div class="acts">
-    <button class="big" data-code="KeyL">Block</button>
-    <button class="big" data-code="Space">Jump</button><button class="big" data-code="KeyJ">Attack</button>
+    <button class="hex atk" data-code="KeyJ">ตี</button>
+    <button class="hex jmp" data-code="Space">&#8593;</button>
+    <button class="hex blk" data-code="KeyL">กัน</button>
     <div class="skills">
-      <button data-code="Digit1" data-slot="1">1</button>
-      <button data-code="Digit2" data-slot="2">2</button>
-      <button data-code="Digit3" data-slot="3">3</button>
+      <button class="hex sk s1" data-code="Digit1" data-slot="1">1</button>
+      <button class="hex sk s2" data-code="Digit2" data-slot="2">2</button>
+      <button class="hex sk s3" data-code="Digit3" data-slot="3">3</button>
     </div>
   </div>
 </div>`;
