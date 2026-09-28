@@ -64,13 +64,13 @@ const scene = read("../../src/modes/scramble/ScrambleScene.js");
   setStageWidth(STAGE_BASE_W);
 }
 
-// ── ห้าชั้นตามอาร์ต และทุกช่องต้องกระโดดถึงด้วยการกระโดดครั้งเดียว ──
+// ── สามชั้นตามอาร์ต และทุกช่องต้องกระโดดถึงด้วยการกระโดดครั้งเดียว ──
 //
 // ถ้าช่องไหนกว้างเกินแรงกระโดด ชั้นนั้นจะไปถึงได้เฉพาะตอนมีดับเบิลจัมพ์เหลือ
 // ซึ่งแปลว่าโดนไล่ต้อนอยู่แล้วหนีขึ้นไปไม่ได้ = ชั้นที่มีไว้ให้คนที่สบายอยู่แล้วเท่านั้น
 {
   const { PHYS } = await import(G + "/core.js");
-  ok(STAGE.platforms.length === 5, `มีห้าชั้น (${STAGE.platforms.length})`);
+  ok(STAGE.platforms.length === 3, `มีสามชั้น (${STAGE.platforms.length})`);
 
   const rise = (PHYS.jumpV ** 2) / (2 * PHYS.gravity);
   const tiers = [...new Set([STAGE.groundY, ...STAGE.platforms.map((p) => p.y)])].sort((a, b) => b - a);

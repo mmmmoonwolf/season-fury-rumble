@@ -218,6 +218,8 @@ const C = {
   nyx: 0xdcdfe6, nyxScarf: 0xc8323c, dummy: 0xc9a26b, dummyMark: 0x7a5530,
   startup: 0xf2b53c, active: 0xff4d5e, recovery: 0x5aa0ff, free: 0x59606e,
   hurt: 0x57e39a, hit: 0xff4d5e, ink: '#e9e3d6', dim: '#9aa3b5',
+  // ใต้เกาะ — หมอกสว่างตรงขอบเกาะ ไล่ลงไปหาฟ้าลึกที่ก้นจอ (ดู _drawAbyss)
+  abyssTop: 0x9fb8cf, abyssBot: 0x1d2a49, cloud: 0xdfeaf4,
 };
 const FONT = '"Chakra Petch", system-ui, sans-serif';
 const MODES = ['stand', 'block', 'jump'];
@@ -226,6 +228,12 @@ const TECHS = ['off', 'place', 'random'];
 const TECH_LABEL = { off: 'Off', place: 'In place', random: 'Random' };
 
 function rng(seed) { return () => (seed = (seed * 16807) % 2147483647) / 2147483647; }
+
+/** ผสมสี hex สองค่าแบบเชิงเส้น — ใช้ไล่เฉดตอนวาดพื้นหลังด้วย graphics */
+function mixHex(a, b, t) {
+  const ch = (sh) => Math.round(((a >> sh) & 255) + (((b >> sh) & 255) - ((a >> sh) & 255)) * t);
+  return (ch(16) << 16) | (ch(8) << 8) | ch(0);
+}
 
 /**
  *   เวที SCRAMBLE กว้างเท่าผืนเกม (setStageWidth) กำแพงจึงอยู่ขอบจอพอดี
@@ -403,6 +411,15 @@ const CAM = {
   inLerp: 0.045,
   outLerp: 0.14,
   panLerp: 0.09,
+  // ── ก้นจอลงไปได้ถึงพิกัดนี้ ไม่ใช่แค่ STAGE.h ──
+  //
+  // ที่ซูม 1 กล้องสูงเท่าเวทีพอดี (720) ถ้าบีบก้นกล้องไว้ที่ 720 จุดกลางกล้องจะถูกตรึงที่ 360
+  // ตลอดกาล = คนยืนพื้น (y=620) อยู่ต่ำจากขอบบน 86% ของจอเสมอ ไม่ว่าจะเขียนสูตรเล็งดีแค่ไหน
+  // **การเล็งให้คนอยู่กลางเฟรมจึงเป็นไปไม่ได้จากฝั่งกล้องเลย** ต้องมีที่ให้กล้องเลื่อนลงก่อน
+  //
+  // viewBot คือ "ก้นของโลกที่วาดไว้" ไม่ใช่ก้นของพื้นที่เล่น — ใต้เส้นพื้นเป็นหมอก/ฟ้า
+  // (ดู _drawAbyss) เกาะจึงลอยอยู่จริง แทนที่จะจบห้วน ๆ ที่ขอบจอแบบเดิม
+  viewBot: 900,
 };
 
 const STAGE_ART = {
@@ -410,9 +427,9 @@ const STAGE_ART = {
   far: 'assets/stage/far.png',      // เกาะบ้านลอย + เกาะเล็ก ๆ (ไกล)
   near: 'assets/stage/near.png',    // หน้าผาสองข้าง (ใกล้)
   ground: 'assets/stage/ground.png',
-  // ชั้น 4 กับ 5 ใช้รูปเดียวกัน — ชั้นกลางในอาร์ตติดกับเกาะบ้านลอยเป็นก้อนเดียว แยกไม่ขาด
-  // ทั้งสองเป็นแผ่นหินแบนมีเสารูนสองข้างเหมือนกันอยู่แล้ว ยืมกันใช้จึงไม่มีใครดูออก
-  plat: ['plat_c', 'plat_l', 'plat_r', 'plat_top', 'plat_top'],
+  // เรียงตรงกับ STAGE.platforms ตามลำดับ — ชั้นกลาง · ซ้าย · ขวา
+  // plat_top ยังอยู่ในไฟล์อาร์ตกับ stage.json แต่ไม่ได้ใช้แล้ว (ชั้น 4-5 ถูกถอดออก ดู core.js)
+  plat: ['plat_c', 'plat_l', 'plat_r'],
   meta: 'assets/stage/stage.json',
 };
 
@@ -433,12 +450,12 @@ function drawBackground(g, viewW = STAGE.w) {
     }
   }
   // ground + scramble crossing stripes
-  g.fillStyle(C.asphalt, 1); g.fillRect(x0, STAGE.groundY, vw, 100);
+  g.fillStyle(C.asphalt, 1); g.fillRect(x0, STAGE.groundY, vw, CAM.viewBot - STAGE.groundY);
   g.fillStyle(C.stripe, 0.22);
   for (let x = 60; x < 1240; x += 46) g.fillRect(x, STAGE.groundY + 18, 24, 70);
   g.fillStyle(C.stripe, 0.5); g.fillRect(x0, STAGE.groundY, vw, 3);
   // walls — แถบมืดนอกกำแพงลากถึงขอบจอ ไม่ใช่ขอบเวที
-  g.fillStyle(0x0c111c, 0.55); g.fillRect(x0, 0, STAGE.wallL - x0, 720); g.fillRect(STAGE.wallR, 0, x1 - STAGE.wallR, 720);
+  g.fillStyle(0x0c111c, 0.55); g.fillRect(x0, 0, STAGE.wallL - x0, CAM.viewBot); g.fillRect(STAGE.wallR, 0, x1 - STAGE.wallR, CAM.viewBot);
   g.fillStyle(C.nyxScarf, 0.5); g.fillRect(STAGE.wallL - 2, 0, 2, STAGE.groundY); g.fillRect(STAGE.wallR, 0, 2, STAGE.groundY);
   // platforms (one-way)
   for (const p of STAGE.platforms) {
@@ -853,8 +870,11 @@ class ScrambleScene extends Phaser.Scene {
 
     // พื้นล่างยืดเต็มความกว้างเวที ส่วนสูงคงสัดส่วนเดิมไว้ ไม่ให้หินยืดจนดูผิดรูป
     const gm = meta.ground, gs = vw / gm.w;
-    this.add.image((STAGE.w - vw) / 2, STAGE.groundY - gm.surface * gs, 'stageGround')
+    const groundTop = STAGE.groundY - gm.surface * gs;
+    this.add.image((STAGE.w - vw) / 2, groundTop, 'stageGround')
       .setOrigin(0, 0).setScale(gs).setDepth(-10);
+    // ขอบล่างของรูปพื้นคือรอยตัดตรง ๆ เพราะเดิมมันอยู่นอกจอ — ตอนนี้กล้องลงไปเห็นแล้ว
+    this._drawAbyss(groundTop + gm.h * gs);
 
     // แพลตฟอร์ม: ย่อให้ "กว้างเท่ากรอบชนจริง" แล้ววางให้ผิวบนตรงกับ p.y เป๊ะ
     // เสาหินรูนสองข้างจึงกลายเป็นตัวบอกขอบแพลตฟอร์มพอดี — อ่านออกว่าสุดตรงไหนโดยไม่ต้องลอง
@@ -865,8 +885,59 @@ class ScrambleScene extends Phaser.Scene {
       this.add.image(p.x1, p.y - m.surface * sc, 'stage_' + name).setOrigin(0, 0).setScale(sc).setDepth(-10);
     });
 
-    this._stageScrim();
     return true;
+  }
+
+  /** ใต้เกาะ — ฟ้ากับเมฆ ลงไปจนถึงก้นที่กล้องมองได้ (CAM.viewBot)
+   *
+   *  ต้องมีเพราะกล้องเลื่อนลงต่ำกว่าเส้นพื้นได้แล้ว (ดู CAM.viewBot ว่าทำไมถึงต้องเลื่อน)
+   *  ถ้าไม่วาด ใต้พื้นจะเป็นสีพื้นหลังของ canvas = แถบทึบพาดขวางก้นจอตลอดเกม
+   *
+   *  ลึกกว่าหน้าผา (-28) และเกาะไกล (-32) แต่ตื้นกว่าฟ้า (-40)
+   *  รูปพื้นล่าง (-10) ทับมันอยู่แล้ว ส่วนที่โผล่จึงมีแค่ "ที่ที่รูปพื้นวาดไม่ถึง"
+   *  ซึ่งลึกไม่เท่ากันในแต่ละจอ (รูปพื้นถูกย่อตามความกว้างจอ) วาดคลุมเกินจึงถูกกว่าคำนวณให้พอดี
+   *
+   *  เมฆสุ่มด้วย rng ที่มีเมล็ดคงที่ ไม่ใช่ Math.random — วาดกี่ครั้งก็ได้ภาพเดิม
+   *  และเป็นการวาดล้วน ไม่ได้ผ่าน sim จึงไม่เกี่ยวกับ netplay
+   */
+  _drawAbyss(seamY = STAGE.groundY + 160) {
+    const vw = Math.max(this.viewW ?? STAGE.w, STAGE.w), x0 = (STAGE.w - vw) / 2;
+    const top = STAGE.groundY, bot = CAM.viewBot, span = bot - top;
+    const g = this.add.graphics().setDepth(-34);
+    for (let y = 0; y < span; y += 4) {
+      g.fillStyle(mixHex(C.abyssTop, C.abyssBot, y / span), 1);
+      g.fillRect(x0, top + y, vw, 4);
+    }
+    // เมฆบาง ๆ ไกล ๆ ให้รู้ว่าเป็นอากาศ ไม่ใช่เหวมืด — อยู่หลังเกาะ
+    const r = rng(23);
+    for (let i = 0; i < 16; i++) {
+      const cx = x0 + r() * vw, cy = top + 60 + r() * (span - 70);
+      const w = 150 + r() * 280, h = 14 + r() * 24;
+      g.fillStyle(C.cloud, 0.10 + r() * 0.10);
+      g.fillEllipse(cx, cy, w, h);
+      g.fillStyle(C.cloud, 0.07);
+      g.fillEllipse(cx + w * 0.18, cy + h * 0.35, w * 0.66, h * 0.8);
+    }
+
+    // ── แนวเมฆหน้าเกาะ: ปิดรอยตัดขอบล่างของรูปพื้น ──
+    //
+    // รูปพื้นจบด้วยเส้นตรงแนวนอน เพราะตอนออกแบบมันอยู่ใต้ขอบจอ ไม่มีใครเห็น
+    // พอกล้องเลื่อนลงได้ เส้นนั้นกลายเป็น "เกาะถูกตัดด้วยไม้บรรทัด" กลางจอ
+    // ต้องอยู่ **หน้า** รูปพื้น (-9 > -10) ไม่ใช่หลัง — เมฆที่อยู่หลังบังรอยตัดไม่ได้เลย
+    // เดินเป็นช่วงคงที่แล้วสุ่มเยื้องเอา ไม่ใช่สุ่มตำแหน่งล้วน: ช่วง 110 กับวงกว้างอย่างน้อย 220
+    // การันตีว่าทุกจุดถูกทับอย่างน้อยสองวง จึงไม่มีช่องให้เส้นตรงโผล่
+    const r2 = rng(91);
+    const cg = this.add.graphics().setDepth(-9);
+    for (let x = x0 - 140; x < x0 + vw + 140; x += 110) {
+      const w = 260 + r2() * 200, h = 66 + r2() * 44;
+      cg.fillStyle(C.cloud, 0.5 + r2() * 0.28);
+      cg.fillEllipse(x + (r2() - 0.5) * 24, seamY - 10 + (r2() - 0.5) * 22, w, h);
+    }
+    // ชายเมฆบาง ๆ ห้อยลงไปอีกชั้น ให้ขอบล่างของแนวเมฆไม่ใช่เส้นตรงอีกเส้นหนึ่ง
+    for (let x = x0 - 140; x < x0 + vw + 140; x += 150) {
+      cg.fillStyle(C.cloud, 0.16 + r2() * 0.14);
+      cg.fillEllipse(x + (r2() - 0.5) * 60, seamY + 40 + r2() * 46, 200 + r2() * 200, 34 + r2() * 30);
+    }
   }
 
   /** โหลดเพลงแบบเบื้องหลังแล้วเริ่มเล่นเมื่อพร้อม
@@ -935,22 +1006,28 @@ class ScrambleScene extends Phaser.Scene {
    *  HUD ทั้งชุดออกแบบไว้ตอนฉากหลังเป็นเมืองกลางคืน พอเปลี่ยนเป็นฟ้ากลางวัน
    *  ชื่อตัวละคร หลอดเลือด ปุ่มเครื่องมือ และบรรทัดบอกปุ่มด้านล่าง จมหายไปกับพื้นหลังทันที
    *  ไล่ไล่ระดับให้จางหายตรงกลางจอ พื้นที่เล่นจริงจึงยังสว่างเต็มที่ ไม่ได้มืดลงทั้งจอ
+   *
+   *  **เป็นของกล้อง UI ไม่ใช่ของในโลก** — มันคือฉากหลังของ HUD ไม่ใช่ส่วนหนึ่งของเวที
+   *  ตอนกล้องยังตรึงอยู่กลางเวทีสองอย่างนี้แยกกันไม่ออก แต่พอกล้องเลื่อนลงได้ (CAM.viewBot)
+   *  แถบที่วาดในพิกัดโลกจะเลื่อนตามไปด้วย = HUD ลอยอยู่บนฟ้าสว่างโดยไม่มีแถบรองอีกต่อไป
+   *  อยู่บนกล้อง UI แล้วพิกัดจึงเป็นพิกัดจอตรง ๆ (0..viewW) ไม่ต้องหักกลางเวทีอีก
    */
   _stageScrim() {
     const g = this.add.graphics().setDepth(-5);
     const dark = 0x0c111c;
-    const vw = this.viewW ?? STAGE.w, x0 = (STAGE.w - vw) / 2;
+    const vw = this.viewW ?? STAGE.w;
     // ทึบคงที่ตลอดแถว HUD ก่อน แล้วค่อยไล่จางลงด้านล่าง
     // ถ้าไล่จางตั้งแต่ขอบบน บรรทัดคำบรรยายตัวละคร (y=78) จะได้ความทึบแค่ 0.27 ซึ่งยังอ่านไม่ออก
     for (let i = 0; i < SCRIM_TOP; i += 4) {
       const t = Math.max(0, (i - SCRIM_SOLID) / (SCRIM_TOP - SCRIM_SOLID));
       g.fillStyle(dark, 0.62 * (1 - t));
-      g.fillRect(x0, i, vw, 4);
+      g.fillRect(0, i, vw, 4);
     }
     for (let i = 0; i < SCRIM_BOT; i += 4) {
       g.fillStyle(dark, 0.55 * (i / SCRIM_BOT));
-      g.fillRect(x0, STAGE.h - SCRIM_BOT + i, vw, 4);
+      g.fillRect(0, STAGE.h - SCRIM_BOT + i, vw, 4);
     }
+    return g;
   }
   create() {
     activeScene = this;
@@ -1008,6 +1085,8 @@ class ScrambleScene extends Phaser.Scene {
     this.fx = this.add.graphics();
     // ทุกชิ้นที่กล้อง UI เป็นคนวาด — ต้องเก็บไว้ตอนสร้าง ไม่ใช่ไปไล่หาทีหลังจากชนิดของอ็อบเจกต์
     this.uiObjects = [];
+    // แถบมืดรอง HUD ต้องเป็นชิ้นแรก — วาดก่อนทุกอย่างที่มันรองอยู่
+    this.uiObjects.push(this._stageScrim());
     this.hud = this.add.graphics();
     this.uiObjects.push(this.hud);
     // HUD เกาะขอบ "จอ" ไม่ใช่ขอบพื้นที่เล่น — กล้อง UI ไม่เลื่อนตามกล้องโลก
@@ -1180,11 +1259,14 @@ class ScrambleScene extends Phaser.Scene {
     const cy = this.camY = y0 + (wantY - y0) * p;
 
     const artL = -this.stagePad, artR = artL + this.viewW;
+    // ปิดปุ่ม Zoom = กลับไปใช้ก้นเดิม (STAGE.h) ซึ่งตรึงกล้องไว้กลางเวทีเป๊ะเหมือนก่อนมีฟีเจอร์นี้
+    // ถ้าปล่อยให้เลื่อนลงได้ตอนปิด "ปิดแล้วได้ภาพเดิมทุกพิกเซล" จะไม่จริงอีกต่อไป
+    const artB = this.camFollow ? CAM.viewBot : STAGE.h;
     const halfW = this.viewW / (2 * z), halfH = STAGE.h / (2 * z);
     cam.setZoom(z);
     cam.centerOn(
       Math.max(artL + halfW, Math.min(artR - halfW, cx)),
-      Math.max(halfH, Math.min(STAGE.h - halfH, cy)));
+      Math.max(halfH, Math.min(artB - halfH, cy)));
   }
 
   /** จาง HUD แถวบนตอนมีคนยืนสูงพอจะถูกมันบัง — ดู HUD_BAND ว่าทำไมต้องมี */
@@ -2659,4 +2741,4 @@ class ScrambleScene extends Phaser.Scene {
   }
 }
 
-export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground };
+export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM };

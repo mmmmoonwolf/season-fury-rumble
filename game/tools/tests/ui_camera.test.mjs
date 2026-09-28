@@ -89,7 +89,7 @@ function mk(uiCount = 3, worldCount = 5) {
 //
 // สามเมธอดนี้ทำงาน "ก่อน" _splitCameras จึงไม่ต้องเรียก — ที่เหลือต้องเรียกทุกจุด
 {
-  const BEFORE_SPLIT = new Set(['create', '_buildStage', '_stageScrim']);
+  const BEFORE_SPLIT = new Set(['create', '_buildStage', '_drawAbyss', '_stageScrim']);
   const lines = scene.split('\n');
   let fn = '<top>';
   const missing = [];

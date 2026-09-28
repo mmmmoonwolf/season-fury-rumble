@@ -12,7 +12,7 @@ globalThis.location = { search: "" };
 globalThis.document = { createElement: () => ({ style: {}, dataset: {}, classList: { add() {}, remove() {}, toggle() {}, contains: () => false } }) };
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
 const { Game, STAGE, setStageWidth, STAGE_BASE_W } = await import(G + "/core.js");
-const { ScrambleScene } = await import(G + "/ScrambleScene.js");
+const { ScrambleScene, CAM } = await import(G + "/ScrambleScene.js");
 const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
 
 setStageWidth(STAGE_BASE_W);
@@ -120,7 +120,7 @@ const GROUND = STAGE.groundY;
         const halfW = viewW / (2 * c.zoom), halfH = STAGE.h / (2 * c.zoom);
         worst = Math.max(worst,
           (artL + halfW) - c.cx, c.cx - (artR - halfW),
-          halfH - c.cy, c.cy - (STAGE.h - halfH));
+          halfH - c.cy, c.cy - (CAM.viewBot - halfH));
       }
     }
   }
@@ -265,9 +265,105 @@ const GROUND = STAGE.groundY;
         const artL = -sc.stagePad, artR = artL + viewW;
         const halfW = viewW / (2 * c.zoom), halfH = STAGE.h / (2 * c.zoom);
         worst = Math.max(worst, (artL + halfW) - c.cx, c.cx - (artR - halfW),
-          halfH - c.cy, c.cy - (STAGE.h - halfH));
+          halfH - c.cy, c.cy - (CAM.viewBot - halfH));
       }
     }
   }
   ok(worst < 1e-9, `กระตุกระหว่างเล่นก็ยังอยู่ในขอบ (หลุดมากสุด ${worst.toFixed(6)} px)`);
+}
+
+// ══ กรอบแนวตั้ง: คนต้องอยู่กลางเฟรม ไม่ใช่ติดก้นจอ ════════════════════════════
+//
+// ที่ซูม 1 กล้องสูงเท่าเวทีพอดี ถ้าบีบก้นกล้องไว้ที่ STAGE.h จุดกลางกล้องจะถูกตรึงที่ 360
+// ตลอดกาล คนยืนพื้น (y=620) จึงอยู่ที่ 86% ของความสูงจอเสมอ — หัวติดกลางจอ เท้าเกือบชนขอบล่าง
+// **แก้จากสูตรเล็งไม่ได้เลย** เพราะขอบเป็นตัวบีบ ไม่ใช่เป้า ต้องเปิดที่ให้กล้องเลื่อนลงก่อน (CAM.viewBot)
+{
+  const { PHYS } = await import(G + "/core.js");
+  /** ตำแหน่งบนจอ (0 = ขอบบน, 1 = ขอบล่าง) ของพิกัดโลกหนึ่งจุด */
+  const frac = (c, worldY) => ((worldY - c.cy) * c.zoom + STAGE.h / 2) / STAGE.h;
+
+  ok(CAM.viewBot > STAGE.h, `กล้องมองต่ำกว่าเส้นพื้นได้ (ก้นที่ ${CAM.viewBot} > ${STAGE.h})`);
+
+  // ยืนพื้นกันทั้งคู่ = เคสที่เจอบ่อยที่สุดในเกม ต้องได้กรอบที่ดีที่สุด
+  const sc = mk(); place(sc, [[600, GROUND], [700, GROUND]]);
+  for (let i = 0; i < 120; i++) sc._stepCamera(sc.sim);
+  const c = sc.cameras.main;
+  const mid = frac(c, GROUND - PHYS.standH / 2);   // กลางลำตัว ไม่ใช่เท้า
+  ok(mid > 0.38 && mid < 0.62, `ยืนพื้นแล้วลำตัวอยู่กลางเฟรม (${(mid * 100).toFixed(0)}% ของความสูงจอ)`);
+  ok(frac(c, GROUND) < 0.78, `เท้าไม่ได้ติดขอบล่าง (${(frac(c, GROUND) * 100).toFixed(0)}%)`);
+
+  // ขอบบนห้ามหลุด — เหนือ y=0 ไม่มีอาร์ตอยู่แล้ว
+  ok(frac(c, 0) <= 0 + 1e-9, "ขอบบนของจอยังไม่เลยขอบบนของอาร์ต");
+
+  // เทียบกับของเดิมตรง ๆ: ปิดปุ่ม Zoom = ก้นกลับไปเป็น STAGE.h = กรอบเดิมเป๊ะ
+  // ข้อนี้คือตัวพิสูจน์ว่าเลขข้างบนมาจาก viewBot จริง ไม่ใช่บังเอิญ
+  const old = mk({ follow: false }); place(old, [[600, GROUND], [700, GROUND]]);
+  for (let i = 0; i < 120; i++) old._stepCamera(old.sim);
+  const oldMid = frac(old.cameras.main, GROUND - PHYS.standH / 2);
+  ok(oldMid > 0.75, `ของเดิม (ปิดซูม) ลำตัวอยู่ที่ ${(oldMid * 100).toFixed(0)}% — ต่ำกว่าของใหม่ชัดเจน`);
+  ok(mid < oldMid - 0.15, `ของใหม่ยกขึ้นมาจริง (${(mid * 100).toFixed(0)}% เทียบ ${(oldMid * 100).toFixed(0)}%)`);
+
+  // ขึ้นชั้นบนแล้วกล้องต้องตามขึ้นไป ไม่ใช่ค้างอยู่ก้นเวที
+  const hi = mk(); place(hi, [[600, 352], [700, 352]]);
+  for (let i = 0; i < 120; i++) hi._stepCamera(hi.sim);
+  ok(hi.cameras.main.cy < c.cy, `ขึ้นชั้นบนกล้องเลื่อนตามขึ้น (${hi.cameras.main.cy.toFixed(0)} < ${c.cy.toFixed(0)})`);
+}
+
+// ══ ใต้เส้นพื้นต้องมีอะไรวาดไว้จริง จนถึงก้นที่กล้องมองได้ ═════════════════════
+//
+// เปิดที่ให้กล้องเลื่อนลงแล้วไม่วาดอะไรรองไว้ = แถบสีพื้นหลัง canvas พาดขวางก้นจอตลอดเกม
+// ซึ่งเป็นการแลกบั๊กหนึ่งกับอีกบั๊กหนึ่ง ไม่ใช่การแก้
+{
+  const VIEW = 1560, SEAM = 812;      // รูปพื้นบนจอ 1560 จบที่ราว ๆ นี้
+  const layers = [];
+  const mkG = () => {
+    const g = { rects: [], ells: [],
+      setDepth(d) { this.depth = d; return this; }, fillStyle(c, a) { this.a = a; return this; },
+      fillRect(x, y, w, h) { this.rects.push([x, y, w, h]); return this; },
+      fillEllipse(x, y, w, h) { this.ells.push({ x, y, w, h, a: this.a }); return this; } };
+    layers.push(g);
+    return g;
+  };
+  const sc = { viewW: VIEW, add: { graphics: mkG } };
+  sc._drawAbyss = ScrambleScene.prototype._drawAbyss;
+  sc._drawAbyss(SEAM);
+
+  const fill = layers.find((g) => g.rects.length);
+  ok(!!fill, "วาดจริง ไม่ได้เป็นเมธอดเปล่า");
+  ok(fill.depth < -28 && fill.depth > -40, `พื้นฟ้าใต้เกาะอยู่หลังหน้าผาแต่หน้าฟ้า (depth ${fill.depth})`);
+  const top = Math.min(...fill.rects.map((r) => r[1]));
+  const bot = Math.max(...fill.rects.map((r) => r[1] + r[3]));
+  ok(top <= STAGE.groundY, `เริ่มถมตั้งแต่เส้นพื้นขึ้นไป (${top} <= ${STAGE.groundY})`);
+  ok(bot >= CAM.viewBot, `ถมลงไปถึงก้นที่กล้องมองได้ (${bot} >= ${CAM.viewBot})`);
+
+  // ต้องคลุมเต็มความกว้างจอ ไม่ใช่แค่ความกว้างเวที — กล้องเลื่อนซ้ายขวาได้ด้วย
+  const fx0 = Math.min(...fill.rects.map((r) => r[0]));
+  const fx1 = Math.max(...fill.rects.map((r) => r[0] + r[2]));
+  ok(fx1 - fx0 >= VIEW - 1e-9 && fx0 <= (STAGE.w - VIEW) / 2 + 1e-9,
+    `คลุมเต็มความกว้างจอ (${fx0} ถึง ${fx1})`);
+
+  // ไม่มีช่องโหว่ระหว่างแถบ — ไล่เฉดทีละ 4 px ถ้าเว้นช่องจะเห็นเป็นเส้นริ้ว
+  const rows = fill.rects.filter((r) => r[1] + r[3] > STAGE.groundY).sort((a, b) => a[1] - b[1]);
+  let hole = 0;
+  for (let i = 1; i < rows.length; i++) hole = Math.max(hole, rows[i][1] - (rows[i - 1][1] + rows[i - 1][3]));
+  ok(hole <= 0, `ไม่มีช่องโหว่ระหว่างแถบไล่เฉด (ช่องกว้างสุด ${hole} px)`);
+
+  // ── แนวเมฆต้องอยู่ "หน้า" รูปพื้น ไม่งั้นบังรอยตัดไม่ได้เลย ──
+  //
+  // รูปพื้นจบด้วยเส้นตรงแนวนอน (ตอนออกแบบมันอยู่ใต้ขอบจอ) กล้องที่เลื่อนลงได้ทำให้เห็นเส้นนั้น
+  // เมฆที่วาดไว้หลังเกาะไม่ได้แก้อะไรเลย — ข้อนี้คือข้อที่แยกสองอย่างนั้นออกจากกัน
+  const bank = layers.find((g) => g.ells.length && g.depth > -10);
+  ok(!!bank, `มีแนวเมฆที่อยู่หน้ารูปพื้น (depth ของแต่ละชั้น: ${layers.map((g) => g.depth).join(', ')})`);
+
+  // และต้องทับเส้นรอยตัดต่อเนื่องตลอดความกว้างจอ อย่างน้อยจุดละสองวง
+  // วงเดียวไม่พอ: ขอบวงจาง ถ้ามีจุดที่วงเดียวคลุม เส้นตรงจะโผล่เป็นช่วง ๆ ซึ่งดูแย่กว่าเส้นเต็ม
+  const covers = (e, x, y) => ((x - e.x) / (e.w / 2)) ** 2 + ((y - e.y) / (e.h / 2)) ** 2 <= 1;
+  let thin = 0, worstX = null;
+  for (let x = (STAGE.w - VIEW) / 2; x <= (STAGE.w + VIEW) / 2; x += 5) {
+    const n = bank.ells.filter((e) => covers(e, x, SEAM)).length;
+    if (n < 2 && (worstX === null || n < thin)) { thin = n; worstX = x; }
+  }
+  ok(worstX === null, worstX === null
+    ? "แนวเมฆทับรอยตัดต่อเนื่องทั้งจอ อย่างน้อยจุดละสองวง"
+    : `มีช่องที่เมฆบางเกิน — x=${worstX} ถูกทับแค่ ${thin} วง`);
 }

@@ -389,15 +389,41 @@ const run = (g, n, a = () => inp(), b = () => inp()) => {
 // ที่ต้องวาร์ปก่อน เพราะท่านี้เงื้อ 10 เฟรมแล้วต่ออีก 8 = 18 เฟรมยืนนิ่ง
 // ในเกมที่เร็วขนาดนี้คือโดนสวนฟรี อัลติที่กดแล้วโดนตีหลุดคืออัลติที่ไม่มีใครกด
 {
-  const top = STAGE.platforms.reduce((a, p) => (p.y < a.y ? p : a));
+  const topY = Math.min(...STAGE.platforms.map((p) => p.y));
+  const tops = STAGE.platforms.filter((p) => p.y === topY);
+  const mids = tops.map((p) => (p.x1 + p.x2) / 2);
+  /** กดอัลติหนึ่งเฟรมจากตำแหน่ง x ที่กำหนด */
+  const ult = (x) => {
+    const g = mk(300); g.p1.ki = KI_MAX; g.p1.x = x;
+    run(g, 1, () => inp({ skill3: 1, p: { skill3: 1 } }));
+    return g.p1;
+  };
 
   {
     const g = mk(300); g.p1.ki = KI_MAX;
     const y0 = g.p1.y;
     run(g, 1, () => inp({ skill3: 1, p: { skill3: 1 } }));
-    ok(g.p1.y === top.y, `วาร์ปขึ้นชั้นบนสุดทันทีที่กด (${y0} -> ${g.p1.y} · ชั้นบนสุด ${top.y})`);
-    ok(g.p1.x === (top.x1 + top.x2) / 2, `ยืนกลางแท่นเป๊ะ (${g.p1.x}) — ไม่มีสุ่ม สองเครื่องจึงตรงกัน`);
+    ok(g.p1.y === topY, `วาร์ปขึ้นชั้นบนสุดทันทีที่กด (${y0} -> ${g.p1.y} · ชั้นบนสุด ${topY})`);
+    ok(mids.includes(g.p1.x), `ยืนกลางแท่นเป๊ะ (${g.p1.x}) — ไม่มีสุ่ม สองเครื่องจึงตรงกัน`);
     ok(g.p1.onGround && g.p1.vx === 0 && g.p1.vy === 0, "ยืนนิ่งบนแท่น ไม่ได้ค้างความเร็วเดิมไว้");
+  }
+
+  // ── ชั้นบนสุดมีหลายแท่น = ต้องไปแท่นที่ใกล้ตัวที่สุด ไม่ใช่แท่นแรกในลิสต์ ──
+  //
+  // ตั้งแต่เวทีเหลือสามชั้น ชั้นบนสุดเป็นแท่นซ้ายกับขวาที่สูงเท่ากัน
+  // ถ้าตัดสินด้วยลำดับในลิสต์ อัลติจะพาไปทางซ้ายเสมอ = อยู่ครึ่งขวาของเวทีแล้วกดอัลติคือเสียเปรียบฟรี
+  if (tops.length > 1) {
+    const near = (x) => mids.reduce((a, m) => (Math.abs(m - x) < Math.abs(a - x) ? m : a));
+    let wrong = [];
+    for (const x of [STAGE.wallL + 30, 400, 640, 900, STAGE.wallR - 30]) {
+      const got = ult(x).x, want = near(x);
+      if (got !== want) wrong.push(`x=${x}: ไป ${got} ควรไป ${want}`);
+    }
+    ok(wrong.length === 0, wrong.length
+      ? `ไปผิดแท่น — ${wrong.join(' · ')}`
+      : `ไปแท่นที่ใกล้ตัวที่สุดทุกตำแหน่ง (แท่นบนสุด ${mids.join(' และ ')})`);
+    // และต้องเลือกคนละแท่นจริง ๆ ไม่ใช่บังเอิญตรงเพราะมีแท่นเดียว
+    ok(ult(STAGE.wallL + 30).x !== ult(STAGE.wallR - 30).x, "ยืนคนละฝั่งเวทีได้คนละแท่นจริง");
   }
 
   // ── อมตะระหว่างขึ้น ไม่งั้นวาร์ปแล้วโดนตีหลุดกลางทางก็เท่าเดิม ──
@@ -413,9 +439,9 @@ const run = (g, n, a = () => inp(), b = () => inp()) => {
   // เพราะมันคือสิ่งที่ทำให้ "หนีขึ้นที่สูง" ไม่ใช่คำตอบสำเร็จรูปของทั้งเกม
   {
     const g = mk(300);
-    const cx = (top.x1 + top.x2) / 2;
+    const cx = mids[0];
     g.boxes.push({ x: cx, owner: 'p2', fuse: 200, arm: 0 });
-    g.p1.x = cx; g.p1.y = top.y; g.p1.onGround = true;
+    g.p1.x = cx; g.p1.y = topY; g.p1.onGround = true;
     const before = g.p1.hp;
     run(g, 6, () => inp());
     ok(g.p1.hp < before, `ยืนบนชั้นบนสุดก็ยังโดนไหที่อยู่แนวเดียวกัน (${before} -> ${g.p1.hp})`);
