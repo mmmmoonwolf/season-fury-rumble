@@ -88,3 +88,22 @@ const { CHARACTERS } = await import(G + "/core.js");
   // (ตัวที่หยิบจากพูลลงทะเบียนไว้แล้วตั้งแต่ตอนสร้าง)
   ok(/this\._fxPool\.pop\(\) \?\? this\._world\(this\.add\.image/.test(scene), "หยิบจากพูลก่อนค่อยสร้างใหม่");
 }
+
+// ── ชื่อเฟรมที่ส่งเข้า emit() ต้องชี้ไปถึงเฟรมจริงในใบเอฟเฟค ──
+//
+// คีย์ในอัตลาส **พกนามสกุลมาด้วย** (`ring.png`) แต่ทุกที่ที่เรียกเขียนชื่อเปล่า (`emit('ring', ...)`)
+// Phaser ไม่ throw เมื่อหาเฟรมไม่เจอ มันเตือนใน console แล้วคืน "เฟรมแรกของอัตลาส" มาแทน
+// ผลคืออนุภาคทุกชนิดวาดเป็น slashWide.png อันเดียวกันหมด โดยเกมยังเดินได้ปกติและไม่มีอะไรฟ้อง
+// (พลาดแบบเดียวกับ verify.py ที่แมตช์ "idle_1" แทน "idle_1.png")
+{
+  ok(/const key = frame\.endsWith\('\.png'\) \? frame : frame \+ '\.png';/.test(scene),
+    "emit() เติมนามสกุลให้เองเมื่อผู้เรียกเขียนชื่อเปล่า");
+  ok(!/this\.add\.image\(0, 0, 'vfx', frame\)/.test(scene) && !/setTexture\('vfx', frame\)/.test(scene),
+    "ไม่มีที่ไหนส่ง frame ดิบเข้า texture โดยไม่ผ่านการเติมนามสกุล");
+
+  // และชื่อที่เรียกจริงต้องมีอยู่ในใบ — ดักคำผิดไปในตัว
+  const names = [...scene.matchAll(/(?:this\.)?emit\('([\w.]+)'/g)].map((m) => m[1]);
+  const bad = [...new Set(names)].filter((n) => !atlas.frames[n.endsWith(".png") ? n : n + ".png"]);
+  ok(names.length > 10 && bad.length === 0,
+    `ชื่อเฟรมที่ emit() เรียกมีจริงทุกอัน (${[...new Set(names)].length} แบบ)${bad.length ? " เจอ " + bad.join(",") : ""}`);
+}

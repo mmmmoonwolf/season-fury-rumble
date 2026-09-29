@@ -53,9 +53,24 @@ anchor สั่งไว้แล้วว่าปลายผ้าต้อ�
 | E Chain Rush | ✅ | 8 | 9 | 215.9 | 4.2% |
 | F Chain Rush ครึ่งหลัง | ✅ | 9 | 9 | 153.9 | 4.4% |
 | G ไม้จบสองทาง | ✅ | 6 | 6 | 222.7 | 6.5% |
-| H SKY DRIVE ขาขึ้น | ✅ | 9 | 9 | 142.1 | 2.6% |
+| H SKY DRIVE ขาขึ้น | ⚠️ | 9 | 9 | 142.1 | 2.6% | ← แถวกลางไม่ใช่ท่าศอก ดูข้อ 13 |
 | I SKY DRIVE ตบลง | ✅ | 6 | 6 | 216.3 | 6.5% |
 | J อัลติ Hundred Hands | ✅ | 15 | 12 | 148.9 | 2.6% |
+
+### ⚠️ ใบ H ท่า 4-6: สั่ง "ศอกกลางอากาศ" แต่ได้ "การ์ดลอยเฉย ๆ"
+
+นี่คือข้อเดียวที่ยังค้าง และ **ไม่ได้จับได้ตอนตรวจใบ เพราะตอนนั้นตรวจแต่ความสะอาดกับไม้บรรทัด
+ไม่ได้ตรวจว่า "ท่านี้อ่านออกไหมว่ากำลังตี"** ผู้เล่นเจอก่อน รายงานมาว่า "สกิล 2 ไม่มีเฟรม"
+
+สิ่งที่ได้จริง: ท่า 4 = แขนชูขึ้นสุด (เป็นท่าต่อเนื่องจากอัปเปอร์ของแถวแรก)
+ท่า 5 กับ 6 = ยกหมัดการ์ดข้างหน้าเฉย ๆ ลอยอยู่ ไม่มีแขนเหยียดออกไปไหนเลย
+
+เรียงตามลำดับ 4-5-6 แปลว่า **เฟรมกลาง (= ช่วงที่กล่องชนเปิด) คือท่าการ์ด**
+กดสกิล 2 แล้วทีที่สองในชุดจึงเป็นการ์ดสามเฟรมติด ตาอ่านว่าไม่มีอะไรเกิดขึ้น
+
+**แก้ชั่วคราวแล้ว** สลับเป็น 5-4-6 = การ์ด → แขนพุ่งขึ้น → การ์ด
+ได้สามจังหวะที่อ่านออกว่าตี และเฟรมที่แขนเหยียดอยู่ตรงกลางตามกฎเดิม
+**แต่มันไม่ใช่ท่าศอก** ของจริงต้องเจนใบ K (3 ท่า) ตามข้อ 13 แล้ว build ใหม่
 
 **ทุกใบสะอาด ไม่มีก้อนขยะเลยสักใบ** ปลายผ้าคาดแนบขาทุกท่า ไม่มีท่าไหนแตะขอบภาพ
 และตรวจคู่ทุกคู่ในใบ F/J แล้ว ไม่มีท่าไหนเป็นภาพซ้ำ (IoU สูงสุด 0.906 กับ 0.911 · เกณฑ์ซ้ำคือ 0.93)
@@ -581,8 +596,8 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 
 ### สิ่งที่ต้องดูด้วยตาในเกมจริง (ตัวเลขบอกไม่ได้)
 
-- **`runStride = 74`** — ย่อจากค่าเดิม 85 ตามสัดส่วนถ่างเท้าที่วัดได้ (109 เทียบ 126 ของชุดเดิม)
-  ค่านี้คุมว่าเท้าไถหรือไม่ **ต้องดูตอนวิ่งจริงแล้วจูน** ตัวเลขพิสูจน์ให้ไม่ได้
+- ~~**`runStride = 74`**~~ → **153** · ผิดจริงและแก้แล้ว ดูหัวข้อ "ท่าวิ่งสับขาไวเกิน" ข้างล่าง
+  ค่านี้คุมว่าเท้าไถหรือไม่ ยังควรดูตอนวิ่งจริงอีกที แต่ตอนนี้จังหวะไม่ผิดเท่าตัวแล้ว
 - **`sky1` เฟรม 3** ขาหดขึ้นแต่ยึดเท้าติดพื้น อาจดูเหมือนเขย่งปลายเท้าชั่วขณะ
   (ซิมยกตัวขึ้นอยู่แล้วตอนนั้น น่าจะกลบได้ แต่ต้องดู)
 - **`crouch` สูง 92% ของท่ายืน** ซึ่งตื้นกว่าตัวอื่นในโรสเตอร์ — ดูว่าหลบท่าสูงได้จริงไหม
@@ -607,10 +622,92 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 | `rush1` · `rush2` · `rush3` | E1-3 · E4-6 · **E7,E8,F1** | 9 |
 | `rush4` · `rush5` · `rushEndF` | F1-3 · F4-6 · F7-9 | 9 |
 | `rushEndU` · `rushEndD` | G1-3 · G4-6 | 6 |
-| `sky1` · `sky2` · `sky3` | H1-3 · H4-6 · H7-9 | 9 |
+| `sky1` · `sky2` · `sky3` | H1-3 · **H5,4,6** · H7-9 | 9 |
 | `sky4` · `sky5` | I1-3 · I4-6 | 6 |
 | `hh1` · `hh2` · `hh3` · `hhEnd` | J1-3 · **J11,6,7** · **J10,13,9** · **J12,14,15** | 12 |
 
 **รวม 102 เฟรม** · ท่าที่ไม่ได้ใช้: A8 A10 A11 · B4 B5 B9 B10 B11 B14 · J4 J5 J8
 
 `F1` ถูกใช้สองที่ (ปิด `rush3` และเปิด `rush4`) ซึ่งตั้งใจ — คือรอยต่อที่สั่งไว้
+
+
+---
+
+## ⚠️ ท่าวิ่งสับขาไวเกิน — คลิปใหม่เป็นสองก้าวต่อรอบ ไม่ใช่ก้าวเดียว
+
+`ScrambleScene.js` ตั้งเวลาต่อรอบของท่าวิ่งจาก `runStride` = **ระยะที่เท้าเคลื่อนได้หนึ่งรอบ**
+ไม่ใช่ fps ตายตัว เพื่อให้จังหวะสับขาตรงกับความเร็วที่เคลื่อนจริงเสมอแม้จะปรับความเร็วในพาเนล Tune
+
+ค่าเดิม 74 คิดมาจาก "ถ่างเท้าสูงสุด x หนึ่งก้าว" ซึ่งถูกกับคลิปเดิม แต่**คลิปชุดใหม่เป็นวงจรเดินเต็ม
+สองก้าวใน 11 เฟรม** รอบจึงจบเร็วไปเท่าตัว = ขาสับถี่กว่าที่ตัวเคลื่อนไปจริงสองเท่า
+
+วิธีนับจำนวนก้าวที่ใช้ (ไม่ใช่นับยอดถ่างขา — การสุ่มเฟรมทำให้นับได้ 3 ยอดในวงจรสองก้าว):
+เทียบ IoU ของ **เฟรมที่ติดกัน** กับ **เฟรมที่ห่างกันครึ่งรอบ** ถ้าวงจรมีสองก้าว
+ครึ่งรอบหลังจะซ้ำครึ่งรอบแรก คู่ที่ห่างครึ่งรอบจึงเหมือนกันมากกว่าคู่ที่ติดกัน
+
+| ชุด | เฟรมติดกัน | ห่างครึ่งรอบ | สรุป |
+|---|---|---|---|
+| ชุดใหม่ | 0.684 | **0.783** | สองก้าว |
+| ชุดเดิม | **0.800** | 0.626 | ก้าวเดียว |
+
+แยกขาดทั้งสองทาง จึงเอามาเป็นตัวนับอัตโนมัติท้าย `build_scramble_march.py`
+ซึ่งคำนวณค่าที่ควรเป็นแล้ว **เทียบกับค่าใน `ScrambleScene.js` ทุกครั้งที่ build**
+ต่างกันเกิน 8% = build ไม่ผ่าน (ทดสอบแล้วว่าแดงจริงเมื่อใส่ 74 กลับเข้าไป)
+
+สูตร (เดียวกับ `gunStride` ของ Alecto): ถ่างเท้าสูงสุด x (SPRITE_H / standing) x จำนวนก้าว
+  · ชุดใหม่ 141 x (130/240) x 2 = **153**
+  · ทวนกับชุดเดิม 158 x (130/240) x 1 = 85.6 ซึ่งคือค่า 85 ที่ใช้อยู่จริง ✓
+
+---
+
+## 13. ชีต K — ศอกกลางอากาศ แทนที่ใบ H ท่า 4-6 (3 ท่า · แถวเดียว)
+
+ใบนี้เจนเพื่อ**แทนที่ของเดิมที่เจนมาไม่ตรงคำสั่ง** ไม่ใช่ท่าใหม่ — ดูหัวข้อ ⚠️ ใบ H ด้านบน
+
+เงื่อนไขที่พลาดรอบที่แล้ว: ท่า 5 ที่สั่งว่า "airborne elbow strike" ได้กลับมาเป็นท่ายกหมัดการ์ด
+รอบนี้จึงเขียนใหม่ให้เงื่อนไขวัดได้ด้วยตา: **ศอกต้องเป็นจุดที่ยื่นออกไปไกลที่สุดของทั้งภาพ**
+และสั่งตรง ๆ ว่าท่ากลางต้องกว้างกว่าอีกสองท่าอย่างเห็นได้ชัด
+
+```
+A 3-pose sprite sheet of the same character, arranged in ONE horizontal row,
+read left to right. Even spacing, no pose touching another.
+
+All three poses are fully AIRBORNE — both feet clear of the ground, nothing
+below him, legs tucked or trailing. He is rising, not falling.
+
+These three poses are ONE elbow strike broken into its three moments. The middle
+pose is the strike itself and MUST be the widest of the three: the point of his
+elbow is the furthest-forward point in the whole drawing, further forward than
+his hair, his knee or his other fist. The outer two poses are clearly narrower.
+
+Pose 1 — winding up: the striking arm folded tight, that fist pulled back against
+his own chest, the elbow still pointing DOWN, shoulder dropped and coiled back.
+Pose 2 — the elbow strike at full extension: the elbow driven forward and slightly
+upward at head height, the forearm folded flat against his upper arm, the whole
+shoulder and torso turned in hard behind it. The elbow leads; the fist stays
+against his own shoulder. His body is stretched along the line of the strike.
+Pose 3 — carrying through: the elbow arm sweeping past and starting to fold back
+across his chest, torso still rotating, the other shoulder opening forward —
+mid-motion, NOT returned to a guard.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference sheet exactly. Character: a lean teenage boy martial artist. His black hair is spiky and swept up, but it lies FLAT against his skull with the hairline clearly visible — never a wide round frizzy halo. A small pale scar sits on one cheek. His expression is level and unimpressed, at most a slight smirk; never wide-eyed or cheerful. He wears a fitted short-sleeved BLACK t-shirt that shows the shape of his chest and arms, and loose BAGGY TROUSERS in a muted off-white / warm light grey — the trousers are wide and billowy with deep folded shadows through them, never a flat bright white. A black cloth sash is tied around his waist with two loose ends hanging down his left hip; the sash ends always stay close against his leg and never stream away from his body. Black fingerless gloves with wrapped wrists cover both hands, and he wears black ankle-high boots. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props of any kind, no weapons, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Leave a clear band of empty white space below the soles and above his hair; nothing may touch or run off the edge of the image. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. Nothing detached from his body anywhere in the image — no loose cloth flying away, no separated objects. No effects of any kind: no wind, no impact flashes, no sparks, no glow, no motion lines, no speed lines, no dust, no cracked ground — the game draws all of that itself.
+```
+
+ได้มาแล้ววางไว้ที่ `art_reference/helios_sheets/sheet_K.jpg` แล้วแก้ `SEQ` ใน builder เป็น
+`"sky2": ("K", [1, 2, 3], AIR)` · เพิ่ม `"K"` เข้า `LETTERS` · รัน build · ขยับเลขเวอร์ชันใน `sw.js`
+
+---
+
+## ⚠️ อนุภาคเอฟเฟคทุกชนิดวาดผิดรูปมาตั้งแต่ต้น (แก้แล้ว)
+
+ไม่เกี่ยวกับ MARCH โดยตรงแต่เจอตอนไล่เรื่องสกิล 2 — บันทึกไว้เพราะเป็นบทเรียนซ้ำรอยเดิม
+
+คีย์ในอัตลาสเอฟเฟค **พกนามสกุลมาด้วย** (`ring.png`) แต่ทุกที่ที่เรียกเขียนชื่อเปล่า (`emit('ring', …)`)
+Phaser **ไม่ throw** เมื่อหาเฟรมไม่เจอ มันเตือนใน console แล้วคืน "เฟรมแรกของอัตลาส" มาแทน
+ซึ่งคือ `slashWide.png` — วงแหวน ดาว ฝุ่น ประกาย เส้นพุ่ง จึงวาดเป็นรอยดาบโค้งอันเดียวกันหมด
+เกมเดินได้ปกติ ไม่มี error ไม่มีจอดำ เห็นได้อย่างเดียวคือเปิดภาพมาดูแล้วรู้ว่า "รูปไม่ใช่"
+
+(บทเรียนเดียวกับ `verify.py` ที่แมตช์ `"idle_1"` แทน `"idle_1.png"` — **คีย์ในอัตลาสมีนามสกุลเสมอ**)
+
+แก้ที่ `emit()` เติมนามสกุลให้เองจุดเดียว แทนการไล่แก้ที่เรียกทั้ง 40 กว่าจุด
+และเพิ่มการ์ดใน `vfx.test.mjs` สองข้อ: เติมนามสกุลจริงไหม · ชื่อที่ `emit()` เรียกมีในใบครบไหม

@@ -166,10 +166,10 @@ const CHAR_ART = {
     atlasKey: 'schelios',
     texture: 'assets/characters/scramble_helios.png',
     data: 'assets/characters/scramble_helios.json',
-    // ชุดใหม่ขาสั้นกว่าชุดเดิม ถ่างเท้าสูงสุดวัดได้ 109 px บน canvas เทียบกับ 126 ของชุดเดิม
-    // ค่าเดิมที่จูนไว้คือ 85 จึงย่อตามสัดส่วนเดียวกัน: 85 x 109/126 = 74
-    // (ค่าที่ลงท้ายของทุกตัวเป็นค่าจูนด้วยตา ไม่ใช่สูตรตรง ๆ — ย่อตามสัดส่วนจึงรักษาการจูนเดิมไว้ได้)
-    runStride: 74,
+    // **หนึ่งรอบของคลิปชุดใหม่ = สองก้าว** (ชุดเดิมก้าวเดียว) ค่าเดิม 74 คิดมาแบบก้าวเดียว
+    // รอบจึงจบเร็วไปเท่าตัว = สับขาไวเกิน · 141 x (130/240) x 2 ก้าว = 153
+    // ตัวนับก้าวกับที่มาของเลขอยู่ท้าย tools/build_scramble_march.py ซึ่งเช็คค่านี้ทุกครั้งที่ build
+    runStride: 153,
     title: 'Helios',
     role: 'นักสู้ระยะประชิด',
     tip: 'ต่อยเตะรัว ชกลอยขึ้นฟ้าแล้วคอมโบต่อกลางอากาศ ก่อนตบลงพื้นคอมโบซ้ำ',
@@ -2766,12 +2766,19 @@ class ScrambleScene extends Phaser.Scene {
     return this.emit('ring', x, y, { ...o, scale: (r * 2) / w });
   }
 
+  /** @param frame ชื่อเฟรมในใบเอฟเฟค เขียนได้ทั้งมีและไม่มี `.png` — เติมให้เองข้างล่าง */
   emit(frame, x, y, o = {}) {
     if (!this.textures.exists('vfx')) return null;
+    // **คีย์ในอัตลาสมีนามสกุลติดมาด้วย** (`ring.png` ไม่ใช่ `ring`) — ทุกที่ที่เรียกเขียนชื่อเปล่า
+    // Phaser ไม่ throw เมื่อหาเฟรมไม่เจอ มันเตือนใน console แล้วคืน "เฟรมแรกของอัตลาส" มาแทน
+    // ซึ่งคือ `slashWide.png` **อนุภาคทุกชนิดในเกมจึงวาดเป็นรอยดาบโค้งอันเดียวกันหมด**
+    // ทั้งวงแหวน ดาว ฝุ่น ประกาย เส้นพุ่ง — ผิดมาตั้งแต่วันที่ต่อใบเอฟเฟคเข้าเกม
+    // (บทเรียนเดิมของ verify.py: คีย์ในอัตลาสพกนามสกุลมาด้วยเสมอ)
+    const key = frame.endsWith('.png') ? frame : frame + '.png';
     this._fxPool ??= []; this._fxLive ??= [];
-    const img = this._fxPool.pop() ?? this._world(this.add.image(0, 0, 'vfx', frame));
+    const img = this._fxPool.pop() ?? this._world(this.add.image(0, 0, 'vfx', key));
     const life = o.life ?? 16;
-    img.setTexture('vfx', frame).setVisible(true).setActive(true)
+    img.setTexture('vfx', key).setVisible(true).setActive(true)
       .setPosition(x, y).setDepth(o.depth ?? 8)
       .setBlendMode(o.blend ?? Phaser.BlendModes.ADD)
       .setTint(o.tint ?? 0xffffff).setRotation(o.rot ?? 0)
