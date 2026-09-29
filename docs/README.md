@@ -32,7 +32,8 @@
 - `vendor/README.md` — ทำไมเก็บ Phaser/PeerJS ในรีโป ไม่ดึงจาก CDN
 - `vendor/fonts/README.md` — ฟอนต์ที่โค้ดอ้างไว้หกจุดแต่ไม่เคยถูกโหลด + สัญญาอนุญาต OFL
 - `art_prompts_*.md` (รากรีโป) — prompt ที่ใช้เจนอาร์ต แยกตามตัวละคร/รอบ
-  · ใบล่าสุดคือ `art_prompts_dear.md` (ชีตใหม่ของ DEAR 7 ใบ ยังไม่ได้เจน)
+  · `art_prompts_dear.md` (DEAR — เจนครบแล้ว เข้าเกมแล้ว)
+  · `art_prompts_march.md` (MARCH — 102 เฟรม 10 ใบ ยังไม่ได้เจน)
 - `docs/archive/` — เอกสารส่งต่อของรุ่นก่อน ๆ เก็บไว้อ้างอิง ไม่ได้อัปเดตแล้ว
 
 ## เทสต์
