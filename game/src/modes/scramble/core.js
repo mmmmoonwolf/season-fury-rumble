@@ -301,7 +301,25 @@ const LASH_DMG = 0.08;       // ดาเมจแส้ +8% ต่อชั้�
 // เส้นต้องอยู่ตรงขอบที่หางเอื้อมถึง ไม่งั้นจะมีช่วงที่ถืออาวุธผิดสำหรับระยะนั้น
 const RANGE_IN = 180;        // ใกล้กว่านี้ -> หาง
 const RANGE_OUT = 220;       // ไกลกว่านี้ -> ปืน
-const MARK_CASH = 3;         // ยิงโดนคนมีตรา +3 ดาเมจ กินตราหนึ่งดวง
+// ── หมุดระเบิด — เปลี่ยนจาก "ขึ้นเงินทีละดวง" เป็น "จุดทีเดียวหมด" ──
+//
+// **ผู้เล่นรายงานตรง ๆ ว่า "ยังไม่สนุก ขอแบบบู๊ ๆ"** ซึ่งวัดออกมาเป็นตัวเลขได้จริง:
+// ชุดแย็บปืนของเธอรวมกันได้ 5 ดาเมจ (แส้ 13 · HELIOS 12 · ATLAS 19)
+// และท่าที่แรงที่สุดทั้งตัวคือ 10 ขณะที่ ATLAS มีท่าปกติที่ 19
+// พอระยะสลับให้เอง เธอจึงถูกบังคับไปเล่นชุดที่อ่อนที่สุดในเกมเกินครึ่งเวลา
+//
+// ของเดิม: ยิงโดนคนมีตรา +3 กินตราหนึ่งดวง = เก็บทีละนิด ไม่มีจังหวะไหนดัง
+// ของใหม่: **หมุดไม่ใช่แต้ม มันคือระเบิดที่ปักอยู่บนตัวเขา** สกิล 2 กับอัลติจุดมันทั้งหมด
+// พร้อมกัน เป็นวงระเบิดที่โดนคนที่ยืนใกล้ ๆ ด้วย
+//
+// ดาเมจโตเร็วกว่าเชิงเส้น (3 · 8 · 14 · 22 · 32) เพื่อให้ "อดใจปักให้ครบ" คุ้มกว่าจุดทิ้ง
+// ปักครบ 5 แล้วจุด = 32 เทียบกับจุดทีละดวงห้าครั้ง = 15 ต่างกันเกินสองเท่า
+//
+// **จุดได้เฉพาะตอนกดสกิล ไม่ใช่กระสุนทุกนัด** ตั้งใจแบบนี้ — ถ้าปืนธรรมดาจุดด้วย
+// ระเบิดจะลั่นเองตอนแหย่ ซึ่งคือ "ของที่เกิดกับผู้เล่น" ไม่ใช่ "ของที่ผู้เล่นตั้งใจทำ"
+// กับดักเดียวกับที่เส้นแบ่งระยะเคยเจอ แล้วแก้ด้วยช่วงคาบเกี่ยว
+const MARK_POP = [0, 3, 8, 14, 22, 32];   // ดาเมจระเบิดตามจำนวนหมุดที่ปักไว้
+const MARK_POP_R = [0, 96, 118, 140, 162, 184];  // ครึ่งความกว้างวงระเบิด
 const PIN_FRAMES = 45;       // ตอกหมุดแล้วกระโดดไม่ได้กี่เฟรม
 const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% ต่อชั้น
 // เพดานเพิ่ม x1.40 ต้องเล็กกว่าเพดานลดดาเมจตามความยาวคอมโบ x0.50 เสมอ
@@ -396,8 +414,12 @@ const ALECTO_MOVES = {
   //
   // ไม่ใช่ปุ่มแก้ DEAR อย่างเดียว — ทุกตัวในเกมกระโดด ใครกระโดดเข้ามาก็โดนหมด
   // มันแค่บังเอิญเป็นคำตอบเชิงโครงสร้างของตัวที่อยู่บนฟ้าทั้งเกม
-  pin1: { label: 'Pin Down', kind: 'ground', startup: 9, active: 6, recovery: 20, dmg: 6,
-    hb: { x: 20, y: -260, w: 120, h: 190 }, kb: [2, 12], stun: 30, lash: true, pin: PIN_FRAMES },
+  //
+  // **ปักสามหมุดทีเดียว** (ท่าแส้ปกติปักดวงเดียว) — นี่คือปุ่ม "ตั้งระเบิด" ของเธอ
+  // ตอกลงมา -> เขากระโดดไม่ได้ 45 เฟรม -> เธอถอยไปกดสกิล 2 จุด = 14 ดาเมจเป็นก้อน
+  // สองปุ่มนี้จึงเป็นคอมโบจริงที่กดจบได้ ไม่ใช่การบ้านที่ต้องสะสมทั้งยก
+  pin1: { label: 'Pin Down', kind: 'ground', startup: 9, active: 6, recovery: 20, dmg: 8,
+    hb: { x: 20, y: -260, w: 120, h: 190 }, kb: [2, 12], stun: 30, lash: 3, pin: PIN_FRAMES },
 
   // ---- ท่าตีปกติชุดที่สอง: ไรเฟิล (ใช้เมื่อสลับด้วยสกิล 1 แล้ว) ----
   //
@@ -411,26 +433,26 @@ const ALECTO_MOVES = {
   // ราคาของ "ปลอดภัย + ยิงได้ทั้งเวที" คือดาเมจ ไม่ใช่ความเร็ว — คนที่โดนรุมต้องได้ของที่ใช้ได้จริง
   gjab1: { label: 'Hip Fire', kind: 'ground', startup: 5, active: 3, recovery: 8, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 1, shotStun: 12, shotKb: 2, shotRange: 520, shotCash: MARK_CASH, chain: 'gjab2' },
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 12, shotKb: 2, shotRange: 520, chain: 'gjab2' },
   gjab2: { label: 'Hip Fire', kind: 'ground', startup: 4, active: 3, recovery: 9, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 1, shotStun: 12, shotKb: 3, shotRange: 520, shotCash: MARK_CASH, chain: 'gjab3' },
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 2, shotStun: 12, shotKb: 3, shotRange: 520, chain: 'gjab3' },
   // ไม้จบ: ปักเท้ายิง (ไม่มี mobile) ดันออกแรงพอเปิดระยะได้จริง แลกกับค้างนาน
   gjab3: { label: 'Kick Back', kind: 'ground', startup: 5, active: 4, recovery: 18, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 20, shotKb: 9, shotRange: 520, shotCash: MARK_CASH },
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 5, shotStun: 20, shotKb: 9, shotRange: 520 },
   // กดทิศ = เดินยิง ขยับได้มากที่สุดในชุด เป็นท่าที่ใช้ถอยพลางยิงพลางตอนโดนไล่
   gside: { label: 'Walking Fire', kind: 'ground', startup: 4, active: 3, recovery: 10, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.6,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 1, shotStun: 12, shotKb: 2, shotRange: 520, shotCash: MARK_CASH },
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 2, shotStun: 12, shotKb: 2, shotRange: 520 },
   // สวนคนกระโดด: กระสุนพุ่งเฉียงขึ้น ระยะสั้นกว่าเพราะลอยพ้นหัวไปเร็ว
   gup: { label: 'Skyward Shot', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: -7 }], shotAt: 6, shotDmg: 2, shotStun: 18, shotKb: 4, shotRange: 320, shotCash: MARK_CASH },
+    shots: [{ vy: -7 }], shotAt: 6, shotDmg: 3, shotStun: 18, shotKb: 4, shotRange: 320 },
   // ยิงต่ำ: ตัวเตี้ยลงด้วย (crouch) จึงลอดท่าที่ตีสูงได้ไปในตัว
   gdown: { label: 'Knee Shot', kind: 'ground', crouch: true, startup: 5, active: 3, recovery: 13, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 1, shotStun: 14, shotKb: 2, shotLow: true, shotRange: 520 },
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 14, shotKb: 2, shotLow: true, shotRange: 520 },
 
   // ---- สกิล 2 ครึ่งหลัง Fan the Hammer: สับไกรีวอลเวอร์เป็นชุด ดันคนออกจากหน้า ----
   //
@@ -438,9 +460,13 @@ const ALECTO_MOVES = {
   // ยิงไปก็ยังโดนยืนกดอยู่ที่เดิม ผู้เล่นรายงานว่า "โดนรุมประจำ"
   // เปลี่ยนเป็นชุดสั้นสามจังหวะที่ **ดันออก** แล้วกลับมาถืออาวุธเดิมเอง
   // สามจังหวะแรงขึ้นเรื่อย ๆ จังหวะสุดท้ายดันแรงพอเปิดระยะได้จริง
+  //
+  // **จังหวะแรกคือตัวจุดระเบิด** (`shotPop`) — นัดเดียวจุดหมุดทั้งหมดที่ปักไว้บนตัวเขา
+  // เป็นวงระเบิดที่โดนคนที่ยืนใกล้ด้วย เล่น 4 คนแล้วปักคนหนึ่งไว้ตอนเขายืนติดกัน
+  // จุดทีเดียวเก็บได้สองคน  ส่วนอีกสองนัดเป็นดาเมจสดตามหลัง
   shot1: { label: 'Fan the Hammer', kind: 'ground', startup: 5, active: 4, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 12, shotKb: 4, autoChain: 'shot2' },
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 12, shotKb: 4, shotPop: true, autoChain: 'shot2' },
   shot2: { label: 'Fan the Hammer', kind: 'ground', startup: 3, active: 4, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
     shots: [{ vy: 0 }], shotAt: 3, shotDmg: 2, shotStun: 12, shotKb: 6, autoChain: 'shot3' },
@@ -459,9 +485,10 @@ const ALECTO_MOVES = {
   // ทะลุ = โดนหลายคนใน 2v2/4 คนโดยไม่ต้องเล็ง และบังคับให้อีกฝั่งกระจายตัว
   line1: { label: "Dead Man's Line", kind: 'ground', startup: 14, active: 6, recovery: 24, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, iframes: [0, 14],
-    // shotCash ติดลบ = กินตราทั้งหมดที่เขามี ไม่ใช่ดวงเดียวเหมือนปืนธรรมดา
+    // `shotPop` = จุดหมุดของทุกคนที่กระสุนทะลุผ่าน ไม่ใช่แค่คนแรก
+    // ปักคนละสามหมุดไว้สองคนแล้วยิงทีเดียว = 10+14 สองรอบ นี่คือปุ่มเปลี่ยนเกม
     shots: [{ vy: 0 }], shotAt: 14, shotDmg: 10, shotStun: 26, shotKb: 8,
-    shotRange: 1400, pierce: true, shotCash: -5 },
+    shotRange: 1400, pierce: true, shotPop: true },
 
   hop: { label: 'Backstep', kind: 'ground', startup: 3, active: 5, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
@@ -1474,7 +1501,7 @@ class Game {
         owner: f.id, x: f.x + dir * 30, y: f.y - (m.shotLow ? 26 : 96),
         vx: dir * SHOT_SPEED, vy: spec.vy, facing: dir,
         dmg: m.shotDmg, stun: m.shotStun, kb: m.shotKb ?? 2, volley, range: m.shotRange ?? SHOT_RANGE,
-      pierce: !!m.pierce, cash: m.shotCash ?? 0,
+      pierce: !!m.pierce, pop: !!m.shotPop,
         anchor: !!spec.anchor, target: null, stuck: 0, travelled: 0, dead: false,
       };
       if (sh.anchor) volley.anchor = sh;
@@ -1587,10 +1614,36 @@ class Game {
   /** ตัวคูณดาเมจจากตราที่เป้ามีอยู่ — เพดาน x1.40 เล็กกว่าเพดานลดคอมโบ x0.50 เสมอ */
   lashMul(d) { return 1 + LASH_DMG * d.lash; }
 
-  addLash(d) {
-    d.lash = Math.min(LASH_MAX, d.lash + 1);
+  /** ปักหมุด n ดวง — ท่าแส้ปกติปักดวงเดียว ตอกหมุด (pin1) ปักทีเดียวสาม */
+  addLash(d, n = 1) {
+    d.lash = Math.min(LASH_MAX, d.lash + n);
     d.lashF = this.frame;
     this.events.push({ type: 'lash', x: d.x, y: d.y - 110, n: d.lash });
+  }
+
+  /** จุดระเบิดหมุดทั้งหมดที่ปักอยู่บนตัว d — คืนดาเมจตรงที่คนนั้นควรกินเพิ่ม
+   *
+   *  วงระเบิดใช้ blast() ตัวเดิมของหม้อ Momus ซึ่งคิดเรื่องทีม การ์ด เกราะ
+   *  และวงฝุ่นไว้ครบแล้ว **แต่ตั้งดาเมจของวงเป็น 0** เพราะคนที่ถูกปักหมุด
+   *  ต้องกินดาเมจผ่านทางกระสุนที่มาจุด (จะได้เข้าระบบลดดาเมจตามคอมโบทางเดียว
+   *  ไม่ใช่โดนสองทางซ้อนกัน) ส่วนคนที่ยืนใกล้กินดาเมจครึ่งเดียวจากวง
+   */
+  popLash(d, owner = null) {
+    const n = Math.min(LASH_MAX, d.lash);
+    if (n <= 0) return 0;
+    d.lash = 0;
+    const dmg = MARK_POP[n];
+    this.events.push({ type: 'pop', x: d.x, y: d.y - 110, n, r: MARK_POP_R[n] });
+    // คนข้างเคียงโดนครึ่งเดียว — ระเบิดลูกนี้เป็นของคนที่ถูกปัก ไม่ใช่ระเบิดวางพื้น
+    //
+    // **ข้ามทั้งคนที่ถูกปักและตัวเธอเอง** คนที่ถูกปักกินดาเมจผ่านกระสุนที่มาจุดแล้ว
+    // ส่วนตัวเธอ: blast() ตัวเดิมให้ "ทีมของเจ้าของโดนแรงกระแทกแต่ไม่เสียเลือด"
+    // ซึ่งถูกสำหรับหม้อที่ขว้างทิ้งไว้ แต่ผิดสำหรับหมุดที่ปักบนตัวคู่ต่อสู้ —
+    // วงกว้างถึง 184 px จึงครอบตัวเธอเองเสมอตอนประชิด เธอเลยโดนชะงักด้วยระเบิดตัวเอง
+    // **แล้วชุดสับไกของเธอถูกตัดกลางคัน เหลือยิงนัดเดียวจากสามนัด** (วัดได้ตอนเทสต์:
+    // กดสกิล 2 ตอนมีหมุดสามดวงแล้วได้ 15 ทั้งที่ควรได้ 22)
+    this.blast(d.x, MARK_POP_R[n], Math.round(dmg * 0.5), 20, [5, -4], owner, [d.id, owner]);
+    return dmg;
   }
 
   /** ระเบิดวงกลม — คืนจำนวน "คู่ต่อสู้" ที่โดนจริง (ไม่นับเจ้าของ)
@@ -1605,14 +1658,16 @@ class Game {
    *  ชะงักครึ่งเดียว (`SELF_STUN`) ไม่ใช่เต็ม — อัลติโปรยได้ถึง 9 ไห ถ้าชะงักเต็มทุกใบ
    *  เขาจะถูกล็อกด้วยท่าตัวเองจนคู่ต่อสู้เดินเล่นได้สบาย
    */
-  blast(x, half, dmg, stun, kb, owner = null) {
+  blast(x, half, dmg, stun, kb, owner = null, skip = null) {
+    const skipIds = skip === null ? null : (Array.isArray(skip) ? skip : [skip]);
     this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
     // ทั้งทีมของเจ้าของโดนแรงกระแทกแต่ไม่เสียเลือด ไม่ใช่แค่ตัวเจ้าของ
     // เขายังเขี่ยเพื่อนตกเวทีด้วยระเบิดตัวเองได้ แค่ไม่ได้ฆ่าเขา
     const ownerTeam = owner === null ? null : (this.fighterById(owner)?.team ?? null);
     let hitFoes = 0;
     for (const f of this.fighters) {
-      if (f.invuln > 0 || Math.abs(f.x - x) > half) continue;
+      // skip = คนที่ไม่ต้องคิดในวงนี้เลย (ดู popLash: คนที่ถูกปัก + เจ้าของหมุด)
+      if (f.invuln > 0 || skipIds?.includes(f.id) || Math.abs(f.x - x) > half) continue;
       const dir = f.x >= x ? 1 : -1;
       if (owner !== null && ownerTeam !== null && f.team === ownerTeam) {
         f.stun = Math.max(f.stun, Math.round(stun * SELF_STUN));
@@ -1720,7 +1775,9 @@ class Game {
   }
 
   hitByShot(sh, d) {
-    const a = sh.owner === 'p1' ? this.p1 : this.p2;
+    // เดิมเขียนเป็น `sh.owner === 'p1' ? this.p1 : this.p2` ซึ่งถูกเฉพาะตอนเล่นสองคน
+    // เล่นสี่คนแล้วกระสุนของ p3/p4 จะถูกเครดิตให้ p2 ทั้งคี (ได้ ki ฟรี · เกราะคิดผิดตัว)
+    const a = this.fighterById(sh.owner) ?? this.p2;
     const facingAttacker = Math.sign(a.x - d.x) === d.facing || a.x === d.x;
     if ((d.state === 'block' || d.state === 'blockcrouch') && d.onGround && facingAttacker) {
       d.lowStun = d.state === 'blockcrouch';
@@ -1730,16 +1787,11 @@ class Game {
       return;
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
-    // ── ตราล็อกเป้า: หางติด ปืนเก็บ ──
-    // ยิงโดนคนมีตรา = ดาเมจเพิ่ม กินตราไปหนึ่งดวง (อัลติกินทั้งหมดที่เขามี)
+    // ── หมุดระเบิด: หางปัก ปืนจุด ──
     // นี่คือสิ่งที่บังคับให้เธอข้ามเส้นระยะทั้งสองทาง ซึ่งคือตัวละครทั้งตัว
-    let bonus = 0;
-    if (sh.cash && d.lash > 0) {
-      const take = sh.cash < 0 ? d.lash : 1;     // ติดลบ = กินทั้งหมด
-      bonus = Math.abs(sh.cash) * take;
-      d.lash -= take;
-      this.events.push({ type: 'cash', x: d.x, y: d.y - 110, n: take, left: d.lash });
-    }
+    // กระสุนที่ติดธง pop จุดหมุดทั้งหมดที่ปักอยู่บนตัวเขาพร้อมกัน (สกิล 2 กับอัลติเท่านั้น)
+    // ดาเมจระเบิดบวกเข้ากับดาเมจกระสุนแล้วค่อยคิดสเกลคอมโบทีเดียว จะได้ไม่โดนลดสองรอบ
+    const bonus = sh.pop ? this.popLash(d, sh.owner) : 0;
     const dmg = Math.max(1, Math.round((sh.dmg + bonus) * scale * (d.dustGuard ? DUST_DR : 1)));
     // เกราะกินกระสุนด้วย ไม่งั้น "ทะลุกระสุนได้" ที่ออกแบบไว้ไม่เป็นจริง
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, sh.x, sh.y); return; }
@@ -2281,7 +2333,7 @@ class Game {
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
     if (a.boostJump) this.gainBoost(a);            // ต่อยโดน = เติมน้ำมัน (ดู gainBoost)
-    if (m.lash && !d.dustGuard) this.addLash(d);   // ในวงฝุ่นกันสถานะทุกชนิด
+    if (m.lash && !d.dustGuard) this.addLash(d, m.lash === true ? 1 : m.lash);   // ในวงฝุ่นกันสถานะทุกชนิด
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');
