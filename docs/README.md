@@ -18,10 +18,10 @@
 
 | ไฟล์ | ตัวละคร |
 |---|---|
-| [ALECTO_KIT.md](ALECTO_KIT.md) | **KUNJAE (Alecto)** — วัดระยะ หางไซเบอร์/ปืนคู่ · **รีเวิร์คทั้งตัว ยังไม่เขียนโค้ด** |
+| [ALECTO_KIT.md](ALECTO_KIT.md) | **KUNJAE (Alecto)** — วัดระยะ หางไซเบอร์/ปืนคู่ · **กลไกเข้าเกมแล้ว** (อาร์ตยังยืมของเดิมผ่าน `artAs`) |
 | [archive/ALECTO_KIT_whipgun.md](archive/ALECTO_KIT_whipgun.md) | Alecto เวอร์ชันแส้/ไรเฟิล (สลับอาวุธด้วยมือ) — ของที่ยังอยู่ในโค้ดตอนนี้ |
 | [ATLAS_KIT.md](ATLAS_KIT.md) | Atlas — เกราะกินหมัด |
-| [HELIOS_KIT.md](HELIOS_KIT.md) | **MARCH (Helios)** — รัวประชิด · **รีเวิร์คสกิล 2 + อาร์ตทั้งตัว ยังไม่เขียนโค้ด** |
+| [HELIOS_KIT.md](HELIOS_KIT.md) | **MARCH (Helios)** — รัวประชิด · **สกิล 2 Sky Drive เข้าเกมแล้ว** (อาร์ตยังยืมของเดิม) |
 | [MOMUS_KIT.md](MOMUS_KIT.md) | **DEAR (Hephaestus)** — แขนกลไซเบอร์แวร์ บุกทางอากาศ · **เข้าเกมแล้ว เล่นได้จริง** (อาร์ตยังยืมของตัวตลกผ่าน `artAs`) |
 | [archive/MOMUS_KIT_jester.md](archive/MOMUS_KIT_jester.md) | Momus เวอร์ชันตัวตลก (ไหระเบิด/ชั้น House/ตัวแสดงแทน) — **ถอดออกจากโค้ดแล้ว** เก็บไว้เพราะบทเรียนยังใช้ได้ |
 | [ORPHEUS_KIT.md](ORPHEUS_KIT.md) | Orpheus — กองไฟ |

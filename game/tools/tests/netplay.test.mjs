@@ -193,9 +193,13 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
     // และห้ามกดสกิล 1 เลย เพราะนั่นคือสลับไปถือปืน ซึ่งก็ทำให้ไม่มีตราเหมือนกัน
   };
   const alecto = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'alecto', c2: 'alecto', frames: 420 });
-  ok(alecto.peak.a.lash > 0, `ตรารอยแส้ติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.lash} ชั้น)`);
-  ok(alecto.peak.a.lash === alecto.peak.b.lash, "ชั้นตรารอยแส้ตรงกันสองเครื่อง");
-  ok((alecto.tally.a.firepool ?? 0) > 0, `มีกองไฟเกิดจริงระหว่างทดสอบ (${alecto.tally.a.firepool} กอง)`);
+  ok(alecto.peak.a.lash > 0, `ตราล็อกเป้าติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.lash} ชั้น)`);
+  ok(alecto.peak.a.lash === alecto.peak.b.lash, "ชั้นตราล็อกเป้าตรงกันสองเครื่อง");
+  // อาวุธที่ถืออยู่ตัดสินจากระยะ ซึ่งแปลว่ามันเป็นสถานะที่ต้องตรงกันสองเครื่อง
+  // ถ้าไม่ตรง ปุ่มตีเดียวกันจะออกท่าคนละท่า = desync ที่ตำแหน่งกับเลือดยังดูตรงกันหมด
+  ok((alecto.tally.a.swap ?? 0) > 0, `สลับอาวุธตามระยะจริงระหว่างทดสอบ (${alecto.tally.a.swap} ครั้ง)`);
+  ok((alecto.tally.a.swap ?? 0) === (alecto.tally.b.swap ?? 0),
+    `จำนวนครั้งที่สลับตรงกันสองเครื่อง (${alecto.tally.a.swap} / ${alecto.tally.b.swap})`);
 
   // สลับอาวุธเป็นสถานะที่ "ปุ่มเดียวกันให้ผลคนละอย่าง" จึงเป็น desync ที่เนียนที่สุดเท่าที่มี
   // สองเครื่องถืออาวุธคนละชุดแล้วกดตีพร้อมกัน จะเห็นท่าคนละท่าโดยที่ทุกค่าอื่นยังตรงกันหมด

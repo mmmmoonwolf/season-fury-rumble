@@ -199,7 +199,7 @@ const CHAR_ART = {
     runStride: 86,
     title: 'Alecto',
     role: 'สายคุมพื้นที่',
-    tip: 'สลับแส้กับไรเฟิลได้ — แส้เจ็บกว่าและทำให้ช้า ไรเฟิลเดินยิงข้ามเวที',
+    tip: 'อาวุธสลับเองตามระยะ — ใกล้ใช้หางติดตรา ไกลใช้ปืนยิงเก็บตราแลกดาเมจ',
     // ท่าเดินถือปืนยาว: รอบเดียว = สองก้าว (ชีตเป็นวงจรเดิน 4 ท่า ย่ำสลับซ้าย-ขวา)
     // 104 = ถ่างเท้าตอนเท้าแตะพื้น 96 px บน canvas x (SPRITE_H/standing) x 2 ก้าว
     gunStride: 104,
@@ -209,12 +209,22 @@ const CHAR_ART = {
       jab3: { f: 'slashLash', rot: 10 }, side: { f: 'slashLash' },
       up: { f: 'slashRise' }, down: { f: 'slashLash', rot: 28 },
       nair: { f: 'slashSpin' }, sair: { f: 'slashLash', rot: 18 }, dair: { f: 'slashChop', rot: 48 },
-      gjab1: null, gjab2: null, gjab3: null, gside: null, gup: null, gdown: null },
+      pin1: { f: 'slashRise' },
+      gjab1: null, gjab2: null, gjab3: null, gside: null, gup: null, gdown: null, line1: null },
     anims: { idle: 1, run: 10, runGun: 4, idleGun: 1, jump: 4, crouch: 1, hurt: 1, knockdown: 1,
       techroll: 1, tech: 1, block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
-      "swap1", "gjab1", "gjab2", "gjab3", "gside", "gup", "gdown",
-      "shot1", "shot2", "shot3", "fire1", "fire2", "dust1", "dust2", "hop", "roll"]),
+      "pin1", "gjab1", "gjab2", "gjab3", "gside", "gup", "gdown",
+      "shot1", "shot2", "shot3", "line1", "hop", "roll"]),
+    /* ── อาร์ตชั่วคราวของสกิลใหม่ ──
+     * ชีตของเธอยังเป็นชุดแส้/ไรเฟิลเดิม ซึ่งไม่มีหางไซเบอร์กับท่าเล็งยิงทะลุ
+     * จับคู่กับเฟรมที่ใกล้ความหมายที่สุดไปก่อน จะได้เล่นจริงและจูนตัวเลขได้เลย
+     * **ชีตใหม่มาถึงเมื่อไหร่ ลบทั้งก้อนนี้ทิ้ง**
+     */
+    artAs: {
+      pin1: 'up',        // ตอกหมุด -> ท่าฟาดขึ้นฟ้า ซึ่งเป็นทิศเดียวกัน
+      line1: 'gjab3',    // เล็งยิงทะลุ -> ท่าปักเท้ายิง ซึ่งเป็นท่ายิงหนักของเธอ
+    },
   },
   // Momus: ตัวป่วนสนาม — ขาสั้นเหมือน Alecto/Helios ก้าวจึงสั้นตาม (วัดจากคลิปได้ 86)
   momus: {
@@ -2263,6 +2273,23 @@ class ScrambleScene extends Phaser.Scene {
       /* เด้งพื้น — ต้องมีเสียงและภาพ เพราะมันคือ **สัญญาณว่าคอมโบยังไม่จบ**
        * ทั้งสองฝั่งต้องรู้ทันที: คนตีจะได้กดต่อ คนโดนจะได้รู้ว่ายังต้องกันอยู่
        * ถ้าเงียบ มันจะดูเหมือนบั๊กที่ตัวเด้งขึ้นมาเองโดยไม่มีเหตุผล */
+      /* กินตรา — ต้องเห็นว่า "การบ้านที่ทำไว้ถูกแลกเป็นดาเมจแล้ว"
+       * ถ้าเงียบ คนเล่นจะไม่รู้เลยว่าทำไมนัดนี้เจ็บกว่านัดก่อน ซึ่งคือกลไกทั้งตัวของเธอ */
+      if (e.type === 'cash') {
+        this._sfx('metal', { vol: 0.85 });
+        this.emit('burst', e.x, e.y, { scale: 0.34, life: 13, grow: 1.7, tint: 0xc77dff });
+        for (let i = 0; i < e.n; i++)
+          this.emit('star4', e.x + (i - (e.n - 1) / 2) * 16, e.y,
+            { scale: 0.18, life: 15, grow: 0.9, vy: -1.6, tint: 0xc77dff });
+      }
+      /* ตอกหมุด — อีกฝั่งต้องรู้ทันทีว่า "กระโดดไม่ได้แล้ว" ไม่งั้นเขาจะกดกระโดดแล้วงงว่าทำไมไม่ขึ้น
+       * ซึ่งอ่านเหมือนเกมค้าง ไม่ใช่เหมือนโดนท่า */
+      if (e.type === 'pin') {
+        this._shake(150, 0.009);
+        this._sfx('metal', { vol: 1.1 });
+        this.popup(e.x, e.y - 30, 'ตอกหมุด!', '#c77dff');
+        this.emit('ring', e.x, e.y - 8, { scale: 0.26, life: 16, grow: 2.0, tint: 0xc77dff });
+      }
       if (e.type === 'bounce') {
         this._shake(120, 0.007);
         this._sfx('wall', { vol: 0.9 });
