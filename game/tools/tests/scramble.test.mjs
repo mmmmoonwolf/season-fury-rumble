@@ -1285,3 +1285,40 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(missing.length === 0,
     `ฝั่งวาดไม่อ่านของที่ซิมถอดไปแล้ว${missing.length ? ' — ' + missing.map(([n, l]) => `s.${n} บรรทัด ${l}`).join(', ') : ''}`);
 }
+
+// ── ทุกเฟรมที่ฝั่งวาดขอได้ ต้องมีอยู่ในอัตลาสจริง ──
+//
+// ตอนสลับอาร์ตของ DEAR จากตัวตลกเป็นแขนกล ชื่อเฟรมเปลี่ยนทั้งชุด (box1 -> drag1 ฯลฯ)
+// ถ้า `attacks`/`anims` ใน CHAR_ART กับชื่อเฟรมในอัตลาสหลุดจากกันแม้ชื่อเดียว
+// Phaser จะขอเฟรมที่ไม่มี แล้วได้กรอบเปล่า — ซึ่งบนจอคือ "ตัวละครหายไป" ไม่ใช่ error
+//
+// ข้อนี้เทียบสองฝั่งตรง ๆ จึงจับได้ตั้งแต่ตอนรันเทสต์ ไม่ใช่ตอนกดเล่นท่านั้นพอดี
+{
+  const fs = await import("fs");
+  const path = new URL("../../assets/characters/", import.meta.url);
+  const scr = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  // อ่าน CHAR_ART ทีละตัวจากซอร์ส — นำเข้าไฟล์ตรง ๆ ไม่ได้เพราะมันต้องการ Phaser กับ DOM
+  const blocks = scr.split(/\n  (\w+): \{\n/).slice(1);
+  let checked = 0;
+  for (let i = 0; i < blocks.length; i += 2) {
+    const name = blocks[i], body = blocks[i + 1] ?? "";
+    const data = body.match(/data: '([^']+)'/);
+    if (!data) continue;                       // ตัวที่ยังไม่มีอาร์ต
+    const file = new URL(data[1].replace("assets/characters/", ""), path);
+    if (!fs.existsSync(file)) { ok(false, `${name}: หาไฟล์อัตลาสไม่เจอ (${data[1]})`); continue; }
+    const frames = new Set(Object.keys(JSON.parse(fs.readFileSync(file, "utf8")).frames));
+    const want = [];
+    const anims = body.match(/anims: \{([^}]+)\}/s);
+    if (anims) for (const [, k, n] of anims[1].matchAll(/(\w+): (\d+)/g))
+      for (let f = 1; f <= +n; f++) want.push(`${k}_${f}.png`);
+    const atk = body.match(/attacks: new Set\(\[(.*?)\]\)/s);
+    // ท่าโจมตีมีสามเฟรมเสมอ (เงื้อ/ออก/ชัก) — ฝั่งวาดหารช่วงท่าเป็นสามส่วนตายตัว
+    if (atk) for (const [, k] of atk[1].matchAll(/"(\w+)"/g))
+      for (let f = 1; f <= 3; f++) want.push(`${k}_${f}.png`);
+    const missing = want.filter((w) => !frames.has(w));
+    ok(missing.length === 0,
+      `${name}: เฟรมที่ฝั่งวาดขอมีครบในอัตลาส (${want.length} เฟรม${missing.length ? " · ขาด " + missing.slice(0, 4).join(", ") : ""})`);
+    checked++;
+  }
+  ok(checked >= 5, `ตรวจครบทุกตัวที่มีอาร์ต (${checked} ตัว)`);
+}

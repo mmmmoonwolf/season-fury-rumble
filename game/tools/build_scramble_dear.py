@@ -167,5 +167,13 @@ print(f"เขียนแล้ว (แถวเดียว): scramble_momus.p
 
 # แถวเดียวกว้าง 35000 px ซึ่งเกินลิมิต texture ของการ์ดจอทุกใบ -> เรนเดอร์เป็นกล่องดำ
 # ต้องห่อลงหลายแถวก่อนเสมอ (ดู repack_atlas.py)
+# จัดเป็นตารางให้ไม่เกินลิมิตเท็กซ์เจอร์ GPU
+# **เกิน 4096 ด้านใดด้านหนึ่ง = การ์ดจอหลายรุ่นเรนเดอร์เป็นสีดำล้วน และไม่มี error ให้เห็น**
+# (กฎเดียวกับ build_scramble_nyx.py — ตัวนี้ลืมใส่ไว้ตอนแรก)
 from repack_atlas import repack
-repack(json_path, max_w=4096)
+GPU_LIMIT = 4096
+repack(json_path, max_w=GPU_LIMIT)
+final = json.load(open(json_path))["meta"]["size"]
+if max(final["w"], final["h"]) > GPU_LIMIT:
+    raise SystemExit(f"!! atlas {final['w']}x{final['h']} เกินลิมิต {GPU_LIMIT} — ต้องลดเฟรมหรือ STANDING")
+print(f"atlas สุดท้าย {final['w']}x{final['h']} (ลิมิต {GPU_LIMIT})")
