@@ -34,13 +34,14 @@ from cut import cutout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF_DIR = os.path.join(HERE, "..", "..", "art_reference")
-N_CELLS = 10
 
 # ค่าที่วัดมาแล้วต่อคลิป — อย่าเดา ทุกตัวเลขในนี้มาจากการวัดคลิปจริง (ดู docstring)
+# n = จำนวนเฟรมที่ตัดออกมา ต้องตรงกับ `anims.run` ของตัวนั้นใน ScrambleScene.js
 CLIPS = {
     # idle = เฟรมที่ยังยืนนิ่ง ใช้วัดความสูงท่ายืนอย่างเดียว ไม่ได้เป็นเฟรมในเกม
-    "momus": {"idle": 10, "start": 111, "period": 23},
-    "dear":  {"idle": 3,  "start": 95,  "period": 29},
+    "momus":  {"idle": 10, "start": 111, "period": 23, "n": 10},
+    "dear":   {"idle": 3,  "start": 95,  "period": 29, "n": 10},
+    "helios": {"idle": 3,  "start": 96,  "period": 39, "n": 11},
 }
 
 
@@ -48,6 +49,7 @@ def main(frame_dir, name="momus"):
     cfg = CLIPS[name]
     OUT = os.path.join(REF_DIR, f"{name}_clip")
     IDLE_FRAME, RUN_START, PERIOD = cfg["idle"], cfg["start"], cfg["period"]
+    N_CELLS = cfg.get("n", 10)
     pick = [round(RUN_START + PERIOD * i / N_CELLS) for i in range(N_CELLS)]
     print("เฟรมที่เลือก:", pick)
 
