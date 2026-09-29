@@ -21,8 +21,8 @@
 | [ALECTO_KIT.md](ALECTO_KIT.md) | **KUNJAE (Alecto)** — วัดระยะ หางไซเบอร์/ปืนคู่ · **กลไกเข้าเกมแล้ว** (อาร์ตยังยืมของเดิมผ่าน `artAs`) |
 | [archive/ALECTO_KIT_whipgun.md](archive/ALECTO_KIT_whipgun.md) | Alecto เวอร์ชันแส้/ไรเฟิล (สลับอาวุธด้วยมือ) — ของที่ยังอยู่ในโค้ดตอนนี้ |
 | [ATLAS_KIT.md](ATLAS_KIT.md) | Atlas — เกราะกินหมัด |
-| [HELIOS_KIT.md](HELIOS_KIT.md) | **MARCH (Helios)** — รัวประชิด · **สกิล 2 Sky Drive เข้าเกมแล้ว** (อาร์ตยังยืมของเดิม) |
-| [MOMUS_KIT.md](MOMUS_KIT.md) | **DEAR (Hephaestus)** — แขนกลไซเบอร์แวร์ บุกทางอากาศ · **เข้าเกมแล้ว เล่นได้จริง** (อาร์ตยังยืมของตัวตลกผ่าน `artAs`) |
+| [HELIOS_KIT.md](HELIOS_KIT.md) | **MARCH (Helios)** — รัวประชิด · **สกิล 2 Sky Drive + อาร์ตชุดใหม่ 102 เฟรม เข้าเกมแล้ว** |
+| [MOMUS_KIT.md](MOMUS_KIT.md) | **DEAR (Hephaestus)** — แขนกลไซเบอร์แวร์ บุกทางอากาศ · **เข้าเกมแล้ว เล่นได้จริง** · อาร์ตชุดใหม่ 70 เฟรมเข้าแล้ว |
 | [archive/MOMUS_KIT_jester.md](archive/MOMUS_KIT_jester.md) | Momus เวอร์ชันตัวตลก (ไหระเบิด/ชั้น House/ตัวแสดงแทน) — **ถอดออกจากโค้ดแล้ว** เก็บไว้เพราะบทเรียนยังใช้ได้ |
 | [ORPHEUS_KIT.md](ORPHEUS_KIT.md) | Orpheus — กองไฟ |
 | [OLD_MODE_SKILLS.md](OLD_MODE_SKILLS.md) | ท่าของโหมดเก่าที่ถอดออกไปแล้ว (เก็บไว้เผื่อย้อนกลับ) |
@@ -33,7 +33,7 @@
 - `vendor/fonts/README.md` — ฟอนต์ที่โค้ดอ้างไว้หกจุดแต่ไม่เคยถูกโหลด + สัญญาอนุญาต OFL
 - `art_prompts_*.md` (รากรีโป) — prompt ที่ใช้เจนอาร์ต แยกตามตัวละคร/รอบ
   · `art_prompts_dear.md` (DEAR — เจนครบแล้ว เข้าเกมแล้ว)
-  · `art_prompts_march.md` (MARCH — 102 เฟรม 10 ใบ ยังไม่ได้เจน)
+  · `art_prompts_march.md` (MARCH — 102 เฟรม 10 ใบ ✅ ครบและ build แล้ว)
 - `docs/archive/` — เอกสารส่งต่อของรุ่นก่อน ๆ เก็บไว้อ้างอิง ไม่ได้อัปเดตแล้ว
 
 ## เทสต์
