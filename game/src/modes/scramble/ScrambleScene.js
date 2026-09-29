@@ -174,7 +174,22 @@ const CHAR_ART = {
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD",
-      "knee", "hh1", "hh2", "hh3", "hhEnd"]),
+      "sky1", "sky2", "sky3", "sky4", "sky5", "hh1", "hh2", "hh3", "hhEnd"]),
+    /* ── อาร์ตชั่วคราวของ Sky Drive ──
+     *
+     * ชีตของเขายังเป็นชุดเดิมซึ่งไม่มีท่าลอยสี่ทีกับท่าตบลง จับคู่กับเฟรมที่ใกล้ความหมายที่สุด
+     * ไปก่อน จะได้เล่นจริงและจูนตัวเลขได้เลย — **รอชีต 79 เฟรมก่อนแล้วค่อยพบว่าคอมโบไม่สนุก
+     * คือเสียเปล่าที่สุด** (บทเรียนที่ได้ผลมาแล้วตอน DEAR)
+     *
+     * **ชีตใหม่มาถึงเมื่อไหร่ ลบทั้งก้อนนี้ทิ้ง**
+     */
+    artAs: {
+      sky1: 'up',        // ยกคาง -> อัปเปอร์คัต ซึ่งเป็นท่าเดียวกันอยู่แล้ว
+      sky2: 'rush3',     // ศอก -> จังหวะที่สามของชุดรัว
+      sky3: 'rush4',     // หมัดเหวี่ยง -> จังหวะที่สี่
+      sky4: 'rush5',     // หลังมือ -> จังหวะที่ห้า
+      sky5: 'dair',      // ตบลง -> เตะขวานซึ่งเป็นท่าลงแนวดิ่งอยู่แล้ว
+    },
   },
   // Alecto: ท่าตีปกติเป็นแส้ จึงต้องมี runStride ของตัวเอง (ขายาวใกล้ Helios)
   alecto: {
@@ -2244,6 +2259,18 @@ class ScrambleScene extends Phaser.Scene {
           this.emit('spike', e.x + dir * far, e.y - 40 - (i * 17) % (e.v * 0.6),
             { scale: 0.2, life: 14, grow: 0.7, vx: -dir * (far / 14), tint: 0x7fe3ff, depth: 6 });
         }
+      }
+      /* เด้งพื้น — ต้องมีเสียงและภาพ เพราะมันคือ **สัญญาณว่าคอมโบยังไม่จบ**
+       * ทั้งสองฝั่งต้องรู้ทันที: คนตีจะได้กดต่อ คนโดนจะได้รู้ว่ายังต้องกันอยู่
+       * ถ้าเงียบ มันจะดูเหมือนบั๊กที่ตัวเด้งขึ้นมาเองโดยไม่มีเหตุผล */
+      if (e.type === 'bounce') {
+        this._shake(120, 0.007);
+        this._sfx('wall', { vol: 0.9 });
+        this.emit('ring', e.x, e.y - 6, { scale: 0.3, life: 14, grow: 2.2, tint: 0xffd166 });
+        for (let i = 0; i < 4; i++)
+          this.emit('spike', e.x + (i - 1.5) * 22, e.y - 10,
+            { scale: 0.16, life: 13, grow: 0.8, vy: -1.8 - Math.random(), tint: 0xd8c9a8,
+              blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
       if (e.type === 'slam') {
         this._shake(200, 0.012);

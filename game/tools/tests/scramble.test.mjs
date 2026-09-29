@@ -1034,7 +1034,7 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   const { CHARACTERS } = await import(G + "/core.js");
   const H = CHARACTERS.helios;
   ok(H != null, "มีตัวละคร helios ในทะเบียน");
-  ok(H.skills.join(",") === "rush1,knee,hh1", `ช่องสกิลของ Helios (ได้ ${H.skills.join(",")})`);
+  ok(H.skills.join(",") === "rush1,sky1,hh1", `ช่องสกิลของ Helios (ได้ ${H.skills.join(",")})`);
 
   const asHelios = () => { const g = new Game(); g.p1.char = "helios"; g.p1.x = g.p2.x - 70; return g; };
 
@@ -1072,13 +1072,14 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
     ok(H.moves[id].kb[1] === 0, `${id}: ไม่ถีบขึ้นกลางคอมโบ (ได้ ${H.moves[id].kb[1]})`);
   }
 
-  // เข่าพุ่ง: ปลดล็อกให้ใช้ชุดรัวซ้ำได้ในคอมโบเดียว
+  // ท่าตบของ Sky Drive: ปลดล็อกให้ใช้ชุดรัวซ้ำได้ในคอมโบเดียว
+  // (คุณสมบัติเดียวที่ยกมาจาก Knee Drive เดิม — ย้ายไปอยู่ปลายชุดแทนที่จะเป็นท่าเปิด)
   {
     const g = asHelios();
     g.startMove(g.p1, "rush1", 1);
     ok(g.p1.used.has("rush1"), "ใช้ชุดรัวไปแล้วติด used");
-    g.startMove(g.p1, "knee", 1);
-    ok(!g.p1.used.has("rush1"), "เข่าพุ่งปลดล็อกให้ใช้ชุดรัวซ้ำได้");
+    g.startMove(g.p1, "sky5", 1);
+    ok(!g.p1.used.has("rush1"), "ท่าตบปลดล็อกให้ใช้ชุดรัวซ้ำได้");
   }
 
   // อัลติ: ไม่กดรัวก็ไหลไปไม้จบเอง
@@ -1313,8 +1314,10 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
       for (let f = 1; f <= +n; f++) want.push(`${k}_${f}.png`);
     const atk = body.match(/attacks: new Set\(\[(.*?)\]\)/s);
     // ท่าโจมตีมีสามเฟรมเสมอ (เงื้อ/ออก/ชัก) — ฝั่งวาดหารช่วงท่าเป็นสามส่วนตายตัว
+    // ต้องแปลผ่าน artAs ก่อน ไม่งั้นตัวที่กำลังรีเวิร์ค (ยืมเฟรมเดิมอยู่) จะแดงทั้งที่ถูกแล้ว
+    const alias = aliasOf(scr, name);
     if (atk) for (const [, k] of atk[1].matchAll(/"(\w+)"/g))
-      for (let f = 1; f <= 3; f++) want.push(`${k}_${f}.png`);
+      for (let f = 1; f <= 3; f++) want.push(`${alias[k] ?? k}_${f}.png`);
     const missing = want.filter((w) => !frames.has(w));
     ok(missing.length === 0,
       `${name}: เฟรมที่ฝั่งวาดขอมีครบในอัตลาส (${want.length} เฟรม${missing.length ? " · ขาด " + missing.slice(0, 4).join(", ") : ""})`);

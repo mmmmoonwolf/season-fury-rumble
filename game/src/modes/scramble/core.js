@@ -224,10 +224,46 @@ const HELIOS_MOVES = {
   rushEndD: { label: 'Chain Rush', kind: 'ground', crouch: true, startup: 5, active: 4, recovery: 20, dmg: 6,
     hb: { x: 4, y: -34, w: 96, h: 30 }, kb: [3, -12], stun: 32 },
 
-  // ---- สกิล 2 Knee Drive: พุ่งเข่า ดันคู่ต่อสู้ไปข้างหน้า และเปิดให้ใช้ชุดรัวซ้ำได้ ----
-  knee: { label: 'Knee Drive', kind: 'ground', startup: 6, active: 5, recovery: 16, dmg: 5,
-    hb: { x: 8, y: -102, w: 76, h: 46 }, kb: [6, 0], stun: 26,
-    glide: true, imp: { f: 5, vx: 13 }, refresh: ['rush1'] },
+  // ---- สกิล 2 Sky Drive: ยกคาง -> ตีสี่ทีกลางอากาศ -> ตบลงพื้น -> เด้ง -> ต่อบนพื้นได้ ----
+  //
+  // แทน Knee Drive เดิม (พุ่งเข่าดันออก) ทั้งหมด คุณสมบัติเดียวที่ยกมาคือ refresh: ['rush1']
+  // ซึ่งย้ายไปอยู่ที่ท่าตบ — จบชุดลอยแล้วรัว Chain Rush ต่อได้ทันที
+  //
+  // **เขาลอยตามขึ้นไปเองด้วย imp.vy ไม่ใช่ jumpCancel ให้คนเล่นกดกระโดดตาม**
+  // ท่ายกคางที่มีอยู่แล้ว (up, rushEndU) ใช้ jumpCancel ซึ่งถูกแล้วสำหรับท่าตีปกติ
+  // แต่สกิลต้องเป็น "กดทีเดียวได้ทั้งชุด" ไม่งั้นมันคือท่า up ที่ยาวกว่าเดิม ไม่ใช่สกิลใหม่
+  //
+  // ต่อด้วย onHit ไม่ใช่ autoChain — ฟันลมแล้วต้องจบแค่ท่ายกคาง ไม่ใช่เล่นชุดลอยต่อกลางอากาศ
+  // เปล่า ๆ ซึ่งจะดูเหมือนตีติดทั้งที่ไม่โดน (บทเรียนเดียวกับท่าจับที่แยก onHit ออกจาก autoChain)
+  sky1: { label: 'Sky Drive', kind: 'ground', startup: 7, active: 4, recovery: 10, dmg: 5,
+    hb: { x: -6, y: -150, w: 78, h: 100 }, kb: [1, -17], stun: 34,
+    imp: { f: 7, vx: 2, vy: -15 }, onHit: 'sky2', airChain: true },
+  // สามทีกลางอากาศ: ศอก -> หมัดเหวี่ยง -> หลังมือ · คนละทรงกันทั้งสามที ตาจึงอ่านออกว่าคนละที
+  //
+  // **ทุกทียกทั้งคู่ขึ้นนิดหนึ่ง (imp.vy -7 กับ kb -9)** ไม่ใช่แค่ค้างไว้เฉย ๆ
+  // ชุดนี้กินเวลา ~50 เฟรมกลางอากาศ แต่กระโดดครั้งเดียวตกถึงพื้นใน ~38 เฟรม
+  // ถ้าไม่ยกซ้ำ เขาจะแตะพื้นกลางชุด ซึ่ง onLand ล้าง f.move ทิ้ง = ชุดขาดตรงนั้นเงียบ ๆ
+  //
+  // **แรงส่งของเขา (-15) ต้องน้อยกว่าของคนโดน (-17)** ข้อนี้กลับหัวกับที่คิดตอนแรก
+  // เพราะคนโดนถูกแรงโน้มถ่วงคูณเพิ่มตามความยาวคอมโบ (g *= 1 + 0.04 * comboHits)
+  // ถ้าเขาลอยแรงกว่า เขาจะลอยสูงกว่าเป้าแล้วทีที่สี่ฟันลม — กวาดค่าทั้งตาราง 128 ชุด
+  // แล้ววัดว่าชุดไหนตีติดครบห้าทีและเด้งจริง (57 ชุดผ่าน ทุกชุดที่ผ่านมี launch <= -15)
+  // (ชุดยังจบเองอยู่ดีเพราะเป็นสี่ทีตายตัว กดรัวยืดไม่ได้ — ดูข้อ "เส้นแบ่งกับ DEAR" ในกิต)
+  sky2: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 6, y: -110, w: 72, h: 34 }, kb: [1, -9], stun: 20,
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky3', airChain: true },
+  sky3: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 8, y: -104, w: 76, h: 34 }, kb: [1.5, -9], stun: 20,
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky4', airChain: true },
+  sky4: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 4, dmg: 3,
+    hb: { x: 8, y: -100, w: 78, h: 36 }, kb: [2, -9], stun: 20,
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky5', airChain: true },
+  // ตบลง: kb แนวตั้งเป็นบวก = ปักลงพื้น · ธง bounce ทำให้เขาเด้งแทนที่จะล้มแล้วได้อมตะ
+  // landLag สั้นกว่าปกติเพื่อให้เขาฟื้นก่อนคนที่เด้ง — นั่นคือสิ่งที่ทำให้ต่อติดจริง
+  sky5: { label: 'Sky Drive', kind: 'air', startup: 5, active: 5, recovery: 6, dmg: 6,
+    hb: { x: 4, y: -70, w: 80, h: 60 }, kb: [2, 14], stun: 30,
+    imp: { f: 5, vx: 1, vy: 14 },
+    bounce: true, untilLand: true, landLag: 10, refresh: ['rush1'] },
 
   // ---- สกิล 3 Hundred Hands (อัลติ): รัวหมัดเตะ กดรัวเพิ่มจำนวนทีได้ ----
   hh1: { label: 'Hundred Hands', kind: 'ground', startup: 6, active: 3, recovery: 2, dmg: 2,
@@ -245,8 +281,8 @@ const HELIOS_MOVES = {
     hb: { x: 10, y: -100, w: 104, h: 40 }, kb: [17, -6], stun: 40, imp: { f: 5, vx: 9 } },
 };
 
-const HELIOS_SKILLS = ['rush1', 'knee', 'hh1'];
-const HELIOS_SKILL_CD = [120, 200, 0];
+const HELIOS_SKILLS = ['rush1', 'sky1', 'hh1'];
+const HELIOS_SKILL_CD = [120, 210, 0];   // Sky Drive เป็นตัวเปิดคอมโบทั้งชุด คูลดาวน์ยาวกว่า Knee Drive เดิมนิดหน่อย
 
 /* ================== ALECTO — สายคุมพื้นที่ ==================
  *
@@ -286,6 +322,10 @@ const OVERCLOCK_DMG = 1.4;   // ท่าปกติแรงขึ้นกี
 const OVERCLOCK_ARMOR = 3;   // เกราะรับได้กี่ทีต่อหนึ่งท่า (เท่าท่าหนักของ Atlas)
 const CARRY_GAP = 52;        // ลากไว้ห่างจากตัวเท่าไหร่ — ทับกันแล้วสไปรท์ซ้อนจนดูไม่ออกว่าใครเป็นใคร
 const SLAM_WAVE = 0.45;
+// เด้งพื้น — ตั้งให้เด้งพอให้ตีต่อติด แต่ไม่สูงจนกลายเป็นชุดลอยรอบสอง
+const BOUNCE_VY = -11;
+const BOUNCE_VX_KEEP = 0.5;   // เก็บแรงแนวนอนไว้ครึ่งเดียว ไม่งั้นเด้งแล้วลอยหลุดออกไปไกล
+const BOUNCE_STUN = 10;
 // รัศมีดูดของอัลติ METEOR — แนวนอนกว้างกว่าแนวตั้งเพราะเวทีกว้างกว่าสูง
 // และคนที่อยู่คนละชั้นควรต้องโดนดูดด้วย ไม่งั้นแค่ยืนบนชานก็ปลอดภัยฟรี
 const METEOR_PULL = 260;
@@ -877,7 +917,8 @@ class Fighter {
       buf: { attack: 0, jump: 0, skill1: 0, skill2: 0, skill3: 0 },
       lastTap: { dir: 0, f: -99 }, dashLatch: false, inp: null,
       aiPlan: null, aiNext: 0,      // แผนที่เพื่อน AI ถืออยู่ และเฟรมที่จะคิดใหม่
-      comboHits: 0, comboDmg: 0, wallBounced: false, jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
+      comboHits: 0, comboDmg: 0, wallBounced: false, bounced: false, bouncePend: 0,
+      jumpHeldSinceTakeoff: false, techBuf: 0, techLock: 0,
     });
   }
   // กันแบบก้ม (blockcrouch) ตัวเตี้ยเท่าท่าย่อ — ไม่งั้นก้มกันแล้วกรอบยังสูงเท่าเดิม ก็ไม่ต่างจากกันยืน
@@ -2054,6 +2095,24 @@ class Game {
   onLand(f) {
     this.events.push({ type: 'land', x: f.x, y: f.y, hard: f.vy > 12 });
     if (f.state === 'hitstun') {
+      /* เด้งพื้น — กระจกเงาของการเด้งกำแพงข้างบน (ดู f.wallBounced)
+       *
+       * **ข้อนี้คือสิ่งเดียวที่ทำให้ "ตบลงพื้นแล้วคอมโบต่อ" เป็นไปได้**
+       * ปกติคนที่ตกถึงพื้นตอนติด hitstun จะเข้า knockdown แล้วได้อมตะ 30 เฟรมทันที
+       * ซึ่งแปลว่าท่าตบลงพื้นทุกท่าในเกม **จบคอมโบเสมอ** ไม่ว่าจะออกแบบท่ายังไง
+       *
+       * เด้งได้ครั้งเดียวต่อหนึ่งคอมโบ (ล้างธงพร้อม wallBounced ตอน comboEnd)
+       * ไม่งั้นจะวนตบ-เด้ง-ตบ-เด้งไม่รู้จบ ซึ่งสเกลลดดาเมจตามคอมโบกันไว้ชั้นเดียวไม่พอ
+       */
+      if (f.bouncePend && !f.bounced) {
+        f.bouncePend = 0; f.bounced = true;
+        f.vy = BOUNCE_VY; f.vx *= BOUNCE_VX_KEEP; f.onGround = false;
+        f.stun += BOUNCE_STUN;
+        f.techBuf = 0; f.techLock = 0;
+        this.events.push({ type: 'bounce', x: f.x, y: f.y });
+        return;
+      }
+      f.bouncePend = 0;
       const tech = this.techChoice(f);
       if (tech === null) {
         f.setState('knockdown'); f.stun = PHYS.knockdownFrames; f.invuln = PHYS.knockdownFrames + 2; f.vx *= 0.4;
@@ -2143,7 +2202,9 @@ class Game {
         //
         // ต้องแยกจาก autoChain เพราะท่าจับที่พลาดแล้วยังเล่นท่ายัดต่อ จะดูเหมือนจับติดทั้งที่ไม่โดน
         // คนเล่นทั้งสองฝั่งอ่านผิดพร้อมกัน — คนจับนึกว่าได้ คนโดนนึกว่าโดน แล้วทั้งคู่ตัดสินใจผิด
-        if (m.onHit && f.onGround && f.hitConfirmed) { this.startMove(f, m.onHit, f.facing); return; }
+        // airChain ปลดเงื่อนไข onGround ให้ทั้ง onHit และ autoChain — ชุดที่ตั้งใจเล่นกลางอากาศ
+        // ต้องต่อได้ทั้งสองทาง ไม่งั้นชุดที่ "ต่อเฉพาะตอนตีโดน" จะขาดกลางคันแบบเงียบ ๆ
+        if (m.onHit && (f.onGround || m.airChain) && f.hitConfirmed) { this.startMove(f, m.onHit, f.facing); return; }
         // ท่าที่มี autoChain ต่อท่าถัดไปเองโดยไม่ต้องกดซ้ำ — ใช้ทำคอมโบสกิลกดครั้งเดียวจบชุด
         // ต่อเฉพาะตอนยังยืนอยู่บนพื้น ถ้าโดนตีจนหลุด state หรือตกลงมา คอมโบก็ขาดตามธรรมชาติ
         //
@@ -2195,6 +2256,9 @@ class Game {
     d.stanceUntil = -9999;          // ยืนยิงอยู่แล้วโดนสวน = ป้อมแตก นี่คือทางแก้ของอีกฝ่าย
     d.vx = a.facing * m.kb[0];
     if (m.kb[1] < 0 || !d.onGround) { d.vy = m.kb[1] || -2; d.onGround = false; }
+    // ท่าที่ตบลงพื้น: จำไว้ว่าคนนี้ "จะเด้ง" ตอนแตะพื้น (ดู onLand)
+    // เก็บเป็นธงที่ตัวคนโดน ไม่ใช่ที่ตัวคนตี เพราะกว่าจะถึงพื้นคนตีอาจเปลี่ยนท่าไปแล้ว
+    if (m.bounce) d.bouncePend = 1;
     d.facing = -a.facing;
     const hs = hitstopFor(m);
     a.hitstop = d.hitstop = hs;
@@ -2224,7 +2288,7 @@ class Game {
   updateCombo(d) {
     if (d.comboHits > 0 && (ACTIONABLE.has(d.state) || ['knockdown', 'landing', 'tech', 'techroll'].includes(d.state))) {
       this.events.push({ type: 'comboEnd', hits: d.comboHits, dmg: d.comboDmg });
-      d.comboHits = 0; d.comboDmg = 0; d.wallBounced = false;
+      d.comboHits = 0; d.comboDmg = 0; d.wallBounced = false; d.bounced = false; d.bouncePend = 0;
     }
   }
 

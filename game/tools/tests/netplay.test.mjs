@@ -61,6 +61,8 @@ const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   // ไม่เทียบแล้วสองเครื่องจะเดินคนละเกมโดยที่ตำแหน่งกับเลือดยังดูตรงกันอยู่
   f.boost, f.boostGain, f.overclock, f.carriedBy ?? '-', f.carryLeft, f.mashOut,
   f.carrying.join('+') || '-', f.dashTap, f.dashTapF, f.dashLock, f.slammed,
+  // MARCH: การเด้งพื้น — ธงนี้ตัดสินว่า "ตกถึงพื้นแล้วล้มหรือเด้ง" ซึ่งเปลี่ยนผลคอมโบทั้งชุด
+  f.bounced ? 1 : 0, f.bouncePend,
   // เพื่อน AI คิดในซิม แผนของมันจึงเป็นสถานะที่ต้องตรงกันเหมือนตำแหน่งและเลือด
   f.ai ? 1 : 0, f.aiNext, JSON.stringify(f.aiPlan),
   // อาวุธที่ถืออยู่ (Alecto สลับแส้/ไรเฟิล) — ถ้าไม่เทียบ สองเครื่องถืออาวุธคนละชุด
