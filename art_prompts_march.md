@@ -53,13 +53,14 @@ anchor สั่งไว้แล้วว่าปลายผ้าต้อ�
 | E Chain Rush | ✅ | 8 | 9 | 215.9 | 4.2% |
 | F Chain Rush ครึ่งหลัง | ✅ | 9 | 9 | 153.9 | 4.4% |
 | G ไม้จบสองทาง | ✅ | 6 | 6 | 222.7 | 6.5% |
-| H SKY DRIVE ขาขึ้น | ⚠️ | 9 | 9 | 142.1 | 2.6% | ← แถวกลางไม่ใช่ท่าศอก ดูข้อ 13 |
+| H SKY DRIVE ขาขึ้น | ✅ | 9 | 9 | 142.1 | 2.6% | ← ใช้แค่แถว 1 กับ 3 · แถวกลางทิ้ง (ดูข้อ 13) |
 | I SKY DRIVE ตบลง | ✅ | 6 | 6 | 216.3 | 6.5% |
 | J อัลติ Hundred Hands | ✅ | 15 | 12 | 148.9 | 2.6% |
+| K ศอกกลางอากาศ (แทน H แถวกลาง) | ✅ | 3 | 3 | 390.3 | — | ← ได้หมัดตรงไม่ใช่ศอก แต่ใช้ได้ ดูข้อ 13 |
 
-### ⚠️ ใบ H ท่า 4-6: สั่ง "ศอกกลางอากาศ" แต่ได้ "การ์ดลอยเฉย ๆ"
+### ✅ ใบ H ท่า 4-6: สั่ง "ศอกกลางอากาศ" แต่ได้ "การ์ดลอยเฉย ๆ" — เลิกใช้แล้ว แทนด้วยใบ K
 
-นี่คือข้อเดียวที่ยังค้าง และ **ไม่ได้จับได้ตอนตรวจใบ เพราะตอนนั้นตรวจแต่ความสะอาดกับไม้บรรทัด
+และ **ไม่ได้จับได้ตอนตรวจใบ เพราะตอนนั้นตรวจแต่ความสะอาดกับไม้บรรทัด
 ไม่ได้ตรวจว่า "ท่านี้อ่านออกไหมว่ากำลังตี"** ผู้เล่นเจอก่อน รายงานมาว่า "สกิล 2 ไม่มีเฟรม"
 
 สิ่งที่ได้จริง: ท่า 4 = แขนชูขึ้นสุด (เป็นท่าต่อเนื่องจากอัปเปอร์ของแถวแรก)
@@ -68,9 +69,8 @@ anchor สั่งไว้แล้วว่าปลายผ้าต้อ�
 เรียงตามลำดับ 4-5-6 แปลว่า **เฟรมกลาง (= ช่วงที่กล่องชนเปิด) คือท่าการ์ด**
 กดสกิล 2 แล้วทีที่สองในชุดจึงเป็นการ์ดสามเฟรมติด ตาอ่านว่าไม่มีอะไรเกิดขึ้น
 
-**แก้ชั่วคราวแล้ว** สลับเป็น 5-4-6 = การ์ด → แขนพุ่งขึ้น → การ์ด
-ได้สามจังหวะที่อ่านออกว่าตี และเฟรมที่แขนเหยียดอยู่ตรงกลางตามกฎเดิม
-**แต่มันไม่ใช่ท่าศอก** ของจริงต้องเจนใบ K (3 ท่า) ตามข้อ 13 แล้ว build ใหม่
+แก้ชั่วคราวด้วยการสลับเป็น 5-4-6 (การ์ด → แขนพุ่งขึ้น → การ์ด) แล้ว **สั่งใบ K มาแทนทั้งแถว**
+ตอนนี้ `sky2` มาจากใบ K แล้ว — แถวกลางของใบ H ไม่ได้ถูกใช้ที่ไหนอีก (ดูข้อ 13 ว่าใบ K ได้อะไรมา)
 
 **ทุกใบสะอาด ไม่มีก้อนขยะเลยสักใบ** ปลายผ้าคาดแนบขาทุกท่า ไม่มีท่าไหนแตะขอบภาพ
 และตรวจคู่ทุกคู่ในใบ F/J แล้ว ไม่มีท่าไหนเป็นภาพซ้ำ (IoU สูงสุด 0.906 กับ 0.911 · เกณฑ์ซ้ำคือ 0.93)
@@ -622,7 +622,7 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 | `rush1` · `rush2` · `rush3` | E1-3 · E4-6 · **E7,E8,F1** | 9 |
 | `rush4` · `rush5` · `rushEndF` | F1-3 · F4-6 · F7-9 | 9 |
 | `rushEndU` · `rushEndD` | G1-3 · G4-6 | 6 |
-| `sky1` · `sky2` · `sky3` | H1-3 · **H5,4,6** · H7-9 | 9 |
+| `sky1` · `sky2` · `sky3` | H1-3 · **K1-3** · H7-9 | 9 |
 | `sky4` · `sky5` | I1-3 · I4-6 | 6 |
 | `hh1` · `hh2` · `hh3` · `hhEnd` | J1-3 · **J11,6,7** · **J10,13,9** · **J12,14,15** | 12 |
 
@@ -660,13 +660,59 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 
 ---
 
-## 13. ชีต K — ศอกกลางอากาศ แทนที่ใบ H ท่า 4-6 (3 ท่า · แถวเดียว)
+## 13. ชีต K — ศอกกลางอากาศ แทนที่ใบ H ท่า 4-6 (3 ท่า · แถวเดียว) — ✅ **build เข้าเกมแล้ว**
 
 ใบนี้เจนเพื่อ**แทนที่ของเดิมที่เจนมาไม่ตรงคำสั่ง** ไม่ใช่ท่าใหม่ — ดูหัวข้อ ⚠️ ใบ H ด้านบน
 
 เงื่อนไขที่พลาดรอบที่แล้ว: ท่า 5 ที่สั่งว่า "airborne elbow strike" ได้กลับมาเป็นท่ายกหมัดการ์ด
 รอบนี้จึงเขียนใหม่ให้เงื่อนไขวัดได้ด้วยตา: **ศอกต้องเป็นจุดที่ยื่นออกไปไกลที่สุดของทั้งภาพ**
 และสั่งตรง ๆ ว่าท่ากลางต้องกว้างกว่าอีกสองท่าอย่างเห็นได้ชัด
+
+### ผลที่ได้จริง — ผ่านสองข้อ ตกข้อศอก
+
+| เงื่อนไขที่ตั้งไว้ | ผล |
+|---|---|
+| ท่ากลางกว้างกว่าอีกสองท่า | ✅ กว้าง 344 / **455** / 402 px (แต่ดูผลลบข้างล่าง — ข้อนี้พิสูจน์อะไรไม่ได้) |
+| ทั้งสามท่าลอยหมด ไม่มีเส้นพื้น | ✅ |
+| **ศอกเป็นจุดที่ยื่นไกลที่สุด** | ❌ ได้ **หมัดตรง** แขนเหยียดสุด ไม่ใช่ศอก |
+
+**ยังรับมาใช้** เพราะสิ่งที่ท่านี้ต้องมีจริง ๆ คือ "เฟรมกลางต้องอ่านออกว่ากำลังตี"
+ซึ่งหมัดตรงก็ให้ได้ และดีกว่าท่าการ์ดของเดิมทุกทาง — จังหวะ หด → เหยียดสุด → พับกลับ
+ยังครบตามกฎ "เฟรมกลาง = ช่วงกล่องชนเปิด"
+
+### ❌ ผลลบที่ต้องจำ: บั๊กนี้เขียนตัวตรวจอัตโนมัติไม่ได้
+
+ลองสร้างการ์ดกันบั๊ก "เฟรมกลางไม่ใช่ท่าตี" สองแบบ **ทั้งสองแบบแยกของพังออกจากของดีไม่ได้**
+วัดจากอัตลาสจริงสามชุด (ดึงของเก่ามาจาก git):
+
+| ชุด | IoU เฟรมกลางกับเฟรม 1 / เฟรม 3 | ความกว้าง 3 เฟรม |
+|---|---|---|
+| **พัง** H 4-5-6 (เฟรมกลาง = การ์ด) | 0.611 / 0.768 | 150 · **161** · 156 |
+| แก้ชั่วคราว H 5-4-6 | 0.611 / 0.659 | **161** · 150 · 156 |
+| **ดี** K 1-2-3 | 0.675 / 0.775 | 126 · **166** · 147 |
+
+- **กฎ "เฟรมกลางต้องต่างจากเพื่อนบ้าน" ใช้ไม่ได้** — ชุดที่พังต่างกัน *มากกว่า* ชุดที่ดีเสียอีก
+- **กฎ "เฟรมกลางต้องกว้างสุด" ก็ใช้ไม่ได้** — ชุดที่พังก็ผ่านกฎนี้ (161 คือค่ามากสุด)
+  และถ้าบังคับใช้ทั้งอัตลาส **ท่าจริงจะตกกฎ 5 จาก 26 ท่า** (`sky5` `dair` ตีลงล่าง ไม่ได้ตีออกข้าง)
+
+เหตุผล: กรอบภาพถูกกำหนดด้วย**ผมกับขา** ซึ่งกินเกือบเต็มกรอบอยู่แล้ว
+แขนที่เหยียดออกมาขยับกรอบแค่ไม่กี่ px ความต่างระหว่าง "การ์ด" กับ "ตี"
+อยู่ที่**เนื้อในภาพ ไม่ใช่เงา**
+
+> **ข้อสรุป: ท่าโจมตีต้อง render ออกมาดูด้วยตาทุกครั้งที่เพิ่มหรือสลับชีต ไม่มีทางลัด**
+> (ตัวเลข 344/455/402 ที่เคยอ้างว่าเป็นหลักฐานว่าใบ K ใช้ได้ — ไม่ใช่หลักฐาน
+> หลักฐานจริงคือภาพที่ render ออกมาแล้วเห็นว่าแขนเหยียดออกไป)
+
+**ผลข้างเคียงที่เหลืออยู่:** ชุดลอยตอนนี้เป็น
+`sky1` อัปเปอร์ขึ้น → `sky2` หมัดตรง → `sky3` หมัดตรง → `sky4` หมัดตรง → `sky5` ตบลง
+สามทีกลางเป็นหมัดตรงเหมือนกันหมด ท่าต่างกันแค่มุมแขนกับการเอียงตัว
+ถ้าจะให้ชุดลอยดูหลากหลายขึ้น **ไม้ที่ควรเจนใหม่คือ `sky3` (ใบ H ท่า 7-9) ไม่ใช่ `sky2` อีกแล้ว**
+— เจนเป็นเข่าลอยหรือเตะหมุนจะตัดความซ้ำได้ตรงจุดกว่าไปลุ้นศอกรอบสาม
+
+**บทเรียนรอบนี้ (ต่อจากบทเรียนใบ H):** เงื่อนไขที่เขียนให้ "วัดด้วยตาได้" ช่วยให้
+*ตรวจรับ* ได้เร็วขึ้นจริง — รอบนี้รู้ทันทีว่าตกข้อไหน แทนที่จะรู้ตอนผู้เล่นมาบอกว่าไม่มีเฟรม
+แต่มันไม่ได้ทำให้ตัวเจน *ทำตาม* ได้ ท่าที่ต้องพับแขน (ศอก เข่า) ดูจะเป็นจุดอ่อนของตัวเจน
+มันชอบคลี่ออกเป็นท่าเหยียดตรงเสมอ
 
 ```
 A 3-pose sprite sheet of the same character, arranged in ONE horizontal row,
@@ -693,8 +739,8 @@ mid-motion, NOT returned to a guard.
 Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference sheet exactly. Character: a lean teenage boy martial artist. His black hair is spiky and swept up, but it lies FLAT against his skull with the hairline clearly visible — never a wide round frizzy halo. A small pale scar sits on one cheek. His expression is level and unimpressed, at most a slight smirk; never wide-eyed or cheerful. He wears a fitted short-sleeved BLACK t-shirt that shows the shape of his chest and arms, and loose BAGGY TROUSERS in a muted off-white / warm light grey — the trousers are wide and billowy with deep folded shadows through them, never a flat bright white. A black cloth sash is tied around his waist with two loose ends hanging down his left hip; the sash ends always stay close against his leg and never stream away from his body. Black fingerless gloves with wrapped wrists cover both hands, and he wears black ankle-high boots. Three-quarter view, body angled toward the viewer's right. Pure white background, no shadow, no ground line, no props of any kind, no weapons, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Leave a clear band of empty white space below the soles and above his hair; nothing may touch or run off the edge of the image. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. Nothing detached from his body anywhere in the image — no loose cloth flying away, no separated objects. No effects of any kind: no wind, no impact flashes, no sparks, no glow, no motion lines, no speed lines, no dust, no cracked ground — the game draws all of that itself.
 ```
 
-ได้มาแล้ววางไว้ที่ `art_reference/helios_sheets/sheet_K.jpg` แล้วแก้ `SEQ` ใน builder เป็น
-`"sky2": ("K", [1, 2, 3], AIR)` · เพิ่ม `"K"` เข้า `LETTERS` · รัน build · ขยับเลขเวอร์ชันใน `sw.js`
+✅ ทำครบแล้ว: ไฟล์อยู่ที่ `art_reference/helios_sheets/sheet_K.jpg` · `SEQ` เป็น
+`"sky2": ("K", [1, 2, 3], AIR)` · `"K"` อยู่ใน `LETTERS` · build แล้ว (102 เฟรม 4037x1307) · `sw.js` = `sfr-v5`
 
 ---
 
