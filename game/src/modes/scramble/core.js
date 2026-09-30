@@ -404,36 +404,36 @@ const ALECTO_MOVES = {
    * ท่าบนพื้นติดธง `mobile` = เดินยิงได้ (ฝั่งวาดสลับไปเล่นวงจรเดินถือปืนให้เอง)
    */
   jab1: { label: 'Hip Fire', kind: 'ground', startup: 5, active: 3, recovery: 8, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4, mobile: 0.5,
     shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 12, shotKb: 2, shotRange: 520, chain: 'jab2' },
   jab2: { label: 'Hip Fire', kind: 'ground', startup: 4, active: 3, recovery: 9, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4, mobile: 0.5,
     shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 12, shotKb: 3, shotRange: 520, chain: 'jab3' },
   // ไม้จบ: ปักเท้ายิงสองนัดพร้อมกัน (ไม่มี mobile) ดันออกแรง แลกกับค้างนาน
   jab3: { label: 'Kick Back', kind: 'ground', startup: 5, active: 4, recovery: 18, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4,
     shots: [{ vy: 0 }, { vy: -1.6 }], shotAt: 5, shotDmg: 4, shotStun: 20, shotKb: 9, shotRange: 520 },
   // กดทิศ = เดินยิง ขยับได้มากที่สุดในชุด ใช้ถอยพลางยิงพลางตอนโดนไล่
   side: { label: 'Walking Fire', kind: 'ground', startup: 4, active: 3, recovery: 10, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.6,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4, mobile: 0.6,
     shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 12, shotKb: 2, shotRange: 520 },
   // สวนคนกระโดด: กระสุนพุ่งเฉียงขึ้น ระยะสั้นกว่าเพราะลอยพ้นหัวไปเร็ว
   up: { label: 'Skyward Shot', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4,
     shots: [{ vy: -7 }], shotAt: 6, shotDmg: 4, shotStun: 18, shotKb: 4, shotRange: 320 },
   // ยิงต่ำ: ตัวเตี้ยลงด้วย (crouch) จึงลอดท่าที่ตีสูงได้ไปในตัว
   down: { label: 'Knee Shot', kind: 'ground', crouch: true, startup: 5, active: 3, recovery: 13, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4,
     shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 14, shotKb: 2, shotLow: true, shotRange: 520 },
 
   /* ท่าอากาศ — เดิม "ลอยอยู่ต้องใช้แส้เสมอ" เพราะปืนเป็นอาวุธของคนยืนพื้น
    * พอปืนเป็นท่าปกติทั้งหมด กติกานั้นก็หมดเหตุผล เธอยิงกลางอากาศได้แล้ว
    * แต่ยิงลงล่างแรงกว่ายิงตรง เพื่อให้การขึ้นอากาศยังเป็นการเลือก ไม่ใช่ของฟรี */
   nair: { label: 'Air Fire', kind: 'air', startup: 5, active: 4, recovery: 10, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4,
     shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 14, shotKb: 3, shotRange: 460 },
   sair: { label: 'Dive Fire', kind: 'air', startup: 6, active: 4, recovery: 12, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4,
     shots: [{ vy: 2.5 }], shotAt: 6, shotDmg: 4, shotStun: 16, shotKb: 4, shotRange: 460,
     imp: { f: 5, vx: 7 }, floaty: true },
   // ยิงลงชัน: ช้าลงในแนวนอน (5 เทียบปกติ 13) บวก vy 13 = ราว 69 องศา
@@ -441,7 +441,7 @@ const ALECTO_MOVES = {
   // ถ้าใช้ความเร็วแนวนอนปกติจะได้แค่ 32 องศา ซึ่งต้องมีที่วิ่ง 244 px ถึงจะลงถึงพื้น
   // แล้วมันก็ไม่ใช่ไม้ลงอีกต่อไป — เป็นไม้ยิงเฉียงที่ต้องยืนห่างพอดีเป๊ะ
   dair: { label: 'Dive Shot', kind: 'air', startup: 7, active: 5, recovery: 14, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, snapBack: 4,
     shots: [{ vy: 13, speed: 5 }], shotAt: 7, shotDmg: 5, shotStun: 18, shotKb: 3, shotRange: 400 },
 
   /* ══ บันไดสามขั้น — หางทำงานเฉพาะสามปุ่มนี้ ══════════════════════════════

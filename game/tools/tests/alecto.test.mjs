@@ -193,3 +193,32 @@ const press = (k) => (i) => (i < 2 ? inp({ [k]: 1, p: { [k]: 1 } }) : inp());
   ok(c.moves.roll.iframes != null, "กลิ้งถอยมีช่วงอมตะ — ท่าป้องกันตัวท่าเดียวของเธอ");
   ok(c.moves.quill1.iframes != null, "อัลติมีอมตะช่วงปักหาง — กดสวนตอนโดนต้อนได้");
 }
+
+// ── เฟรมสะบัดคืนต้องไม่ค้างครึ่งท่า ────────────────────────────────────────
+//
+// ชุดปืนทุกท่าเฟรมที่ 3 เป็นท่า "เอนหลังตามแรงถีบ ปืนสะบัดขึ้น" ซึ่งถูกตามหลักอนิเมชัน
+// แต่ตัวเลือกเฟรมอ่านจาก `phase()` ตรง ๆ เฟรมนั้นจึงค้างตลอดช่วง recovery ที่ยาว 8-14 เฟรม
+// = กินครึ่งท่า เล่นจริงเห็นเธอเอนถอยหลังค้างทุกนัด ทั้งที่ควรสะบัดแล้วตั้งลำกลับ
+// แก้ที่ฝั่งวาดด้วย `snapBack` ไม่ต้องเจนอาร์ตใหม่ — เฟรมถูกอยู่แล้ว ผิดแค่ระยะเวลาที่ค้าง
+{
+  const fs = await import("fs");
+  const GUNS = ['jab1', 'jab2', 'jab3', 'side', 'up', 'down', 'nair', 'sair', 'dair'];
+  const mv = CHARACTERS.alecto.moves;
+  const bad = GUNS.filter((k) => !(mv[k].snapBack > 0));
+  ok(bad.length === 0, `ชุดปืนทุกท่าตั้ง snapBack ไว้${bad.length ? " — ขาด " + bad.join(",") : ""}`);
+  // ตั้งเกินความยาว recovery = ไม่มีผลอะไรเลย ซึ่งเป็นความพังแบบเงียบที่สุด
+  const dud = GUNS.filter((k) => mv[k].snapBack >= mv[k].recovery);
+  ok(dud.length === 0,
+    `snapBack สั้นกว่า recovery ทุกท่า จึงมีผลจริง${dud.length ? " — ไม่มีผล: " + dud.join(",") : ""}`);
+  // เฟรมสะบัดต้องกินไม่เกินหนึ่งในสามของท่า ไม่งั้นก็กลับไปเป็นปัญหาเดิม
+  const hog = GUNS.filter((k) => {
+    const m = mv[k];
+    return m.snapBack / (m.startup + m.active + m.recovery) > 0.34;
+  });
+  ok(hog.length === 0, `เฟรมสะบัดกินไม่เกิน 1/3 ของท่า${hog.length ? " — เกิน: " + hog.join(",") : ""}`);
+
+  const scene = fs.readFileSync(
+    new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
+  ok(/f\.move\.snapBack/.test(scene) && /i === 3 && f\.move\.snapBack/.test(scene),
+    "ตัวเลือกเฟรมของฝั่งวาดอ่าน snapBack จริง (ไม่ใช่ตั้งไว้เฉย ๆ)");
+}

@@ -3137,7 +3137,18 @@ class ScrambleScene extends Phaser.Scene {
       // ท่าโจมตี: เลือกเฟรมจาก phase() ของเอนจิ้นตรง ๆ ไม่ผ่าน animation ที่เล่นตามเวลา
       // เพราะ animation ต้องกะ fps ให้จบพอดีกับ startup+active+recovery ซึ่งคลาดเคลื่อนได้เสมอ
       // อ่านจาก phase() แทน = เฟรม "ฟันสุดแขน" โผล่ตรงกับช่วงที่ hitbox มีผลจริงเป๊ะทุกครั้ง
-      const i = { startup: 1, active: 2, recovery: 3 }[f.phase()] ?? 1;
+      /* `snapBack: n` = โชว์เฟรมสะบัดคืนแค่ n เฟรมแรกของ recovery แล้วกลับไปเฟรมตั้งท่า
+       *
+       * ชุดปืนของ KUNJAE เฟรมที่ 3 เป็นท่า "เอนหลังตามแรงถีบ ปืนสะบัดขึ้นฟ้า"
+       * ซึ่งถูกตามหลักอนิเมชัน แต่ recovery ของท่าพวกนี้ยาว 8-14 เฟรม
+       * เฟรมนั้นจึงกินครึ่งท่า (jab1: 8 จาก 16 · up: 14 จาก 24) เล่นจริงเลยเห็นเธอ
+       * "เอนถอยหลังค้าง" ทุกครั้งที่ยิง ทั้งที่ควรเป็นแค่จังหวะสะบัดสั้น ๆ แล้วตั้งลำกลับ
+       *
+       * แก้ที่ฝั่งวาด ไม่ต้องเจนอาร์ตใหม่ — เฟรมที่มีอยู่ถูกแล้ว ผิดแค่ระยะเวลาที่ค้างไว้ */
+      const ph = f.phase();
+      let i = { startup: 1, active: 2, recovery: 3 }[ph] ?? 1;
+      if (i === 3 && f.move.snapBack
+          && f.moveF - f.move.startup - f.move.active >= f.move.snapBack) i = 1;
       this._applyCharTransform(f);
       sp.anims.stop();
       sp.setFrame(`${artId}_${i}.png`);

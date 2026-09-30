@@ -22,7 +22,7 @@
  * ของหนักเป็น cache-first ได้เพราะไฟล์อาร์ต/เสียงเปลี่ยนน้อยมาก และถ้าเปลี่ยนจริง
  * เลขเวอร์ชันข้างล่างจะลบแคชเก่าทิ้งให้เอง
  */
-const VERSION = 'sfr-v12';  // ← ท่าเด้งพื้นของ MARCH เด้งจริงแล้ว + ระยะสกิล 2 + vfx หมัดรัวของอัลติ
+const VERSION = 'sfr-v13';  // ← KUNJAE ไม่เอนถอยหลังค้างหลังยิงแล้ว (snapBack)
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 
