@@ -137,3 +137,32 @@ const { CHARACTERS } = await import(G + "/core.js");
   ok(names.length > 10 && bad.length === 0,
     `ชื่อเฟรมที่ emit() เรียกมีจริงทุกอัน (${[...new Set(names)].length} แบบ)${bad.length ? " เจอ " + bad.join(",") : ""}`);
 }
+
+// ── emit() ต้องคืนจุดยึดกลางภาพทุกครั้งที่หยิบจากพูล ────────────────────────
+//
+// **บั๊กที่เคยมี**: ผู้เรียกบางรายตั้งจุดยึดเองหลัง emit (หนามของ KUNJAE ยึดโคนด้วย
+// `setOrigin(0.5, 1)`) แล้วภาพนั้นถูกคืนเข้าพูลพร้อมจุดยึดที่เปลี่ยนไป
+// อนุภาคตัวถัดไปที่หยิบมันไปใช้จะวาดเยื้องขึ้นครึ่งภาพโดยไม่มีอะไรฟ้อง
+{
+  const body = scene.slice(scene.indexOf("  emit(frame, x, y"));
+  const head = body.slice(0, body.indexOf("this._fxLive.push"));
+  ok(/setOrigin\(0\.5,\s*0\.5\)/.test(head),
+    "emit() ตั้งจุดยึดกลางภาพให้ทุกครั้ง (กันจุดยึดค้างจากผู้เรียกคนก่อน)");
+}
+
+// ── อีเวนต์ที่ซิมปล่อยต้องมีคนวาดรับทุกตัว ──────────────────────────────────
+//
+// `emit()` ไม่ throw เมื่อหาเฟรมไม่เจอ และลูปอีเวนต์ก็ไม่บ่นเมื่อไม่มีสาขารับ
+// อีเวนต์ที่เพิ่มในซิมแล้วลืมต่อฝั่งวาดจึงเงียบสนิท ไม่มีอะไรฟ้องเลยสักทาง
+{
+  const core = read("../../src/modes/scramble/core.js");
+  const inSim = [...new Set([...core.matchAll(/type: *'(\w+)'/g)].map((m) => m[1]))];
+  const drawn = new Set([...scene.matchAll(/e\.type === '(\w+)'/g)].map((m) => m[1]));
+  // อีเวนต์ที่ตั้งใจไม่วาด: ใช้เก็บสถิติหรือส่งต่อให้ระบบอื่น ไม่ใช่ภาพ
+  // `move` = เสียงหวดลม ต่ออยู่ที่ตัววาดตัวละคร (`_swingFor`) ไม่ใช่ที่ลูปอีเวนต์
+  const NO_DRAW = new Set(['ko', 'matchEnd', 'roundStart', 'comboEnd', 'move']);
+  const missing = inSim.filter((t) => !drawn.has(t) && !NO_DRAW.has(t));
+  ok(missing.length === 0,
+    `อีเวนต์ทุกตัวที่ซิมปล่อยมีสาขารับในฝั่งวาด${missing.length ? " — ขาด " + missing.join(", ") : ""}`);
+  ok(drawn.has('flurry'), "อีเวนต์หมัดรัวของอัลติ MARCH มีคนวาดรับ");
+}

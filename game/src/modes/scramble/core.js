@@ -276,15 +276,17 @@ const HELIOS_MOVES = {
     bounce: true, untilLand: true, landLag: 10, refresh: ['rush1'] },
 
   // ---- สกิล 3 Hundred Hands (อัลติ): รัวหมัดเตะ กดรัวเพิ่มจำนวนทีได้ ----
-  hh1: { label: 'Hundred Hands', kind: 'ground', startup: 6, active: 3, recovery: 2, dmg: 2,
+  // `flurry` = ปล่อยอีเวนต์หมัดทุกสองเฟรมให้ฝั่งวาดทำกำแพงหมัด (ดู advanceMove)
+  // ไม้จบ `hhEnd` **ไม่ติดธงนี้** เพื่อให้ตัดกัน: รัวจนเป็นกำแพง แล้วหยุด แล้วหมัดหนักหมัดเดียว
+  hh1: { label: 'Hundred Hands', kind: 'ground', startup: 6, active: 3, recovery: 2, dmg: 2, flurry: 2,
     hb: { x: 6, y: -100, w: 76, h: 34 }, kb: [0.8, 0], stun: 20, autoChain: 'hh2', imp: { f: 4, vx: 2 },
     // กดรัวต่อรอบได้สูงสุดกี่รอบ — นับต่อการกดสกิลหนึ่งครั้ง
     // 9 รอบวัดได้ 51 ดาเมจ ซึ่งแรงกว่าอัลติของ Nyx (22) เท่าตัว ลดเหลือ 5
     mashMax: 5 },
-  hh2: { label: 'Hundred Hands', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2,
+  hh2: { label: 'Hundred Hands', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2, flurry: 2,
     hb: { x: 6, y: -100, w: 76, h: 34 }, kb: [0.8, 0], stun: 20, autoChain: 'hh3', imp: { f: 2, vx: 2 } },
   // hh3 วนกลับมา hh2 ได้เรื่อย ๆ ถ้าผู้เล่นกดปุ่มรัว — mashChain จำกัดจำนวนรอบไว้ที่ mashMax
-  hh3: { label: 'Hundred Hands', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2,
+  hh3: { label: 'Hundred Hands', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2, flurry: 2,
     hb: { x: 6, y: -76, w: 82, h: 36 }, kb: [0.8, 0], stun: 20, imp: { f: 2, vx: 2 },
     mashChain: 'hh2', autoChain: 'hhEnd' },
   hhEnd: { label: 'Hundred Hands', kind: 'ground', startup: 6, active: 5, recovery: 26, dmg: 8,
@@ -896,6 +898,10 @@ class Fighter {
       dashTap: 0, dashTapF: 0,      // เคาะทิศสองทีติดกัน = พุ่ง (ดู takeInput)
       dashLock: 0,                  // พุ่งติดกันได้เร็วสุดกี่เฟรม
       carryLeft: 0, slammed: 0,
+      fxN: 0,                       // ตัวนับอีเวนต์ภาพของท่ารัว — เดินทีละหนึ่งต่อหนึ่งอีเวนต์
+                                    // ใช้แทน `this.frame` เพราะฝั่งวาดเลือกชั้นด้วย `% n`
+                                    // ถ้าใช้เลขเฟรม เงื่อนไขอย่าง `% 4 === 2` อาจไม่ตรงกับ
+                                    // จังหวะที่อีเวนต์ถูกปล่อย (ทุกสองเฟรม) เลยสักครั้ง
       boost: BOOST_MAX,             // ไอพ่นของ DEAR — พุ่ง/กระโดดใช้ขีด ต่อยโดนคืนขีด (ดู BOOST_MAX)
       boostGain: 0,                 // คืนไปแล้วกี่ขีดในช่วงลอยนี้ — แตะพื้นแล้วล้าง (กันคอมโบไม่รู้จบ)
       carriedBy: null,              // ถูกใครลากอยู่ (id) — ตำแหน่งถูกผูกกับคนนั้นชั่วคราว
@@ -2197,6 +2203,15 @@ class Game {
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
       if (m.quills) this.tickQuills(f, m.quills);
+      /* หมัดรัว — ปล่อยอีเวนต์ทุก m.flurry เฟรม **ตลอดท่า ไม่ใช่เฉพาะช่วง active**
+       * ช่วง active ของไม้รัวยาวแค่ 3 เฟรมจาก 7 ถ้าปล่อยเฉพาะตอนนั้นจะเห็นเป็นหมัดเป็นชุด ๆ
+       * ห่างกันเป็นจังหวะ ซึ่งตรงข้ามกับสิ่งที่ท่านี้ควรให้ความรู้สึก (กำแพงหมัดไม่มีช่องว่าง)
+       * ตัวเลขที่ส่งไปคือ `f.fxN` ซึ่งเดินทีละหนึ่ง**ต่อหนึ่งอีเวนต์** ไม่ใช่ `f.moveF`
+       * (รีเซ็ตทุกไม้ 7 เฟรม จึงวนแค่สามค่า ซ้ำรอยเดิมทุกไม้) และไม่ใช่ `this.frame` ด้วย
+       * — อีเวนต์ถูกปล่อยเฟรมเว้นเฟรม ถ้าฝั่งวาดคัดด้วย `% 4 === 2` บนเลขเฟรม
+       * มันอาจไม่ตรงกับจังหวะที่ปล่อยเลยสักครั้ง (คู่/คี่ไม่ตรงกันค้างทั้งชุด) */
+      if (m.flurry && f.moveF % m.flurry === 0)
+        this.events.push({ type: 'flurry', x: f.x, y: f.y, dir: f.facing, id: f.id, i: f.fxN++ });
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
       if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
       if (m.dustPool && f.moveF === m.dustPool.at) {

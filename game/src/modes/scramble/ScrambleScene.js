@@ -2183,6 +2183,17 @@ class ScrambleScene extends Phaser.Scene {
         this.emit('flame', e.x + (Math.random() - 0.5) * 30, e.y, { scale: 0.20, life: 20, grow: 0.5,
           vy: -1.2, tint: 0xffb03a });
       }
+      /* ติดไฟ — ซิมปล่อยอีเวนต์นี้ตอนใครแตะกองไฟแล้วไฟลามมาติดตัว
+       * **ไม่เคยมีใครวาดรับมาก่อน** ทั้งภาพและเสียง คือ "ติดไฟแล้วเลือดไหลลงเงียบ ๆ"
+       * เจอเพราะเทสต์ตัวใหม่ที่ไล่เทียบอีเวนต์ในซิมกับสาขาที่ฝั่งวาดรับ
+       * (เสียงยังเงียบอยู่ — คลังเสียง CC0 ที่โหลดมาไม่มีเสียงไฟ ดู audio.test.mjs) */
+      if (e.type === 'ignite') {
+        for (let i = 0; i < 4; i++)
+          this.emit('fireWisp', e.x + (i - 1.5) * 13, e.y + 10,
+            { scale: 0.16, life: 15 + i * 2, grow: 0.7, vy: -1.5 - Math.random() * 0.8,
+              tint: 0xffa33a, alpha: 0.9 });
+        this.popup(e.x, e.y - 18, 'ไฟลาม!', '#ff8a3a');
+      }
       if (e.type === 'firepool') {
         this._shake(70, 0.004);
         this._sfx('blast', { vol: 0.6 });
@@ -2303,6 +2314,42 @@ class ScrambleScene extends Phaser.Scene {
         // **จุดยึดที่โคน** ไม่งั้นมันจะโตออกจากกลางภาพ = ลอยขึ้นจากพื้น ไม่ใช่งอกจากพื้น
         if (img) img.setOrigin(0.5, 1);
       }
+      /* อัลติหมัดรัว — กำแพงหมัดแบบสแตนด์ ไม่ใช่ประกายตอนโดน
+       *
+       * สามชั้นซ้อนกัน แต่ละชั้นทำคนละหน้าที่:
+       *   เส้นพุ่ง  = ตัวหมัดเอง สลับความสูงห้าช่องตามตัวนับของเกม จะได้ไม่ทับรอยเดิม
+       *   ดาวปลาย  = จุดที่หมัดไปสุด ทำให้ตาอ่านออกว่ากำแพงนี้ยาวแค่ไหน
+       *   เงาตามตัว = สิ่งที่ให้ฟีล "สแตนด์" จริง ๆ เส้นพุ่งอย่างเดียวได้แค่ "เร็ว"
+       *
+       * **ไม่ใส่เสียงต่ออีเวนต์** — ปล่อยทุกสองเฟรมตลอด ~85 เฟรมของอัลติ
+       * ถ้าแต่ละอันมีเสียงจะกลายเป็นเสียงรบกวนก้อนเดียว (บทเรียนเดียวกับหนามของ KUNJAE)
+       * เสียงหมัดมาจากอีเวนต์ `hit` ที่มีอยู่แล้ว ซึ่งดังตามจังหวะที่โดนจริง
+       */
+      if (e.type === 'flurry') {
+        const d = e.dir;
+        const NORM = Phaser.BlendModes.NORMAL;
+        /* **หมัดเดียวต่ออีเวนต์ ไม่ใช่สอง และไม่โต** — ลองสองเส้น + จุดข้อนิ้ว + grow มาก่อน
+         * ได้อนุภาค 17 ตัวกองกันในพื้นที่ 70x60 px ซึ่งบนจอกลายเป็น**ปื้นขาวก้อนเดียว**
+         * ไม่ใช่หมัดที่นับได้ · ปล่อยเฟรมเว้นเฟรม อายุ 6 = ค้างพร้อมกันราวหกเส้น กำลังอ่านออก */
+        const lane = (e.i % 5) - 2;                          // -2..2 = ห้าช่องความสูง
+        const reach = 26 + ((e.i * 3) % 8) * 13;             // 26..117 = ความลึกที่หมัดไปถึง
+        const x = e.x + d * reach, y = e.y - 94 + lane * 11;
+        const o = { life: 6, rot: lane * 0.05, flipX: d < 0, vx: d * 4, drag: 0.9, blend: NORM };
+        /* **หมัดต้องเป็นสีเข้ม ไม่ใช่สีขาว** — เวทีนี้ฟ้าสว่างกับพื้นทราย
+         * `streak` เป็นหางดาวตกขอบฟุ้ง (อัลฟาเฉลี่ย 76/255) ออกแบบมาให้ซ้อนแบบ ADD บนพื้นมืด
+         * ย้อมขาวแล้ววางบนฟ้าสว่างจะ**หายสนิท** ไม่ว่าจะ ADD หรือ NORMAL — ลองมาแล้วทั้งคู่
+         * เปลี่ยนมาใช้ `slashThrust` ซึ่งเป็นทรงลูกดอกมีรูปร่างชัด ย้อมเข้มแล้วอ่านออกทั้งบนฟ้าและบนดิน
+         * แล้วทับด้วยตัวเดียวกันสีอำพันเป็นขอบนำ — สีอำพันคือสีที่พิสูจน์แล้วว่าเห็นบนเวทีนี้ */
+        this.emit('slashThrust', x - d * 6, y, { ...o, scale: 0.26, alpha: 0.8, tint: 0x2a2338, depth: 7 });
+        this.emit('slashThrust', x + d * 4, y, { ...o, scale: 0.19, alpha: 0.9, tint: 0xffd166, depth: 7.1 });
+        if (e.i % 4 === 0)
+          this.emit('star4', e.x + d * 112, e.y - 96 + (((e.i >> 2) % 3) - 1) * 18,
+            { scale: 0.11, life: 7, grow: 1.4, alpha: 0.8, tint: 0xffb02e, depth: 7.3, blend: NORM });
+        // **ทุกสามอีเวนต์ อายุ 11 เฟรม** — ตั้งไว้ทุกสี่/อายุ 8 ตอนแรกแล้ววัดในเบราว์เซอร์จริง
+        // ได้เงาซ้อนกันสูงสุด 1 ตัว ซึ่งไม่ใช่ "ร่างซ้อน" แต่เป็นเงาโดด ๆ ที่กะพริบทีละตัว
+        // อีเวนต์ถูกปล่อยเฟรมเว้นเฟรม ทุกสามอีเวนต์ = ทุกหกเฟรม อายุ 11 จึงซ้อนกันได้เกือบสองตัว
+        if (e.i % 3 === 0) this._ghost(e.id, -d * (14 + (e.i % 2) * 10), 0, { alpha: 0.38, life: 11 });
+      }
       if (e.type === 'pin') {
         this._shake(150, 0.009);
         this._sfx('metal', { vol: 1.1 });
@@ -2382,6 +2429,7 @@ class ScrambleScene extends Phaser.Scene {
    *  พวกนี้เป็นของฝั่งภาพล้วน อายุจึงเดินตามรอบของเกม ไม่ใช่ตามเลขเฟรมของซิม */
   _ageFx() {
     this._stepFx();
+    this._stepGhosts();
     for (const s of this.sparks) s.life--;
     this.sparks = this.sparks.filter(s => s.life > 0);
     for (const p of this.popups) { p.life--; p.t.y -= 0.8; p.t.setAlpha(Math.min(1, p.life / 15)); if (p.life <= 0) p.t.destroy(); }
@@ -2809,7 +2857,9 @@ class ScrambleScene extends Phaser.Scene {
     this._fxPool ??= []; this._fxLive ??= [];
     const img = this._fxPool.pop() ?? this._world(this.add.image(0, 0, 'vfx', key));
     const life = o.life ?? 16;
-    img.setTexture('vfx', key).setVisible(true).setActive(true)
+    // **ต้องตั้ง origin ทุกครั้ง** — ผู้เรียกบางรายตั้งจุดยึดเองหลัง emit (เช่นหนามที่ยึดโคน)
+    // แล้วภาพนั้นถูกคืนเข้าพูลพร้อมจุดยึดที่เปลี่ยนไป อนุภาคตัวถัดไปที่หยิบมันไปใช้จะวาดเยื้อง
+    img.setTexture('vfx', key).setVisible(true).setActive(true).setOrigin(0.5, 0.5)
       .setPosition(x, y).setDepth(o.depth ?? 8)
       .setBlendMode(o.blend ?? Phaser.BlendModes.ADD)
       .setTint(o.tint ?? 0xffffff).setRotation(o.rot ?? 0)
@@ -2835,6 +2885,43 @@ class ScrambleScene extends Phaser.Scene {
       keep.push(f);
     }
     this._fxLive = keep;
+  }
+
+  /** เงาตามตัว — โคลนเฟรมปัจจุบันของตัวละครเป็นเงาทึบจาง ๆ ค้างไว้ข้างหลัง
+   *
+   *  **ใช้พูลของตัวเอง ไม่ใช่พูลอนุภาค** เพราะคนละเท็กซ์เจอร์และคนละจุดยึด
+   *  (จุดยึดของตัวละครมาจาก meta ของอัตลาสแต่ละตัว ไม่ใช่ 0.5/0.5)
+   *  ถ้าปนพูลกัน อนุภาคที่หยิบตัวนี้ไปใช้ต่อจะได้จุดยึดของตัวละครติดไปด้วย
+   *
+   *  `setTintFill` ไม่ใช่ `setTint` — ต้องการเงาทึบสีเดียว ไม่ใช่ตัวละครที่ถูกย้อมสี
+   */
+  _ghost(id, dx, dy, o = {}) {
+    const rig = this.rigs?.[id];
+    if (!rig || !rig.sprite.visible) return null;
+    const src = rig.sprite;
+    this._ghPool ??= []; this._ghLive ??= [];
+    const g = this._ghPool.pop()
+      ?? this._world(this.add.sprite(0, 0, src.texture.key, src.frame.name));
+    const a = o.alpha ?? 0.32, life = o.life ?? 9;
+    g.setTexture(src.texture.key, src.frame.name).setVisible(true).setActive(true)
+      .setOrigin(src.originX, src.originY).setScale(src.scaleX, src.scaleY)
+      .setFlipX(src.flipX).setPosition(src.x + dx, src.y + dy)
+      .setDepth(src.depth - 0.05).setBlendMode(o.blend ?? Phaser.BlendModes.NORMAL).setAlpha(a);
+    g.setTintFill(o.tint ?? 0x231d33);
+    this._ghLive.push({ img: g, life, max: life, a0: a });
+    return g;
+  }
+
+  _stepGhosts() {
+    if (!this._ghLive?.length) return;
+    const keep = [];
+    for (const f of this._ghLive) {
+      f.life--;
+      if (f.life <= 0) { f.img.setVisible(false).setActive(false); this._ghPool.push(f.img); continue; }
+      f.img.setAlpha(f.a0 * (f.life / f.max));
+      keep.push(f);
+    }
+    this._ghLive = keep;
   }
 
   /** ระเบิดประกายตอนหมัดเข้า — ทุกตัวเลขคูณตามน้ำหนักหมัด (hitstop) ไม่ใช่ค่าคงที่

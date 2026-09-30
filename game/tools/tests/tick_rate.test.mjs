@@ -134,16 +134,21 @@ function pair({ lag = 0 } = {}) {
 
 // ── อนุภาคหมดอายุแล้วคืนเข้าพูลจริง ไม่ค้าง ──
 {
-  const sc = { _fxPool: [], _fxLive: [], sparks: [], popups: [], comboFade: 0 };
+  const sc = { _fxPool: [], _fxLive: [], _ghPool: [], _ghLive: [], sparks: [], popups: [], comboFade: 0 };
   sc._stepFx = ScrambleScene.prototype._stepFx;
+  sc._stepGhosts = ScrambleScene.prototype._stepGhosts;
   sc._ageFx = ScrambleScene.prototype._ageFx;
   const img = () => ({ x: 0, y: 0, rotation: 0, setVisible() { return this; }, setActive() { return this; },
     setScale() { return this; }, setAlpha() { return this; } });
   for (let i = 0; i < 6; i++)
     sc._fxLive.push({ img: img(), life: 3, max: 3, a0: 1, s0: 1, vx: 0, vy: 0, g: 0, spin: 0, grow: 0, drag: 1 });
+  // เงาตามตัวของอัลติหมัดรัวใช้พูลแยก — ถ้าลืมคืนเข้าพูล สไปรท์ตัวละครจะงอกใหม่ทุกครั้งที่ปล่อยอัลติ
+  for (let i = 0; i < 4; i++) sc._ghLive.push({ img: img(), life: 2, max: 2, a0: 1 });
   for (let i = 0; i < 3; i++) sc._ageFx();
   ok(sc._fxLive.length === 0, `นับอายุครบแล้วไม่มีอนุภาคค้าง (เหลือ ${sc._fxLive.length})`);
   ok(sc._fxPool.length === 6, `และคืนเข้าพูลครบทุกตัว (${sc._fxPool.length}/6)`);
+  ok(sc._ghLive.length === 0 && sc._ghPool.length === 4,
+    `เงาตามตัวคืนเข้าพูลแยกครบ (${sc._ghPool.length}/4 · ค้าง ${sc._ghLive.length})`);
 }
 
 // ── ต่อเน็ตแล้วอีเวนต์ของทุกเฟรมที่เดินต้องถูกแปล ไม่ใช่แค่เฟรมสุดท้าย ──
