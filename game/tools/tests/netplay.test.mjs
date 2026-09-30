@@ -56,7 +56,10 @@ const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   Math.round(f.x * 1000), Math.round(f.y * 1000), Math.round(f.vx * 1000), Math.round(f.vy * 1000),
   f.state, f.moveId ?? "-", f.moveF, f.hp, f.facing, f.stun, f.hitstop, f.invuln, f.ki, f.comboHits,
   // สถานะที่ตัวละครรุ่นหลังเพิ่มเข้ามา — ถ้าไม่เทียบด้วย desync ของ Alecto/Atlas จะรอดสายตา
-  f.char, f.lash, f.lashF, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard, f.caged,
+  f.char, f.armorLeft, f.burn, f.burnF, f.veil, f.dustGuard, f.caged,
+  // KUNJAE: ทุบลงพื้นแล้วกระโดดไม่ได้ — ตัวนับนี้ตัดสินว่าอีกเฟรมหนึ่งเขาขึ้นฟ้าได้ไหม
+  // ไม่เทียบแล้วเครื่องหนึ่งเห็นเขากระโดดหนีหนามทัน อีกเครื่องเห็นเขาโดนเต็ม ๆ
+  f.pinned,
   // DEAR: ไอพ่น/การลาก/โอเวอร์คล็อก — ทั้งสามเป็นสถานะที่ตัดสินผลการชน
   // ไม่เทียบแล้วสองเครื่องจะเดินคนละเกมโดยที่ตำแหน่งกับเลือดยังดูตรงกันอยู่
   f.boost, f.boostGain, f.overclock, f.carriedBy ?? '-', f.carryLeft, f.mashOut,
@@ -65,9 +68,6 @@ const snap = (g) => [g.frame, ...g.fighters.flatMap((f) => [
   f.bounced ? 1 : 0, f.bouncePend,
   // เพื่อน AI คิดในซิม แผนของมันจึงเป็นสถานะที่ต้องตรงกันเหมือนตำแหน่งและเลือด
   f.ai ? 1 : 0, f.aiNext, JSON.stringify(f.aiPlan),
-  // อาวุธที่ถืออยู่ (Alecto สลับแส้/ไรเฟิล) — ถ้าไม่เทียบ สองเครื่องถืออาวุธคนละชุด
-  // แล้วปุ่มตีเดียวกันจะออกท่าคนละท่า ซึ่งเป็น desync ที่ทุกอย่างอื่นยังดูตรงกันหมด
-  f.alt,
 ]),
   g.shots.length,
   ...g.shots.map((s) => [s.owner, Math.round(s.x * 1000), Math.round(s.y * 1000), Math.round(s.vx * 1000), s.dead ? 1 : 0].join(",")),
@@ -93,11 +93,11 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
 
   let mismatch = null, stepped = 0;
   // นับเหตุการณ์และค่าสูงสุดของสถานะใหม่ ไว้พิสูจน์ว่ารอบทดสอบได้ใช้กลไกนั้นจริง
-  const tally = { a: {}, b: {} }, peak = { a: { lash: 0, armor: 0 }, b: { lash: 0, armor: 0 } };
+  const tally = { a: {}, b: {} }, peak = { a: { pinned: 0, armor: 0 }, b: { pinned: 0, armor: 0 } };
   const note = (g, side) => {
     for (const e of g.events) tally[side][e.type] = (tally[side][e.type] ?? 0) + 1;
     for (const f of [g.p1, g.p2]) {
-      if (f.lash > peak[side].lash) peak[side].lash = f.lash;
+      if (f.pinned > peak[side].pinned) peak[side].pinned = f.pinned;
       if (f.armorLeft > peak[side].armor) peak[side].armor = f.armorLeft;
     }
   };
@@ -183,33 +183,27 @@ function playApart(scriptA, scriptB, { lagA = 0, lagB = 0, frames = 260, c1 = nu
   ok(atlas.peak.a.armor === atlas.peak.b.armor, "เกราะที่เหลือตรงกันสองเครื่อง");
   ok(atlas.gA.p1.maxHp === 130 && atlas.gA.p1.hp === atlas.gB.p1.hp, `Atlas เลือดเต็ม 130 และตรงกันสองเครื่อง (${atlas.gA.p1.hp})`);
 
-  // สคริปต์ของ Alecto ต้องเข้าระยะแส้จริง ไม่ใช่ยืนยิงห่าง ๆ — ตรารอยแส้ติดจากท่าตีปกติเท่านั้น
+  // KUNJAE: ต้องเข้าระยะตะขอจริง แล้วกดทุบลงพื้น (สกิล 2) ให้ติดสถานะ "กระโดดไม่ได้"
+  //
+  // **`pinned` คือ desync ที่เนียนที่สุดของตัวนี้** มันไม่โผล่ในตำแหน่งหรือเลือดเลย
+  // แต่มันตัดสินว่าอีกเฟรมหนึ่งเขาขึ้นฟ้าได้ไหม ซึ่งคือทางรอดเดียวจากหนามของอัลติ
+  // คลาดกันเฟรมเดียว = เครื่องหนึ่งเห็นเขากระโดดหนีทัน อีกเครื่องเห็นเขาโดนเต็ม ๆ
   const closeIn = (toward) => (f) => {
     const inward = toward > 0 ? 'right' : 'left';
     return inp({ [inward]: f < 70 ? 1 : 0,
-      p: { attack: f >= 70 && f % 9 === 0 ? 1 : 0, skill2: f === 360 ? 1 : 0 } });
-    // กดสกิล 2 ครั้งเดียวตอนท้าย ไม่ใช่รัว ๆ — สกิล 2 ขว้างระเบิดแล้วรัวลูกโม่ยาว
-    // กดถี่แล้วเธอจะไม่ได้ใช้แส้เลย ตรารอยแส้ก็ไม่ขึ้น ซึ่งคือสิ่งที่เทสต์นี้ต้องการวัด
-    // และห้ามกดสกิล 1 เลย เพราะนั่นคือสลับไปถือปืน ซึ่งก็ทำให้ไม่มีตราเหมือนกัน
+      // เข้าระยะก่อน แล้วสลับตะขอ (สกิล 1) กับทุบลง (สกิล 2) ตามคูลดาวน์
+      p: { skill1: f >= 70 && f % 130 === 0 ? 1 : 0,
+           skill2: f >= 90 && f % 160 === 0 ? 1 : 0 } });
   };
   const alecto = playApart(closeIn(1), closeIn(-1), { lagA: 1, lagB: 4, c1: 'alecto', c2: 'alecto', frames: 420 });
-  ok(alecto.peak.a.lash > 0, `ตราล็อกเป้าติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.lash} ชั้น)`);
-  ok(alecto.peak.a.lash === alecto.peak.b.lash, "ชั้นตราล็อกเป้าตรงกันสองเครื่อง");
-  // อาวุธที่ถืออยู่ตัดสินจากระยะ ซึ่งแปลว่ามันเป็นสถานะที่ต้องตรงกันสองเครื่อง
-  // ถ้าไม่ตรง ปุ่มตีเดียวกันจะออกท่าคนละท่า = desync ที่ตำแหน่งกับเลือดยังดูตรงกันหมด
-  ok((alecto.tally.a.swap ?? 0) > 0, `สลับอาวุธตามระยะจริงระหว่างทดสอบ (${alecto.tally.a.swap} ครั้ง)`);
-  ok((alecto.tally.a.swap ?? 0) === (alecto.tally.b.swap ?? 0),
-    `จำนวนครั้งที่สลับตรงกันสองเครื่อง (${alecto.tally.a.swap} / ${alecto.tally.b.swap})`);
+  ok(alecto.peak.a.pinned > 0, `สถานะกระโดดไม่ได้ติดจริงระหว่างทดสอบ (สูงสุด ${alecto.peak.a.pinned} เฟรม)`);
+  ok(alecto.peak.a.pinned === alecto.peak.b.pinned, "ตัวนับกระโดดไม่ได้ตรงกันสองเครื่อง");
+  ok(alecto.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
 
-  // สลับอาวุธเป็นสถานะที่ "ปุ่มเดียวกันให้ผลคนละอย่าง" จึงเป็น desync ที่เนียนที่สุดเท่าที่มี
-  // สองเครื่องถืออาวุธคนละชุดแล้วกดตีพร้อมกัน จะเห็นท่าคนละท่าโดยที่ทุกค่าอื่นยังตรงกันหมด
-  // ต้องพิสูจน์ว่ามีการสลับเกิดขึ้นจริงในรอบทดสอบ ไม่งั้นผ่านเพราะไม่มีอะไรให้ต่าง
-  const swap = playApart(busy(1, 1), busy(2, -1), { lagA: 2, lagB: 5, c1: 'alecto', c2: 'alecto', frames: 420 });
-  ok((swap.tally.a.swap ?? 0) > 0, `มีการสลับอาวุธจริงระหว่างทดสอบ (${swap.tally.a.swap} ครั้ง)`);
-  ok((swap.tally.a.swap ?? 0) === (swap.tally.b.swap ?? 0), "จำนวนครั้งที่สลับตรงกันสองเครื่อง");
-  ok(swap.gA.p1.alt === swap.gB.p1.alt && swap.gA.p2.alt === swap.gB.p2.alt,
-    `จบแล้วถืออาวุธชุดเดียวกันทั้งสองเครื่อง (p1=${swap.gA.p1.alt} p2=${swap.gA.p2.alt})`);
-  ok(swap.mismatch === null, "และไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
+  // อัลติของเธอปล่อยหนามสิบต้นในยี่สิบเฟรม แต่ละต้นเป็นวงระเบิดของตัวเอง
+  // ถ้าคลาดกันแม้ต้นเดียว ดาเมจกับแรงกระแทกจะต่างกันทั้งชุด
+  const quill = playApart(busy(1, 1), busy(2, -1), { lagA: 2, lagB: 5, c1: 'alecto', c2: 'alecto', frames: 420 });
+  ok(quill.mismatch === null, "อัลติหนามผุด: ไม่มีเฟรมไหนต่างกันเลยตลอดการทดสอบ");
 
   // DEAR: ไอพ่นกับการลากเป็นสถานะที่ตัดสินผลการชน แต่ **ไม่โผล่ในตำแหน่งหรือเลือด**
   // ขีดไอพ่นคลาดกันขีดเดียว = อีกเฟรมหนึ่งคนหนึ่งพุ่งได้อีกคนพุ่งไม่ได้ แล้วแยกกันไปเลย

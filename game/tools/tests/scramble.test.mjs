@@ -20,8 +20,22 @@ const PENDING_ART_BY_CHAR = {
 
 /** แผนที่ "ชื่อท่า -> ชื่อเฟรมที่ยืมมาใช้" ของตัวละครนั้น (artAs ใน CHAR_ART)
  *  มีไว้ให้รีเวิร์คตัวละครได้โดยไม่ต้องรอชีตใหม่เสร็จก่อน — ดูคอมเมนต์ที่ CHAR_ART */
+/** เนื้อในบล็อกของตัวละครตัวเดียวใน CHAR_ART — ตั้งแต่ `  <id>: {` ถึง `\n  },` ตัวถัดไป
+ *
+ *  **ต้องตัดขอบบล็อกก่อนค้นเสมอ** regex แบบ `id:\s*\{[\s\S]*?artAs:` เป็นแบบขี้เกียจ
+ *  ก็จริง แต่ถ้าตัวนั้น **ไม่มี** คีย์ที่หา มันจะวิ่งข้ามไปเจอของตัวถัดไปแทนแล้วคืนมาเงียบ ๆ
+ *  ซึ่งกัดจริงตอน KUNJAE เพิ่ม artAs ที่โยง jab1 -> gjab1: nyx กับ helios ที่ไม่มี artAs
+ *  ของตัวเองไปหยิบตาราง artAs ของ KUNJAE มาใช้ แล้วฟ้องว่าท่า jab1 ของตัวเองไม่มีอาร์ต
+ */
+function blockOf(scene, id) {
+  const i = scene.search(new RegExp(`\n  ${id}:\\s*\\{`));
+  if (i < 0) return "";
+  const j = scene.indexOf("\n  },", i);
+  return j < 0 ? scene.slice(i) : scene.slice(i, j);
+}
+
 function aliasOf(scene, id) {
-  const blk = scene.match(new RegExp(`${id}:\\s*\\{[\\s\\S]*?artAs:\\s*\\{([\\s\\S]*?)\\}`));
+  const blk = blockOf(scene, id).match(/artAs:\s*\{([\s\S]*?)\n    \}/);
   if (!blk) return {};
   const out = {};
   for (const m of blk[1].matchAll(/(\w+):\s*'([^']+)'/g)) out[m[1]] = m[2];

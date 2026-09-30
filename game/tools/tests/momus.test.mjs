@@ -160,10 +160,10 @@ const MAX = CHARACTERS.momus ? 3 : 3;   // BOOST_MAX — core ไม่ export �
 // ══ สกิล 2 OVERCLOCK: เกราะทุกท่า · หมัดแรงขึ้น · ล้างสถานะ · **บล็อกไม่ได้** ═══
 {
   const g = mk();
-  g.p1.burn = 60; g.p1.lash = 3;
+  g.p1.burn = 60;
   run(g, 10, () => inp({ skill2: 1, p: { skill2: 1 } }));
   ok(g.p1.overclock > 0, `บัฟติดแล้ว (เหลือ ${g.p1.overclock} เฟรม)`);
-  ok(g.p1.burn === 0 && g.p1.lash === 0, "ล้างไฟกับรอยแส้ที่ติดอยู่ทิ้งตอนกด");
+  ok(g.p1.burn === 0, "ล้างไฟที่ติดอยู่ทิ้งตอนกด");
 
   // เกราะติด **ทุกท่า** ไม่ใช่เฉพาะท่าที่ประกาศเกราะไว้เอง
   g.p1.move = null; g.p1.moveId = null; g.p1.setState('idle');

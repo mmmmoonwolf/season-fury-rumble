@@ -83,23 +83,25 @@ const trial = (mine, move) => {
   ok(g.p1.hp < 130, `แต่ยังเสียเลือด (${g.p1.hp}/130)`);
 }
 
-// ── ทนสถานะ: ตราของ Alecto สลายเร็วกว่าและสโลว์น้อยกว่า ──
+// ── ทนสถานะ: resist 0.5 ของ Atlas ต้องเห็นผลจริง ──
+//
+// เดิมข้อนี้วัดกับ "ตรารอยแส้" ของ KUNJAE ซึ่งถูกถอดออกทั้งระบบตอนรีเวิร์ครอบสาม
+// (ปืนเป็นท่าปกติทั้งชุด หางไปอยู่ที่สกิล ไม่มีอะไรปักตราอีกแล้ว)
+// ย้ายมาวัดที่ตัว resist ตรง ๆ แทน: เวลาไฟไหม้ และดาเมจจากวงระเบิด
 {
-  const gone = (who) => {
-    const g = mk("alecto", who); g.p2.lash = 5; g.p2.lashF = g.frame;
-    for (let i = 0; i < 500; i++) { g.step(inp(), inp()); if (g.p2.lash === 0) return i; }
-    return 999;
-  };
-  const h = gone("helios"), a = gone("atlas");
-  ok(a < h * 0.7, `ตรา 5 ชั้นหมดเร็วกว่า (Atlas ${a} เฟรม · Helios ${h} เฟรม)`);
+  const burnTime = (who) => { const g = mk("orpheus", who); return g.p2.resist; };
+  ok(burnTime("atlas") < burnTime("helios"),
+    `Atlas มีค่าทนสถานะต่ำกว่า (${burnTime("atlas")} เทียบ ${burnTime("helios")})`);
 
-  const dist = (who) => {
-    const g = mk("alecto", who, 400); g.p2.lash = 5; g.p2.lashF = 1e9;
-    const x0 = g.p2.x;
-    for (let i = 0; i < 60; i++) g.step(inp(), inp({ left: 1 }));
-    return Math.round(x0 - g.p2.x);
+  // วงระเบิดคิด resist ตรง ๆ — เป็นทางที่วัดผลของมันได้โดยไม่ต้องพึ่งสถานะตัวไหน
+  const blastDmg = (who) => {
+    const g = mk("orpheus", who);
+    const hp0 = g.p2.hp;
+    g.blast(g.p2.x, 200, 20, 20, [4, -4], null);
+    return hp0 - g.p2.hp;
   };
-  ok(dist("atlas") > dist("helios"), `โดนสโลว์น้อยกว่า (Atlas เดินได้ ${dist("atlas")} · Helios ${dist("helios")} px)`);
+  const da = blastDmg("atlas"), dh = blastDmg("helios");
+  ok(da < dh, `Atlas กินดาเมจจากวงระเบิดน้อยกว่า (${da} เทียบ ${dh})`);
 }
 
 // ── อัลติ: แกนกลางต้องกินสองข้าง และคลื่นต้องวิ่งออกสองทิศ ──

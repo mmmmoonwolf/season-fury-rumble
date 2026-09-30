@@ -291,37 +291,30 @@ const HELIOS_SKILL_CD = [120, 210, 0];   // Sky Drive เป็นตัวเ�
  */
 
 // ตรารอยแส้ — อยู่ที่ตัวคนโดน ไม่ใช่ตัวเธอ (เล่นหลายคนทีหลังจะได้แยกรายเป้าหมายเอง)
-const LASH_MAX = 5;          // เพดานชั้น
-const LASH_DELAY = 90;       // ไม่โดนแส้ครบกี่เฟรมถึงเริ่มสลาย (1.5 วินาที)
-const LASH_EVERY = 30;       // สลายชั้นละกี่เฟรมหลังจากนั้น
-const LASH_DMG = 0.08;       // ดาเมจแส้ +8% ต่อชั้น (ใช้กับตัวอื่น — KUNJAE ย้ายฝั่งนี้ไปที่ปืนแล้ว)
-// ── KUNJAE: เส้นแบ่งระยะ ──
-// สองเส้นไม่ใช่เส้นเดียว ช่วงคาบเกี่ยว 40 px กันอาการ "ท่าเปลี่ยนใต้มือตอนเดินไปมา"
-// ตัวเลขมาจากระยะเอื้อมจริงของหาง (jab1 128 · jab3 152 · Rope Pull 192)
-// เส้นต้องอยู่ตรงขอบที่หางเอื้อมถึง ไม่งั้นจะมีช่วงที่ถืออาวุธผิดสำหรับระยะนั้น
-const RANGE_IN = 180;        // ใกล้กว่านี้ -> หาง
-const RANGE_OUT = 220;       // ไกลกว่านี้ -> ปืน
-// ── หมุดระเบิด — เปลี่ยนจาก "ขึ้นเงินทีละดวง" เป็น "จุดทีเดียวหมด" ──
-//
-// **ผู้เล่นรายงานตรง ๆ ว่า "ยังไม่สนุก ขอแบบบู๊ ๆ"** ซึ่งวัดออกมาเป็นตัวเลขได้จริง:
-// ชุดแย็บปืนของเธอรวมกันได้ 5 ดาเมจ (แส้ 13 · HELIOS 12 · ATLAS 19)
-// และท่าที่แรงที่สุดทั้งตัวคือ 10 ขณะที่ ATLAS มีท่าปกติที่ 19
-// พอระยะสลับให้เอง เธอจึงถูกบังคับไปเล่นชุดที่อ่อนที่สุดในเกมเกินครึ่งเวลา
-//
-// ของเดิม: ยิงโดนคนมีตรา +3 กินตราหนึ่งดวง = เก็บทีละนิด ไม่มีจังหวะไหนดัง
-// ของใหม่: **หมุดไม่ใช่แต้ม มันคือระเบิดที่ปักอยู่บนตัวเขา** สกิล 2 กับอัลติจุดมันทั้งหมด
-// พร้อมกัน เป็นวงระเบิดที่โดนคนที่ยืนใกล้ ๆ ด้วย
-//
-// ดาเมจโตเร็วกว่าเชิงเส้น (3 · 8 · 14 · 22 · 32) เพื่อให้ "อดใจปักให้ครบ" คุ้มกว่าจุดทิ้ง
-// ปักครบ 5 แล้วจุด = 32 เทียบกับจุดทีละดวงห้าครั้ง = 15 ต่างกันเกินสองเท่า
-//
-// **จุดได้เฉพาะตอนกดสกิล ไม่ใช่กระสุนทุกนัด** ตั้งใจแบบนี้ — ถ้าปืนธรรมดาจุดด้วย
-// ระเบิดจะลั่นเองตอนแหย่ ซึ่งคือ "ของที่เกิดกับผู้เล่น" ไม่ใช่ "ของที่ผู้เล่นตั้งใจทำ"
-// กับดักเดียวกับที่เส้นแบ่งระยะเคยเจอ แล้วแก้ด้วยช่วงคาบเกี่ยว
-const MARK_POP = [0, 3, 8, 14, 22, 32];   // ดาเมจระเบิดตามจำนวนหมุดที่ปักไว้
-const MARK_POP_R = [0, 96, 118, 140, 162, 184];  // ครึ่งความกว้างวงระเบิด
-const PIN_FRAMES = 45;       // ตอกหมุดแล้วกระโดดไม่ได้กี่เฟรม
-const LASH_SLOW = 0.06;      // คนโดนเดินช้าลง 6% ต่อชั้น
+/* ── KUNJAE: บันไดสามขั้น ──
+ *
+ * **รีเวิร์ครอบสาม** สองรอบก่อนถูกถอดออกหมดแล้ว สิ่งที่ถอด:
+ *   - เส้นแบ่งระยะ (RANGE_IN/RANGE_OUT) ที่สลับชุดท่าให้เองตามระยะยืน
+ *   - หมุดระเบิด (MARK_POP) ที่หางปักแล้วปืนจุด
+ *
+ * ทั้งสองอันเป็นโครงเดียวกัน คือ **"ทำอย่างหนึ่งที่ไม่ใช่ดาเมจ แล้วค่อยแปลงทีหลัง"**
+ * ซึ่งเป็นโครงที่ต้องอดทนและรอ ผู้เล่นรายงานว่าไม่สนุกทั้งสองรอบ
+ * และเส้นแบ่งระยะยังเป็นสิ่งเดียวในเกมที่ **กดปุ่มตีแล้วเกมเลือกท่าให้**
+ *
+ * รอบนี้เหลือกลไกเดียว: ปืนเป็นท่าปกติทั้งชุด · หางอยู่ที่สกิลสามช่อง
+ * ตะขอลากเข้ามา -> ทุบลงพื้นแล้วกระโดดไม่ได้ -> ปักหางลงดินให้หนามวิ่งออกสองข้าง
+ * ขั้น 2 ปิดทางรอดเดียวของขั้น 3 พอดี จึงเป็นคอมโบที่ค้นพบเองได้จากการเล่น
+ */
+const PIN_FRAMES = 50;       // ทุบลงพื้นแล้วกระโดดไม่ได้กี่เฟรม
+// หนามผุดจากพื้น: ข้างละ 5 ต้น ห่างกัน 80 px = เอื้อม 400 px ต่อข้าง
+// เวทีกว้างราว 1400 จึงกินราวครึ่งเวที **ไม่ใช่ทั้งเวที** — การยืนยังต้องมีความหมาย
+// โผล่ห่างกันต้นละ 4 เฟรม รวม 20 เฟรมกว่าคลื่นจะถึงปลายสุด คนที่ยืนไกลจึงเห็นแล้วหนีทัน
+const QUILL_N = 5;
+const QUILL_GAP = 80;
+// เพดานความสูงของหนาม — สูงกว่านี้เหนือพื้นแล้วรอด
+// 200 px มาจากความสูงจริงของเฟรม `tailRise3` ตอนวาด (320 px ในอัตลาส x สเกล 0.62)
+// กติกาต้องตรงกับภาพที่เห็น ไม่งั้นมันคือกับดัก ไม่ใช่กติกา
+const QUILL_UP = 200;
 // เพดานเพิ่ม x1.40 ต้องเล็กกว่าเพดานลดดาเมจตามความยาวคอมโบ x0.50 เสมอ
 // ไม่งั้นคอมโบยิ่งยาวยิ่งแรง = เปิดช่องคอมโบวนไม่รู้จบที่ระบบลดดาเมจกันไว้ตั้งแต่ต้น
 
@@ -380,126 +373,107 @@ const FIRE_DMG = 2;
 // ขณะที่ Atlas ที่ช้ากว่าได้เลือด 130 + เกราะ + resist 0.5 มาจ่ายค่านั้น
 // และ Orpheus เอื้อมเกือบเท่ากัน (124 เทียบ 128) แต่ท่าครบชุดเร็วกว่า 6 เฟรม
 const ALECTO_MOVES = {
-  // ---- ท่าตีปกติ: แส้ ----
-  // ระยะ (hb.w) ยาวกว่าของ Nyx/Helios ราวเท่าตัว แลกกับ startup ที่ช้ากว่าทุกตัวในเกม
-  jab1: { label: 'Lash', kind: 'ground', startup: 6, active: 3, recovery: 11, dmg: 3,
-    hb: { x: 10, y: -104, w: 118, h: 30 }, kb: [2, 0], stun: 17, chain: 'jab2', lash: true },
-  jab2: { label: 'Cross Lash', kind: 'ground', startup: 7, active: 3, recovery: 14, dmg: 3,
-    hb: { x: 10, y: -98, w: 126, h: 40 }, kb: [2.5, 0], stun: 18, chain: 'jab3', lash: true },
-  // ไม้จบผลักออกไกล = คืนระยะให้ตัวเอง เป็นท่าไล่คนที่เข้ามาแนบด้วย
-  // kb แนวตั้งต้องเป็น 0 ไม่งั้นคนโดนลอยแล้วล้ม ซึ่งมีอมตะติดมา คอมโบขาดทันที
-  jab3: { label: 'Whip Crack', kind: 'ground', startup: 9, active: 4, recovery: 22, dmg: 7,
-    hb: { x: 12, y: -100, w: 140, h: 36 }, kb: [14, 0], stun: 26, lash: true },
-  // ลากเข้ามา: kb แกน x ติดลบ = ดึงเข้าหาตัวเธอ ตัวเปิดคอมโบจากระยะที่คนอื่นเอื้อมไม่ถึง
-  side: { label: 'Rope Pull', kind: 'ground', startup: 10, active: 5, recovery: 20, dmg: 4,
-    hb: { x: 20, y: -96, w: 172, h: 30 }, kb: [-9, 0], stun: 30, lash: true },
-  up: { label: 'Sky Crack', kind: 'ground', startup: 9, active: 6, recovery: 17, dmg: 5,
-    hb: { x: -10, y: -182, w: 100, h: 132 }, kb: [1.5, -16], stun: 36, jumpCancel: true, lash: true },
-  down: { label: 'Ground Lash', kind: 'ground', crouch: true, startup: 8, active: 4, recovery: 18, dmg: 4,
-    hb: { x: 6, y: -34, w: 132, h: 30 }, kb: [3, -10], stun: 28, lash: true },
-  nair: { label: 'Air Coil', kind: 'air', startup: 6, active: 9, recovery: 12, dmg: 4,
-    hb: { x: -60, y: -138, w: 132, h: 132 }, kb: [3, -7], stun: 24, jumpCancel: true, lash: true },
-  sair: { label: 'Dive Lash', kind: 'air', startup: 8, active: 9, recovery: 15, dmg: 5,
-    hb: { x: 10, y: -88, w: 142, h: 32 }, kb: [9, -5], stun: 28,
-    imp: { f: 7, vx: 10, vy: -1 }, floaty: true, lash: true },
-  dair: { label: 'Down Lash', kind: 'air', startup: 9, active: 8, recovery: 16, dmg: 5,
-    hb: { x: -20, y: -44, w: 112, h: 84 }, kb: [4, -4], stun: 26, lash: true },
-
-  // ---- สกิล 1 ตอกหมุด: หางฟาดขึ้นฟ้า ลากคนที่ลอยอยู่ลงมาอัดพื้น แล้วกระโดดไม่ได้ ----
-  //
-  // แทน Gunslinger เดิม (ปุ่มสลับอาวุธ) ซึ่งตายไปทั้งปุ่มพอระยะสลับให้เอง
-  //
-  // **เอื้อมสูงที่สุดในเกมแต่แคบที่สุดในแนวนอน** — เธอต้องเดาถูกว่าเขาจะลงตรงไหน
-  // เป็นกระจกเงาของ METEOR: DEAR ลากคนขึ้นฟ้า · KUNJAE ลากคนลงพื้น
-  //
-  // ไม่ใช่ปุ่มแก้ DEAR อย่างเดียว — ทุกตัวในเกมกระโดด ใครกระโดดเข้ามาก็โดนหมด
-  // มันแค่บังเอิญเป็นคำตอบเชิงโครงสร้างของตัวที่อยู่บนฟ้าทั้งเกม
-  //
-  // **ปักสามหมุดทีเดียว** (ท่าแส้ปกติปักดวงเดียว) — นี่คือปุ่ม "ตั้งระเบิด" ของเธอ
-  // ตอกลงมา -> เขากระโดดไม่ได้ 45 เฟรม -> เธอถอยไปกดสกิล 2 จุด = 14 ดาเมจเป็นก้อน
-  // สองปุ่มนี้จึงเป็นคอมโบจริงที่กดจบได้ ไม่ใช่การบ้านที่ต้องสะสมทั้งยก
-  pin1: { label: 'Pin Down', kind: 'ground', startup: 9, active: 6, recovery: 20, dmg: 8,
-    hb: { x: 20, y: -260, w: 120, h: 190 }, kb: [2, 12], stun: 30, lash: 3, pin: PIN_FRAMES },
-
-  // ---- ท่าตีปกติชุดที่สอง: ไรเฟิล (ใช้เมื่อสลับด้วยสกิล 1 แล้ว) ----
-  //
-  // ทุกท่าเป็นกระสุนจริง ไม่ใช่กรอบโจมตียาว ๆ — ยิงข้ามเวทีได้ กันได้ และโดนวงฝุ่นลดดาเมจด้วย
-  // ทุกท่าบนพื้นติดธง mobile = ย่องไปมาระหว่างยิงได้ นี่คือ "เดินยิง" ที่คนเล่นขอ
-  // (ฝั่งวาดสลับไปเล่นวงจรเดินถือปืนให้เองเมื่อเคลื่อนที่จริง — ดู ScrambleScene)
-  //
-  // วัดแล้วรอบแรกตั้งไว้สูงไป: ประชิดแล้วปืนเจ็บกว่าแส้ (14 เทียบ 13) ทั้งที่ควรตรงข้าม
-  // เพราะท่าปืนสั้นกว่าและกระสุนถึงตัวทันทีในระยะประชิด — ปืนเลยชนะทุกระยะ สวิตช์ก็ไม่ใช่การเลือก
-  // ดาเมจรวมทั้งชุดจึงเหลือ 5 เทียบกับแส้ 13 และไม่ติดตรารอยแส้เลย
-  // ราคาของ "ปลอดภัย + ยิงได้ทั้งเวที" คือดาเมจ ไม่ใช่ความเร็ว — คนที่โดนรุมต้องได้ของที่ใช้ได้จริง
-  gjab1: { label: 'Hip Fire', kind: 'ground', startup: 5, active: 3, recovery: 8, dmg: 0,
+  /* ── ท่าตีปกติ: ปืนคู่ ทั้งชุด ──
+   *
+   * **รีเวิร์ครอบสาม** สองรอบก่อนเธอมีท่าตีสองชุด (แส้ตอนใกล้ ปืนตอนไกล)
+   * แล้วเกมสลับให้เองตามระยะ ผู้เล่นรายงานว่าไม่สนุกทั้งสองรอบ
+   * สาเหตุที่วัดได้: **ชุดปืนรวมกันได้ 5 ดาเมจ ต่ำสุดในเกม** และเพราะระยะสลับให้เอง
+   * เธอจึงถูกบังคับไปเล่นชุดที่อ่อนที่สุดเกินครึ่งเวลาโดยไม่ได้เลือก
+   *
+   * รอบนี้ **ปืนเป็นท่าปกติทั้งหมด ไม่มีชุดที่สอง ไม่มีเส้นแบ่งระยะ**
+   * หางไปอยู่ที่สกิลทั้งสามช่อง = เห็นหางเมื่อไหร่แปลว่ามีเรื่องใหญ่
+   * ซึ่งดีกว่าให้มันเป็นหมัดยาว ๆ ที่เห็นตลอดเวลาจนไม่มีน้ำหนัก
+   *
+   * ทุกท่าเป็นกระสุนจริง ยิงข้ามเวทีได้ กันได้ โดนวงฝุ่นลดดาเมจได้
+   * ท่าบนพื้นติดธง `mobile` = เดินยิงได้ (ฝั่งวาดสลับไปเล่นวงจรเดินถือปืนให้เอง)
+   */
+  jab1: { label: 'Hip Fire', kind: 'ground', startup: 5, active: 3, recovery: 8, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 12, shotKb: 2, shotRange: 520, chain: 'gjab2' },
-  gjab2: { label: 'Hip Fire', kind: 'ground', startup: 4, active: 3, recovery: 9, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 12, shotKb: 2, shotRange: 520, chain: 'jab2' },
+  jab2: { label: 'Hip Fire', kind: 'ground', startup: 4, active: 3, recovery: 9, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.5,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 2, shotStun: 12, shotKb: 3, shotRange: 520, chain: 'gjab3' },
-  // ไม้จบ: ปักเท้ายิง (ไม่มี mobile) ดันออกแรงพอเปิดระยะได้จริง แลกกับค้างนาน
-  gjab3: { label: 'Kick Back', kind: 'ground', startup: 5, active: 4, recovery: 18, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 12, shotKb: 3, shotRange: 520, chain: 'jab3' },
+  // ไม้จบ: ปักเท้ายิงสองนัดพร้อมกัน (ไม่มี mobile) ดันออกแรง แลกกับค้างนาน
+  jab3: { label: 'Kick Back', kind: 'ground', startup: 5, active: 4, recovery: 18, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 5, shotStun: 20, shotKb: 9, shotRange: 520 },
-  // กดทิศ = เดินยิง ขยับได้มากที่สุดในชุด เป็นท่าที่ใช้ถอยพลางยิงพลางตอนโดนไล่
-  gside: { label: 'Walking Fire', kind: 'ground', startup: 4, active: 3, recovery: 10, dmg: 0,
+    shots: [{ vy: 0 }, { vy: -1.6 }], shotAt: 5, shotDmg: 4, shotStun: 20, shotKb: 9, shotRange: 520 },
+  // กดทิศ = เดินยิง ขยับได้มากที่สุดในชุด ใช้ถอยพลางยิงพลางตอนโดนไล่
+  side: { label: 'Walking Fire', kind: 'ground', startup: 4, active: 3, recovery: 10, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, mobile: 0.6,
-    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 2, shotStun: 12, shotKb: 2, shotRange: 520 },
+    shots: [{ vy: 0 }], shotAt: 4, shotDmg: 3, shotStun: 12, shotKb: 2, shotRange: 520 },
   // สวนคนกระโดด: กระสุนพุ่งเฉียงขึ้น ระยะสั้นกว่าเพราะลอยพ้นหัวไปเร็ว
-  gup: { label: 'Skyward Shot', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 0,
+  up: { label: 'Skyward Shot', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: -7 }], shotAt: 6, shotDmg: 3, shotStun: 18, shotKb: 4, shotRange: 320 },
+    shots: [{ vy: -7 }], shotAt: 6, shotDmg: 4, shotStun: 18, shotKb: 4, shotRange: 320 },
   // ยิงต่ำ: ตัวเตี้ยลงด้วย (crouch) จึงลอดท่าที่ตีสูงได้ไปในตัว
-  gdown: { label: 'Knee Shot', kind: 'ground', crouch: true, startup: 5, active: 3, recovery: 13, dmg: 0,
+  down: { label: 'Knee Shot', kind: 'ground', crouch: true, startup: 5, active: 3, recovery: 13, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 14, shotKb: 2, shotLow: true, shotRange: 520 },
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 14, shotKb: 2, shotLow: true, shotRange: 520 },
 
-  // ---- สกิล 2 ครึ่งหลัง Fan the Hammer: สับไกรีวอลเวอร์เป็นชุด ดันคนออกจากหน้า ----
-  //
-  // ของเดิมเป็นท่าตั้งป้อมยืนยิง 3 วินาที ซึ่งไม่ได้แก้ปัญหาของเธอเลย
-  // ยิงไปก็ยังโดนยืนกดอยู่ที่เดิม ผู้เล่นรายงานว่า "โดนรุมประจำ"
-  // เปลี่ยนเป็นชุดสั้นสามจังหวะที่ **ดันออก** แล้วกลับมาถืออาวุธเดิมเอง
-  // สามจังหวะแรงขึ้นเรื่อย ๆ จังหวะสุดท้ายดันแรงพอเปิดระยะได้จริง
-  //
-  // **จังหวะแรกคือตัวจุดระเบิด** (`shotPop`) — นัดเดียวจุดหมุดทั้งหมดที่ปักไว้บนตัวเขา
-  // เป็นวงระเบิดที่โดนคนที่ยืนใกล้ด้วย เล่น 4 คนแล้วปักคนหนึ่งไว้ตอนเขายืนติดกัน
-  // จุดทีเดียวเก็บได้สองคน  ส่วนอีกสองนัดเป็นดาเมจสดตามหลัง
-  shot1: { label: 'Fan the Hammer', kind: 'ground', startup: 5, active: 4, recovery: 5, dmg: 0,
+  /* ท่าอากาศ — เดิม "ลอยอยู่ต้องใช้แส้เสมอ" เพราะปืนเป็นอาวุธของคนยืนพื้น
+   * พอปืนเป็นท่าปกติทั้งหมด กติกานั้นก็หมดเหตุผล เธอยิงกลางอากาศได้แล้ว
+   * แต่ยิงลงล่างแรงกว่ายิงตรง เพื่อให้การขึ้นอากาศยังเป็นการเลือก ไม่ใช่ของฟรี */
+  nair: { label: 'Air Fire', kind: 'air', startup: 5, active: 4, recovery: 10, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 2, shotStun: 12, shotKb: 4, shotPop: true, autoChain: 'shot2' },
-  shot2: { label: 'Fan the Hammer', kind: 'ground', startup: 3, active: 4, recovery: 5, dmg: 0,
+    shots: [{ vy: 0 }], shotAt: 5, shotDmg: 3, shotStun: 14, shotKb: 3, shotRange: 460 },
+  sair: { label: 'Dive Fire', kind: 'air', startup: 6, active: 4, recovery: 12, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 3, shotDmg: 2, shotStun: 12, shotKb: 6, autoChain: 'shot3' },
-  // จังหวะจบ: กระสุนแรงสุดและดันไกลสุด · ค้างนานกว่าเพื่อนเพื่อจ่ายค่าที่เปิดระยะได้ฟรี
-  shot3: { label: 'Fan the Hammer', kind: 'ground', startup: 3, active: 5, recovery: 16, dmg: 0,
+    shots: [{ vy: 2.5 }], shotAt: 6, shotDmg: 4, shotStun: 16, shotKb: 4, shotRange: 460,
+    imp: { f: 5, vx: 7 }, floaty: true },
+  // ยิงลงชัน: ช้าลงในแนวนอน (5 เทียบปกติ 13) บวก vy 13 = ราว 69 องศา
+  // ลอยอยู่ 150 px แล้วยิง กระสุนถึงพื้นภายใน 58 px แนวนอน = ลงใส่คนที่อยู่ใต้ตัวได้จริง
+  // ถ้าใช้ความเร็วแนวนอนปกติจะได้แค่ 32 องศา ซึ่งต้องมีที่วิ่ง 244 px ถึงจะลงถึงพื้น
+  // แล้วมันก็ไม่ใช่ไม้ลงอีกต่อไป — เป็นไม้ยิงเฉียงที่ต้องยืนห่างพอดีเป๊ะ
+  dair: { label: 'Dive Shot', kind: 'air', startup: 7, active: 5, recovery: 14, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    shots: [{ vy: 0 }], shotAt: 3, shotDmg: 3, shotStun: 20, shotKb: 13 },
+    shots: [{ vy: 13, speed: 5 }], shotAt: 7, shotDmg: 5, shotStun: 18, shotKb: 3, shotRange: 400 },
 
-  // ---- สกิล 3 (อัลติ) DEAD MAN'S LINE: เล็งแล้วยิงทะลุทุกคนในแนวเดียวกัน ----
+  /* ══ บันไดสามขั้น — หางทำงานเฉพาะสามปุ่มนี้ ══════════════════════════════
+   *
+   * อ่านเป็นประโยคเดียว: **เอาเขามาหาเรา -> ตรึงเขาไว้กับพื้น -> แล้วทำให้พื้นฆ่าเขา**
+   *
+   * สามขั้นนี้ต่อกันเป็นคอมโบที่คนเล่นค้นพบเองได้จากการเล่น ไม่ต้องอ่านคู่มือ
+   * และแต่ละขั้นกดเดี่ยว ๆ ก็ยังใช้ได้ ไม่ใช่ปุ่มที่ตายถ้าคอมโบไม่ติด
+   */
+
+  // ---- ขั้น 1 ตะขอ: หางพุ่งตรงไปเกี่ยวแล้วลากเข้ามา ----
   //
-  // ของเดิม (Dust Devil) เป็นอัลติเอาตัวรอด — กรงฝุ่น ซ่อนตัว กันสถานะ
-  // ตัวใหม่ได้เครื่องมือคุมเกมมาตั้งแต่ต้นแล้ว (เส้นระยะ + ตรา + ตอกหมุด)
-  // สิ่งที่ยังขาดคือปุ่มที่เปลี่ยนการบ้านทั้งยกให้เป็นดาเมจก้อนเดียว
+  // `kb` แกน x ติดลบ = ดึงเข้าหาตัวเธอ (กติกาเดียวกับ Rope Pull เดิมที่ใช้ได้ผล)
+  // เอื้อม 260 px ยาวกว่าท่าประชิดของทุกตัวในเกม แต่สั้นกว่ากระสุนของเธอเองมาก
+  // จึงไม่ใช่ปุ่มกดข้ามเวที — ต้องเดินเข้าไปในระยะก่อน
+  hook1: { label: 'Hook', kind: 'ground', startup: 8, active: 5, recovery: 16, dmg: 5,
+    hb: { x: 30, y: -100, w: 260, h: 44 }, kb: [-13, 0], stun: 30 },
+
+  // ---- ขั้น 2 ทุบลง: เหวี่ยงอัดพื้น แล้วกระโดดไม่ได้ ----
   //
-  // **แลกไป: เธอไม่มีปุ่มหนีตายอีกเลย** ชดเชยด้วยอมตะช่วงเล็ง ซึ่งกดสวนตอนโดนต้อนได้
-  // ทะลุ = โดนหลายคนใน 2v2/4 คนโดยไม่ต้องเล็ง และบังคับให้อีกฝั่งกระจายตัว
-  line1: { label: "Dead Man's Line", kind: 'ground', startup: 14, active: 6, recovery: 24, dmg: 0,
-    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, iframes: [0, 14],
-    // `shotPop` = จุดหมุดของทุกคนที่กระสุนทะลุผ่าน ไม่ใช่แค่คนแรก
-    // ปักคนละสามหมุดไว้สองคนแล้วยิงทีเดียว = 10+14 สองรอบ นี่คือปุ่มเปลี่ยนเกม
-    shots: [{ vy: 0 }], shotAt: 14, shotDmg: 10, shotStun: 26, shotKb: 8,
-    shotRange: 1400, pierce: true, shotPop: true },
+  // **นี่คือปุ่มที่ปิดทางรอดเดียวของอัลติตัวเอง** ทางรอดของหนามคือลอยอยู่
+  // ท่านี้เอาเขาลงมาติดพื้นแล้วล็อกไว้ 50 เฟรม ซึ่งยาวพอจะปักหางแล้วหนามวิ่งถึง
+  // (อัลติใช้เงื้อ 16 + คลื่นหนาม 20 = 36 เฟรม ยังเหลือขอบ 14 เฟรม)
+  slam1: { label: 'Slam Down', kind: 'ground', startup: 7, active: 6, recovery: 18, dmg: 9,
+    hb: { x: 16, y: -150, w: 130, h: 170 }, kb: [3, 11], stun: 30, pin: PIN_FRAMES },
+
+  // ---- ขั้น 3 (อัลติ) SPINE FIELD: ปักหางลงดิน หนามผุดวิ่งออกสองข้าง ----
+  //
+  // ของเดิม (Dead Man's Line) เป็นกระสุนทะลุแนวนอน ซึ่งซ้ำกับท่าปกติของเธอเอง
+  // ตอนนี้ท่าปกติเป็นปืนทั้งชุดแล้ว อัลติที่เป็นกระสุนอีกนัดจึงไม่มีอะไรใหม่เลย
+  //
+  // หนามไม่ได้โผล่พรึบเดียว แต่ **วิ่งออกจากตัวเธอเป็นคลื่นทั้งสองข้าง**
+  // คนที่ยืนไกลจึงเห็นมันวิ่งมาแล้วตัดสินใจทัน = กติกาที่มองเห็น ไม่ใช่กับดัก
+  //
+  // **ทางรอดคือลอยอยู่** อ่านออกจากภาพโดยไม่ต้องบอก และนั่นคือเหตุผลที่ขั้น 2 มีอยู่
+  quill1: { label: 'Spine Field', kind: 'ground', startup: 16, active: 30, recovery: 26, dmg: 0,
+    hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true, iframes: [0, 16],
+    quills: { at: 16, each: 4, n: QUILL_N, gap: QUILL_GAP, dmg: 16, stun: 24, kb: [6, -9] } },
 
   hop: { label: 'Backstep', kind: 'ground', startup: 3, active: 5, recovery: 4, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    imp: { f: 2, vx: -13 }, glide: true, autoChain: 'pin1' },
+    imp: { f: 2, vx: -13 }, glide: true, autoChain: 'hook1' },
   // กลิ้งถอยต้องมีช่วงอมตะ ไม่งั้นมันไม่ใช่ "ท่าหนี" — กลิ้งไปก็โดนตีอยู่ดี
-  // นี่คือท่าป้องกันตัวท่าเดียวของเธอ และเดิมไม่มี iframes เลยสักเฟรม
-  // เทียบ: วาร์ปของ Nyx มี iframes [0,9] และ [0,18]
-  // กระโดดถอย (hop) ไม่ให้ เพื่อให้มีทางเลือก: hop ไวแต่ไม่อมตะ · roll ช้ากว่าแต่รอด
+  // นี่คือท่าป้องกันตัวท่าเดียวของเธอ · กระโดดถอย (hop) ไม่ให้ เพื่อให้มีทางเลือก:
+  // hop ไวแต่ไม่อมตะ · roll ช้ากว่าแต่รอด
   roll: { label: 'Roll Back', kind: 'ground', startup: 3, active: 6, recovery: 5, dmg: 0,
     hb: { x: 0, y: 0, w: 0, h: 0 }, kb: [0, 0], stun: 0, noHit: true,
-    iframes: [0, 9], imp: { f: 2, vx: -15 }, glide: true, autoChain: 'shot1' },
+    iframes: [0, 9], imp: { f: 2, vx: -15 }, glide: true, autoChain: 'slam1' },
 };
 
 /* ================== ATLAS — สายแท้งค์ ==================
@@ -567,24 +541,12 @@ const ATLAS_MOVES = {
 const ATLAS_SKILLS = ['ram1', 'leap', 'sky1'];
 const ATLAS_SKILL_CD = [150, 180, 0];
 
-const ALECTO_SKILLS = ['pin1', 'shot1', 'line1'];
-// ตอกหมุดเป็นคำตอบของการกระโดดเข้ามา · สับไกเป็นปุ่มเก็บตรา ทั้งคู่ 3 วินาทีเท่ากัน
-const ALECTO_SKILL_CD = [180, 180, 0];
+const ALECTO_SKILLS = ['hook1', 'slam1', 'quill1'];
+// ตะขอคูลดาวน์สั้นสุดในเกม (2 วิ) เพราะมันคือปุ่มเปิดของทุกอย่าง ถ้ารอนานลูปจะขาด
+// ทุบลง 2.5 วิ · อัลติกินหลอด ไม่มีคูลดาวน์
+const ALECTO_SKILL_CD = [120, 150, 0];
 // กดทิศถอยค้าง -> เริ่มด้วยท่าถอยแทน แล้ว autoChain เข้าสกิลเอง
-const ALECTO_BACKSTEP = { pin1: 'hop', shot1: 'roll' };
-
-/** ท่าตีปกติชุดที่สองของ Alecto — สลับเข้า/ออกด้วยสกิล 1 (swap1)
- *
- * ชื่อทางซ้ายคือสิ่งที่ pickMove() เลือกตามปุ่มที่กด ทางขวาคือท่าที่ได้จริงตอนถือปืน
- * ทำเป็นตารางของตัวละครเอง pickMove() จึงยังไม่รู้ว่ากำลังเล่นตัวไหน เหมือนเดิม
- *
- * ท่าอากาศ (nair/sair/dair) **ตั้งใจไม่ใส่** — ลอยอยู่ก็ต้องใช้แส้เสมอ
- * ปืนจึงเป็นอาวุธของคนที่ยืนอยู่กับพื้น ส่วนการขึ้นอากาศยังเป็นเกมของแส้
- */
-const ALECTO_ALT = {
-  jab1: 'gjab1', jab2: 'gjab2', jab3: 'gjab3',
-  side: 'gside', up: 'gup', down: 'gdown',
-};
+const ALECTO_BACKSTEP = { hook1: 'hop', slam1: 'roll' };
 
 /**
  * ทะเบียนตัวละคร (ฝั่ง sim) — ตารางท่า/สกิล/คูลดาวน์ แยกต่อตัว
@@ -814,7 +776,7 @@ const CHARACTERS = {
   nyx: { id: 'nyx', label: 'BOMB', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
   helios: { id: 'helios', label: 'MARCH', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
   alecto: { id: 'alecto', label: 'KUNJAE', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
-    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP, altMoves: ALECTO_ALT, rangeSwap: true },
+    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP },
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
   // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
   atlas: { id: 'atlas', label: 'TEEMEE', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
@@ -907,8 +869,6 @@ class Fighter {
   /** ตัวนี้ใช้ระบบไอพ่นไหม — ตั้งที่ตารางตัวละคร ไม่ใช่เช็กชื่อตัวละครกระจายทั่วซิม */
   get boostJump() { return !!CHARACTERS[this.char].boost; }
   /** ตารางท่าตีปกติชุดที่สอง (ถ้าตัวนี้มี) — ว่างเปล่าแปลว่าไม่มีให้สลับ */
-  get altMoves() { return CHARACTERS[this.char].altMoves ?? null; }
-  get rangeSwap() { return !!CHARACTERS[this.char].rangeSwap; }
   // เลือดเป็นค่าของตัวละคร ไม่ใช่ค่ากลาง — Atlas 130 ที่เหลือ 100
   get maxHp() { return CHARACTERS[this.char].hp ?? 100; }
   // ทนสถานะ: 1 = โดนเต็ม · 0.5 = โดนครึ่งเดียวและสลายเร็วเป็นสองเท่า
@@ -919,7 +879,6 @@ class Fighter {
       onGround: true, state: 'idle', stateF: 0, jumpsLeft: 1, coyote: 0, dropT: 0,
       move: null, moveId: null, moveF: 0, hitList: new Set(), hitConfirmed: false, used: new Set(),
       hp: this.maxHp, stun: 0, hitstop: 0, invuln: 0, lastHitF: -9999, cd: [0, 0, 0], ki: 0, mashLeft: 0,
-      lash: 0, lashF: -9999,        // ตรารอยแส้ของ Alecto — อยู่ที่ "คนโดน" ไม่ใช่คนฟาด
       dashTap: 0, dashTapF: 0,      // เคาะทิศสองทีติดกัน = พุ่ง (ดู takeInput)
       dashLock: 0,                  // พุ่งติดกันได้เร็วสุดกี่เฟรม
       carryLeft: 0, slammed: 0,
@@ -1131,14 +1090,13 @@ class Game {
     if (this.fighters.every((f) => f.hitstop <= 0)) {
       this.updateShots(); this.updateFires();
     }
-    for (const f of this.fighters) { this.decayLash(f); this.tickFlame(f); }
+    for (const f of this.fighters) this.tickFlame(f);
     this.updateDust();
     this.updateCarry();
     for (const f of this.fighters) {
       if (f.overclock > 0 && --f.overclock === 0) this.events.push({ type: 'overclockEnd', x: f.x, y: f.y - 70 });
       if (f.dashLock > 0) f.dashLock--;
       if (f.pinned > 0) f.pinned--;
-      this.updateWeapon(f);
     }
     // ทุกคู่ที่เป็นไปได้ ทั้งสองทิศ — 2 คนได้ 2 คู่เหมือนเดิม 4 คนได้ 12 คู่
     // เรียงตามลำดับในลิสต์เสมอ ไม่ใช่ตามใครตีก่อน สองเครื่องจึงตัดสินลำดับเดียวกัน
@@ -1181,25 +1139,7 @@ class Game {
     // สลับอาวุธแล้วก็ยังเลือกท่าด้วยปุ่มชุดเดิมทุกอย่าง แค่แปลชื่อท่าผ่านตารางของตัวละครอีกที
     // ตารางเป็นของตัวละคร ไม่ใช่ของเมธอดนี้ — pickMove() จึงยังไม่รู้ว่ากำลังเล่นตัวไหน
     // ชื่อที่ไม่อยู่ในตาราง (ท่าอากาศ) ตกลงมาใช้ชุดเดิมเอง ไม่ต้องเขียนเงื่อนไขแยก
-    return (f.alt && f.altMoves?.[id]) || id;
-  }
-
-  /** KUNJAE: อาวุธสลับเองตามระยะ ไม่มีปุ่มสลับ
-   *
-   *  **สองเส้นไม่ใช่เส้นเดียว** ถ้าใช้เส้นเดียวที่ 200 คนยืน 205 ขยับนิดเดียวเป็น 195
-   *  ท่าจะเปลี่ยนใต้มือทุกครั้งที่เดินไปมา ซึ่งเป็นความรู้สึก "คุมไม่ได้" ไม่ใช่ "วัดระยะ"
-   *  ต้องเดินพ้นช่วง 40 px ถึงจะสลับ การสลับจึงเป็นสิ่งที่คนเล่นตั้งใจทำ ไม่ใช่สิ่งที่เกิดกับเขา
-   *
-   *  คิดจากตำแหน่งล้วน ไม่มีสุ่ม สองเครื่องจึงถืออาวุธเดียวกันเสมอ (ดู foe())
-   *  ท่าอากาศไม่อยู่ในตาราง altMoves อยู่แล้ว ลอยอยู่จึงใช้หางเสมอไม่ว่าระยะเท่าไหร่
-   */
-  updateWeapon(f) {
-    if (!f.rangeSwap) return;
-    const o = this.foe(f);
-    if (!o) return;
-    const d = Math.abs(o.x - f.x);
-    if (d > RANGE_OUT && !f.alt) { f.alt = true; this.events.push({ type: 'swap', x: f.x, y: f.y - 70, gun: 1 }); }
-    else if (d < RANGE_IN && f.alt) { f.alt = false; this.events.push({ type: 'swap', x: f.x, y: f.y - 70, gun: 0 }); }
+    return id;   // เคยแปลชื่อท่าตามอาวุธที่ถือ — KUNJAE ถอดชุดที่สองทิ้งแล้ว ไม่มีใครใช้
   }
 
   /** ปุ่มที่กด -> ชื่อท่าตีปกติ (ก่อนแปลตามอาวุธที่ถืออยู่) */
@@ -1301,7 +1241,7 @@ class Game {
    */
   startOverclock(f, frames) {
     f.overclock = frames;
-    f.burn = 0; f.lash = 0;
+    f.burn = 0;
     f.armorLeft = Math.max(f.armorLeft, OVERCLOCK_ARMOR);
     this.events.push({ type: 'overclock', x: f.x, y: f.y - 70, frames });
   }
@@ -1499,9 +1439,12 @@ class Game {
       const dir = spec.back ? -f.facing : f.facing;
       const sh = {
         owner: f.id, x: f.x + dir * 30, y: f.y - (m.shotLow ? 26 : 96),
-        vx: dir * SHOT_SPEED, vy: spec.vy, facing: dir,
+        // `spec.speed` = ความเร็วแนวนอนเฉพาะกระสุนนัดนี้ (ไม่ใส่ = SHOT_SPEED ปกติ)
+        // มีไว้ทำมุมดิ่ง: ถ้าความเร็วแนวนอนคงที่เสมอ กระสุนที่ตั้ง vy สูงแค่ไหนก็ยัง
+        // เฉียงอยู่ดี — `dair` ที่ตั้ง vy 8 ทำมุมได้แค่ 32 องศา ซึ่งลงไม่ถึงคนที่อยู่ใต้ตัว
+        vx: dir * (spec.speed ?? SHOT_SPEED), vy: spec.vy, facing: dir,
         dmg: m.shotDmg, stun: m.shotStun, kb: m.shotKb ?? 2, volley, range: m.shotRange ?? SHOT_RANGE,
-      pierce: !!m.pierce, pop: !!m.shotPop,
+      pierce: !!m.pierce,
         anchor: !!spec.anchor, target: null, stuck: 0, travelled: 0, dead: false,
       };
       if (sh.anchor) volley.anchor = sh;
@@ -1602,48 +1545,33 @@ class Game {
     this.events.push({ type: 'burn', x: f.x, y: f.y - 70, dmg });
   }
 
-  decayLash(f) {
-    if (f.lash <= 0) return;
-    const idle = this.frame - f.lashF;
-    // ตัวที่ทนสถานะ (resist < 1) สลายเร็วขึ้นตามส่วน — Atlas 0.5 = เร็วเป็นสองเท่า
-    const every = Math.max(1, Math.round(LASH_EVERY * f.resist));
-    const delay = Math.round(LASH_DELAY * f.resist);
-    if (idle >= delay && (idle - delay) % every === 0) f.lash--;
-  }
-
-  /** ตัวคูณดาเมจจากตราที่เป้ามีอยู่ — เพดาน x1.40 เล็กกว่าเพดานลดคอมโบ x0.50 เสมอ */
-  lashMul(d) { return 1 + LASH_DMG * d.lash; }
-
-  /** ปักหมุด n ดวง — ท่าแส้ปกติปักดวงเดียว ตอกหมุด (pin1) ปักทีเดียวสาม */
-  addLash(d, n = 1) {
-    d.lash = Math.min(LASH_MAX, d.lash + n);
-    d.lashF = this.frame;
-    this.events.push({ type: 'lash', x: d.x, y: d.y - 110, n: d.lash });
-  }
-
-  /** จุดระเบิดหมุดทั้งหมดที่ปักอยู่บนตัว d — คืนดาเมจตรงที่คนนั้นควรกินเพิ่ม
+  /** อัลติของ KUNJAE — ปักหางลงดิน หนามผุดวิ่งออกจากตัวเธอทั้งสองข้าง
    *
-   *  วงระเบิดใช้ blast() ตัวเดิมของหม้อ Momus ซึ่งคิดเรื่องทีม การ์ด เกราะ
-   *  และวงฝุ่นไว้ครบแล้ว **แต่ตั้งดาเมจของวงเป็น 0** เพราะคนที่ถูกปักหมุด
-   *  ต้องกินดาเมจผ่านทางกระสุนที่มาจุด (จะได้เข้าระบบลดดาเมจตามคอมโบทางเดียว
-   *  ไม่ใช่โดนสองทางซ้อนกัน) ส่วนคนที่ยืนใกล้กินดาเมจครึ่งเดียวจากวง
+   *  **ไม่โผล่พรึบเดียว** แต่ไล่ออกไปต้นละ `each` เฟรม คนที่ยืนไกลจึงเห็นคลื่นวิ่งมา
+   *  แล้วตัดสินใจทัน = กติกาที่มองเห็น ไม่ใช่กับดัก (กฎเดียวกับวงดูดของ METEOR)
+   *
+   *  ทั้งสองข้างออกพร้อมกัน ท่านี้จึงไม่ต้องหันหน้าถูกทาง — ต่างจากท่าอื่นทั้งหมดของเธอ
+   *  ซึ่งสำคัญตอนเล่น 4 คนที่มีคนขนาบสองข้าง
+   *
+   *  หนามแต่ละต้นเป็น `blast()` วงแคบ ๆ ที่ตำแหน่งของมัน จึงได้เรื่องทีม/การ์ด/เกราะ/
+   *  วงฝุ่นมาครบโดยไม่ต้องเขียนใหม่ และ `kb` ยกขึ้นเบา ๆ ให้ต้นถัดไปรับต่อเป็นลูกโซ่
+   *  แต่ไม่สูงพอจะลอยพ้นต้นถัดไป — ตั้งใจให้เป็นอย่างนั้น
    */
-  popLash(d, owner = null) {
-    const n = Math.min(LASH_MAX, d.lash);
-    if (n <= 0) return 0;
-    d.lash = 0;
-    const dmg = MARK_POP[n];
-    this.events.push({ type: 'pop', x: d.x, y: d.y - 110, n, r: MARK_POP_R[n] });
-    // คนข้างเคียงโดนครึ่งเดียว — ระเบิดลูกนี้เป็นของคนที่ถูกปัก ไม่ใช่ระเบิดวางพื้น
-    //
-    // **ข้ามทั้งคนที่ถูกปักและตัวเธอเอง** คนที่ถูกปักกินดาเมจผ่านกระสุนที่มาจุดแล้ว
-    // ส่วนตัวเธอ: blast() ตัวเดิมให้ "ทีมของเจ้าของโดนแรงกระแทกแต่ไม่เสียเลือด"
-    // ซึ่งถูกสำหรับหม้อที่ขว้างทิ้งไว้ แต่ผิดสำหรับหมุดที่ปักบนตัวคู่ต่อสู้ —
-    // วงกว้างถึง 184 px จึงครอบตัวเธอเองเสมอตอนประชิด เธอเลยโดนชะงักด้วยระเบิดตัวเอง
-    // **แล้วชุดสับไกของเธอถูกตัดกลางคัน เหลือยิงนัดเดียวจากสามนัด** (วัดได้ตอนเทสต์:
-    // กดสกิล 2 ตอนมีหมุดสามดวงแล้วได้ 15 ทั้งที่ควรได้ 22)
-    this.blast(d.x, MARK_POP_R[n], Math.round(dmg * 0.5), 20, [5, -4], owner, [d.id, owner]);
-    return dmg;
+  tickQuills(f, q) {
+    const step = f.moveF - q.at;
+    if (step < 0 || step % q.each !== 0) return;
+    const i = step / q.each;
+    if (i >= q.n) return;
+    const dist = (i + 1) * q.gap;
+    for (const dir of [1, -1]) {
+      const x = f.x + dir * dist;
+      if (x < STAGE.wallL || x > STAGE.wallR) continue;
+      this.events.push({ type: 'quill', x, y: STAGE.groundY, i, n: q.n });
+      // **ครึ่งความกว้างต้องมากกว่าครึ่งระยะห่าง** ไม่งั้นแนวหนามมีช่องโหว่ระหว่างต้น
+      // ตอนแรกตั้งไว้ 0.45 ของระยะห่าง (36 px จากระยะ 80) ซึ่งเหลือช่องว่าง 8 px ทุกช่วง
+      // วัดจริงแล้วคนที่ยืนกลางช่องโดนแค่ต้นเดียวตลอด แนวหนามที่มีรูคือแนวที่อ่านไม่ออก
+      this.blast(x, Math.round(q.gap * 0.53), q.dmg, q.stun, q.kb, f.id, f.id, QUILL_UP, true);
+    }
   }
 
   /** ระเบิดวงกลม — คืนจำนวน "คู่ต่อสู้" ที่โดนจริง (ไม่นับเจ้าของ)
@@ -1658,16 +1586,27 @@ class Game {
    *  ชะงักครึ่งเดียว (`SELF_STUN`) ไม่ใช่เต็ม — อัลติโปรยได้ถึง 9 ไห ถ้าชะงักเต็มทุกใบ
    *  เขาจะถูกล็อกด้วยท่าตัวเองจนคู่ต่อสู้เดินเล่นได้สบาย
    */
-  blast(x, half, dmg, stun, kb, owner = null, skip = null) {
+  blast(x, half, dmg, stun, kb, owner = null, skip = null, maxUp = null, quiet = false) {
     const skipIds = skip === null ? null : (Array.isArray(skip) ? skip : [skip]);
-    this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
+    // `quiet` = ไม่ต้องส่งอีเวนต์ภาพ ผู้เรียกวาดเอง
+    //
+    // **หนามของ KUNJAE ยิง blast() สิบครั้งในยี่สิบเฟรม** ถ้าทุกครั้งส่งอีเวนต์ `blast`
+    // ฉากจะวาดระเบิดลูกโต + จอสั่น + ควันห้าก้อน สิบชุดซ้อนกัน = จอขาวโพลนทั้งจอ
+    // มองไม่เห็นทั้งตัวละครและหนามเลย (วัดจริงในเบราว์เซอร์ก่อนแก้)
+    if (!quiet) this.events.push({ type: 'blast', x, y: STAGE.groundY, r: half });
     // ทั้งทีมของเจ้าของโดนแรงกระแทกแต่ไม่เสียเลือด ไม่ใช่แค่ตัวเจ้าของ
     // เขายังเขี่ยเพื่อนตกเวทีด้วยระเบิดตัวเองได้ แค่ไม่ได้ฆ่าเขา
     const ownerTeam = owner === null ? null : (this.fighterById(owner)?.team ?? null);
     let hitFoes = 0;
     for (const f of this.fighters) {
-      // skip = คนที่ไม่ต้องคิดในวงนี้เลย (ดู popLash: คนที่ถูกปัก + เจ้าของหมุด)
+      // skip = คนที่ไม่ต้องคิดในวงนี้เลย (หนามข้ามเจ้าของ)
       if (f.invuln > 0 || skipIds?.includes(f.id) || Math.abs(f.x - x) > half) continue;
+      // `maxUp` = สูงเกินนี้เหนือพื้นแล้วรอด · ไม่ส่งมา = ไม่จำกัดความสูง (พฤติกรรมเดิมของหม้อ)
+      //
+      // **หนามของ KUNJAE ต้องมีเพดาน ไม่งั้นทั้งดีไซน์พัง** ทางรอดจากอัลติคือการลอยอยู่
+      // และขั้นที่ 2 ของบันได (ทุบลงพื้นแล้วกระโดดไม่ได้) มีอยู่เพื่อปิดทางรอดนั้นพอดี
+      // ถ้าหนามโดนคนที่ลอยอยู่ด้วย ขั้น 2 ก็ไม่มีเหตุผล และอัลติก็กลายเป็นปุ่มกดโดนฟรี
+      if (maxUp !== null && f.y < STAGE.groundY - maxUp) continue;
       const dir = f.x >= x ? 1 : -1;
       if (owner !== null && ownerTeam !== null && f.team === ownerTeam) {
         f.stun = Math.max(f.stun, Math.round(stun * SELF_STUN));
@@ -1787,12 +1726,7 @@ class Game {
       return;
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
-    // ── หมุดระเบิด: หางปัก ปืนจุด ──
-    // นี่คือสิ่งที่บังคับให้เธอข้ามเส้นระยะทั้งสองทาง ซึ่งคือตัวละครทั้งตัว
-    // กระสุนที่ติดธง pop จุดหมุดทั้งหมดที่ปักอยู่บนตัวเขาพร้อมกัน (สกิล 2 กับอัลติเท่านั้น)
-    // ดาเมจระเบิดบวกเข้ากับดาเมจกระสุนแล้วค่อยคิดสเกลคอมโบทีเดียว จะได้ไม่โดนลดสองรอบ
-    const bonus = sh.pop ? this.popLash(d, sh.owner) : 0;
-    const dmg = Math.max(1, Math.round((sh.dmg + bonus) * scale * (d.dustGuard ? DUST_DR : 1)));
+    const dmg = Math.max(1, Math.round(sh.dmg * scale * (d.dustGuard ? DUST_DR : 1)));
     // เกราะกินกระสุนด้วย ไม่งั้น "ทะลุกระสุนได้" ที่ออกแบบไว้ไม่เป็นจริง
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, sh.x, sh.y); return; }
     d.hp = Math.max(0, d.hp - dmg);
@@ -1972,9 +1906,7 @@ class Game {
       if (inp.down) { f.setState('crouch'); f.vx *= PHYS.stopFric; return; }
       if (dir !== 0) {
         f.facing = dir;
-        // ตรารอยแส้ทำให้คนโดนเดินช้าลง — เป็นตัวที่ทำให้ "หนีจากเธอไม่ออก" เป็นจริงเชิงกลไก
-        const slow = Math.max(0.4, 1 - LASH_SLOW * f.lash * f.resist);
-        const target = dir * (running ? PHYS.run : PHYS.walk) * slow;
+        const target = dir * (running ? PHYS.run : PHYS.walk);
         f.vx += Math.sign(target - f.vx) * Math.min(PHYS.groundAccel * (running ? PHYS.runAccelMul : 1), Math.abs(target - f.vx));
         f.setState(running ? 'run' : 'walk');
       } else { f.vx *= PHYS.stopFric; if (Math.abs(f.vx) < 0.2) f.vx = 0; f.setState('idle'); }
@@ -2243,6 +2175,7 @@ class Game {
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
+      if (m.quills) this.tickQuills(f, m.quills);
       // trail = ทิ้งกองไฟไว้ตรงที่ยืนเป็นระยะ ๆ ยิ่งเดินยิ่งเขียนกำแพงไฟทิ้งไว้
       if (m.trail && f.moveF % m.trail === 0) this.spawnFire(f, { dx: 0, burns: true });
       if (m.dustPool && f.moveF === m.dustPool.at) {
@@ -2323,17 +2256,14 @@ class Game {
       return;
     }
     const scale = Math.max(0.5, 1 - 0.08 * d.comboHits);
-    // ท่าที่ติดธง lashDmg แรงขึ้นตามตราที่เป้ามีอยู่ (ท่าแส้ทุกท่า)
-    const lash = (m.lash || m.lashDmg) ? this.lashMul(d) : 1;
     // โอเวอร์คล็อกแรงขึ้นทุกหมัดที่โดนตรง ๆ **แต่ไม่รวมการทุบพื้น** ซึ่งเดินผ่าน hurt() คนละทาง
     // ตั้งใจแยกแบบนี้: กดบัฟแล้วกดอัลติทันทีต้องไม่ใช่สูตรตายตัวที่คิดเลขครั้งเดียวจบ
     const over = a.overclock > 0 ? OVERCLOCK_DMG : 1;
-    const dmg = Math.max(1, Math.round(m.dmg * scale * lash * over * (d.dustGuard ? DUST_DR : 1)));
+    const dmg = Math.max(1, Math.round(m.dmg * scale * over * (d.dustGuard ? DUST_DR : 1)));
     // เกราะกินไว้: เจ็บลดลง ไม่เข้า hitstun ท่าของเขาเดินต่อ
     if (this.armorHolds(d)) { this.takeArmored(a, d, dmg, fx, fy); return; }
     d.hp = Math.max(0, d.hp - dmg);
     if (a.boostJump) this.gainBoost(a);            // ต่อยโดน = เติมน้ำมัน (ดู gainBoost)
-    if (m.lash && !d.dustGuard) this.addLash(d, m.lash === true ? 1 : m.lash);   // ในวงฝุ่นกันสถานะทุกชนิด
     d.comboHits++; d.comboDmg += dmg; d.lastHitF = this.frame;
     d.stun = Math.round(m.stun * Math.max(0.55, 1 - 0.05 * (d.comboHits - 1)));
     d.move = null; d.moveId = null; d.setState('hitstun');
@@ -2345,7 +2275,11 @@ class Game {
     if (m.bounce) d.bouncePend = 1;
     // ตอกหมุด: ติดสถานะเฉพาะคนที่ลอยอยู่ตอนโดน — โดนตอนยืนพื้นก็เป็นท่าหางธรรมดา
     // เพราะประเด็นของท่าคือ "ลงโทษการอยู่บนฟ้า" ไม่ใช่ "ล็อกเท้าใครก็ได้"
-    if (m.pin && !d.onGround) {
+    // **ติดไม่ว่าเขาจะอยู่บนพื้นหรือลอยอยู่** เดิมเงื่อนไขเป็น `&& !d.onGround` ซึ่งถูก
+    // สำหรับท่าตอกหมุดเก่าที่เป็นไม้สวนคนกระโดดโดยเฉพาะ แต่ผิดสำหรับ `slam1` ของชุดใหม่
+    // ที่มีหน้าที่ "ตรึงเขาไว้กับพื้นก่อนปักหาง" — ถ้าติดเฉพาะคนที่ลอยอยู่ บันไดสามขั้น
+    // จะขาดตรงกลางพอดี (ตะขอลากเข้ามาแล้วเขายืนพื้น -> ทุบไม่ติดสถานะ -> กระโดดพ้นหนาม)
+    if (m.pin) {
       d.pinned = m.pin;
       this.events.push({ type: 'pin', x: d.x, y: d.y, frames: m.pin });
     }

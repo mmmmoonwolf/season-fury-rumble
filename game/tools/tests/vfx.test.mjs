@@ -49,14 +49,19 @@ const { CHARACTERS } = await import(G + "/core.js");
     `ชื่อเฟรมที่อ้างถึงมีจริงทุกอัน (${[...new Set(refs)].length} แบบ)${bad.length ? " เจอ " + bad.join(",") : ""}`);
 }
 
-// ── Alecto ต้องใช้รอยแส้ ไม่ใช่รอยดาบ และท่าปืนต้องไม่มีรอยฟาดเลย ──
+// ── KUNJAE: ท่าปืนต้องไม่มีรอยฟาดเลย · สองสกิลที่ใช้หางต้องเป็นรอยสะบัดยาว ──
+//
+// **รีเวิร์ครอบสาม** ปืนเป็นท่าปกติทั้งชุดแล้ว รอยฟาดจึงเหลือแค่สองสกิลที่ใช้หางจริง
+// ปืนไม่ได้ฟาด มันยิง — กระสุนเป็นตัวบอกอยู่แล้ว ใส่รอยฟาดทับเข้าไปคืออ่านผิด
 {
   const al = scene.match(/slash: \{([\s\S]*?)\},\n    anims:/)?.[1] ?? "";
-  ok(/jab1: \{ f: 'slashLash' \}/.test(al), "ท่าแส้ใช้รอยสะบัดยาว ไม่ใช่รอยดาบโค้ง");
-  for (const g of ["gjab1", "gside", "gup", "gdown"])
-    ok(new RegExp(`${g}: null`).test(al), `${g}: ท่าปืนไม่มีรอยฟาด — ปืนไม่ได้ฟาด มันยิง`);
-  // และท่าปืนต้องมีอยู่จริงใน sim ไม่ใช่เขียนกันชื่อผิด
-  ok(CHARACTERS.alecto.moves.gjab1 && CHARACTERS.alecto.moves.gside, "ชื่อท่าปืนตรงกับใน core.js");
+  ok(/hook1: \{ f: 'slashLash' \}/.test(al), "ตะขอใช้รอยสะบัดยาว ไม่ใช่รอยดาบโค้ง");
+  ok(/slam1: \{ f: 'slashLash'/.test(al), "ทุบลงใช้รอยสะบัดยาวเหมือนกัน");
+  for (const g of ["jab1", "side", "up", "down", "nair", "sair", "dair"])
+    ok(new RegExp(`\\b${g}: null`).test(al), `${g}: ท่าปืนไม่มีรอยฟาด — ปืนไม่ได้ฟาด มันยิง`);
+  // และชื่อท่าต้องมีอยู่จริงใน sim ไม่ใช่เขียนกันชื่อผิด
+  const miss = ["jab1", "side", "hook1", "slam1", "quill1"].filter((k) => !CHARACTERS.alecto.moves[k]);
+  ok(miss.length === 0, `ชื่อท่าในตารางรอยฟาดตรงกับใน core.js (${miss.join(",") || "ครบ"})`);
 }
 
 // ── ขนาดรอยฟาดต้องยึดความกว้าง hitbox จริง ──
@@ -114,8 +119,15 @@ const { CHARACTERS } = await import(G + "/core.js");
     "ไม่มีที่ไหนส่ง frame ดิบเข้า texture โดยไม่ผ่านการเติมนามสกุล");
 
   // และชื่อที่เรียกจริงต้องมีอยู่ในใบ — ดักคำผิดไปในตัว
+  //
+  // บางที่ต่อเลขท้ายชื่อตอนเรียก (`emit('tailRise' + (k + 1), ...)`) ซึ่ง regex จับได้แค่
+  // ส่วนหน้า จึงยอมรับ "ชื่อที่เป็นหัวของตระกูลเฟรมที่มีเลขต่อท้าย" ด้วย
+  // ยังดักคำผิดได้อยู่ เพราะหัวที่สะกดผิดจะไม่มีเฟรมไหนขึ้นต้นด้วยมันเลย
+  const frameNames = Object.keys(atlas.frames);
+  const known = (n) => atlas.frames[n.endsWith(".png") ? n : n + ".png"]
+    || frameNames.some((f) => new RegExp(`^${n}\\d+\\.png$`).test(f));
   const names = [...scene.matchAll(/(?:this\.)?emit\('([\w.]+)'/g)].map((m) => m[1]);
-  const bad = [...new Set(names)].filter((n) => !atlas.frames[n.endsWith(".png") ? n : n + ".png"]);
+  const bad = [...new Set(names)].filter((n) => !known(n));
   ok(names.length > 10 && bad.length === 0,
     `ชื่อเฟรมที่ emit() เรียกมีจริงทุกอัน (${[...new Set(names)].length} แบบ)${bad.length ? " เจอ " + bad.join(",") : ""}`);
 }
