@@ -744,6 +744,99 @@ Chibi-proportioned anime game sprite, large head roughly one third of the total 
 
 ---
 
+## 14. ชีต L — เข่ากลางอากาศ แทนที่ใบ H ท่า 7-9 (`sky3`) — ⏳ รอเจน
+
+### ทำไมต้องเจน
+
+เรนเดอร์เฟรมกลางของทั้งสามทีกลางอากาศลงพื้นมืดแล้วดูเทียบกัน:
+
+| ท่า | ชีตที่ใช้ | เฟรมกลางเป็นอะไร |
+|---|---|---|
+| `sky2` | K 1-2-3 | หมัดตรงขวา แขนเหยียดสุดไปทางขวา |
+| `sky3` | H 7-8-9 | **หมัดตรงขวา แขนเหยียดสุดไปทางขวา** — แทบทับกับ `sky2` |
+| `sky4` | I 1-2-3 | **หมัดตรงขวา แขนเหยียดสุดไปทางขวา** — แทบทับอีก |
+
+สามทีติดกันในลูกเดียวกันเป็นหมัดตรงท่าเดียวกันหมด ลูกคอมโบจึงดูเหมือนภาพนิ่ง
+
+และ `sky3` ยังมีปัญหาซ้อนอีกชั้น: **เฟรม 1 กับเฟรม 2 ของมันเองแทบเหมือนกัน**
+(ทั้งคู่แขนขวาเหยียดสุดอยู่แล้ว) ท่านี้จึงไม่มีจังหวะ "เงื้อ -> ออก" ในตัวเอง
+
+### ทำไมเลือก "เข่า"
+
+- ทั้งลูก `sky1`-`sky5` ใช้แต่แขน (อัปเปอร์ · หมัด · หมัด · หมัด · ทุบสองหมัด)
+  **ไม่มีท่าขาเลยสักท่า** แทรกเข่าเข้าไปกลางลูกจึงตัดความซ้ำได้ด้วยรูปทรง ไม่ใช่ด้วยมุม
+- กางเกงเขาเป็น**ขาวนวล** ซึ่งเป็นส่วนที่ตัดกับพื้นเวทีมืดแรงที่สุดในตัวสไปรต์
+  เข่าที่ยกขึ้นมาจึงอ่านออกทันทีในขนาดจริง ต่างจากแขนดำบนเสื้อดำ
+- เตะหมุนก็ตัดความซ้ำได้ แต่ต้องหันหลังให้กล้อง ซึ่ง `sky3` เฟรม 3 ทำอยู่แล้วและอ่านยาก
+
+### บทเรียนสองข้อที่ใส่ลงไปใน prompt นี้
+
+1. **ข้อห้ามต้องอยู่ต้น prompt ไม่ใช่ท้าย** — รอบชีต B/C ของ KUNJAE บรรทัด
+   "no muzzle flash" อยู่ท้ายบล็อกสไตล์ร่วมซึ่งยาวมาก น้ำหนักตกจนวาดแฟลชมาให้
+2. **ต้องกันการสับขาหลอก** — ใบ K สั่ง "ศอก" แล้วได้ "หมัดตรง" กลับมา
+   รอบนี้จึงเขียนข้อห้ามตรง ๆ ว่า **ห้ามเหยียดแขนในทั้งสามท่า** ไม่ใช่แค่ขอเข่า
+   ถ้ามันสับเป็นหมัดอีก จะเห็นทันทีเพราะแขนต้องพับอยู่
+
+### เงื่อนไขที่ต้องตรวจตอนได้ใบมา (ต้อง render ลงพื้นมืดแล้วดูด้วยตา)
+
+| เงื่อนไข | วิธีดู |
+|---|---|
+| เฟรมกลางเข่าเป็นจุดสูงสุดของตัวใต้คาง | ดูภาพ |
+| **ทั้งสามท่าไม่มีแขนเหยียดเลย** | ดูภาพ — ข้อนี้คือข้อที่ใบ K ตก |
+| ทั้งสามท่าลอย ไม่มีเส้นพื้น | ดูภาพ |
+| เฟรม 3 หมัดนำเริ่มออกแล้ว (ต่อเข้า `sky4`) | ดูภาพ |
+
+**อย่าพยายามวัดด้วยตัวเลข** — ดูหัวข้อ "ผลลบที่ต้องจำ" ของใบ K
+กรอบภาพถูกกำหนดด้วยผมกับขาอยู่แล้ว แขนหรือเข่าที่ยื่นออกมาขยับกรอบแค่ไม่กี่ px
+
+### รูปทรงใบ
+
+ตัวแยกชีตของ MARCH (`orpheus_sheets.split`) **จับก้อนเอง ไม่ได้หารตารางตายตัว**
+จัดแถวด้วยจุดกึ่งกลางแนวตั้งแล้วเรียงซ้ายไปขวาในแถว
+เจนมาเป็น**แถวนอน 1x3 หรือแถบตั้ง 3x1 ก็ได้ทั้งคู่** ลำดับไม่เพี้ยน
+(ต่างจากตัวแยกของ KUNJAE ที่หารกริดตายตัว จนใบซ่อมรอบที่แล้วเกือบตกช่องผิด)
+
+### prompt
+
+```
+A 1x3 sprite sheet of the same character: 3 poses, evenly spaced, no pose
+touching another. Either one row of 3 or one column of 3 is fine.
+
+CRITICAL — this move is a KNEE strike, not a punch. In ALL THREE poses both of
+his arms stay folded in tight against his chest with both fists closed up near
+his own collarbone. Neither arm is ever extended, reaching, swinging, or thrown
+forward at any point. Nothing is punched. The only limb that travels is his LEAD
+KNEE. If you are drawing an extended arm, you are drawing the wrong move.
+
+All three poses are fully AIRBORNE — both feet clear of the ground, no ground
+line, nothing drawn beneath him.
+
+These 3 poses are the middle beat of a longer airborne combination, so poses 1
+and 3 are handoffs: pose 1 opens with his fists ALREADY tucked at his chest
+(where the previous strike left them), and pose 3 ends with his lead fist
+ALREADY starting forward (where the next strike begins). His weight keeps
+flowing forward through all three — he never resets to a neutral guard.
+
+He drives his lead knee up into an opponent floating in the air in front of him.
+  1 airborne, both fists tucked at his collarbone, his lead leg cocking — the
+    thigh just beginning to rise, that foot tucking back under him, his other
+    leg trailing straight down behind him, torso upright.
+  2 THE HIT: the lead knee driven UP and FORWARD to chest height. The point of
+    that knee is the HIGHEST part of his body below his chin, and the part that
+    reaches FURTHEST toward the viewer's right. The thigh is nearly horizontal,
+    the shin folded tight back underneath it, his torso leaning back over the
+    knee to counterbalance, chin tucked down toward it. Both fists are still
+    tucked at his collarbone. It must be obvious from across the room that the
+    KNEE is what is hitting.
+  3 the knee dropping and that leg starting to straighten again, while his lead
+    FIST begins to drive forward out of the tuck — he is already flowing into
+    the next punch, NOT resetting.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short stubby limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference sheet exactly. Character: a lean teenage boy martial artist. His black hair is spiky and swept up, but it lies FLAT against his skull with the hairline clearly visible — never a wide round frizzy halo. A small pale scar sits on one cheek. His expression is level and unimpressed, at most a slight smirk; never wide-eyed or cheerful. He wears a fitted short-sleeved BLACK t-shirt that shows the shape of his chest and arms, and loose BAGGY TROUSERS in a muted off-white / warm light grey — the trousers are wide and billowy with deep folded shadows through them, never a flat bright white. A black cloth sash is tied around his waist with two loose ends hanging down his left hip; the sash ends always stay close against his leg and never stream away from his body. Black fingerless gloves with wrapped wrists cover both hands, and he wears black ankle-high boots. Three-quarter view, body angled toward the viewer's right. He fights with his feet planted WELL APART and his weight low, so his silhouette stays broad rather than a narrow column. Pure white background, no shadow, no ground line, no props of any kind, no weapons, no text, no labels, no panel borders. Full body visible from the top of his hair to the soles of both boots — do not crop, do not zoom. Leave a clear band of empty white space below the soles and above his hair; nothing may touch or run off the edge of the image. Identical camera distance and identical character size in every pose. Exactly two arms and two legs, clearly separated, do not overlap or duplicate limbs. Nothing detached from his body anywhere in the image — no loose cloth flying away, no separated objects. No effects of any kind: no wind, no impact flashes, no sparks, no glow, no motion lines, no speed lines, no dust, no cracked ground — the game draws all of that itself.
+```
+
+---
+
 ## ⚠️ อนุภาคเอฟเฟคทุกชนิดวาดผิดรูปมาตั้งแต่ต้น (แก้แล้ว)
 
 ไม่เกี่ยวกับ MARCH โดยตรงแต่เจอตอนไล่เรื่องสกิล 2 — บันทึกไว้เพราะเป็นบทเรียนซ้ำรอยเดิม
