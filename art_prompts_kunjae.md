@@ -778,3 +778,86 @@ ROW 2 — a low BACKWARD ROLL along the ground.
 - ลบ `gunStance` กับ `anims.runGun` / `anims.idleGun` — ดีไซน์ใหม่ถือปืนตลอดเวลา
   ท่ายืนกับท่าวิ่งปกติคือท่าถือปืนอยู่แล้ว ไม่ต้องมีสองชุด
 - ขยับ `VERSION` ใน `sw.js`
+
+---
+
+# ชีต A B C D F — รับแล้ว · มีสามจุดต้องเจนใหม่
+
+ห้าใบมาครบ ตัวตัดอ่านผ่านหมด ชิ้นเดียวทุกช่อง หมวกกระจาย 2-13%
+build เข้าเกมแล้ว **ทุกท่าเป็นดีไซน์ใหม่** ยกเว้นท่ายืนกับท่าวิ่งที่ยังมาจากคลิปตัวเก่า
+
+| ใบ | สถานะ |
+|---|---|
+| A เคลื่อนไหว/โดน | ✅ ใช้ได้ |
+| C ปืนกดทิศ | ✅ ใช้ได้ (แฟลชเล็ก พอรับได้) |
+| F ท่าถอย | ✅ ใช้ได้ |
+| **B ชุดแย็บปืน** | ⚠️ แถว 2 เล็งย้อนหลัง · แถว 3 ยิงออกสองข้าง · แฟลชใหญ่มาก |
+| **D ปืนกลางอากาศ** | ⚠️ แถว 3 ยิงตรง ไม่ใช่ยิงลงชัน |
+
+### สิ่งที่แม็ปเลี่ยงไว้ชั่วคราวใน `SEQ`
+
+- `jab2` ใช้แถว 1 ซ้ำแทนแถว 2 — **แถว 2 ของใบที่เจนมาเล็งไปทางซ้าย** ขณะที่กระสุน
+  ในเกมพุ่งไปทางขวา เล่นจริงจะเห็นเธอยิงสวนทางกับลูกที่ออก
+  ชุดแย็บสองจังหวะที่ใช้อาร์ตชุดเดียวกันเป็นเรื่องปกติ ดีกว่าเล็งผิดทาง
+- `jab3` ยังใช้แถว 3 ทั้งที่ยิงออกสองข้าง เพราะอย่างน้อยอ่านออกว่า "ยิงสองกระบอกพร้อมกัน"
+  ซึ่งตรงกับที่ท่านี้ยิงจริงสองนัด
+- `dair` ยังใช้แถว 3 ของใบ D ทั้งที่ไม่ใช่ท่ายิงลง — มีเฟรมดีกว่าไม่มี
+
+### ⚠️ แฟลชปากกระบอกติดมาในภาพอีกแล้ว
+
+ใบ B กับ C วาดแฟลชม่วงติดที่ปลายกระบอก **ต่อกับปืนจนตัวตัดเก็บมาเป็นส่วนหนึ่งของตัวละคร**
+(`parts=1` ทุกช่อง) ของใบ C เล็กพอจะปล่อยผ่าน แต่ของใบ B ใหญ่มาก
+
+นี่เป็นรอบที่สองที่พลาดข้อนี้ (รอบแรกคือเส้นเอฟเฟคม่วงในชีต E2) **บรรทัด "no muzzle flash"
+อยู่ในบล็อกสไตล์ร่วมซึ่งต่อท้าย prompt แล้ว แต่ยาวจนน้ำหนักตก**
+รอบหน้าควรย้ายข้อห้ามเรื่องเอฟเฟคขึ้นไปไว้**ต้น** prompt ไม่ใช่ท้าย
+
+### prompt เจนซ่อม — ใบ B แถว 2 และ 3
+
+```
+A 1x3 sprite sheet of the same character: ONE row, 3 columns, 3 poses total,
+evenly spaced, read left to right. No pose touching another.
+
+CRITICAL: no muzzle flash, no smoke, no sparks, no glow, no motion lines — draw
+NOTHING coming out of the gun barrels. The game draws all of that itself. A
+flash drawn into the art becomes a solid object stuck to her gun forever.
+
+She faces the viewer's RIGHT and fires to the RIGHT in every pose. Both guns
+point the SAME way. Never aim left, never aim outward to both sides.
+
+She plants both feet and fires BOTH revolvers forward at once, and the recoil
+shoves her backward.
+  1 both guns drawn in tight against her ribs, knees bending, feet setting wide
+    and firm — bracing for it.
+  2 THE SHOT: BOTH arms punched straight out together toward the RIGHT at chest
+    height, both guns horizontal, level, and PARALLEL, pointing the same
+    direction, body squared up hard behind them, both feet dug in. This is the
+    widest and most planted pose of the three.
+  3 both arms thrown up and back by the recoil, guns pointing skyward, her upper
+    body leaning back, one foot sliding back to catch herself.
+```
+
+### prompt เจนซ่อม — ใบ D แถว 3
+
+```
+A 1x3 sprite sheet of the same character: ONE row, 3 columns, 3 poses total,
+evenly spaced, read left to right. No pose touching another.
+
+CRITICAL: no muzzle flash, no smoke, no sparks, no glow, no motion lines — draw
+NOTHING coming out of the gun barrels. The game draws all of that itself.
+
+All three poses are fully AIRBORNE — both feet clear of the ground, nothing
+below her, no ground line.
+
+She fires STEEPLY DOWNWARD at someone on the ground beneath her.
+  1 airborne, body folding forward at the waist, head turning to look straight
+    down, the right gun swinging down past her hip.
+  2 THE SHOT: her torso pitched sharply forward and down, both knees pulled up
+    behind her, the right arm extended straight DOWN — the barrel points at the
+    ground almost vertically, only slightly forward of vertical. The gun is the
+    LOWEST point of the whole pose and it must be obvious she is shooting at the
+    floor, not ahead of her.
+  3 the arm recoiling back up, body beginning to straighten out of the fold.
+```
+
+(ต่อบล็อกสไตล์ร่วมท้าย prompt ทั้งสองอันเหมือนเดิม)
