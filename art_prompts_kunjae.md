@@ -861,3 +861,70 @@ She fires STEEPLY DOWNWARD at someone on the ground beneath her.
 ```
 
 (ต่อบล็อกสไตล์ร่วมท้าย prompt ทั้งสองอันเหมือนเดิม)
+
+---
+
+# ขั้น 1 — คลิป ยืน → วิ่ง (ชิ้นสุดท้าย)
+
+ท่ายืนกับท่าวิ่งยังมาจากคลิปของตัวละครเก่า ซึ่งเป็นสองท่าที่**เห็นบ่อยที่สุดในเกม**
+คลิปนี้จบแล้ว KUNJAE จะเป็นดีไซน์ใหม่ทั้งตัว 100%
+
+ตัว build ต้องการจากคลิป: **ท่ายืน 1 เฟรม + ท่าวิ่งหนึ่งรอบเต็ม 10 เฟรม**
+(รอบเต็ม = เท้าซ้ายแตะพื้น → เท้าขวาแตะพื้น → กลับมาเท้าซ้ายแตะพื้นในท่าเดิม)
+
+## prompt
+
+```
+A short looping animation of a single character, side view, running in place on
+the spot — she never moves across the frame, the camera never moves, and the
+background never changes.
+
+The clip has two parts. It opens with her STANDING STILL in a relaxed ready
+stance for about one second, facing the viewer's right, then she breaks into a
+RUN and keeps running for the rest of the clip. Nothing else happens: she does
+not turn, does not aim, does not fire, does not jump, does not look at the
+camera.
+
+The run is a normal grounded run cycle with clear contact frames — at the bottom
+of each step one boot is planted flat on the ground with the other leg swung
+through. Arms swing naturally in opposition to the legs; she keeps a revolver in
+each hand the whole time, held low and relaxed, never aimed.
+
+THE TAIL MUST STAY CALM. It arcs up and back from her right shoulder and holds
+roughly the same compact curve the whole clip, swaying only slightly. It must
+never whip, coil, uncoil, stretch out, or swing away from her body — a tail that
+flails changes her silhouette every frame and breaks the cut.
+
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short sturdy limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference exactly. Character: a lean gunslinger woman with long wavy SILVER-WHITE hair loose to her shoulders, dark skin, sharp narrow eyes, a level unimpressed expression. A wide-brimmed cowboy hat and a torn cloth face-wrap covering her nose, mouth and chin, both IVORY / BONE with soft brown shading in the folds, the hat with a darker brown leather band. Close-fitting segmented armour in dark charcoal gunmetal over shoulders, arms, torso and legs. Brown leather belt with a metal buckle. Black fingerless gloves, dark heavy boots. A long mechanical scorpion tail of chunky armoured segments grows from her RIGHT SHOULDER, each joint glowing VIOLET, ending in a smooth curved barb, visibly attached to her shoulder plate. Violet is the ONLY accent colour.
+
+Pure white background, completely flat and unchanging. No ground line, no
+shadow, no horizon, no scenery, no props, no text, no camera shake, no zoom, no
+pan. No effects of any kind: no dust, no speed lines, no motion blur, no
+sparks, no glow trails. Her whole body from the top of the hat to the soles of
+both boots stays fully inside the frame at all times with clear empty space
+above and below — never crop, never let the hat or boots touch the edge.
+```
+
+## ตรวจก่อนรับ
+
+1. **หางนิ่ง** — ถ้าหางสะบัดไปมาทุกเฟรม เงาจะเปลี่ยนรูปตลอดจนตัดไม่ได้ **ข้อนี้สำคัญสุด**
+2. **วิ่งอยู่กับที่ กล้องไม่ขยับ พื้นหลังไม่เปลี่ยน** — ถ้าตัวเลื่อนข้ามจอ จุดยึดจะเพี้ยน
+3. **ไม่มีเส้นความเร็ว ไม่มีฝุ่น ไม่มีเงาใต้เท้า** — ตัวตัดเก็บ "ชิ้นใหญ่สุด" ชิ้นเดียว
+   ของที่แยกจากตัวจะถูกทิ้ง แต่ของที่ต่อกับตัว (เช่นเงาที่แตะเท้า) จะติดมาด้วย
+4. **มีช่วงยืนนิ่งตอนต้น** อย่างน้อยหนึ่งวินาที เอาไว้ตัดเป็นท่ายืน
+5. เห็นเต็มตัวตลอด หมวกกับรองเท้าไม่แตะขอบเฟรม
+
+ส่ง mp4 มาได้เลย ผมตัดเป็นสตริปเองแล้วเลือกเฟรมที่เท้าแตะพื้นพอดี
+
+## ⚠️ สิ่งที่ต้องแก้ในตัว build ตอนคลิปใหม่มาถึง
+
+`chin_y()` จะพังทันที — มันหา "คาง" จากก้อนสีผิวที่ใหญ่ที่สุดในครึ่งบน ซึ่งกับดีไซน์ใหม่
+ไปจับเงาใต้ปีกหมวกแทน (วัดแล้วได้คางถึงเท้า 79% ของความสูงตัว เกณฑ์คือ 62%)
+คลิปเก่ายังใช้ได้เพราะเป็นตัวละครเก่าที่เห็นคาง **คลิปใหม่จะไม่รอด**
+
+**ทางแก้ที่ควรใช้: เลิกใช้คางเป็นไม้บรรทัด แล้วยึดหมวกแทนทั้งระบบ**
+ตอนนี้ `hat_sqrt()` อ่านหมวกไอวอรีได้นิ่งมากแล้ว (กระจาย 2-13% ทุกใบ) และมันเป็น
+ไม้บรรทัดเดียวกับที่ใช้เทียบชีตอยู่แล้ว ใช้กับคลิปด้วยก็จะเหลือไม้บรรทัดเดียวทั้งไปป์ไลน์
+แทนที่จะมีสองอันที่วัดคนละอย่างแล้วต้องมีค่าชดเชย `IVORY_K` มาคั่น
+
+พอทำแล้วลบได้ทั้ง `chin_y()`, `CHIN_FRAC`, `IVORY_K` และเงื่อนไขหมวกแดงใน `hat_sqrt()`
