@@ -278,3 +278,503 @@ off the edge of the image.
 > **บทเรียน: เอฟเฟคที่วาดติดมาในชีตมองไม่ออกตอนดูใบเต็ม** เส้นม่วงของแถว 2 ดูเหมือน
 > เส้นบอกทิศทางเฉย ๆ บนพื้นขาว แต่พอตัดพื้นออกแล้ววางบนเวทีมืด มันกลายเป็นวัตถุทึบ
 > ที่ต่อกับตัวละคร ตัวตัดเก็บมาด้วยเพราะมันเชื่อมกับหาง **ต้องตัดออกมาดูบนพื้นเข้มเสมอ**
+
+---
+
+# ชีตที่เหลือทั้งห้าใบ
+
+**ทุกใบแนบ `art_reference/alecto_idle_NEW.jpg` ไปด้วยเสมอ** แล้วต่อ **บล็อกสไตล์ร่วม**
+ข้างล่างนี้ไว้ท้าย prompt ของทุกใบ (เหมือนกันทุกใบ ไม่ต้องแก้)
+
+### บล็อกสไตล์ร่วม — ต่อท้ายทุกใบ
+
+```
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short sturdy limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference exactly. Character: a lean gunslinger woman with long wavy SILVER-WHITE hair loose to her shoulders, dark skin, sharp narrow eyes, a level unimpressed expression. A wide-brimmed cowboy hat and a torn cloth face-wrap covering her nose, mouth and chin, both IVORY / BONE with soft brown shading in the folds, the hat with a darker brown leather band. Close-fitting segmented armour in dark charcoal gunmetal over shoulders, arms, torso and legs. Brown leather belt with a metal buckle. Black fingerless gloves, dark heavy boots. Growing from her RIGHT SHOULDER is a long mechanical scorpion tail of chunky armoured segments, each joint glowing VIOLET, ending in a smooth curved barb — the tail must visibly ATTACH TO HER SHOULDER PLATE in every pose, it is part of her, never a floating object, and it stays curled compactly behind her within about one body-width unless the pose says otherwise. Violet is the ONLY accent colour: the tail joints and the glow in the revolvers. Three-quarter view, body angled toward the viewer's right, in every pose. The WIDE HAT BRIM must be fully visible and read as a full oval in every pose — never turn her to a flat side profile where the brim collapses to a line. Pure white background. No ground line, no shadow, no props, no text, no labels, no panel borders, no numbers. No effects of any kind: no muzzle flash, no sparks, no smoke, no glow haze, no motion lines, no speed lines, no dust, no cracked ground — the game draws all of that itself. Nothing detached from her body anywhere in the image. Exactly two arms, two legs and one tail per pose, clearly separated, do not overlap or duplicate limbs. No large flat patches of pure white anywhere on her hat, wrap, armour or guns — shading and outlines everywhere. Identical camera distance and identical character size in every pose. Full body visible from the top of the hat to the soles of both boots in every pose — do not crop, do not zoom. Leave a clear band of empty white space around every pose; nothing may touch or run off the edge of the image or overlap the neighbouring pose.
+```
+
+---
+
+## ชีต A — เคลื่อนไหวและท่าโดน (9 ท่า · 3×3)
+
+**ใบนี้ไม่ใช่ท่าตี** ทุกช่องเป็นท่าเดี่ยวที่เกมหยิบไปใช้คนละที่ ไม่ได้เรียงเป็นคอมโบ
+**ช่องที่ 2-5 เป็นวงจรกระโดดที่ต้องต่อกันลื่น** นอกนั้นเป็นท่าเดี่ยว
+
+| ช่อง | ท่า | ใช้ตอนไหน |
+|---|---|---|
+| 1 | ย่อ | กดลง · และเป็นท่าการ์ดต่ำ |
+| 2-5 | กระโดด 4 จังหวะ | ถีบพื้น → ลอยขึ้น → ร่วงลง → ย่อรับพื้น |
+| 6 | เจ็บ | โดนตี |
+| 7 | ล้มนอน | โดนหนัก · และเป็นท่าลุก |
+| 8 | กลิ้งลุก | กดตอนล้ม |
+| 9 | การ์ด | กดบล็อก |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+These are NOT attacks. Each pose is a separate body state the game uses on its
+own, except poses 2-5 which are one jump broken into four moments and must flow
+into each other.
+
+1 CROUCHING: knees deeply bent, hips low, head tucked down, both revolvers held
+  close to her chest. Compact and small.
+2 JUMP LAUNCH: still on the ground but exploding upward, legs straightening hard,
+  body stretched tall, arms dropping behind her.
+3 RISING: fully airborne, legs tucked up under her, body compact, arms in close.
+4 FALLING: airborne, legs starting to reach down for the ground, arms out a
+  little for balance, body angled slightly forward.
+5 LANDING: feet just touching down, knees absorbing the impact in a deep bend,
+  head low, one hand near the ground.
+6 HURT: head snapped back, torso recoiling backward, one arm flung out, knees
+  buckling — clearly taking a hit, not attacking.
+7 KNOCKED DOWN: lying on the ground on her back, hat still on, limbs loose, one
+  knee slightly raised. Read flat and low.
+8 GETTING UP: mid-roll, body curled and tipped onto one shoulder, pushing off the
+  ground with one hand, about to come back to her feet.
+9 GUARDING: both forearms raised crossed in front of her face and chest, elbows
+  in, shoulders hunched, weight on the back foot, both revolvers still in hand.
+```
+
+---
+
+## ชีต B — ชุดแย็บปืน (9 ท่า · 3×3)
+
+แต่ละแถวเป็นท่าเดียว สามจังหวะ **เฟรมกลาง = จังหวะที่กระสุนออก**
+
+| แถว | ท่า | ลักษณะ |
+|---|---|---|
+| 1 | `jab1` Hip Fire | ยิงเร็วจากสะโพก เดินยิงได้ |
+| 2 | `jab2` Hip Fire | ยิงอีกกระบอก เดินยิงได้ |
+| 3 | `jab3` Kick Back | **ยิงสองนัดพร้อมกัน** ปักเท้า ดันตัวเองถอย |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+Each ROW is one shooting action in three moments: wind-up, the shot, recovery.
+In EVERY row the MIDDLE pose is the instant the gun fires and must be the most
+extended and most braced pose of its row — obvious at a glance.
+
+ROW 1 — a fast snap shot from the hip with her RIGHT revolver, while moving.
+  1a the right gun coming up from her hip, elbow still bent, weight forward.
+  1b THE SHOT: the right arm punched out straight and level at chest height, the
+     gun horizontal, wrist locked, her shoulder driven behind it. Left gun stays
+     low at her side.
+  1c the right arm recoiling, gun kicking up and back, elbow folding again.
+
+ROW 2 — the same fast snap shot but with her LEFT revolver, mirrored in her body
+  while she still faces the same way.
+  2a the left gun coming up across her body, elbow bent, torso rotating.
+  2b THE SHOT: the left arm punched out straight and level at chest height, gun
+     horizontal, torso turned in behind it. Right gun low.
+  2c the left arm recoiling, gun kicking up, torso unwinding.
+
+ROW 3 — she plants both feet and fires BOTH revolvers at once, and the recoil
+  shoves her backward.
+  3a both guns drawn in tight against her ribs, knees bending, feet setting wide
+     and firm — bracing for it.
+  3b THE SHOT: BOTH arms punched straight out together at chest height, both guns
+     horizontal and level, body squared up hard behind them, both feet dug in.
+     This is the widest and most planted pose on the whole sheet.
+  3c both arms thrown up and back by the recoil, guns pointing skyward, her upper
+     body leaning back, one foot sliding back to catch herself.
+```
+
+---
+
+## ชีต C — ปืนกดทิศ (9 ท่า · 3×3)
+
+| แถว | ท่า | ลักษณะ |
+|---|---|---|
+| 1 | `side` Walking Fire | **ถอยหลังพลางยิงพลาง** ไม้ใช้ตอนโดนไล่ |
+| 2 | `up` Skyward Shot | ยิงเฉียงขึ้นสวนคนกระโดด |
+| 3 | `down` Knee Shot | **ย่อตัวลงยิงต่ำ** ลอดท่าที่ตีสูง |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+Each ROW is one shooting action in three moments: wind-up, the shot, recovery.
+In EVERY row the MIDDLE pose is the instant the gun fires and must be the most
+extended pose of its row — obvious at a glance.
+
+ROW 1 — she is BACKING AWAY while shooting, giving ground on purpose.
+  1a stepping backward, her back foot reaching behind her, right gun rising.
+  1b THE SHOT: still mid-backward-step, weight on the back foot, right arm out
+     straight and level at chest height firing forward while her body travels the
+     other way. Head and gun stay aimed forward even as she retreats.
+  1c weight settling onto the back foot, gun recoiling up, other foot dragging.
+
+ROW 2 — she fires UP at a steep angle to catch someone jumping in.
+  2a knees bending slightly, chin lifting, right gun swinging upward.
+  2b THE SHOT: the right arm extended straight up and forward at roughly 45
+     degrees above horizontal, gun pointing high, her head tipped back looking up
+     along the barrel, chest opened. The gun is the HIGHEST point of the pose.
+  2c the arm recoiling further back over her shoulder, her head coming down.
+
+ROW 3 — she drops onto one knee and fires LOW along the ground.
+  3a dropping, one knee bending toward the ground, torso lowering.
+  3b THE SHOT: down on one knee, the other leg folded under her, body low and
+     compact, right arm extended straight forward at knee height, gun horizontal
+     and close to the ground. This is the LOWEST pose on the whole sheet — her
+     head is clearly below where it sits in the other rows.
+  3c still low, gun recoiling upward, her free hand touching the ground.
+```
+
+---
+
+## ชีต D — ปืนกลางอากาศ (9 ท่า · 3×3)
+
+**ทั้งเก้าท่าลอยทั้งหมด** ไม่มีเท้าแตะพื้นสักท่า ไม่มีเส้นพื้น
+
+| แถว | ท่า | ทิศกระสุน |
+|---|---|---|
+| 1 | `nair` Air Fire | **ยิงตรง** = ไม้อากาศต่ออากาศ |
+| 2 | `sair` Dive Fire | เฉียงลงเล็กน้อย + พุ่งไปข้างหน้า |
+| 3 | `dair` Dive Shot | **ยิงลงชัน 69 องศา** ใส่คนที่อยู่ใต้ตัว |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+ALL NINE poses are fully AIRBORNE — both feet clear of the ground, nothing below
+her, legs tucked or trailing. No ground line anywhere.
+
+Each ROW is one shooting action in three moments: wind-up, the shot, recovery.
+In EVERY row the MIDDLE pose is the instant the gun fires and must be the most
+extended pose of its row.
+
+ROW 1 — floating, firing STRAIGHT AHEAD at another airborne target.
+  1a airborne, legs tucked, right gun coming up across her chest.
+  1b THE SHOT: right arm straight out level at chest height, gun horizontal and
+     pointing dead ahead, her body upright and squared behind it, legs tucked.
+  1c the arm recoiling, gun kicking up, body starting to tilt.
+
+ROW 2 — she LUNGES FORWARD through the air while firing slightly downward.
+  2a airborne, body coiling, leading knee drawn up, right gun tucked in.
+  2b THE SHOT: her whole body stretched FORWARD along the direction of travel,
+     leading leg extended ahead, right arm out straight and angled slightly DOWN
+     from horizontal, gun following that line. She reads as diving forward.
+  2c still stretched forward, gun recoiling, trailing leg swinging through.
+
+ROW 3 — she fires STEEPLY DOWN at someone below her.
+  3a airborne, body folding forward at the waist, looking down, gun swinging down.
+  3b THE SHOT: her torso pitched sharply forward and down, both knees pulled up
+     behind her, the right arm extended straight DOWN and only slightly forward —
+     close to vertical, aiming at the ground beneath her. The gun is the LOWEST
+     point of the pose and clearly points down, not sideways.
+  3c the arm recoiling back up, body beginning to straighten.
+```
+
+---
+
+## ชีต F — ท่าถอย (6 ท่า · 2×3)
+
+**ใบนี้เป็นตาราง 2 แถว 3 คอลัมน์** ไม่ใช่ 3×3
+
+| แถว | ท่า | ลักษณะ |
+|---|---|---|
+| 1 | `hop` Backstep | กระโดดถอย ไว แต่ไม่มีอมตะ |
+| 2 | `roll` Roll Back | กลิ้งถอย ช้ากว่าแต่รอด — **ท่าป้องกันตัวท่าเดียวของเธอ** |
+
+```
+A 2x3 sprite sheet of the same character: 2 rows, 3 columns, 6 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+Neither row is an attack — both are retreats. She keeps both revolvers in hand
+throughout but never aims or fires.
+
+ROW 1 — a quick BACKWARD HOP.
+  1a crouching to load the hop, knees bent, weight dropping, both guns held in.
+  1b mid-hop: airborne and travelling BACKWARD, both feet off the ground and
+     swept forward ahead of her, body leaning back, arms tucked. She is clearly
+     moving away from the direction she faces.
+  1c landing out of the hop, feet catching the ground behind her, knees bending,
+     torso still leaning back.
+
+ROW 2 — a low BACKWARD ROLL along the ground.
+  2a dropping into it: knees folding, one shoulder dipping backward, head tucking.
+  2b mid-roll: her body curled into a tight ball low to the ground, tipped onto
+     her back and shoulder, knees pulled into her chest, hat still on her head.
+     This is the LOWEST and most compact pose on the sheet.
+  2c coming out of the roll: rising onto one knee, one hand pushing off the
+     ground, head lifting, about to stand.
+```
+
+---
+
+## ตรวจก่อนรับ — ใช้ได้กับทุกใบ
+
+1. **เฟรมกลางของทุกแถวคือจังหวะที่ยิง/ตี** (ใบ A กับ F ไม่มีข้อนี้ เพราะไม่ใช่ท่าตี)
+   วิธีตรวจ: **ตัดเฉพาะคอลัมน์กลางมาดูอย่างเดียว** ต้องอ่านออกทันทีว่ากำลังทำอะไร
+2. **ปีกหมวกเป็นวงรีเต็มใบทุกท่า** — ตัวตัดใช้พื้นที่หมวกเป็นไม้บรรทัดวัดระยะกล้อง
+   ท่าโปรไฟล์ด้านข้างทำให้ปีกหุบจนวัดผิดทั้งใบ
+3. **หางติดไหล่เห็นจุดต่อทุกท่า** และไม่กางเกินหนึ่งช่วงตัว
+4. **ปืนอยู่ในมือทั้งสองข้างทุกท่า** (ยกเว้นท่าล้มที่มือหลวมได้ แต่ปืนยังอยู่)
+5. **ไม่มีเอฟเฟคใด ๆ วาดติดมา** — ไม่มีแฟลชปากกระบอก ควัน เส้นความเร็ว ฝุ่น
+   **ข้อนี้พลาดมาแล้วกับชีต E** เส้นเอฟเฟคม่วงมองไม่ออกตอนดูบนพื้นขาว แต่พอตัดพื้น
+   ออกแล้ววางบนเวทีมืดมันกลายเป็นวัตถุทึบที่ต่อกับตัวละคร
+6. **ตารางสม่ำเสมอ ขนาดตัวเท่ากันทุกช่อง** ตัวตัดหารช่องตายตัว ตารางเบี้ยว = จับผิดช่องทั้งใบ
+
+ได้แล้ววางที่ `art_reference/alecto_sheets_new/sheet_<A|B|C|D|F>.jpg`
+
+---
+
+# ชีตที่เหลือทั้งห้าใบ
+
+**ทุกใบแนบ `art_reference/alecto_idle_NEW.jpg` ไปด้วยเสมอ** แล้วต่อ **บล็อกสไตล์ร่วม**
+ข้างล่างนี้ไว้ท้าย prompt ของทุกใบ (เหมือนกันทุกใบ ไม่ต้องแก้)
+
+### บล็อกสไตล์ร่วม — ต่อท้ายทุกใบ
+
+```
+Chibi-proportioned anime game sprite, large head roughly one third of the total height, short sturdy limbs, bold dark outlines, flat cel shading, muted desaturated palette — match the attached reference exactly. Character: a lean gunslinger woman with long wavy SILVER-WHITE hair loose to her shoulders, dark skin, sharp narrow eyes, a level unimpressed expression. A wide-brimmed cowboy hat and a torn cloth face-wrap covering her nose, mouth and chin, both IVORY / BONE with soft brown shading in the folds, the hat with a darker brown leather band. Close-fitting segmented armour in dark charcoal gunmetal over shoulders, arms, torso and legs. Brown leather belt with a metal buckle. Black fingerless gloves, dark heavy boots. Growing from her RIGHT SHOULDER is a long mechanical scorpion tail of chunky armoured segments, each joint glowing VIOLET, ending in a smooth curved barb — the tail must visibly ATTACH TO HER SHOULDER PLATE in every pose, it is part of her, never a floating object, and it stays curled compactly behind her within about one body-width unless the pose says otherwise. Violet is the ONLY accent colour: the tail joints and the glow in the revolvers. Three-quarter view, body angled toward the viewer's right, in every pose. The WIDE HAT BRIM must be fully visible and read as a full oval in every pose — never turn her to a flat side profile where the brim collapses to a line. Pure white background. No ground line, no shadow, no props, no text, no labels, no panel borders, no numbers. No effects of any kind: no muzzle flash, no sparks, no smoke, no glow haze, no motion lines, no speed lines, no dust, no cracked ground — the game draws all of that itself. Nothing detached from her body anywhere in the image. Exactly two arms, two legs and one tail per pose, clearly separated, do not overlap or duplicate limbs. No large flat patches of pure white anywhere on her hat, wrap, armour or guns — shading and outlines everywhere. Identical camera distance and identical character size in every pose. Full body visible from the top of the hat to the soles of both boots in every pose — do not crop, do not zoom. Leave a clear band of empty white space around every pose; nothing may touch or run off the edge of the image or overlap the neighbouring pose.
+```
+
+---
+
+## ชีต A — เคลื่อนไหวและท่าโดน (9 ท่า · 3×3)
+
+**ใบนี้ไม่ใช่ท่าตี** ทุกช่องเป็นท่าเดี่ยวที่เกมหยิบไปใช้คนละที่ ไม่ได้เรียงเป็นคอมโบ
+ยกเว้นช่อง 2-5 ที่เป็นวงจรกระโดดซึ่งต้องต่อกันลื่น
+
+| ช่อง | ท่า | ใช้ตอนไหน |
+|---|---|---|
+| 1 | ย่อ | กดลง · และเป็นท่าการ์ดต่ำ |
+| 2-5 | กระโดด 4 จังหวะ | ถีบพื้น → ลอยขึ้น → ร่วงลง → ย่อรับพื้น |
+| 6 | เจ็บ | โดนตี |
+| 7 | ล้มนอน | โดนหนัก · และเป็นท่าลุก |
+| 8 | กลิ้งลุก | กดตอนล้ม |
+| 9 | การ์ด | กดบล็อก |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+These are NOT attacks. Each pose is a separate body state the game uses on its
+own, except poses 2-5 which are one jump broken into four moments and must flow
+into each other.
+
+1 CROUCHING: knees deeply bent, hips low, head tucked down, both revolvers held
+  close to her chest. Compact and small.
+2 JUMP LAUNCH: still on the ground but exploding upward, legs straightening hard,
+  body stretched tall, arms dropping behind her.
+3 RISING: fully airborne, legs tucked up under her, body compact, arms in close.
+4 FALLING: airborne, legs starting to reach down for the ground, arms out a
+  little for balance, body angled slightly forward.
+5 LANDING: feet just touching down, knees absorbing the impact in a deep bend,
+  head low, one hand near the ground.
+6 HURT: head snapped back, torso recoiling backward, one arm flung out, knees
+  buckling — clearly taking a hit, not attacking.
+7 KNOCKED DOWN: lying on the ground on her back, hat still on, limbs loose, one
+  knee slightly raised. Read flat and low.
+8 GETTING UP: mid-roll, body curled and tipped onto one shoulder, pushing off the
+  ground with one hand, about to come back to her feet.
+9 GUARDING: both forearms raised crossed in front of her face and chest, elbows
+  in, shoulders hunched, weight on the back foot, both revolvers still in hand.
+```
+
+---
+
+## ชีต B — ชุดแย็บปืน (9 ท่า · 3×3)
+
+แต่ละแถวเป็นท่าเดียว สามจังหวะ **เฟรมกลาง = จังหวะที่กระสุนออก**
+
+| แถว | ท่า | ลักษณะ |
+|---|---|---|
+| 1 | `jab1` Hip Fire | ยิงเร็วจากสะโพก เดินยิงได้ |
+| 2 | `jab2` Hip Fire | ยิงอีกกระบอก เดินยิงได้ |
+| 3 | `jab3` Kick Back | **ยิงสองนัดพร้อมกัน** ปักเท้า ดันตัวเองถอย |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+Each ROW is one shooting action in three moments: wind-up, the shot, recovery.
+In EVERY row the MIDDLE pose is the instant the gun fires and must be the most
+extended and most braced pose of its row — obvious at a glance.
+
+ROW 1 — a fast snap shot from the hip with her RIGHT revolver, while moving.
+  1a the right gun coming up from her hip, elbow still bent, weight forward.
+  1b THE SHOT: the right arm punched out straight and level at chest height, the
+     gun horizontal, wrist locked, her shoulder driven behind it. Left gun stays
+     low at her side.
+  1c the right arm recoiling, gun kicking up and back, elbow folding again.
+
+ROW 2 — the same fast snap shot but with her LEFT revolver, mirrored in her body
+  while she still faces the same way.
+  2a the left gun coming up across her body, elbow bent, torso rotating.
+  2b THE SHOT: the left arm punched out straight and level at chest height, gun
+     horizontal, torso turned in behind it. Right gun low.
+  2c the left arm recoiling, gun kicking up, torso unwinding.
+
+ROW 3 — she plants both feet and fires BOTH revolvers at once, and the recoil
+  shoves her backward.
+  3a both guns drawn in tight against her ribs, knees bending, feet setting wide
+     and firm — bracing for it.
+  3b THE SHOT: BOTH arms punched straight out together at chest height, both guns
+     horizontal and level, body squared up hard behind them, both feet dug in.
+     This is the widest and most planted pose on the whole sheet.
+  3c both arms thrown up and back by the recoil, guns pointing skyward, her upper
+     body leaning back, one foot sliding back to catch herself.
+```
+
+---
+
+## ชีต C — ปืนกดทิศ (9 ท่า · 3×3)
+
+| แถว | ท่า | ลักษณะ |
+|---|---|---|
+| 1 | `side` Walking Fire | **ถอยหลังพลางยิงพลาง** ไม้ใช้ตอนโดนไล่ |
+| 2 | `up` Skyward Shot | ยิงเฉียงขึ้นสวนคนกระโดด |
+| 3 | `down` Knee Shot | **ย่อตัวลงยิงต่ำ** ลอดท่าที่ตีสูง |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+Each ROW is one shooting action in three moments: wind-up, the shot, recovery.
+In EVERY row the MIDDLE pose is the instant the gun fires and must be the most
+extended pose of its row — obvious at a glance.
+
+ROW 1 — she is BACKING AWAY while shooting, giving ground on purpose.
+  1a stepping backward, her back foot reaching behind her, right gun rising.
+  1b THE SHOT: still mid-backward-step, weight on the back foot, right arm out
+     straight and level at chest height firing forward while her body travels the
+     other way. Head and gun stay aimed forward even as she retreats.
+  1c weight settling onto the back foot, gun recoiling up, other foot dragging.
+
+ROW 2 — she fires UP at a steep angle to catch someone jumping in.
+  2a knees bending slightly, chin lifting, right gun swinging upward.
+  2b THE SHOT: the right arm extended straight up and forward at roughly 45
+     degrees above horizontal, gun pointing high, her head tipped back looking up
+     along the barrel, chest opened. The gun is the HIGHEST point of the pose.
+  2c the arm recoiling further back over her shoulder, her head coming down.
+
+ROW 3 — she drops onto one knee and fires LOW along the ground.
+  3a dropping, one knee bending toward the ground, torso lowering.
+  3b THE SHOT: down on one knee, the other leg folded under her, body low and
+     compact, right arm extended straight forward at knee height, gun horizontal
+     and close to the ground. This is the LOWEST pose on the whole sheet — her
+     head is clearly below where it sits in the other rows.
+  3c still low, gun recoiling upward, her free hand touching the ground.
+```
+
+---
+
+## ชีต D — ปืนกลางอากาศ (9 ท่า · 3×3)
+
+**ทั้งเก้าท่าลอยทั้งหมด** ไม่มีเท้าแตะพื้นสักท่า ไม่มีเส้นพื้น
+
+| แถว | ท่า | ทิศกระสุน |
+|---|---|---|
+| 1 | `nair` Air Fire | **ยิงตรง** = ไม้อากาศต่ออากาศ |
+| 2 | `sair` Dive Fire | เฉียงลงเล็กน้อย + พุ่งไปข้างหน้า |
+| 3 | `dair` Dive Shot | **ยิงลงชัน 69 องศา** ใส่คนที่อยู่ใต้ตัว |
+
+```
+A 3x3 sprite sheet of the same character: 3 rows, 3 columns, 9 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+ALL NINE poses are fully AIRBORNE — both feet clear of the ground, nothing below
+her, legs tucked or trailing. No ground line anywhere.
+
+Each ROW is one shooting action in three moments: wind-up, the shot, recovery.
+In EVERY row the MIDDLE pose is the instant the gun fires and must be the most
+extended pose of its row.
+
+ROW 1 — floating, firing STRAIGHT AHEAD at another airborne target.
+  1a airborne, legs tucked, right gun coming up across her chest.
+  1b THE SHOT: right arm straight out level at chest height, gun horizontal and
+     pointing dead ahead, her body upright and squared behind it, legs tucked.
+  1c the arm recoiling, gun kicking up, body starting to tilt.
+
+ROW 2 — she LUNGES FORWARD through the air while firing slightly downward.
+  2a airborne, body coiling, leading knee drawn up, right gun tucked in.
+  2b THE SHOT: her whole body stretched FORWARD along the direction of travel,
+     leading leg extended ahead, right arm out straight and angled slightly DOWN
+     from horizontal, gun following that line. She reads as diving forward.
+  2c still stretched forward, gun recoiling, trailing leg swinging through.
+
+ROW 3 — she fires STEEPLY DOWN at someone below her.
+  3a airborne, body folding forward at the waist, looking down, gun swinging down.
+  3b THE SHOT: her torso pitched sharply forward and down, both knees pulled up
+     behind her, the right arm extended straight DOWN and only slightly forward —
+     close to vertical, aiming at the ground beneath her. The gun is the LOWEST
+     point of the pose and clearly points down, not sideways.
+  3c the arm recoiling back up, body beginning to straighten.
+```
+
+---
+
+## ชีต F — ท่าถอย (6 ท่า · **2×3**)
+
+**ใบนี้เป็นตาราง 2 แถว 3 คอลัมน์** ไม่ใช่ 3×3
+
+| แถว | ท่า | ลักษณะ |
+|---|---|---|
+| 1 | `hop` Backstep | กระโดดถอย ไว แต่ไม่มีอมตะ |
+| 2 | `roll` Roll Back | กลิ้งถอย ช้ากว่าแต่รอด — **ท่าป้องกันตัวท่าเดียวของเธอ** |
+
+```
+A 2x3 sprite sheet of the same character: 2 rows, 3 columns, 6 poses total,
+evenly spaced in a clean grid, read left to right, top to bottom. No pose
+touching another, no grid lines drawn.
+
+Neither row is an attack — both are retreats. She keeps both revolvers in hand
+throughout but never aims or fires.
+
+ROW 1 — a quick BACKWARD HOP.
+  1a crouching to load the hop, knees bent, weight dropping, both guns held in.
+  1b mid-hop: airborne and travelling BACKWARD, both feet off the ground and
+     swept forward ahead of her, body leaning back, arms tucked. She is clearly
+     moving away from the direction she faces.
+  1c landing out of the hop, feet catching the ground behind her, knees bending,
+     torso still leaning back.
+
+ROW 2 — a low BACKWARD ROLL along the ground.
+  2a dropping into it: knees folding, one shoulder dipping backward, head tucking.
+  2b mid-roll: her body curled into a tight ball low to the ground, tipped onto
+     her back and shoulder, knees pulled into her chest, hat still on her head.
+     This is the LOWEST and most compact pose on the sheet.
+  2c coming out of the roll: rising onto one knee, one hand pushing off the
+     ground, head lifting, about to stand.
+```
+
+---
+
+## ตรวจก่อนรับ — ใช้ได้กับทุกใบ
+
+1. **เฟรมกลางของทุกแถวคือจังหวะที่ยิง** (ใบ A กับ F ไม่มีข้อนี้ เพราะไม่ใช่ท่าตี)
+   วิธีตรวจ: **ตัดเฉพาะคอลัมน์กลางมาดูอย่างเดียว** ต้องอ่านออกทันทีว่ากำลังทำอะไร
+2. **ปีกหมวกเป็นวงรีเต็มใบทุกท่า** — ตัวตัดใช้พื้นที่หมวกเป็นไม้บรรทัดวัดระยะกล้อง
+   ท่าโปรไฟล์ด้านข้างทำให้ปีกหุบจนวัดผิดทั้งใบ
+3. **หางติดไหล่เห็นจุดต่อทุกท่า** และไม่กางเกินหนึ่งช่วงตัว
+4. **ปืนอยู่ในมือทั้งสองข้างทุกท่า** (ท่าล้มมือหลวมได้ แต่ปืนยังต้องอยู่)
+5. **ไม่มีเอฟเฟคใด ๆ วาดติดมา** — ไม่มีแฟลชปากกระบอก ควัน เส้นความเร็ว ฝุ่น
+   **ข้อนี้พลาดมาแล้วกับชีต E** เส้นเอฟเฟคม่วงมองไม่ออกตอนดูบนพื้นขาว แต่พอตัดพื้น
+   ออกแล้ววางบนเวทีมืดมันกลายเป็นวัตถุทึบที่ต่อกับตัวละคร
+6. **ตารางสม่ำเสมอ ขนาดตัวเท่ากันทุกช่อง** ตัวตัดหารช่องตายตัว ตารางเบี้ยว = จับผิดช่องทั้งใบ
+
+ได้แล้ววางที่ `art_reference/alecto_sheets_new/sheet_<A|B|C|D|F>.jpg`
+
+---
+
+## หลัง build ครบแล้วต้องเก็บกวาดอะไรบ้าง
+
+- ลบเงื่อนไขหมวก**แดง**ใน `hat_sqrt()` และค่าชดเชย `IVORY_K` ทิ้ง แล้วปรับสเกลตรง ๆ แทน
+- แก้ `chin_y()` — คางไม่โผล่เพราะผ้าคลุมปิด ต้องเปลี่ยนจุดอ้างอิง (ดูหัวข้อความเสี่ยงข้อ 2)
+  **ข้อนี้บังคับ** เพราะคลิปวิ่งใบใหม่จะเข้ามาแทนคลิปเก่าที่ยังใช้ไม้บรรทัดคางได้อยู่
+- ลบ `artAs` ที่เหลือทั้งหมดใน `ScrambleScene.js` แล้วเปลี่ยน `attacks` เป็นชื่อท่าจริง
+- ลบ `gunStance` กับ `anims.runGun` / `anims.idleGun` — ดีไซน์ใหม่ถือปืนตลอดเวลา
+  ท่ายืนกับท่าวิ่งปกติคือท่าถือปืนอยู่แล้ว ไม่ต้องมีสองชุด
+- ขยับ `VERSION` ใน `sw.js`
