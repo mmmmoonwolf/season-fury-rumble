@@ -1146,11 +1146,13 @@ console.log("\nSCRAMBLE core: ported as-is from the prototype — this suite loc
   ok(/art\[STRIDE_FIELD\[name\]\]/.test(scene), "สูตรเวลาต่อรอบของท่าวิ่งอ่านจากตัวละคร");
   ok(/STRIDE_FIELD\s*=\s*\{[^}]*run:\s*'runStride'/.test(scene), "ท่าวิ่งยังผูกกับ runStride");
 
-  // ท่าเดินถือปืนก็ต้องวัดระยะก้าวของตัวเอง ใช้ค่าของท่าวิ่งไม่ได้ (เดินสองก้าวต่อรอบ ไม่ใช่ก้าวเดียว)
-  const gun = scene.match(/gunStride:\s*(\d+)/);
-  ok(gun, "มี gunStride สำหรับท่าเดินถือปืน");
-  ok(+gun[1] !== strides[Object.keys(strides).length - 1] && +gun[1] > 40 && +gun[1] < 250,
-    `gunStride ${gun?.[1]} เป็นค่าที่วัดเองไม่ใช่ลอก runStride`);
+  // **ท่าเดินถือปืนถูกถอดออกแล้ว** KUNJAE เคยมีท่ายืน/วิ่งสองชุด (แส้กับไรเฟิล)
+  // ดีไซน์ใหม่ถือปืนคู่ตลอดเวลา ท่าวิ่งปกติก็คือท่าถือปืนอยู่แล้ว จึงเหลือ runStride ชุดเดียว
+  // ถ้าวันหนึ่งมีตัวละครที่ต้องมีวงจรเดินสองชุดจริง ๆ ค่อยเอาด่านนี้กลับมา
+  const anyGun = /gunStride:\s*\d+/.test(scene);
+  const gunAnim = /anims:[^}]*runGun:/.test(scene);
+  ok(anyGun === gunAnim,
+    `ถ้ามี gunStride ต้องมีท่า runGun ด้วย และกลับกัน (stride ${anyGun} · anim ${gunAnim})`);
 
   // ทุกท่าที่ประกาศใน anims ต้องมีเฟรมครบใน atlas ของตัวนั้น
   for (const [id, ch] of Object.entries(CHARACTERS)) {

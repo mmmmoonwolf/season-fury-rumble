@@ -184,16 +184,12 @@ const CHAR_ART = {
     atlasKey: 'scalecto',
     texture: 'assets/characters/scramble_alecto.png',
     data: 'assets/characters/scramble_alecto.json',
-    runStride: 86,
+    // คลิปวิ่งดีไซน์ใหม่: หนึ่งรอบ = **หนึ่งก้าว** (ติดกัน 0.760 · ครึ่งรอบ 0.612)
+    // 186 px ถ่างขาสูงสุดบน canvas x (130/240) x 1 ก้าว = 101 · ของเดิม 86 มาจากคลิปตัวเก่า
+    runStride: 101,
     title: 'Alecto',
     role: 'สายลากเข้ามาอัด',
     tip: 'ปืนคู่เป็นท่าปกติ — หางใช้เฉพาะสกิล: ตะขอลากเข้ามา ทุบลงพื้น แล้วปักหางให้หนามผุด',
-    // ท่าเดินถือปืนยาว: รอบเดียว = สองก้าว (ชีตเป็นวงจรเดิน 4 ท่า ย่ำสลับซ้าย-ขวา)
-    // 104 = ถ่างเท้าตอนเท้าแตะพื้น 96 px บน canvas x (SPRITE_H/standing) x 2 ก้าว
-    gunStride: 104,
-    // **ถือปืนตลอดเวลา** เดิมท่ายืน/ท่าวิ่งถือปืนโผล่เฉพาะตอนธง f.alt ติด ซึ่งมาจาก
-    // เส้นแบ่งระยะที่ถอดทิ้งไปแล้ว ตอนนี้ปืนเป็นท่าปกติทั้งชุด จึงถือปืนตลอด
-    gunStance: true,
     // หางฟาดยาวกว่าอาวุธอื่นทั้งโรสเตอร์ รอยฟาดจึงเป็นเส้นสะบัดยาว ไม่ใช่รอยดาบโค้ง
     // **ท่าปืนไม่ใส่รอยฟาดเลย** — ปืนไม่ได้ฟาด มันยิง กระสุนเป็นตัวบอกอยู่แล้ว
     // ตอนนี้ท่าปกติเป็นปืนทั้งชุด รอยฟาดจึงเหลือแค่สองสกิลที่ใช้หางจริง
@@ -202,7 +198,9 @@ const CHAR_ART = {
     slash: { jab1: null, jab2: null, jab3: null, side: null, up: null, down: null,
       nair: null, sair: null, dair: null,
       hook1: null, slam1: null, quill1: null },
-    anims: { idle: 1, run: 10, runGun: 4, idleGun: 1, jump: 4, crouch: 1, hurt: 1, knockdown: 1,
+    // ไม่มี idleGun/runGun แยกอีกแล้ว — ดีไซน์ใหม่ถือปืนคู่ตลอดเวลา
+    // ท่ายืนกับท่าวิ่งปกติก็คือท่าถือปืนอยู่แล้ว (เคยมีสองชุดเพราะสลับแส้กับไรเฟิล)
+    anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1,
       techroll: 1, tech: 1, block: 1, blockstun: 1, blockcrouch: 1 },
     // **ลิสต์นี้เป็นชื่อ "เฟรมในชีต" ไม่ใช่ชื่อท่าในซิม** — ท่าที่ผ่าน artAs ต้องลงชื่อปลายทาง
     // ท่าปกติของเธอชื่อ jab1..down ในซิม แต่วาดด้วยเฟรม gjab1..gdown จึงลง g* ที่นี่
@@ -3071,7 +3069,7 @@ class ScrambleScene extends Phaser.Scene {
     }[f.state] ?? null;
     // สลับอาวุธแล้วท่ายืน/ท่าวิ่งต้องเปลี่ยนตาม ไม่งั้นเธอถือแส้ยืนอยู่แล้วยิงไรเฟิลออกมา
     // มีเฉพาะสองท่านี้ (ท่าย่อ/กระโดดยังเป็นของแส้) — เป็นอาร์ตที่ยังไม่มี ไม่ใช่การตัดสินใจ
-    if ((f.alt || art.gunStance) && art.anims[key + 'Gun']) key += 'Gun';
+    if (f.alt && art.anims[key + 'Gun']) key += 'Gun';
     if (!key || !art.anims[key]) { sp.setVisible(false); return false; }
 
     this._applyCharTransform(f);
