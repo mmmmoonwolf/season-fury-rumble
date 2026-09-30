@@ -12,11 +12,23 @@ const { CHARACTERS } = await import(G + "/core.js");
 {
   const want = ["slashWide", "slashThin", "slashSpin", "slashThrust", "slashLash", "slashChop",
     "slashRise", "slashCross", "star4", "burst", "crescent", "spike", "smokeBall", "smokeWisp",
-    "dustFlat", "smokeCurl", "flame", "ember", "orb", "fireWisp", "ring", "glow", "streak", "diamond"];
+    "dustFlat", "smokeCurl", "flame", "ember", "orb", "fireWisp", "ring", "glow", "streak", "diamond",
+    // ใบที่ตัดด้วยการหาก้อน ไม่ใช่หารช่อง — อัลติของ KUNJAE (หนามผุดจากพื้น)
+    "tailRise1", "tailRise2", "tailRise3", "tailRise4", "soilBurst1", "soilBurst2", "soilBurst3"];
   const missing = want.filter((k) => !atlas.frames[k + ".png"]);
-  ok(missing.length === 0, `เฟรมครบ 24 อัน${missing.length ? " (ขาด " + missing.join(",") + ")" : ""}`);
+  ok(missing.length === 0, `เฟรมครบ ${want.length} อัน${missing.length ? " (ขาด " + missing.join(",") + ")" : ""}`);
   ok(Object.keys(atlas.frames).length === want.length,
     `ไม่มีเฟรมเกินมา (${Object.keys(atlas.frames).length})`);
+
+  // สี่ระยะของหนามต้อง **สูงไล่ขึ้น** ไม่ใช่สูงเท่ากัน
+  // ตัวตัดย่อทีละใบให้ด้านยาว = MAX_SIDE ซึ่งทำให้ทุกระยะสูง 320 เท่ากันหมด
+  // แล้วมันจะไม่ใช่หนามที่ค่อย ๆ โผล่อีกต่อไป — ใบนี้จึงย่อด้วยสเกลเดียวทั้งกลุ่ม
+  const h = (n) => atlas.frames[n + ".png"].frame.h;
+  ok(h("tailRise1") < h("tailRise2") && h("tailRise2") < h("tailRise3"),
+    `หนามสี่ระยะสูงไล่ขึ้นจริง (${[1,2,3,4].map((i) => h("tailRise" + i)).join(" -> ")})`);
+  const w = (n) => atlas.frames[n + ".png"].frame.w;
+  ok(w("soilBurst1") < w("soilBurst2") && w("soilBurst2") < w("soilBurst3"),
+    `ดินแตกสามระยะกว้างไล่ออกจริง (${[1,2,3].map((i) => w("soilBurst" + i)).join(" -> ")})`);
   // เส้นตารางของใบรอยฟาดต้องถูกกัดทิ้ง ไม่งั้นจะเห็นเป็นเส้นจาง ๆ ตอนผสมแบบ ADD
   ok(/GUTTER = \d+/.test(read("../build_vfx.py")), "ตัวตัดกัดขอบช่องทิ้ง (ใบรอยฟาดมีเส้นตารางจริง)");
 }
