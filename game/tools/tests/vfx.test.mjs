@@ -55,10 +55,12 @@ const { CHARACTERS } = await import(G + "/core.js");
 // ปืนไม่ได้ฟาด มันยิง — กระสุนเป็นตัวบอกอยู่แล้ว ใส่รอยฟาดทับเข้าไปคืออ่านผิด
 {
   const al = scene.match(/slash: \{([\s\S]*?)\},\n    anims:/)?.[1] ?? "";
-  ok(/hook1: \{ f: 'slashLash' \}/.test(al), "ตะขอใช้รอยสะบัดยาว ไม่ใช่รอยดาบโค้ง");
-  ok(/slam1: \{ f: 'slashLash'/.test(al), "ทุบลงใช้รอยสะบัดยาวเหมือนกัน");
-  for (const g of ["jab1", "side", "up", "down", "nair", "sair", "dair"])
-    ok(new RegExp(`\\b${g}: null`).test(al), `${g}: ท่าปืนไม่มีรอยฟาด — ปืนไม่ได้ฟาด มันยิง`);
+  // **ไม่มีรอยฟาดเลยสักท่า** ท่าปืนไม่ได้ฟาด กระสุนเป็นตัวบอกอยู่แล้ว
+  // ส่วนสามท่าหาง ชีตดีไซน์ใหม่มีหางอยู่ในเฟรมจริงแล้ว วาดรอยสะบัดทับอีกจะเป็นหางสองเส้น
+  // (เคยมีรอยสะบัดตอนที่สามท่านี้ยังยืมเฟรมแส้ของตัวละครเก่าอยู่)
+  for (const g of ["hook1", "slam1", "quill1",
+                   "jab1", "side", "up", "down", "nair", "sair", "dair"])
+    ok(new RegExp(`\\b${g}: null`).test(al), `${g}: ไม่มีรอยฟาดวาดทับ`);
   // และชื่อท่าต้องมีอยู่จริงใน sim ไม่ใช่เขียนกันชื่อผิด
   const miss = ["jab1", "side", "hook1", "slam1", "quill1"].filter((k) => !CHARACTERS.alecto.moves[k]);
   ok(miss.length === 0, `ชื่อท่าในตารางรอยฟาดตรงกับใน core.js (${miss.join(",") || "ครบ"})`);

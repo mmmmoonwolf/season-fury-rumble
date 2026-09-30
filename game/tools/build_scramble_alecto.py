@@ -60,10 +60,12 @@ SEQ = {
     "sair": ("D", [4, 5, 6], AIR),
     "dair": ("D", [7, 8, 9], AIR),
 
-    # ---- ชีต E: ลูกโม่ (สกิล 1) ----
-    "shot1": ("E", [1, 2, 3], GROUND),         # ชัก -> ยิง -> สะบัดข้อมือ
-    "shot2": ("E", [2, 3, 2], GROUND),
-    "shot3": ("E", [2, 3, 6], GROUND),         # นัดท้ายแล้วเก็บปืน
+    # ---- สามท่าหาง (ดีไซน์ใหม่) — ชีต E/E2 ของ art_reference/alecto_sheets_new ----
+    # เอาคนละแถวจากคนละใบ: ตะขอจาก E2 (หางพาดลำตัวแข็งเหมือนหอก ปลายเป็นจุดไกลสุด)
+    # อีกสองแถวจาก E (ใบ E2 มีเส้นเอฟเฟคม่วงวาดติดมาจนดูเหมือนมีหางสองเส้นตอนตัดพื้นออก)
+    "hook1":  ("E2", [1, 2, 3], GROUND),
+    "slam1":  ("Enew", [4, 5, 6], GROUND),
+    "quill1": ("Enew", [7, 8, 9], GROUND),
 
     # ---- ท่าตีปกติชุดไรเฟิล (สลับเข้าด้วยสกิล 1) — ชีต J เป็นท่าปืนยาวโดยเฉพาะ
     "gjab1": ("J", [1, 2, 3], GROUND),
@@ -153,9 +155,15 @@ def mask_h(m):
 CLIP_RUN_H = float(np.median([mask_h(clip_cell(n)[1]) for n in range(1, 11)]))
 
 # ---------- อ่านชีต แล้วปรับสเกลให้เท่าคลิป ----------
+# ระหว่างเปลี่ยนตัวละคร: ชีตชุดเดิมอยู่ใน alecto_sheets/ ชีตดีไซน์ใหม่อยู่ใน alecto_sheets_new/
+# ทั้งสองชุดถูกอ่านพร้อมกันจนกว่าจะเจนชุดใหม่ครบ แล้วค่อยลบฝั่งเดิมทิ้ง
+SHEET_SRC = {L: ("alecto_sheets", f"sheet_{L}.jpg") for L in "ABCDEFGHIJ"}
+SHEET_SRC["Enew"] = ("alecto_sheets_new", "sheet_E.jpg")
+SHEET_SRC["E2"] = ("alecto_sheets_new", "sheet_E2.jpg")
+
 SHEETS = {}
-for L in "ABCDEFGHIJ":
-    arr, poses = extract(os.path.join(REF, "alecto_sheets", f"sheet_{L}.jpg"), *LAYOUT[L])
+for L, (folder, fn) in SHEET_SRC.items():
+    arr, poses = extract(os.path.join(REF, folder, fn), *LAYOUT[L])
     assert all(p is not None for p in poses), f"ชีต {L} มีช่องว่าง"
     if L in HEIGHT_RULER:
         med = float(np.median([mask_h(m) for m, _ in poses]))
@@ -164,7 +172,11 @@ for L in "ABCDEFGHIJ":
               f"({CLIP_RUN_H/med:.3f} เท่าของคลิป · วัดด้วยความสูง)")
     else:
         hs = [hat_sqrt(arr, m) for m, _ in poses]
-        med = float(np.median([h for h in hs if h > 20]))
+        # เดิมกรองด้วยค่าคงที่ `h > 20` ซึ่งเผื่อไว้สำหรับชีตชุดเดิมที่หมวกวัดได้ราว 90
+        # ชีตดีไซน์ใหม่วัดได้ 21-23 ทั้งใบ (ตัวละครถูกวาดเล็กกว่าในไฟล์ต้นฉบับราว 4 เท่า)
+        # ค่าคงที่นี้จึงเกือบตัดทั้งใบทิ้ง — เปลี่ยนเป็นตัดเฉพาะท่าที่หลุดจากพวกเดียวกันเอง
+        rough = float(np.median([h for h in hs if h > 0]))
+        med = float(np.median([h for h in hs if h > rough * 0.5]))
         SRC_SCALE[L] = SRC_SCALE["clip"] * (CLIP_HAT / med)
         print(f"ชีต {L}: หมวกมัธยฐาน {med:.0f} -> สเกล {SRC_SCALE[L]:.4f} ({CLIP_HAT/med:.3f} เท่าของคลิป)")
     SHEETS[L] = (arr, poses)
@@ -220,9 +232,21 @@ for name, (im, com, base) in staged.items():
 
 os.makedirs(OUT, exist_ok=True)
 sheet.save(os.path.join(OUT, "scramble_alecto.png"))
+json_path = os.path.join(OUT, "scramble_alecto.json")
 json.dump({"frames": frames,
            "meta": {"image": "scramble_alecto.png", "size": {"w": sheet.width, "h": sheet.height},
                     "scale": "1", "anchorX": ANCHOR_X, "feetY": FEET_Y, "standing": STANDING,
                     "canvasW": CW, "canvasH": CH}},
-          open(os.path.join(OUT, "scramble_alecto.json"), "w"), indent=1)
-print(f"เขียนแล้ว: scramble_alecto.png {sheet.size}")
+          open(json_path, "w"), indent=1)
+print(f"เขียนแล้ว (แถวเดียว): scramble_alecto.png {sheet.size}")
+
+# ---------- ห่อเป็นหลายแถวให้ไม่เกินลิมิตเท็กซ์เจอร์ ----------
+#
+# **ตัว build ตัวนี้เคยไม่มีขั้นนี้ ต่างจาก builder ของตัวอื่นทุกตัว** ไฟล์ที่คอมมิตไว้
+# เป็นแบบหลายแถว (2047x3182) แปลว่าเคยถูกแพ็กด้วยมือตอนไหนสักตอน ใครรีบิลด์หลังจากนั้น
+# จะได้แถบยาว 61,182 px ซึ่งเกินลิมิต 4096 ไป 15 เท่า **แล้วเรนเดอร์เป็นกล่องดำทับตัวละคร
+# โดยไม่มี error อะไรเลย** เจอตอนต่อชีตหางใบใหม่เข้าเกมแล้วเห็นเป็นกล่องดำ
+GPU_LIMIT = 4096
+sys.path.insert(0, HERE)
+from repack_atlas import repack
+repack(json_path, max_w=GPU_LIMIT)
