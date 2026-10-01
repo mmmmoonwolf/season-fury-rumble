@@ -792,7 +792,7 @@ const CHARACTERS = {
   nyx: { id: 'nyx', label: 'BOMB', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
   helios: { id: 'helios', label: 'MARCH', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
   alecto: { id: 'alecto', label: 'KUNJAE', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
-    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP },
+    skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP, runLow: 72 },
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
   // ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกเกราะได้จริง ก่อนจะลงทุนเจนอาร์ต ~59 ท่า
   atlas: { id: 'atlas', label: 'TEEMEE', moves: ATLAS_MOVES, skills: ATLAS_SKILLS,
@@ -929,7 +929,28 @@ class Fighter {
   get h() {
     const low = this.state === 'crouch' || this.state === 'blockcrouch' || (this.state === 'blockstun' && this.lowStun)
       || (this.move && this.move.crouch) || this.state === 'knockdown' || this.state === 'techroll';
-    return low ? PHYS.crouchH : PHYS.standH;
+    if (low) return PHYS.crouchH;
+    /* `runLow` = ตัวที่ "วิ่งย่อ" จริง ๆ ตามอาร์ต กรอบเตี้ยลงเฉพาะตอนวิ่งเต็มสปีด
+     *
+     * ใส่ให้ KUNJAE เพราะคลิปวิ่งของเธอโน้มตัวต่ำกว่าคนอื่นชัด ๆ — วัดจากอัตลาสจริง
+     * ยืน 238 px · วิ่ง 180 px (76%) · เทียบ MARCH 99% และ DEAR 95%
+     * เธอวิ่งเตี้ยกว่า "ท่าย่อ" ของตัวเอง (206) เสียอีก กรอบยืนเต็มจึงไม่ตรงกับสิ่งที่เห็น
+     *
+     * **ทำไมไม่ใช่ `crouchH` (88) ซึ่งตรงกับอาร์ตเป๊ะ** — วัดแล้วมัน**ไม่หลบอะไรเลยสักท่า**
+     * ขอบล่างของกรอบโจมตีที่สูงที่สุดในเกมอยู่ที่ 76 px เหนือเท้า (`sky2` ของ MARCH)
+     * กรอบสูง 88 จึงกินทุกท่าเหมือนเดิมทั้ง 88 ท่า = เปลี่ยนตัวเลขไปก็ไม่มีผลต่อการเล่น
+     * (ข้อนี้แปลว่า **ท่าย่อในเกมนี้ก็หลบอะไรไม่ได้เลยเหมือนกัน** — คนละเรื่อง ยังไม่แตะ)
+     *
+     * 72 คือค่าที่ "มีผลจริงแต่ไม่ล้นมือ": หลบได้ 7 จาก 88 ท่า ซึ่งเป็นไม้กดดันเร็ว ๆ พอดี
+     * (jab1/jab2/rush1/rush2 ของ MARCH · jab1 ของ OAT · sky2/rush4) ลงไปถึง 60 จะหลบ 29 ท่า
+     * ซึ่งมากเกินไป แลกกับการโกงสายตาราว 17 px (อาร์ตตรงกับ 89) ซึ่งรับได้
+     *
+     * ต้องกดวิ่งค้างและเคลื่อนที่อยู่เท่านั้น — ตีหรือกันเมื่อไหร่ state เปลี่ยน กรอบกลับมาเต็ม
+     * จึงเป็น "ทางหนี" ไม่ใช่ "ท่ายืนกินฟรี"
+     */
+    const rl = CHARACTERS[this.char]?.runLow;
+    if (rl && this.state === 'run') return rl;
+    return PHYS.standH;
   }
   hurtbox() { const w = PHYS.width; return { x: this.x - w / 2, y: this.y - this.h, w, h: this.h }; }
   hitbox() {

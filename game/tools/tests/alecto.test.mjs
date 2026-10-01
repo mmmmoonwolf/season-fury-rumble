@@ -222,3 +222,56 @@ const press = (k) => (i) => (i < 2 ? inp({ [k]: 1, p: { [k]: 1 } }) : inp());
   ok(/f\.move\.snapBack/.test(scene) && /i === 3 && f\.move\.snapBack/.test(scene),
     "ตัวเลือกเฟรมของฝั่งวาดอ่าน snapBack จริง (ไม่ใช่ตั้งไว้เฉย ๆ)");
 }
+
+// ── วิ่งย่อ: กรอบเตี้ยลงตอนวิ่งเต็มสปีด ───────────────────────────────────
+//
+// คลิปวิ่งของเธอโน้มตัวต่ำกว่าคนอื่นชัด (วัดจากอัตลาส: ยืน 238 วิ่ง 180 = 76%
+// ขณะที่ MARCH 99% · DEAR 95%) แต่กรอบยังสูงเต็มเหมือนยืน
+//
+// **ข้อสำคัญ: ใช้ `crouchH` (88) ไม่ได้ ถึงมันจะตรงกับอาร์ตเป๊ะ** เพราะขอบล่าง
+// ของกรอบโจมตีที่สูงที่สุดทั้งเกมอยู่ที่ 76 px เหนือเท้า กรอบ 88 จึงไม่หลบอะไรเลย
+// เทสต์ข้อแรกล็อกข้อเท็จจริงนี้ไว้ ถ้าวันหลังมีใครตั้ง runLow กลับไปที่ 88 จะแดงทันที
+{
+  const hi = Math.max(...Object.values(CHARACTERS)
+    .flatMap((c) => Object.values(c.moves))
+    .filter((m) => !m.noHit && m.hb?.h)
+    .map((m) => -(m.hb.y + m.hb.h)));
+  const rl = CHARACTERS.alecto.runLow;
+  ok(rl > 0 && rl < hi, `กรอบตอนวิ่ง (${rl}) ต่ำกว่าขอบล่างของท่าที่ตีสูงสุด (${hi}) จึงหลบได้จริง`);
+  ok(rl >= 60, `แต่ไม่ต่ำเกินไป (${rl}) — ที่ 60 จะหลบได้ 29 จาก 88 ท่า ซึ่งมากเกินไป`);
+}
+
+// ── วิ่งลอดใต้ไม้กดดันของ MARCH ได้จริง แต่ยืนเฉย ๆ กินเต็ม ─────────────────
+//
+// **เธอต้องวิ่ง *เข้าหา* เขา ไม่ใช่วิ่งหนี** — ถ้าให้วิ่งหนี เทสต์จะเขียวเพราะเธอ
+// ออกนอกระยะ ไม่ใช่เพราะกรอบเตี้ยลง ซึ่งเป็นการพิสูจน์ผิดตัวทั้งที่ตัวเลขดูดี
+// วิ่งเข้าหาแปลว่าเธออยู่ในระยะแน่นอน เหลือเหตุผลเดียวที่จะไม่โดนคือกรอบลอดใต้กรอบตี
+{
+  const hitsWhile = (running) => {
+    const g = new Game(); g.p1.char = 'helios'; g.p2.char = 'alecto';
+    g.resetPositions(); g.p1.x = g.p2.x - 70;
+    const hp0 = g.p2.hp;
+    let nearest = 999;
+    for (let i = 0; i < 40; i++) {
+      const her = running ? inp({ left: 1, run: 1 }) : inp();   // left = เข้าหาเขา
+      g.step(i < 2 ? inp({ attack: 1, p: { attack: 1 } }) : inp(), her);
+      nearest = Math.min(nearest, Math.abs(g.p2.x - g.p1.x));
+    }
+    return { dmg: hp0 - g.p2.hp, nearest: Math.round(nearest) };
+  };
+  const still = hitsWhile(false), low = hitsWhile(true);
+  ok(still.dmg > 0, `ยืนเฉย ๆ โดน jab ของ MARCH เต็ม (${still.dmg})`);
+  ok(low.nearest <= still.nearest,
+    `ตอนวิ่งเธอเข้าใกล้กว่าตอนยืน (${low.nearest} vs ${still.nearest}) — อยู่ในระยะแน่นอน`);
+  ok(low.dmg === 0, `แต่กรอบลอดใต้ jab ไปได้ ไม่โดนเลย (${low.dmg})`);
+}
+
+// ── แต่พอหยุดตี/หยุดกัน กรอบต้องกลับมาเต็มทันที — ไม่ใช่ท่ายืนกินฟรี ──
+{
+  const g = new Game(); g.p1.char = 'helios'; g.p2.char = 'alecto'; g.resetPositions();
+  run(g, 6, () => inp(), () => inp({ right: 1, run: 1 }));
+  const low = g.p2.h;
+  run(g, 6, () => inp(), () => inp({ right: 1, run: 1, attack: 1, p: { attack: 1 } }));
+  ok(low === CHARACTERS.alecto.runLow, `กำลังวิ่ง กรอบเตี้ย (${low})`);
+  ok(g.p2.h > low, `พอออกท่าตี กรอบกลับมาเต็มทันที (${g.p2.h})`);
+}
