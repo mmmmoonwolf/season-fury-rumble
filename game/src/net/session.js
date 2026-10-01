@@ -132,6 +132,13 @@ function wireConnection(conn) {
   session.conn ??= conn;
   conn.on("data", (packet) => {
     // ที่นั่งเป็นข้อมูลของชั้นท่อ ไม่ใช่ของเกม — กินตรงนี้ ไม่ส่งต่อให้ฉาก
+    // "เต็มแล้ว" เป็นข้อมูลของชั้นท่อเหมือนที่นั่ง ไม่ใช่ของเกม — กินตรงนี้ ไม่ส่งต่อให้ฉาก
+    if (packet?.t === "full" && session.mode === "guest") {
+      const full = session._onFull;
+      session._onFull = null;
+      full?.();
+      return;
+    }
     if (packet?.t === "seat" && session.mode === "guest") {
       session.seat = packet.seat;
       session.seats = packet.seats;
@@ -196,7 +203,7 @@ function describePeerError(err) {
  * รับเฉพาะผู้เข้าร่วมคนแรกที่ต่อเข้ามา (เกม 1v1 — ปฏิเสธคนที่ 3)
  * @param {{onCodeReady?:(code:string)=>void, onConnected?:()=>void, onError?:(msg:string)=>void}} handlers
  */
-export function hostRoom({ seats = 2, onCodeReady, onConnected, onError } = {}) {
+export function hostRoom({ seats = 2, code: fixed = null, onCodeReady, onConnected, onError, onTaken } = {}) {
   session.mode = "host";
   session.seat = 0;
   session.seats = Math.max(2, Math.min(MAX_SEATS, seats | 0));
@@ -208,7 +215,8 @@ export function hostRoom({ seats = 2, onCodeReady, onConnected, onError } = {}) 
 
   const tryCreate = () => {
     attempt += 1;
-    const code = randomRoomCode();
+    // รหัสที่กำหนดมาใช้สำหรับ "ห้องสาธารณะ" ที่รหัสต้องเดาได้ (ดู quickMatch)
+    const code = fixed ?? randomRoomCode();
     const peer = new window.Peer(PEER_ID_PREFIX + code);
     session.peer = peer;
     session.roomCode = code;
@@ -220,7 +228,9 @@ export function hostRoom({ seats = 2, onCodeReady, onConnected, onError } = {}) 
 
     peer.on("connection", (conn) => {
       if (session.conns.length >= session.seats - 1) {
-        conn.close(); // ห้องเต็มแล้ว — ที่นั่งมีเท่าที่เจ้าของห้องตั้งไว้ตอนสร้าง
+        // **ต้องบอกก่อนปิด** ไม่งั้นอีกฝั่งแยกไม่ออกระหว่าง "เต็มแล้ว" กับ "ต่อไม่ติด"
+        // ซึ่งเป็นคนละเรื่องกันสิ้นเชิงสำหรับคนที่กำลังไล่หาห้องว่างอยู่ (ดู quickMatch)
+        conn.on("open", () => { safeSend(conn, { t: "full" }); setTimeout(() => conn.close(), 60); });
         return;
       }
       // ที่นั่งแจกตามลำดับที่ต่อเข้ามา เจ้าของห้องนั่ง 0 แขกคนแรกนั่ง 1 ไล่ไป
@@ -235,10 +245,12 @@ export function hostRoom({ seats = 2, onCodeReady, onConnected, onError } = {}) 
     });
 
     peer.on("error", (err) => {
-      if (err?.type === "unavailable-id" && attempt < HOST_ID_RETRY_MAX) {
+      if (err?.type === "unavailable-id") {
         peer.destroy();
-        tryCreate();
-        return;
+        // รหัสที่กำหนดมา ชนซ้ำ = **มีคนจองห้องนั้นไปแล้ว** ไม่ใช่ความซวยของการสุ่ม
+        // สุ่มรหัสใหม่ไม่ช่วยอะไร เพราะเราตั้งใจจะไปอยู่ห้องนั้นพอดี ต้องเปลี่ยนไปเป็นแขกแทน
+        if (fixed) { onTaken?.(fixed); return; }
+        if (attempt < HOST_ID_RETRY_MAX) { tryCreate(); return; }
       }
       clearTimeout(openTimer);
       onError?.(describePeerError(err));
@@ -248,6 +260,8 @@ export function hostRoom({ seats = 2, onCodeReady, onConnected, onError } = {}) 
   tryCreate();
 }
 
+const FULL_MSG = "ห้องนี้เต็มแล้ว";
+
 const SEAT_MSG = "ต่อห้องติดแล้วแต่เจ้าของห้องไม่ตอบว่าให้นั่งที่ไหน — "
   + "ให้เพื่อนรีเฟรชหน้าเว็บแล้วสร้างห้องใหม่ (หน้าเว็บของเขาน่าจะเป็นเวอร์ชันเก่า)";
 
@@ -256,7 +270,10 @@ const SEAT_MSG = "ต่อห้องติดแล้วแต่เจ้�
  * @param {string} code
  * @param {{onConnected?:()=>void, onError?:(msg:string)=>void}} handlers
  */
-export function joinRoom(code, { onConnected, onError } = {}) {
+/** `tries` = **ลองทั้งหมดกี่ครั้ง** ไม่ใช่ลองซ้ำกี่ครั้ง — 1 คือยิงครั้งเดียวแล้วจบ
+ *  (ตอนไล่หาห้องสาธารณะต้องเป็น 1 เพราะ "ไม่เจอ" คือคำตอบที่เราอยากได้ ไม่ใช่ความล้มเหลว) */
+export function joinRoom(code, { onConnected, onError, onEmpty, onFull,
+                                 timeoutMs = SIGNAL_TIMEOUT_MS, tries: retries = JOIN_RETRY_MAX } = {}) {
   // ตรวจตัวอักษรก่อนยิงออกเน็ต — รหัสห้องไม่เคยมี 0 O 1 I เพราะตัดออกตั้งแต่ตอนสุ่ม
   // ถ้าพิมพ์มาแล้วมีตัวพวกนี้ แปลว่าอ่านผิดแน่นอน บอกตรง ๆ ดีกว่าปล่อยไปได้ "ไม่พบห้องนี้"
   // ซึ่งชวนให้คิดว่าเพื่อนปิดห้องไปแล้ว
@@ -274,6 +291,7 @@ export function joinRoom(code, { onConnected, onError } = {}) {
   session.seats = 2;
   session.seatKnown = false;
   session._onSeat = null;
+  session._onFull = null;
   const peer = new window.Peer();
   session.peer = peer;
 
@@ -285,7 +303,7 @@ export function joinRoom(code, { onConnected, onError } = {}) {
     done = true;
     // ต่อติดแล้วแต่ไม่ได้ที่นั่ง เป็นคนละอาการกับเซิร์ฟเวอร์ไม่ตอบ — บอกให้ตรงกับที่เกิดจริง
     onError?.(opened ? SEAT_MSG : TIMEOUT_MSG);
-  }, SIGNAL_TIMEOUT_MS);
+  }, timeoutMs);
   const settle = (fn) => (...a) => { if (done) return; done = true; clearTimeout(timer); fn?.(...a); };
 
   let tries = 0;
@@ -302,6 +320,10 @@ export function joinRoom(code, { onConnected, onError } = {}) {
     // เพิ่มนาฬิกาตัวที่สองแปลว่ามีระเบิดเวลาอีกลูกที่ต้องจำว่าต้องยกเลิกตรงไหนบ้าง
     conn.on("open", () => { opened = true; });
     session._onSeat = settle(() => onConnected?.());
+    // ห้องเต็ม: เจ้าของห้องบอกมาตรง ๆ (บิลด์ใหม่) หรือปิดสายเงียบ ๆ ก่อนแจกที่นั่ง (บิลด์เก่า)
+    // สองทางนี้แปลว่าอย่างเดียวกันสำหรับคนที่กำลังหาห้องว่าง จึงลงปลายทางเดียวกัน
+    session._onFull = settle(() => (onFull ?? onError)?.(FULL_MSG));
+    conn.on("close", () => { if (!done) settle(() => (onFull ?? onError)?.(FULL_MSG))(); });
     conn.on("error", settle((err) => onError?.(describePeerError(err))));
   };
 
@@ -309,16 +331,131 @@ export function joinRoom(code, { onConnected, onError } = {}) {
 
   peer.on("error", (err) => {
     // หาห้องไม่เจอ = อาจเป็นเรื่องของเซิร์ฟเวอร์ ไม่ใช่เรื่องของห้อง ลองถามใหม่อีกที
-    if (err?.type === "peer-unavailable" && tries < JOIN_RETRY_MAX && !done) {
+    if (err?.type === "peer-unavailable" && tries < retries && !done) {
       setTimeout(attempt, JOIN_RETRY_MS);
       return;
     }
+    // "ไม่มีห้องนี้" เป็นคำตอบที่ใช้ได้ ไม่ใช่ความผิดพลาด สำหรับคนที่กำลังหาห้องว่างมาเปิดเอง
+    if (err?.type === "peer-unavailable" && onEmpty) { settle(() => onEmpty())(); return; }
     settle(() => onError?.(describePeerError(err)))();
   });
 }
 
+/** ห้องสาธารณะมีกี่ช่อง — ไล่จากช่องแรกเสมอ คนจึงมากองรวมกันที่ช่องต้น ๆ แล้วเจอกันเร็ว
+ *  ช่องเยอะเกินไปทำให้คนกระจายจนไม่เจอกัน และทำให้รอบที่ "เต็มทุกช่อง" ใช้เวลานานขึ้นเปล่า ๆ */
+const QUICK_SLOTS = 6;
+
+/** เวลารอต่อหนึ่งช่องตอนไล่หา — สั้นกว่าปกติมาก เพราะคำตอบที่เราต้องการคือ
+ *  "มีห้องนี้ไหม" ซึ่งเซิร์ฟเวอร์ตอบได้ในรอบเดียว ไม่ใช่ "ต่อให้ติด" */
+const QUICK_TIMEOUT_MS = 6000;
+
+/**
+ * รหัสของห้องสาธารณะ — **ต้องเดาได้ตรงกันทุกเครื่องโดยไม่ต้องคุยกัน**
+ *
+ * เราไม่มีเซิร์ฟเวอร์ของตัวเอง จึงไม่มีใครเก็บ "รายชื่อห้องที่เปิดอยู่" ให้
+ * ทางเดียวที่คนสองคนจะเจอกันโดยไม่ต้องส่งรหัสให้กันคือ **ตกลงรหัสกันไว้ล่วงหน้าในโค้ด**
+ * แล้วทุกเครื่องไล่ลองรหัสชุดเดียวกันตามลำดับเดียวกัน
+ *
+ * ยังอยู่ในชุดตัวอักษรของรหัสห้องปกติและยาว 5 ตัวเท่ากัน คนเล่นจึงพิมพ์ตามได้ด้วย
+ * ถ้าอยากชวนเพื่อนเข้าห้องสาธารณะห้องเดียวกันเป๊ะ ๆ
+ */
+export function quickCodes(seats) {
+  return Array.from({ length: QUICK_SLOTS }, (_, i) => `Q${seats > 2 ? 4 : 2}XX${"ABCDEFGH"[i]}`);
+}
+
+const ALL_FULL_MSG = "ห้องสาธารณะเต็มหมดทุกห้องตอนนี้ — ลองใหม่อีกที "
+  + "หรือใช้ \"ห้องส่วนตัว\" ชวนเพื่อนด้วยรหัส";
+
+/** ทิ้ง peer ของรอบที่แล้วก่อนเริ่มรอบใหม่ — ไม่ทิ้งแล้วมันค้างกินสายอยู่เบื้องหลัง
+ *  และยังตอบ event ของรอบเก่าเข้ามาปนกับรอบใหม่ได้ */
+function dropPeer() {
+  for (const c of session.conns) c?.close();
+  session.peer?.destroy();
+  session.peer = null;
+  session.conn = null;
+  session.conns = [];
+  session._onSeat = null;
+  session._onFull = null;
+  session._pending = [];
+}
+
+/**
+ * เข้าเกมเลย ไม่ต้องกรอกรหัส — ไล่ห้องสาธารณะทีละช่องจนกว่าจะได้ที่นั่ง
+ *
+ * ทำไมต้องไล่ ไม่ใช่ถามเซิร์ฟเวอร์ว่าห้องไหนว่าง: เราไม่มีเซิร์ฟเวอร์ (ดู quickCodes)
+ * PeerJS cloud ให้ได้แค่ "ไอดีนี้มีคนจองอยู่ไหม" ซึ่งพอดีกับที่ต้องการ
+ *
+ * ทางเดินของแต่ละช่อง:
+ *   ต่อติดและได้ที่นั่ง  -> จบ เข้าเกม
+ *   เจ้าของห้องบอกเต็ม   -> ช่องถัดไป
+ *   ไม่มีห้องนี้         -> **เปิดห้องนั้นเองแล้วรอ** คนถัดไปที่กดจะมาเจอเรา
+ *   รหัสถูกจองไปก่อน    -> มีคนชิงเปิดพร้อมกันเสี้ยววินาที เข้าไปเป็นแขกของเขาแทน
+ *
+ * จังหวะชิงกันเปิดห้องพร้อมกันคือเคสที่ต้องคิดให้ครบ ไม่ใช่เคสหายาก:
+ * สองคนกดพร้อมกันย่อมเห็นช่องแรกว่างเหมือนกันทั้งคู่ PeerJS ให้คนเดียวชนะ
+ * คนแพ้ได้ unavailable-id กลับมา ซึ่ง **แปลว่าเจอคนแล้ว** ไม่ใช่ความผิดพลาด
+ */
+export function quickMatch({ seats = 2, onStatus, onHosting, onConnected, onError } = {}) {
+  const codes = quickCodes(seats);
+  const flag = (session._quick = { cancelled: false });
+  const live = () => !flag.cancelled;
+  let i = 0;
+
+  const next = () => {
+    if (!live()) return;
+    if (i >= codes.length) { onError?.(ALL_FULL_MSG); return; }
+    const code = codes[i++];
+    onStatus?.(`กำลังหาห้อง... (${i}/${codes.length})`);
+    dropPeer();
+    joinRoom(code, {
+      timeoutMs: QUICK_TIMEOUT_MS,
+      // ยิงครั้งเดียว ไม่ลองซ้ำ — ที่นี่ "ไม่เจอ" เป็นคำตอบที่เราอยากได้ ไม่ใช่ความล้มเหลว
+      // และถ้าเป็นการไม่เจอแบบหลอก (เซิร์ฟเวอร์คนละเครื่องยังไม่รู้จักชื่อ) เราจะไปเปิดห้องนั้น
+      // แล้วโดน unavailable-id กลับมา ซึ่งพาเราไปเป็นแขกของห้องนั้นอยู่ดี — หายเองทั้งสองทาง
+      tries: 1,
+      onConnected: () => { if (live()) onConnected?.(); },
+      onFull: next,
+      onEmpty: () => claim(code),
+      onError: next,          // ช่องนี้มีปัญหาก็ข้ามไป ครบทุกช่องแล้วค่อยบอกว่าไม่ไหวจริง
+    });
+  };
+
+  const claim = (code) => {
+    if (!live()) return;
+    dropPeer();
+    hostRoom({
+      seats,
+      code,
+      onCodeReady: () => { if (live()) onHosting?.(code); },
+      onConnected: (here, total) => { if (live()) onConnected?.(here, total); },
+      onTaken: () => {
+        // มีคนเปิดห้องนี้ตัดหน้าไปเสี้ยววินาที — เข้าไปเป็นแขกของเขา **ไม่ใช่ไปหาช่องอื่น**
+        //
+        // ไปหาช่องอื่นคือความผิดพลาดที่อ่านไม่ออกเลยจากฝั่งคนเล่น: สองคนที่กดพร้อมกัน
+        // จะแยกย้ายไปเปิดห้องคนละห้อง แล้วนั่งรอกันคนละที่ตลอดกาล ทั้งที่กดหากันอยู่พอดี
+        // (เจอมาแล้วตอนลองสี่แท็บพร้อมกัน — ต่างกันแค่เสี้ยววินาทีก็ไม่เจอกันเลย)
+        //
+        // และ "ห้องนี้ไม่มี" ที่ได้กลับมาตอนนี้ **เชื่อไม่ได้** เพราะเพิ่งโดนบอกว่ารหัสนี้มีคนจอง
+        // (เซิร์ฟเวอร์ฟรีของ PeerJS เป็นหลายเครื่องหลังตัวกระจายโหลด เครื่องที่เราถามอาจยังไม่รู้จักชื่อนี้
+        //  — เหตุผลเดียวกับที่ JOIN_RETRY_MAX มีอยู่) จึงถามซ้ำที่ช่องเดิมก่อน ไม่ใช่ย้ายช่องทันที
+        if (!live()) return;
+        dropPeer();
+        joinRoom(code, { timeoutMs: QUICK_TIMEOUT_MS, tries: JOIN_RETRY_MAX,
+          onConnected: () => { if (live()) onConnected?.(); },
+          onFull: next, onEmpty: next, onError: next });
+      },
+      onError: (msg) => { if (live()) onError?.(msg); },
+    });
+  };
+
+  next();
+}
+
 /** ยกเลิก/เคลียร์ห้องปัจจุบัน — ใช้ตอนกดย้อนกลับจากล็อบบี้ ก่อนเริ่มเกมจริง (กลับไปเป็น offline) */
 export function cancelSession() {
+  // หยุดการไล่หาห้องที่ค้างอยู่ด้วย ไม่งั้นมันจะเด้งเข้าเกมทีหลังทั้งที่คนกดย้อนกลับไปแล้ว
+  if (session._quick) session._quick.cancelled = true;
+  session._quick = null;
   for (const c of session.conns) c?.close();
   session.peer?.destroy();
   session.mode = "offline";
@@ -329,6 +466,7 @@ export function cancelSession() {
   session.seats = 2;
   session.seatKnown = false;
   session._onSeat = null;
+  session._onFull = null;
   session.roomCode = null;
   session._pending = [];
   session.onData = null;

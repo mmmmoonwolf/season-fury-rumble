@@ -330,3 +330,42 @@ const { ScrambleScene, tuneSnapshot, applyTune } = await import(G + "/ScrambleSc
   ok(two.mySeat() === 1, "แขกของห้องสองคนนั่งที่ 1");
   ok(two.net.seats === 2, "และคิวอินพุตเป็นสองที่นั่ง");
 }
+
+// ══ หน่วงอินพุตต้องถูก "ต่อสาย" จริง ไม่ใช่แค่มีค่าคงที่อยู่ในไฟล์ ═══════════════
+//
+// delayFor() ถูกต้องแค่ไหนก็ไม่มีความหมาย ถ้า startNet ไม่ได้เอาไปใช้
+// และ noteTick() จะไม่มีวันถอยหน่วงให้เลย ถ้า tickNet ไม่ได้เรียกมันทุกติ๊ก
+// ทั้งสองอย่างนี้ "ลืมต่อสาย" ได้โดยที่เทสต์ของ netplay.js เขียวหมดทุกข้อ
+{
+  const { Game } = await import(G + "/core.js");
+  const { delayFor, NET_DELAY } = await import(G + "/netplay.js");
+
+  const mk = (seat, seats) => {
+    const sc = {
+      sim: new Game(), versus: null, phase: null, selSide: null, myReady: false,
+      out: [], _drawSelect() {}, _syncSkillSlots() {}, _syncMatchHud() {}, syncTools() {},
+    };
+    for (const m of ["startNet", "openSelect", "mySeat", "netReceive", "_fromSeat", "_notReady"])
+      sc[m] = ScrambleScene.prototype[m];
+    sc.startNet({ isHost: seat === 0, seat, seats, send: (pk) => sc.out.push(pk) });
+    return sc;
+  };
+
+  const two = mk(1, 2), four = mk(2, 4);
+  ok(two.net.delay === delayFor(2), `ห้องสองคนเริ่มที่หน่วงเดิม (${two.net.delay})`);
+  ok(four.net.delay === delayFor(4),
+    `ห้องสี่คนเริ่มที่หน่วงของท่อสองต่อ ไม่ใช่ ${NET_DELAY} เหมือนห้องสองคน (${four.net.delay})`);
+
+  // ── tickNet ต้องรายงานผลทุกติ๊กให้คิว ไม่งั้นถอยหน่วงเองไม่มีวันทำงาน ──
+  const seen = [];
+  const sc = {
+    net: { delay: 6, pushLocal: () => 1, ready: () => false, behind: 0,
+           noteTick: (n) => seen.push(n) },
+    sim: { step() {} }, _simEvents() {}, netWait: 0,
+    tickNet: ScrambleScene.prototype.tickNet,
+  };
+  globalThis.document = globalThis.document ?? { body: { classList: { toggle() {}, add() {}, remove() {} } } };
+  for (let i = 0; i < 3; i++) sc.tickNet();
+  ok(seen.length === 3, `tickNet บอกผลให้คิวทุกติ๊ก (${seen.length}/3)`);
+  ok(seen.every((n) => n === 0), "และบอกตามจริงว่าติ๊กนั้นเดินซิมไม่ได้เลย");
+}

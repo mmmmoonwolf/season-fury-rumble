@@ -227,10 +227,24 @@
       <h1>Season Fury Rumble</h1>
 
       <div id="lobby-menu" class="lobby-panel">
-        <button id="btn-solo" class="lobby-btn lobby-btn-primary" data-sfx="start">เล่นคนเดียว</button>
+        <button id="btn-quick4" class="lobby-btn lobby-btn-primary" data-seats="4" data-sfx="start">เข้าเกมเลย — 2v2 (4 คน)</button>
+        <button id="btn-quick2" class="lobby-btn" data-seats="2" data-sfx="start">เข้าเกมเลย — 1v1</button>
+        <button id="btn-solo" class="lobby-btn">เล่นคนเดียว</button>
+        <button id="btn-private" class="lobby-btn lobby-btn-secondary">ห้องส่วนตัว (ใช้รหัส)</button>
+      </div>
+
+      <div id="lobby-private" class="lobby-panel" hidden>
         <button id="btn-host" class="lobby-btn" data-seats="2">สร้างห้อง 1v1</button>
         <button id="btn-host4" class="lobby-btn" data-seats="4">สร้างห้อง 2v2 (4 คน)</button>
-        <button id="btn-join" class="lobby-btn">เข้าร่วมห้อง</button>
+        <button id="btn-join" class="lobby-btn">เข้าร่วมด้วยรหัส</button>
+        <button class="lobby-btn lobby-btn-secondary" id="btn-private-back" data-sfx="back">ย้อนกลับ</button>
+      </div>
+
+      <div id="lobby-quick" class="lobby-panel" hidden>
+        <p class="lobby-status" id="quick-status">กำลังหาห้อง...</p>
+        <div class="spinner" id="quick-spinner"></div>
+        <p class="lobby-hint" id="quick-hint"></p>
+        <button class="lobby-btn lobby-btn-secondary" id="btn-quick-back" data-sfx="back">ย้อนกลับ</button>
       </div>
 
       <div id="lobby-host" class="lobby-panel" hidden>
@@ -329,7 +343,7 @@
   <script type="module">
     import { ScrambleScene } from "./src/modes/scramble/ScrambleScene.js";
     import { GAME_HEIGHT, gameWidthFor } from "./src/config/viewport.config.js";
-    import { hostRoom, joinRoom, cancelSession, getSession,
+    import { hostRoom, joinRoom, quickMatch, cancelSession, getSession,
              normalizeRoomCode, ROOM_CODE_LEN } from "./src/net/session.js";
     import { wireUiSfx, unlockUiSfx } from "./src/ui/uisfx.js";
     import { onQuitToLobby, copyText } from "./src/ui/shell.js";
@@ -418,7 +432,8 @@
     }
 
     const $ = (id) => document.getElementById(id);
-    const panels = { menu: $("lobby-menu"), host: $("lobby-host"), join: $("lobby-join") };
+    const panels = { menu: $("lobby-menu"), private: $("lobby-private"),
+                     quick: $("lobby-quick"), host: $("lobby-host"), join: $("lobby-join") };
     const showPanel = (name) => {
       for (const [k, el] of Object.entries(panels)) el.hidden = k !== name;
       $("lobby-error").hidden = true;
@@ -448,6 +463,49 @@
     });
 
     $("btn-solo").addEventListener("click", startGame);
+
+    /* ── เข้าเกมเลย: ไม่ต้องกรอกรหัส ไม่ต้องส่งรหัสให้ใคร ──
+     *
+     *  เกมนี้ไม่มีเซิร์ฟเวอร์ของตัวเอง จึงไม่มีรายชื่อห้องให้เลือก (ดู quickMatch ใน session.js)
+     *  วิธีที่ใช้คือตกลงรหัสห้องสาธารณะไว้ล่วงหน้าในโค้ด แล้วทุกเครื่องไล่ลองตามลำดับเดียวกัน
+     *  ใครมาก่อนเปิดห้องรอ ใครมาทีหลังเจอแล้วเข้าไปนั่ง พอครบที่นั่งก็เข้าเกมเอง
+     *
+     *  สิ่งที่วิธีนี้ทำไม่ได้ และต้องบอกคนเล่นตรง ๆ: เราไม่รู้ว่ามีใครรออยู่หรือเปล่า
+     *  จนกว่าจะลองต่อจริง "ไม่เจอใคร" จึงแปลว่า "ตอนนี้ยังไม่มีใครกด" ไม่ใช่เกมพัง */
+    const openQuick = (seats) => {
+      showPanel("quick");
+      $("quick-status").textContent = "กำลังหาห้อง...";
+      $("quick-spinner").hidden = false;
+      $("quick-hint").textContent = seats > 2 ? "ห้องนี้เล่น 4 คน — ครบเมื่อไหร่เข้าเกมทันที"
+        : "ครบสองคนเมื่อไหร่เข้าเกมทันที";
+      quickMatch({
+        seats,
+        onStatus: (msg) => { $("quick-status").textContent = msg; },
+        // เปิดห้องเองแล้ว = จากนี้ไปคือ "รอคน" ไม่ใช่ "หาห้อง" อีกต่อไป ต้องเปลี่ยนคำให้ตรง
+        // ไม่งั้นคนเล่นเห็น "กำลังหาห้อง..." ค้างอยู่ แล้วคิดว่าค้างทั้งที่มันรออยู่ถูกแล้ว
+        onHosting: (code) => {
+          $("quick-status").textContent = "เปิดห้องรอเพื่อนอยู่ — ใครกดเข้าเกมเลยจะมาเจอคุณ";
+          $("quick-hint").textContent = `ชวนเพื่อนตรง ๆ ก็ได้ บอกรหัส ${code} ให้เขาพิมพ์ในห้องส่วนตัว`;
+        },
+        onConnected: (here, total) => {
+          // แขกไม่รู้จำนวน จึงไม่ส่งตัวเลขมา — มาถึงตรงนี้แปลว่าได้ที่นั่งแล้ว เข้าได้เลย
+          if (here != null && here < total) {
+            $("quick-status").textContent = `เข้ามาแล้ว ${here}/${total} คน — รออีก ${total - here}`;
+            return;
+          }
+          $("quick-status").textContent = "ครบแล้ว! กำลังเริ่มเกม...";
+          $("quick-spinner").hidden = true;
+          setTimeout(startGame, 250);
+        },
+        onError: (msg) => { cancelSession(); showPanel("menu"); showError(msg); },
+      });
+    };
+    for (const id of ["btn-quick2", "btn-quick4"])
+      $(id).addEventListener("click", () => openQuick(Number($(id).dataset.seats)));
+    $("btn-quick-back").addEventListener("click", () => { cancelSession(); showPanel("menu"); });
+
+    $("btn-private").addEventListener("click", () => showPanel("private"));
+    $("btn-private-back").addEventListener("click", () => showPanel("menu"));
 
     /* สร้างห้อง — ปุ่มเดียวกันทั้ง 1v1 และ 2v2 ต่างกันแค่จำนวนที่นั่งบนปุ่ม
      *
@@ -485,7 +543,7 @@
     };
     for (const id of ["btn-host", "btn-host4"])
       $(id).addEventListener("click", () => openHostPanel(Number($(id).dataset.seats)));
-    $("btn-host-back").addEventListener("click", () => { cancelSession(); showPanel("menu"); });
+    $("btn-host-back").addEventListener("click", () => { cancelSession(); showPanel("private"); });
 
     $("btn-join").addEventListener("click", () => {
       showPanel("join");
@@ -493,7 +551,7 @@
       const i = $("join-code-input"); i.value = ""; i.focus();
       syncJoinInput();          // ช่องว่าง = ปุ่มเชื่อมต่อปิดไว้ตั้งแต่เข้าหน้า
     });
-    $("btn-join-back").addEventListener("click", () => { cancelSession(); showPanel("menu"); });
+    $("btn-join-back").addEventListener("click", () => { cancelSession(); showPanel("private"); });
 
     /** กรองช่องกรอกสด ๆ ตอนพิมพ์ แล้วเปิด/ปิดปุ่มเชื่อมต่อตามความครบ
      *

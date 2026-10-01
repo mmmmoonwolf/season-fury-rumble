@@ -1,7 +1,7 @@
 import { wireUiSfx } from "../../ui/uisfx.js";
 import { quitToLobby } from "../../ui/shell.js";
 import { STAGE, STAGE_BASE_W, setStageWidth, PHYS, MOVES, SKILLS, SKILL_CD, KI_MAX, ROUND_BARS, CHARACTERS, Game } from "./core.js";
-import { Lockstep, packInput, HELD_MASK, PRESS_MASK } from "./netplay.js";
+import { Lockstep, packInput, HELD_MASK, PRESS_MASK, delayFor } from "./netplay.js";
 import { getSession, sendNetPacket } from "../../net/session.js";
 
 /**
@@ -2716,7 +2716,9 @@ class ScrambleScene extends Phaser.Scene {
     // ต้องสร้าง Lockstep ตั้งแต่ตอนนี้ ไม่ใช่ตอนเริ่มแมตช์
     // อีกฝั่งอาจกดพร้อมและเริ่มยิงอินพุตก่อนเราจะเลือกตัวเสร็จ ถ้ายังไม่มีที่รับ แพ็คเก็ตพวกนั้นหาย
     // แล้วค้างรอเฟรมที่ไม่มีวันมาถึง (บั๊กเดียวกับตอนที่ฉากโหลดช้ากว่าอีกฝั่ง)
-    this.net = new Lockstep(send, { seat, seats });
+    // หน่วงตั้งต้นคิดจากรูปของท่อ ไม่ใช่ค่าเดียวทั้งเกม — ห้องสี่คนแขกถึงแขกเดินสองต่อ
+    // (ตั้ง 3 เท่ากันหมดแล้วห้องสี่คนเดินได้ 57% ของความเร็วจริงบนเน็ตบ้านปกติ — ดู delayFor)
+    this.net = new Lockstep(send, { seat, seats, delay: delayFor(seats) });
     this.netSend = send;
     this.picks = {};
     this.readyBy = {};
@@ -2819,6 +2821,9 @@ class ScrambleScene extends Phaser.Scene {
     // ค้างเพราะรออีกฝั่งเป็นเรื่องปกติของ lockstep (เน็ตกระตุกแป๊บเดียวก็ค้างแล้ว)
     // แต่ถ้าค้างนานกว่าครึ่งวินาทีต้องบอกผู้เล่น ไม่งั้นภาพนิ่งเฉย ๆ แยกไม่ออกจากเกมพัง
     this.netWait = stepped > 0 ? 0 : (this.netWait ?? 0) + 1;
+    // ค้างบ่อยเกินไป = หน่วงที่ตั้งไว้สั้นกว่าเน็ตเส้นนี้จริง ๆ ถอยให้มันทีละเฟรมจนพอ
+    // ไม่ต้องบอกใคร ไม่ต้องตกลงกับอีกฝั่ง — หน่วงของแต่ละเครื่องต่างกันได้โดยที่ซิมยังตรงกัน (ดู noteTick)
+    this.net.noteTick(stepped);
   }
 
   spark(x, y, size, color) { this.sparks.push({ x, y, size, color, life: 9, max: 9, rot: Math.random() * Math.PI }); }

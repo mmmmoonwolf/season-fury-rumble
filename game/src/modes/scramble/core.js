@@ -1713,8 +1713,14 @@ class Game {
     if (this.dust && --this.dust.life <= 0) this.dust = null;
     const d = this.dust;
     const L = d ? d.x - DUST_HALF : 0, R = d ? d.x + DUST_HALF : 0;
-    for (const f of [this.p1, this.p2]) {
-      const caught = !!d && f.id !== d.owner;
+    // ทุกคนบนเวที ไม่ใช่แค่สองคนแรก — เดิมเขียน [p1, p2] ไว้ตั้งแต่ตอนที่เกมมีแค่สองช่อง
+    // ห้อง 2v2 จึงมีสองคนที่เดินผ่านพายุฝุ่นของ KUNJAE ได้เฉย ๆ เหมือนไม่มีอะไรอยู่ตรงนั้น
+    // กรงจับ "คนละทีม" ไม่ใช่ "ไม่ใช่เจ้าของ" — ตอนมีสองคนสองคำนี้แปลว่าอย่างเดียวกัน
+    // พอเป็น 2v2 มันแยกออกจากกัน แล้วท่านี้จะขังเพื่อนร่วมทีมตัวเอง = กดแล้วซวยเอง
+    // (กองไฟถือกติกานี้อยู่ก่อนแล้ว — ดู updateFires: "ไฟของเราไม่ไหม้พวกเรา")
+    const own = d ? this.fighterById(d.owner) : null;
+    for (const f of this.fighters) {
+      const caught = !!d && (own ? !this.sameTeam(f, own) : f.id !== d.owner);
       // ดันกลับเข้าขอบก่อนวัดว่าอยู่ในวงไหม — ฟิสิกส์ของเฟรมนี้พาเขาออกไปแล้ว
       if (caught && f.caged && f.onGround && (f.x < L || f.x > R)) {
         f.x = f.x < L ? L : R; f.vx = 0;

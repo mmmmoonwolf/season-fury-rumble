@@ -602,3 +602,150 @@ function hub(seats, lags = []) {
   skip.reset(2);
   ok(!skip.q[1].size, "ข้ามไปแมตช์ 2 แล้วของที่เก็บไว้ให้แมตช์ 1 ไม่ถูกพาไปด้วย");
 }
+
+// ══ ท่อแบบดาว: ห้องสี่คน "แขกถึงแขก" เดินสองต่อ หน่วงจึงเป็นสองเท่า ════════════
+//
+// **นี่คือเหตุผลที่ห้องสี่คนเล่นไม่ได้** และมันมองไม่เห็นเลยจาก hub() ข้างบน
+// เพราะ hub() เป็นตาข่าย ทุกคนถึงกันในหนึ่งต่อเท่ากันหมด — ซึ่งไม่ใช่ของจริง
+// ของจริงเป็นดาว (ดู session.js): แขกคุยกับเจ้าของห้องคนเดียว เจ้าของห้องส่งต่อให้แขกที่เหลือ
+//
+// lockstep รอคนที่ช้าที่สุดเสมอ ถ้าหน่วงที่จองไว้สั้นกว่าเวลาที่ของใช้เดินจริง
+// ทุกคนในห้องจะค้างพร้อมกัน ซึ่งบนจออ่านว่า "เกมเดินช้าลงทั้งเกม" ไม่ใช่ "แลค"
+{
+  const { delayFor, NET_DELAY_MAX } = await import(G + "/netplay.js");
+
+  /** เดินท่อดาวจริง แล้วคืนว่า "เดินซิมได้กี่เฟรมต่อหนึ่งติ๊ก" (1.00 = เต็มความเร็ว) */
+  function speed({ seats, delay, hop, ticks = 1800, adapt = false, warm = 900 }) {
+    const wire = [];
+    let t = 0;
+    const sendFrom = (i) => (pk) => {
+      for (let j = 0; j < seats; j++) {
+        if (j === i) continue;
+        // แขก→แขก ต้องผ่านเจ้าของห้อง (ที่นั่ง 0) = สองต่อ · ที่เหลือหนึ่งต่อ
+        wire.push({ at: t + ((i === 0 || j === 0) ? hop : hop * 2), to: j, pk });
+      }
+    };
+    const ls = [];
+    for (let i = 0; i < seats; i++) ls.push(new Lockstep(sendFrom(i), { seats, seat: i, delay }));
+    for (const l of ls) l.primeStart();
+    let base = 0;
+    for (t = 0; t < ticks; t++) {
+      for (const w of wire) if (w.at === t) ls[w.to].onPacket(w.pk);
+      for (const l of ls) {
+        l.pushLocal(0);
+        // งบเดินต่อติ๊กเหมือน tickNet จริง: หนึ่งเฟรม + ไล่ตามได้ไม่เกิน 3
+        const lead = l.behind - (l.delay + 1);
+        let budget = 1 + Math.max(0, Math.min(3, lead)), n = 0;
+        while (budget-- > 0 && l.ready()) { l.take(); n++; }
+        if (adapt) l.noteTick(n);
+      }
+      if (t === warm) base = Math.min(...ls.map((l) => l.frame));
+    }
+    return { rate: (Math.min(...ls.map((l) => l.frame)) - base) / (ticks - warm),
+             delays: ls.map((l) => l.delay) };
+  }
+
+  ok(delayFor(2) === NET_DELAY, `ห้องสองคนหน่วงเท่าเดิม (${delayFor(2)})`);
+  ok(delayFor(4) === NET_DELAY * 2, `ห้องสี่คนหน่วงเป็นสองเท่า เพราะเดินสองต่อ (${delayFor(4)})`);
+
+  // หน่วงต่อต่อ 3 เฟรม = 50 ms ซึ่งคือเน็ตบ้านไทยปกติ ไม่ใช่เน็ตแย่
+  const HOP = 3;
+  const two = speed({ seats: 2, delay: delayFor(2), hop: HOP });
+  ok(two.rate > 0.98, `สองคนที่ 50ms ยังเต็มความเร็วเหมือนเดิม (${(two.rate * 100).toFixed(0)}%)`);
+
+  const fourOld = speed({ seats: 4, delay: NET_DELAY, hop: HOP });
+  ok(fourOld.rate < 0.7,
+    `ตั้งหน่วงเท่าห้องสองคน (${NET_DELAY}) แล้วห้องสี่คนเดินได้แค่ ${(fourOld.rate * 100).toFixed(0)}% ของความเร็วจริง`);
+
+  const fourNew = speed({ seats: 4, delay: delayFor(4), hop: HOP });
+  ok(fourNew.rate > 0.98,
+    `หน่วงตามรูปท่อแล้วกลับมาเต็มความเร็ว (${(fourNew.rate * 100).toFixed(0)}%)`);
+
+  // ── เน็ตแย่กว่าที่เผื่อไว้: ต้องถอยหน่วงเองจนเดินได้ ไม่ใช่ช้าอยู่อย่างนั้น ──
+  const BAD = 6;   // 100 ms ต่อต่อ = แขกถึงแขก 200 ms
+  const stuck = speed({ seats: 4, delay: delayFor(4), hop: BAD });
+  const fixed = speed({ seats: 4, delay: delayFor(4), hop: BAD, adapt: true });
+  ok(fixed.rate > stuck.rate + 0.2,
+    `เน็ตแย่ (100ms/ต่อ) แล้วถอยหน่วงเองช่วยได้จริง: ${(stuck.rate * 100).toFixed(0)}% -> ${(fixed.rate * 100).toFixed(0)}%`);
+  ok(fixed.delays.every((d) => d > delayFor(4) && d <= NET_DELAY_MAX),
+    `และถอยอยู่ในเพดาน (${fixed.delays.join('/')} เพดาน ${NET_DELAY_MAX})`);
+
+  // เน็ตดีต้องไม่ถูกถอยทิ้งเปล่า ๆ — หน่วงที่เพิ่มมาคือดีเลย์ที่คนเล่นรู้สึกได้
+  const good = speed({ seats: 4, delay: delayFor(4), hop: 1, adapt: true });
+  ok(good.delays.every((d) => d === delayFor(4)),
+    `เน็ตดีแล้วไม่ถอยหน่วงเพิ่มสักเฟรม (${good.delays.join('/')})`);
+}
+
+// ── noteTick: ขึ้นอย่างเดียว มีเพดาน และต้องวัดเป็นสัดส่วน ไม่ใช่ค้างติดกัน ──
+//
+// เคยเขียนเป็น "ค้างติดกันครบ N ติ๊กแล้วค่อยถอย" ซึ่งไม่เคยทำงานเลยสักเฟรม
+// ของจริงค้างแบบเฟรมเว้นเฟรม ตัวนับแบบติดกันจึงถูกรีเซ็ตทุกติ๊กที่เดินได้
+{
+  const { NET_DELAY_MAX } = await import(G + "/netplay.js");
+  const mk = () => new Lockstep(() => {}, { seats: 4, seat: 0, delay: 6 });
+
+  // ค้างสลับเฟรมเว้นเฟรม (50%) = ต้องถอย ทั้งที่ไม่เคยค้างติดกันเกินหนึ่งติ๊ก
+  const alt = mk();
+  for (let i = 0; i < 60; i++) alt.noteTick(i % 2);
+  ok(alt.delay === 7, `ค้างเฟรมเว้นเฟรมแล้วถอยหน่วงจริง (${alt.delay} จาก 6)`);
+
+  // เดินได้ตลอด = ห้ามขยับ
+  const fine = mk();
+  for (let i = 0; i < 600; i++) fine.noteTick(1);
+  ok(fine.delay === 6, `เดินได้ตลอดแล้วหน่วงไม่ขยับ (${fine.delay})`);
+
+  // ค้างนิดหน่อย (1 ใน 12 ติ๊ก ต่ำกว่าเกณฑ์) = ยังไม่ต้องถอย
+  const bit = mk();
+  for (let i = 0; i < 600; i++) bit.noteTick(i % 12 === 0 ? 0 : 1);
+  ok(bit.delay === 6, `ค้างนาน ๆ ครั้งแล้วไม่ถอยหน่วงทิ้งเปล่า (${bit.delay})`);
+
+  // ค้างยาวแค่ไหนก็ไม่เกินเพดาน
+  const cap = mk();
+  for (let i = 0; i < 6000; i++) cap.noteTick(0);
+  ok(cap.delay === NET_DELAY_MAX, `ค้างยาวแค่ไหนก็ไม่เกินเพดาน (${cap.delay})`);
+
+  // **ห้ามลดกลับ** — ลดแล้ว sent ค้างอยู่หลัง frame+delay คิวเป็นรูแล้วค้างตรงนั้นตลอดกาล
+  const back = mk();
+  for (let i = 0; i < 60; i++) back.noteTick(0);
+  const raised = back.delay;
+  for (let i = 0; i < 600; i++) back.noteTick(1);
+  ok(back.delay === raised, `เน็ตกลับมาดีแล้วก็ไม่ลดหน่วงกลับกลางแมตช์ (${back.delay})`);
+}
+
+// ── หน่วงของแต่ละเครื่องไม่เท่ากันได้ โดยที่ซิมยังตรงกันเป๊ะ ──
+//
+// นี่คือข้อที่ทำให้ "ถอยหน่วงเอง" ปลอดภัย: ไม่ต้องตกลงกับใคร ไม่ต้องส่งข้ามเน็ต
+// ถ้าวันหนึ่งข้อนี้แดง แปลว่าการถอยหน่วงเองใช้ไม่ได้แล้ว ต้องไปคิดใหม่ทั้งแผน
+{
+  const SEATS = 4, chars = ['nyx', 'helios', 'momus', 'alecto'];
+  const DELAYS = [3, 6, 9, 12];       // คนละค่าทั้งสี่เครื่อง
+  const net = hub(SEATS, [0, 1, 3, 2]);
+  const games = [], ls = [];
+  for (let i = 0; i < SEATS; i++) {
+    const g = new Game();
+    g.setRoster(SEATS);
+    g.fighters.forEach((f, n) => { f.char = chars[n]; f.ai = false; });
+    g.startMatch();
+    games.push(g);
+    ls.push(new Lockstep(net.sendFrom(i), { seats: SEATS, seat: i, delay: DELAYS[i] }));
+  }
+  for (const l of ls) l.primeStart();
+  const script = (seat, f) => inp({
+    right: (f + seat * 7) % 11 < 4 ? 1 : 0, left: (f + seat * 5) % 13 < 3 ? 1 : 0,
+    p: { jump: (f + seat) % 23 === 0 ? 1 : 0, attack: (f + seat * 3) % 17 === 0 ? 1 : 0 },
+  });
+  let steps = 0;
+  for (let t = 0; t < 1500 && steps < 600; t++) {
+    const inbox = net.tick();
+    ls.forEach((l, i) => { for (const pk of inbox[i]) l.onPacket(pk); });
+    ls.forEach((l, i) => l.pushLocal(packInput(script(i, l.sent + 1))));
+    if (ls.every((l) => l.ready())) {
+      ls.forEach((l, i) => games[i].step(...l.take()));
+      steps++;
+    }
+  }
+  ok(steps >= 600, `เดินครบ 600 เฟรมทั้งที่หน่วงคนละค่า (${steps})`);
+  const snaps = games.map((g) => g.fighters.map((f) => `${Math.round(f.x)},${Math.round(f.y)},${f.hp},${f.state}`).join('|'));
+  ok(snaps.every((s) => s === snaps[0]),
+    `สี่เครื่องที่ตั้งหน่วงคนละค่า (${DELAYS.join('/')}) ยังเห็นภาพตรงกันเป๊ะ`);
+}
