@@ -501,6 +501,25 @@ const ALECTO_MOVES = {
 const ARMOR_DMG = 0.6;      // ดาเมจที่กินตอนเกราะรับไว้
 const SKYFALL_RANGE = 900;  // คลื่นอัลติวิ่งได้ไกลแค่ไหน (เกือบสุดจอ)
 
+/* ── ควันค้างของ EYE ──
+ *
+ * "ทุกอย่างที่เธอทำเกิดสองครั้ง — ครั้งแรกตอนนี้ ครั้งที่สองอีกสักพัก"
+ * ควันถูกทิ้งไว้ตรงที่ไม้นั้นออก แล้วค่อยระเบิดทีหลัง ไม่ใช่ตอนตีโดน
+ *
+ * **ทิ้งตอนไม้ออก ไม่ใช่ตอนตีโดน** จงใจ — แรงกดดันต้องเดินต่อแม้เขาจะกันหรือหลบไว้ได้
+ * ถ้าผูกกับการตีโดน มันจะกลายเป็นแค่ดาเมจเพิ่มของคอมโบที่ติดอยู่แล้ว ซึ่งไม่ได้เพิ่มอะไรให้เกม
+ */
+const PUFF_DELAY = 20;      // หน่วงก่อนระเบิด — นานพอให้คนกันปล่อยการ์ด สั้นพอให้ยังอยู่ในคอมโบ
+const PUFF_DMG = 2;         // ต่ำกว่าไม้จริง มันคือของแถม ไม่ใช่ของหลัก
+const PUFF_STUN = 14;
+const PUFF_HALF = 58;       // ครึ่งความกว้างตอนระเบิด — แคบกว่าวงฝุ่น (200) มาก
+const PUFF_TOP = -150;      // สอยคนที่ลอยต่ำได้ แต่ไม่ถึงคนที่กระโดดเต็ม
+
+/** อัลติ "ม่านควัน" อยู่ได้กี่เฟรม — 5 วินาที
+ *  ระหว่างนี้ **หมัดของทุกคนบนเวทีทิ้งควัน** รวมหมัดที่ตีเธอเอง
+ *  นี่คือมุกของตัวนี้: อัลติไม่ได้บัฟเธอ มันเปลี่ยนกติกาของทุกคน */
+const HAZE_LIFE = 300;
+
 const ATLAS_MOVES = {
   // ---- ท่าตีปกติ: ดาบใหญ่ ----
   // ระยะอยู่ระหว่าง Helios (62) กับแส้ Alecto (118) · ออกช้ากว่าทั้งคู่ แต่ดาเมจต่อทีสูงสุด
@@ -666,6 +685,83 @@ const SELF_STUN = 0.5;       // ระเบิดตัวเองทำให
 const ORPHEUS_SKILLS = ['slide1', 'burn1', 'solo1'];
 const ORPHEUS_SKILL_CD = [120, 240, 0];   // สไลด์กดถี่ได้ · ถอยลากไฟ 4 วินาที กันกดหนีรัว
 
+
+/* ══ EYE (chronos) — "หมัดมาช้ากว่าเสียง" ═══════════════════════════════════════
+ *
+ * ผู้หญิง ถือใบกัญชายักษ์ · ธีมเวลา: ทุกอย่างที่เธอทำเกิดสองครั้ง
+ * ครั้งแรกตอนนี้ ครั้งที่สองอีก 20 เฟรม (ดู PUFF_DELAY)
+ *
+ * **ทำไมเป็นสายบู๊ ไม่ใช่สายวางเขต** — วัดจากตารางท่าแล้วตัวที่กดทีเดียวได้หลายไม้
+ * (MARCH 14 ไม้รวมสามสกิล · คนอื่น 1-5) ได้เปรียบอย่างเห็นได้ชัดตอนเล่นกันจริง
+ * เธอจึงเข้าไปต่อย ไม่ใช่วางของทิ้งไว้แล้วรอ — แต่หมัดที่ต่อยไปแล้วยังไม่จบ
+ *
+ * ท่าปกติ: ฟาดใบกัญชายักษ์ ออกช้ากว่าทุกคน แต่กรอบกว้างและลอย
+ * ระยะอยู่ระหว่าง MARCH (62) กับ TEEMEE (92) ส่วนความสูงของกรอบมากที่สุดในเกม
+ * = ไม้ของเธอกวาดคนที่กระโดดต่ำ ๆ ติด แลกกับออกช้าจนถูกจิ้มสกัดได้ง่าย
+ */
+const EYE_MOVES = {
+  jab1: { label: 'Leaf Swat', kind: 'ground', startup: 7, active: 4, recovery: 13, dmg: 4,
+    hb: { x: 8, y: -112, w: 84, h: 62 }, kb: [3, 0], stun: 17, chain: 'jab2' },
+  jab2: { label: 'Backswing', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 4,
+    hb: { x: 8, y: -100, w: 88, h: 66 }, kb: [3, 0], stun: 18, chain: 'jab3' },
+  // ไม้จบทิ้งควัน — ต่อคอมโบเองไม่ได้ แต่ควันที่ลงทีหลังเปิดให้เริ่มชุดใหม่
+  jab3: { label: 'Smoke Puff', kind: 'ground', startup: 9, active: 5, recovery: 20, dmg: 6,
+    hb: { x: 10, y: -106, w: 96, h: 72 }, kb: [9, -4], stun: 26, puff: { at: 10 } },
+  side: { label: 'Wide Fan', kind: 'ground', startup: 11, active: 5, recovery: 24, dmg: 7,
+    hb: { x: 14, y: -98, w: 118, h: 58 }, kb: [11, 0], stun: 28, imp: { f: 9, vx: 8 }, glide: true },
+  up: { label: 'Updraft', kind: 'ground', startup: 9, active: 6, recovery: 21, dmg: 6,
+    hb: { x: -10, y: -186, w: 92, h: 132 }, kb: [2, -15], stun: 34, jumpCancel: true },
+  down: { label: 'Low Sweep', kind: 'ground', crouch: true, startup: 8, active: 5, recovery: 19, dmg: 5,
+    hb: { x: 6, y: -40, w: 104, h: 38 }, kb: [4, -9], stun: 26 },
+  nair: { label: 'Air Fan', kind: 'air', startup: 6, active: 8, recovery: 13, dmg: 6,
+    hb: { x: -48, y: -140, w: 112, h: 124 }, kb: [3, -6], stun: 24, jumpCancel: true },
+  sair: { label: 'Air Swat', kind: 'air', startup: 8, active: 8, recovery: 15, dmg: 7,
+    hb: { x: 10, y: -96, w: 110, h: 54 }, kb: [9, -4], stun: 28, floaty: true },
+  dair: { label: 'Smoke Drop', kind: 'air', startup: 9, active: 7, recovery: 17, dmg: 7,
+    hb: { x: -20, y: -50, w: 100, h: 84 }, kb: [5, -3], stun: 26, puff: { at: 10 } },
+
+  /* ── สกิล 1 "รัวควัน" (ปุ่ม 1) ── โครงเดียวกับ Hundred Hands ของ MARCH
+   *  ต่างกันที่ **ทุกไม้ที่สองทิ้งควันไว้** เธอหยุดรัวแล้วแรงกดดันยังไม่หยุด
+   *  คนที่กันอยู่จะปล่อยการ์ดตอนเห็นเธอหยุด ซึ่งคือจังหวะที่ควันลงพอดี
+   *  ไม้จบ `hazeEnd` ไม่ทิ้งควัน เพื่อให้ตัดกัน: รัวจนเป็นม่าน แล้วหยุด แล้วหมัดหนักหมัดเดียว */
+  haze1: { label: 'Hazeflurry', kind: 'ground', startup: 6, active: 3, recovery: 2, dmg: 2, flurry: 2,
+    hb: { x: 6, y: -102, w: 74, h: 38 }, kb: [0.8, 0], stun: 20, autoChain: 'haze2',
+    imp: { f: 4, vx: 2 }, mashMax: 5 },
+  haze2: { label: 'Hazeflurry', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2, flurry: 2,
+    hb: { x: 6, y: -102, w: 74, h: 38 }, kb: [0.8, 0], stun: 20, autoChain: 'haze3',
+    imp: { f: 2, vx: 2 }, puff: { at: 3 } },
+  haze3: { label: 'Hazeflurry', kind: 'ground', startup: 2, active: 3, recovery: 2, dmg: 2, flurry: 2,
+    hb: { x: 6, y: -80, w: 80, h: 40 }, kb: [0.8, 0], stun: 20, imp: { f: 2, vx: 2 },
+    mashChain: 'haze2', autoChain: 'hazeEnd' },
+  hazeEnd: { label: 'Hazeflurry', kind: 'ground', startup: 6, active: 5, recovery: 26, dmg: 8,
+    hb: { x: 10, y: -102, w: 102, h: 46 }, kb: [16, -6], stun: 38, imp: { f: 5, vx: 9 } },
+
+  /* ── สกิล 2 "ต่อยแล้วย้อน" (ปุ่ม 2) ──
+   *  พุ่งเข้าไปต่อยหนัก **จบท่าแล้วเด้งกลับไปยืนที่เดิม** ที่ยืนตอนกด
+   *
+   *  ดาเมจมาก่อน การย้อนเป็นราคาที่จ่ายทีหลัง ไม่ใช่สิ่งที่ซื้อก่อน
+   *  (กติกาจากบทเรียน KUNJAE: ห้ามมีสกิลที่ทำอะไรที่ไม่ใช่ดาเมจก่อนแล้วค่อยแปลงทีหลัง)
+   *
+   *  **นี่คือไม้ที่ทำให้คอมโบของเธอเป็นวง ไม่ใช่เส้นตรง** — มันคืนระยะให้เธอ
+   *  กดกลางคอมโบแล้วกลับมายืนที่เดิม = เริ่มชุดเดิมซ้ำได้อีกรอบ
+   *  และ refresh ปลดชื่อชุดรัวออกจาก used ให้ด้วย ไม่งั้นกลับมาแล้วกดซ้ำไม่ได้ */
+  snap1: { label: 'Snapback', kind: 'ground', startup: 8, active: 5, recovery: 18, dmg: 8,
+    hb: { x: 12, y: -104, w: 96, h: 56 }, kb: [10, -3], stun: 28,
+    imp: { f: 7, vx: 14 }, glide: true, rewind: true, puff: { at: 9 },
+    refresh: ['haze1', 'haze2', 'haze3', 'jab1', 'jab2', 'jab3'] },
+
+  /* ── สกิล 3 "ม่านควัน" (อัลติ ปุ่ม 3 ใช้หลอดเต็ม) ──
+   *  ระเบิดควันรอบตัวดันทุกคนออก แล้ว 5 วินาทีต่อจากนั้น
+   *  **หมัดของทุกคนบนเวทีทิ้งควัน รวมหมัดที่ตีเธอเอง**
+   *  อัลติไม่ได้บัฟเธอ มันเปลี่ยนกติกาของทุกคน — คนที่ตีเธอจะโดนควันของตัวเองถ้ายืนผิดที่ */
+  veil1: { label: 'Smokeveil', kind: 'ground', startup: 10, active: 6, recovery: 28, dmg: 10,
+    hb: { x: -120, y: -170, w: 240, h: 180 }, kb: [12, -10], stun: 34, armor: 2,
+    haze: true, puff: { at: 12 } },
+};
+
+const EYE_SKILLS = ['haze1', 'snap1', 'veil1'];
+const EYE_SKILL_CD = [150, 110, 0];
+
 /**
  * DEAR (ฉายา Hephaestus) — เด็กแบกโครงแขนกลไซเบอร์แวร์ · สายบุกทางอากาศ
  *
@@ -811,6 +907,14 @@ const CHARACTERS = {
     skillCd: ORPHEUS_SKILL_CD },
   momus: { id: 'momus', label: 'DEAR', moves: MOMUS_MOVES, skills: MOMUS_SKILLS,
     skillCd: MOMUS_SKILL_CD, boost: true },
+  /* id เป็น 'chronos' ตามกติกาเดิมของโรสเตอร์ (id = ชื่อในตำนาน · label = ชื่อเพื่อน)
+   * และเวลาคือธีมของเธอพอดี · **เปลี่ยน id ไม่ได้อีกแล้วหลังจากนี้** มันคือคีย์ของอัตลาส
+   * ชื่อไฟล์ชีตใน tools/ และค่าที่ส่งข้ามเน็ตตอนเลือกตัว
+   *
+   * artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน — ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกกับควันได้จริง
+   * ก่อนจะลงทุนเจนอาร์ตทั้งตัว (ท่าเดียวกับที่ TEEMEE เคยใช้ตอนยังไม่มีชีต) */
+  chronos: { id: 'chronos', label: 'EYE', moves: EYE_MOVES, skills: EYE_SKILLS,
+    skillCd: EYE_SKILL_CD, artPending: true },
 };
 const DEFAULT_CHAR = 'nyx';
 
@@ -1012,6 +1116,9 @@ class Game {
     this.shots = [];
     this.fires = [];
     this.dust = null;               // วงฝุ่นของ Alecto — มีได้ทีละวงเดียว
+    this.puffs = [];                // ควันค้างของ EYE — ระเบิดทีหลัง (ดู updatePuffs)
+    this.haze = 0;                  // ม่านควัน (อัลติ EYE) เหลือกี่เฟรม — เป็นสถานะของเวที
+    this.puffN = 0;
     // on = ปิดอยู่ตอนซ้อมกับหุ่น เปิดเมื่อเล่นกับคนจริง · ทุกค่าเดินด้วยเลขเฟรมล้วน
     this.match = { on: false, bars: [ROUND_BARS, ROUND_BARS], round: 1, freeze: 0, loser: [], winner: null };
   }
@@ -1114,6 +1221,7 @@ class Game {
   resetPositions() {
     for (const f of this.fighters) f.reset();
     this.meter = []; this.shots = []; this.fires = []; this.dust = null;
+    this.puffs = []; this.haze = 0; this.puffN = 0;   // ควันค้างของ EYE และอัลติม่านควัน (ดู updatePuffs)
   }
 
   /**
@@ -1146,6 +1254,7 @@ class Game {
     }
     for (const f of this.fighters) this.tickFlame(f);
     this.updateDust();
+    this.updatePuffs();
     this.updateCarry();
     for (const f of this.fighters) {
       if (f.overclock > 0 && --f.overclock === 0) this.events.push({ type: 'overclockEnd', x: f.x, y: f.y - 70 });
@@ -1217,6 +1326,8 @@ class Game {
     // ทั้งสองเครื่องเดินถึงบรรทัดนี้ที่เฟรมเดียวกันเสมอ เพราะมาจากปุ่มที่ส่งข้ามเน็ตเหมือนกัน
     if (mv.toggle) { f.alt = f.alt ? 0 : 1; this.events.push({ type: 'swap', alt: f.alt, x: f.x, y: f.y - 90 }); }
     if (mv.warp) this.warp(f);
+    // ม่านควัน: เป็นสถานะของ **เวที** ไม่ใช่ของเธอ — หมัดของทุกคนทิ้งควันระหว่างนี้
+    if (mv.haze) { this.haze = HAZE_LIFE; this.events.push({ type: 'hazeOn', x: f.x, y: f.y - 70 }); }
     if (mv.warpAnchor) this.warpToAnchor(f);
     if (mv.faceFoe) this.faceFoe(f);
     // ท่าที่ประกาศ refresh: ปลดชื่อท่าที่ระบุออกจาก used = ใช้ชุดนั้นซ้ำได้อีกรอบในคอมโบเดียว
@@ -1229,6 +1340,8 @@ class Game {
     f.slammed = 0;
     f.carrying = [];
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
+    // จำที่ยืนไว้ให้ท่าที่ต้องเด้งกลับ — เก็บแค่จุดเดียว ไม่ต้องเก็บประวัติยาว
+    if (mv.rewind) f.rewindX = f.x;
     f.setState('attack');
     this.lastMoveInfo = { id, ...f.moves[id] };
     this.events.push({ type: 'move', id });
@@ -1704,6 +1817,50 @@ class Game {
     const x = Math.max(STAGE.wallL + FIRE_HALF, Math.min(STAGE.wallR - FIRE_HALF, f.x + f.facing * spec.dx));
     this.fires.push({ x, owner: f.id, life: FIRE_LIFE, t: 0, burns: !!spec.burns });
     this.events.push({ type: 'firepool', x, y: STAGE.groundY });
+  }
+
+  /** ทิ้งควันค้างไว้หนึ่งก้อน — ตรงกลางกรอบของไม้ที่เพิ่งออก
+   *
+   *  เดินด้วยเลขเฟรมล้วนเหมือนกองไฟ ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน
+   *  `n` นับขึ้นเรื่อย ๆ เพื่อให้ฝั่งวาดสุ่มรูปทรงควันได้โดยไม่ต้องใช้ Math.random
+   *  (ฝั่งวาดใช้ random ได้ แต่ใช้เลขนี้แล้วควันก้อนเดิมหน้าตาเหมือนกันทุกเครื่อง ดูง่ายกว่าตอนไล่บั๊ก)
+   */
+  spawnPuff(f, spec) {
+    const m = f.move;
+    const x = Math.max(STAGE.wallL, Math.min(STAGE.wallR, f.x + f.facing * (m?.hb?.x ?? 0)));
+    const y = f.y + (m?.hb ? m.hb.y + m.hb.h / 2 : -90);
+    this.puffs.push({ x, y, owner: f.id, team: f.team, life: spec.delay ?? PUFF_DELAY, n: this.puffN++ });
+    this.events.push({ type: 'puffDrop', x, y, n: this.puffN });
+  }
+
+  /** ควันค้างนับถอยหลัง แล้วระเบิดครั้งเดียวตอนหมดเวลา
+   *
+   *  **ต่างจากกองไฟตรงที่มันตอดครั้งเดียว ไม่ใช่ตอดเป็นช่วง** — ของที่ตอดเรื่อย ๆ
+   *  กลายเป็นพื้นที่ห้ามเดิน ซึ่งคือสายวางเขตที่เราเลือกไม่เอาแล้ว
+   *  อันนี้ต้องเป็น "หมัดที่มาถึงทีหลัง" คือเกิดครั้งเดียวแล้วจบ
+   */
+  updatePuffs() {
+    if (this.haze > 0) this.haze--;
+    if (!this.puffs.length) return;
+    const left = [];
+    for (const p of this.puffs) {
+      if (--p.life > 0) { left.push(p); continue; }
+      this.events.push({ type: 'puffPop', x: p.x, y: p.y, n: p.n });
+      for (const d of this.fighters) {
+        if (d.team === p.team) continue;            // ควันของเราไม่โดนพวกเรา (กติกาเดียวกับกองไฟ)
+        if (d.invuln > 0) continue;
+        if (Math.abs(d.x - p.x) > PUFF_HALF) continue;
+        if (d.y < p.y + PUFF_TOP || d.y > p.y + 120) continue;
+        const dmg = Math.max(1, Math.round(PUFF_DMG * d.resist * Math.max(0.5, 1 - 0.08 * d.comboHits)));
+        d.hp = Math.max(0, d.hp - dmg);
+        d.lastHitF = this.frame;
+        d.comboHits++;
+        d.stun = Math.max(d.stun, PUFF_STUN);
+        d.move = null; d.moveId = null; d.setState('hitstun');
+        this.events.push({ type: 'hit', x: d.x, y: d.y - 70, dmg, big: false });
+      }
+    }
+    this.puffs = left;
   }
 
   /** วงฝุ่น — เดินด้วยเลขเฟรมล้วน ห้ามผูกกับเวลาจริง ไม่งั้นสองเครื่องหลุดกัน
@@ -2248,6 +2405,8 @@ class Game {
       const m = f.move;
       if (m.shots && f.moveF === m.shotAt) this.fireShots(f);
       if (m.firePool && f.moveF === m.firePool.at) this.spawnFire(f, m.firePool);
+      // ควันค้าง: ทิ้งไว้ตรงกลางกรอบของไม้นั้น **ตอนไม้ออก ไม่ใช่ตอนตีโดน** (ดู PUFF_DELAY)
+      if (m.puff && f.moveF === m.puff.at) this.spawnPuff(f, m.puff);
       if (m.quills) this.tickQuills(f, m.quills);
       /* หมัดรัว — ปล่อยอีเวนต์ทุก m.flurry เฟรม **ตลอดท่า ไม่ใช่เฉพาะช่วง active**
        * ช่วง active ของไม้รัวยาวแค่ 3 เฟรมจาก 7 ถ้าปล่อยเฉพาะตอนนั้นจะเห็นเป็นหมัดเป็นชุด ๆ
@@ -2310,6 +2469,13 @@ class Game {
         // ยกเว้นท่าที่ติดธง airChain ไว้ — ชุดที่ "ตั้งใจให้เล่นกลางอากาศ" อย่างอัลติ METEOR
         // ที่พาตัวเองลอยขึ้นไปแล้วต่อท่าบนฟ้า ถ้าใช้กติกาพื้นมันจะขาดทันทีที่เท้าลอย
         if (m.autoChain && (f.onGround || m.airChain)) { this.startMove(f, m.autoChain, f.facing); return; }
+        // **เด้งกลับก่อนล้างท่า** ไม่งั้นอ่าน m.rewind ไม่ได้แล้ว
+        // ไม่แตะ vx: เธอหยุดนิ่งตรงที่เดิม ไม่ใช่ถูกเหวี่ยงกลับ (เหวี่ยงกลับจะคุมต่อไม่ได้)
+        if (m.rewind && f.rewindX != null) {
+          const back = Math.max(STAGE.wallL, Math.min(STAGE.wallR, f.rewindX));
+          this.events.push({ type: 'rewind', x: f.x, y: f.y, bx: back, dir: f.facing, id: f.id });
+          f.x = back; f.vx = 0; f.rewindX = null;
+        }
         f.move = null; f.moveId = null; f.used.clear();
         f.setState(f.onGround ? 'idle' : 'air');
       }
@@ -2327,6 +2493,15 @@ class Game {
     const hurt = d.hurtbox(); if (!overlap(hb, hurt)) return;
     const m = a.move; a.hitList.add(d.id); a.hitConfirmed = true;
     const fx = hb.x + hb.w / 2, fy = hb.y + hb.h / 2;
+    /* ม่านควัน (อัลติ EYE): ระหว่างนี้ **หมัดของทุกคน** ทิ้งควัน ไม่ใช่แค่ของเธอ
+     *
+     * ควันเป็นของคนที่ตี ไม่ใช่ของเธอ — คนที่ตีเธอตอนม่านควันจึงทิ้งควันของตัวเองไว้
+     * แล้วถ้ายืนอยู่ตรงนั้นตอนมันลง ก็โดนของตัวเอง นี่คือทั้งหมดของมุกนี้
+     * วางไว้**ก่อน**เช็คการกัน เพราะกันไว้ได้ก็ยังทิ้งควัน (แรงกดดันต้องเดินต่อแม้เขากันอยู่) */
+    if (this.haze > 0) {
+      this.puffs.push({ x: fx, y: fy, owner: a.id, team: a.team, life: PUFF_DELAY, n: this.puffN++ });
+      this.events.push({ type: 'puffDrop', x: fx, y: fy, n: this.puffN, haze: true });
+    }
     const facingAttacker = Math.sign(a.x - d.x) === d.facing || a.x === d.x;
     if ((d.state === 'block' || d.state === 'blockcrouch') && d.onGround && facingAttacker) {
       d.lowStun = d.state === 'blockcrouch';

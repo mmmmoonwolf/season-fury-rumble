@@ -137,6 +137,10 @@ function pair({ lag = 0 } = {}) {
   const sc = { _fxPool: [], _fxLive: [], _ghPool: [], _ghLive: [], sparks: [], popups: [], comboFade: 0 };
   sc._stepFx = ScrambleScene.prototype._stepFx;
   sc._stepGhosts = ScrambleScene.prototype._stepGhosts;
+  // _ageFx เรียกไอควันของม่านควันด้วย — สตับนี้หยิบเมธอดมาทีละตัว จึงต้องหยิบอันนี้มาด้วย
+  // (ลืมแล้วเทสต์ทั้งไฟล์ crash ไม่ใช่ FAIL ซึ่งอ่านยากกว่ามาก — เคยเจอมาแล้วตอนเพิ่มเงาตามตัว)
+  sc._hazeAmbient = ScrambleScene.prototype._hazeAmbient;
+  sc.emit = function () { this.emitted = (this.emitted ?? 0) + 1; };
   sc._ageFx = ScrambleScene.prototype._ageFx;
   const img = () => ({ x: 0, y: 0, rotation: 0, setVisible() { return this; }, setActive() { return this; },
     setScale() { return this; }, setAlpha() { return this; } });
@@ -149,6 +153,18 @@ function pair({ lag = 0 } = {}) {
   ok(sc._fxPool.length === 6, `และคืนเข้าพูลครบทุกตัว (${sc._fxPool.length}/6)`);
   ok(sc._ghLive.length === 0 && sc._ghPool.length === 4,
     `เงาตามตัวคืนเข้าพูลแยกครบ (${sc._ghPool.length}/4 · ค้าง ${sc._ghLive.length})`);
+
+  // ── ไอควันของม่านควันต้องไม่ปล่อยอะไรเลยตอนไม่มีม่าน ──
+  //
+  // มันถูกเรียกทุกเฟรมของทุกแมตช์ รวมแมตช์ที่ไม่มี EYE อยู่ในวงเลย
+  // รั่วเมื่อไหร่คือทุกคนได้ควันม่วงฟรีตลอดเกมโดยไม่มีใครกดอะไร
+  ok(sc.emitted === undefined, `ไม่มีม่านควัน = ไม่ปล่อยอนุภาคสักตัว (${sc.emitted ?? 0})`);
+  sc.sim = { haze: 100, frame: 0 };
+  sc._hazeAmbient();
+  ok((sc.emitted ?? 0) > 0, `มีม่านควันแล้วปล่อยจริง (${sc.emitted ?? 0})`);
+  const n = sc.emitted;
+  sc.sim.frame = 1; sc._hazeAmbient();
+  ok(sc.emitted === n, "แต่ไม่ปล่อยทุกเฟรม — ปล่อยทุกเฟรมได้หมอกทึบจนมองไม่เห็นตัวละคร");
 }
 
 // ── ต่อเน็ตแล้วอีเวนต์ของทุกเฟรมที่เดินต้องถูกแปล ไม่ใช่แค่เฟรมสุดท้าย ──

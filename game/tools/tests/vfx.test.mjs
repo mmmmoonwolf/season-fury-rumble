@@ -89,9 +89,15 @@ const { CHARACTERS } = await import(G + "/core.js");
 // ── ควันต้องเป็น NORMAL ไม่ใช่ ADD ──
 // ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท — เป็นกับดักที่เห็นก็ต่อเมื่อเปลี่ยนฉากเป็นกลางวันแล้ว
 {
-  for (const f of ["smokeBall", "smokeCurl", "dustFlat"]) {
-    const m = scene.match(new RegExp(`emit\\('${f}'[\\s\\S]{0,400}?\\}\\)`));
-    ok(m && /BlendModes\.NORMAL/.test(m[0]), `${f}: ใช้ NORMAL ไม่ใช่ ADD`);
+  // ตัวย่อ NORM ต้องเป็น NORMAL จริง ไม่งั้นทุกข้อข้างล่างนี้ผ่านโดยไม่ได้ตรวจอะไรเลย
+  ok(/const NORM = Phaser\.BlendModes\.NORMAL;/.test(scene), "NORM = BlendModes.NORMAL");
+  for (const f of ["smokeBall", "smokeCurl", "smokeWisp", "dustFlat"]) {
+    // **ตรวจทุกจุดที่เรียก ไม่ใช่จุดแรก** — เดิมเช็คแค่ match แรก พอมีจุดใหม่แทรกเข้ามาข้างบน
+    // จุดที่เหลือก็ไม่เคยถูกตรวจเลย (เจอตอนเพิ่มควันของ EYE: จุดแรกเปลี่ยนไปเป็นของตัวใหม่)
+    const all = [...scene.matchAll(new RegExp(`emit\\('${f}'[\\s\\S]{0,500}?\\}\\)`, "g"))];
+    ok(all.length > 0, `${f}: มีใช้จริงในฉาก (${all.length} จุด)`);
+    const bad = all.filter((m) => !/BlendModes\.NORMAL|blend: NORM\b/.test(m[0])).length;
+    ok(bad === 0, `${f}: ใช้ NORMAL ไม่ใช่ ADD ครบทุกจุด (${all.length} จุด · ผิด ${bad})`);
   }
   ok(/setBlendMode\(o\.blend \?\? Phaser\.BlendModes\.ADD\)/.test(scene), "ค่าเริ่มต้นเป็น ADD (ของส่วนใหญ่คือแสง)");
 }

@@ -224,6 +224,19 @@ const CHAR_ART = {
       "side", "up", "down", "nair", "sair", "dair",
       "drag1", "drag2", "over1", "meteor1", "meteor2", "meteor3"]),
   },
+  // EYE (chronos): ยังไม่มีอาร์ต — วาดเป็นกล่องไปก่อน (ท่าเดียวกับที่ Atlas เคยใช้)
+  // ใส่เข้าเกมก่อนเพื่อให้ลองกลไกควันกับคอมโบได้จริง ก่อนลงทุนเจนอาร์ตทั้งตัว
+  // ลบ artPending ใน core.js แล้วเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
+  chronos: {
+    artPending: true,
+    box: 0x9bbf7a, boxAccent: 0x4a3b5c,   // เขียวใบไม้ + ม่วงควัน
+    title: 'Chronos',
+    role: 'สายรัวควัน',
+    tip: 'ทุกไม้ทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม — หยุดรัวแล้วแรงกดดันยังไม่หยุด',
+    anims: {},
+    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+      "haze1", "haze2", "haze3", "hazeEnd", "snap1", "veil1"]),
+  },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
   // ใส่ไว้ตรงนี้เพื่อให้การ์ดหน้าเลือกตัวมีคำบรรยายครบ และมีสีกล่องเป็นของตัวเอง
   // ลบ artPending ใน core.js กับเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
@@ -500,6 +513,25 @@ const PARALLAX = {
  */
 /** ไล่ตามหลังได้มากสุดกี่เฟรมต่อหนึ่ง tick — ดู tickNet() ว่าทำไมต้องมีเพดาน */
 const NET_CATCHUP = 3;
+
+/* ── จานสีควันของ EYE ──
+ *
+ * สองชั้นเสมอ: `body` คือก้อนทึบข้างหลัง · `rim` คือขอบสว่างที่วางทับ · `spark` คือแกนกลาง
+ * **ควันชั้นเดียวไม่พอ** ฟ้าของเวทีสว่าง ควันสีเดียวจึงอ่านเป็นรอยเปื้อนจาง ๆ ไม่ใช่ควัน
+ * (บทเรียนเดียวกับหมัดรัวของ MARCH ที่มองไม่เห็นสามรอบติด)
+ *
+ * leaf = ควันใบไม้ของท่าปกติและสกิล · haze = ม่านควันของอัลติ เปลี่ยนเป็นม่วงให้แยกออกทันที
+ */
+const SMOKE = {
+  leaf: { body: 0x2e3a2a, rim: 0x8fb573, spark: 0xd8f0a8 },
+  // body ของม่านควันเคยเป็น 0x312a40 ซึ่งเข้มจนบนจออ่านเป็น **แท่งดำพาดกลางเวที** ไม่ใช่ควัน
+  // ควันต้องมีไล่น้ำหนักในตัวมันเอง สีเข้มสนิทไม่มีไล่น้ำหนักเลยไม่ว่าจะซ้อนกี่ก้อน
+  haze: { body: 0x544868, rim: 0xa88fd0, spark: 0xe0ccff },
+};
+/** ควันตั้งต้นอยู่กี่เฟรมก่อนระเบิด — ต้องเท่า PUFF_DELAY ในซิมเป๊ะ
+ *  ไม่เท่ากันแล้วควันจะหายไปก่อนระเบิด (หรือค้างอยู่หลังระเบิดไปแล้ว) ซึ่งอ่านว่าเอฟเฟคพัง */
+const PUFF_FX_LIFE = 20;
+const NORM = Phaser.BlendModes.NORMAL;
 
 const CAM = {
   min: 1, max: 1.35,
@@ -2194,6 +2226,118 @@ class ScrambleScene extends Phaser.Scene {
               tint: 0xffa33a, alpha: 0.9 });
         this.popup(e.x, e.y - 18, 'ไฟลาม!', '#ff8a3a');
       }
+      /* ══ ควันของ EYE ══════════════════════════════════════════════════════
+       *
+       * **ควันต้องเป็น NORMAL เสมอ ห้าม ADD** — ฟ้าของเวทีนี้สว่าง ควันขาวในโหมด ADD
+       * หายสนิททุกครั้ง (เจอมาแล้วสามรอบตอนทำหมัดรัวของ MARCH)
+       * วิธีที่ใช้ได้จริงคือ **สองชั้น**: ก้อนทึบสีเข้มข้างหลัง + ขอบสว่างบาง ๆ ข้างหน้า
+       * ตาจึงเห็นเป็น "ควัน" ไม่ใช่ "รอยเปื้อนจาง ๆ"
+       *
+       * สีของเธอ: เขียวควันใบไม้ (ตัวควัน) + เขียวอ่อน (ขอบ) · ม่านควันเปลี่ยนเป็นม่วง
+       * รูปทรงสุ่มจากเลขก้อน `e.n` ไม่ใช่ Math.random — ควันก้อนเดิมหน้าตาเหมือนกันทุกเครื่อง
+       * (ฝั่งวาดใช้ random ได้ แต่ทำแบบนี้แล้วไล่บั๊กง่ายกว่ามากตอนเทียบสองจอ) */
+      if (e.type === 'puffDrop') {
+        const n = e.n ?? 0;
+        const tone = e.haze ? SMOKE.haze : SMOKE.leaf;
+        // ก้อนตั้งต้น — จางมาก มันคือ "คำเตือน" ไม่ใช่ตัวเอฟเฟค ของจริงอยู่ที่ puffPop
+        this.emit(['smokeCurl', 'smokeWisp', 'smokeCurl'][n % 3], e.x, e.y,
+          { scale: 0.40 + (n % 3) * 0.08, life: PUFF_FX_LIFE, alpha: 0.6, grow: 0.5,
+            vy: -0.5, rot: ((n % 5) - 2) * 0.22, spin: ((n % 2) ? 1 : -1) * 0.012,
+            tint: tone.body, depth: 6.6, blend: NORM });
+        this.emit('smokeBall', e.x, e.y + 4,
+          { scale: 0.30, life: PUFF_FX_LIFE, alpha: 0.45, grow: 0.9, vy: -0.3,
+            tint: tone.rim, depth: 6.5, blend: NORM });
+        // จุดเรืองเล็ก ๆ ตรงกลาง = ที่หมายว่า "ตรงนี้จะระเบิด" อ่านออกแม้ควันจาง
+        this.emit('glow', e.x, e.y, { scale: 0.07, life: PUFF_FX_LIFE, alpha: 0.32,
+          grow: -0.4, tint: tone.spark, depth: 6.7 });
+      }
+
+      if (e.type === 'puffPop') {
+        const n = e.n ?? 0;
+        const tone = SMOKE.leaf;
+        this._sfx('whoosh', { vol: 0.45, rate: 1.25 });
+        /* ลองรอบแรกแล้วบนจอมันอ่านเป็น **"วงแหวนเขียว" ไม่ใช่ควัน** — วงแหวนกับแสง (ADD)
+         * กลบก้อนควันทิ้งหมด เพราะก้อนเล็กเกินและจางเกินเมื่อเทียบกัน
+         * ของที่ทำให้มันเป็นควันคือ **ก้อนใหญ่ ๆ ทึบ ๆ หลายก้อนที่เหลื่อมกัน** ไม่ใช่เส้นขอบสวย ๆ */
+        // ชั้นทึบ: ก้อนใหญ่สีเข้ม คือตัวควันจริง — ต้องกินพื้นที่มากกว่าทุกชั้นรวมกัน
+        /* **ขนาดของก้อนทึบต้องตรงกับระยะที่มันตีจริง** (PUFF_HALF = 58 -> กว้างราว 116 px)
+         * รอบแรกตั้งไว้จนกว้าง ~200 px ซึ่งโกหกระยะ 1.7 เท่า แล้วคนเล่นจะเรียนรู้ระยะจากควันที่โกหก
+         * ซึ่งแย่กว่าไม่วาดควันเลย (กติกาเดียวกับวงรัศมีของท่าอื่นในไฟล์นี้)
+         * ควันที่ฟุ้งออกนอกระยะยังมีได้ แต่ต้องบางและจาง ให้ตาแยกออกว่าอันไหนคือส่วนที่กินจริง */
+        for (let i = 0; i < 7; i++) {
+          const a = (i / 7) * Math.PI * 2 + n * 0.7;
+          this.emit(['smokeBall', 'burst', 'smokeBall'][(i + n) % 3],
+            e.x + Math.cos(a) * 15, e.y + Math.sin(a) * 10,
+            { scale: 0.25 + ((i + n) % 3) * 0.07, life: 22 + ((i * 3 + n) % 10), alpha: 0.85,
+              grow: 1.3, vx: Math.cos(a) * 2.2, vy: Math.sin(a) * 1.4 - 0.9, drag: 0.9,
+              spin: (i % 2 ? 1 : -1) * 0.02, tint: tone.body, depth: 7, blend: NORM });
+        }
+        // ชั้นขอบ: ม้วนสว่างพุ่งออกจากก้อน ทำให้ควันมีทิศ ไม่ใช่แค่ก้อนกลม ๆ
+        for (let i = 0; i < 5; i++) {
+          const a = (i / 5) * Math.PI * 2 - n * 0.5;
+          this.emit('smokeWisp', e.x + Math.cos(a) * 24, e.y + Math.sin(a) * 15,
+            { scale: 0.22, life: 18, alpha: 0.55, grow: 1.0, vx: Math.cos(a) * 3.2,
+              vy: Math.sin(a) * 2.0 - 1.1, drag: 0.88, rot: a,
+              tint: tone.rim, depth: 7.2, blend: NORM });
+        }
+        // วงแหวนบาง ๆ บอกระยะ — **จาง ๆ พอ** รอบแรกตั้งไว้สว่างจนกลายเป็นตัวเอกแทนควัน
+        this.emit('ring', e.x, e.y, { scale: 0.12, life: 12, grow: 3.0, alpha: 0.35,
+          tint: tone.spark, depth: 6.9 });
+      }
+
+      /* ม่านควัน (อัลติ) — ระเบิดเปิดม่าน
+       * ของนี้ต้องใหญ่กว่าทุกอย่างที่เธอมี เพราะมันเปลี่ยนกติกาของทั้งเวที ไม่ใช่แค่ตีโดน */
+      if (e.type === 'hazeOn') {
+        this._shake(140, 0.009);
+        this._sfx('blast', { vol: 0.9, rate: 0.75 });
+        this.emit('ring', e.x, e.y, { scale: 0.16, life: 26, grow: 6.5, alpha: 0.9,
+          tint: SMOKE.haze.spark, depth: 7.6 });
+        this.emit('ring', e.x, e.y, { scale: 0.10, life: 34, grow: 9.0, alpha: 0.45,
+          tint: SMOKE.haze.rim, depth: 7.5 });
+        // กำแพงควันตั้งขึ้นรอบตัว — ไล่ขนาดจากโคนขึ้นยอด ให้ดูเป็นเสาควัน ไม่ใช่วงกลม
+        for (let i = 0; i < 14; i++) {
+          const side = i % 2 ? 1 : -1, t = (i >> 1) / 7;
+          this.emit(['smokeBall', 'burst'][i % 2], e.x + side * (20 + t * 150), e.y + 30 - t * 40,
+            { scale: 0.30 + t * 0.34, life: 34 + i, alpha: 0.80, grow: 1.4,
+              vx: side * (1.8 + t * 2), vy: -1.1 - t, drag: 0.93,
+              spin: side * 0.014, tint: SMOKE.haze.body, depth: 7.1, blend: NORM });
+        }
+        // ควันเลื้อยไปกับพื้นสองข้าง — ของที่ทำให้รู้สึกว่า "ทั้งเวที" ไม่ใช่ "รอบตัวเธอ"
+        for (let i = 0; i < 8; i++) {
+          const side = i % 2 ? 1 : -1;
+          this.emit('dustFlat', e.x + side * (60 + (i >> 1) * 120), STAGE.groundY - 10,
+            { scale: 0.5 + (i >> 1) * 0.2, life: 44 + i * 3, alpha: 0.34, grow: 0.9,
+              vx: side * (3.6 + i * 0.5), drag: 0.95, flipX: side < 0,
+              tint: SMOKE.haze.body, depth: 6.4, blend: NORM });
+        }
+        // ไอลอยขึ้นจากพื้น
+        for (let i = 0; i < 10; i++)
+          this.emit('smokeCurl', e.x + (i - 5) * 46, STAGE.groundY - 20,
+            { scale: 0.30, life: 46 + i * 2, alpha: 0.42, grow: 1.5, vy: -1.5 - (i % 3) * 0.4,
+              rot: ((i % 5) - 2) * 0.2, spin: (i % 2 ? 1 : -1) * 0.01,
+              tint: SMOKE.haze.rim, depth: 6.5, blend: NORM });
+      }
+
+      /* ต่อยแล้วย้อน — ควันลากเป็นทางจากจุดที่เธอไปถึง กลับมาที่จุดที่ยืนตอนกด
+       * ทางควันคือสิ่งที่ทำให้คนดูอ่านออกว่า "เธอย้อนกลับ" ไม่ใช่ "เธอวาร์ปมั่ว" */
+      if (e.type === 'rewind') {
+        this._sfx('whoosh', { vol: 0.7, rate: 0.85 });
+        const dx = (e.bx ?? e.x) - e.x;
+        const STEPS = 7;
+        for (let i = 0; i <= STEPS; i++) {
+          const t = i / STEPS;
+          this.emit(i % 2 ? 'smokeWisp' : 'smokeCurl', e.x + dx * t, e.y - 60 + Math.sin(t * 3.1) * 14,
+            { scale: 0.30 - t * 0.12, life: 15 + i, alpha: 0.7 - t * 0.3, grow: 1.0,
+              vy: -0.7, rot: t * 1.4, flipX: dx < 0,
+              // สลับเข้ม/อ่อนไปตามทาง — ทางที่เป็นสีเดียวล้วนอ่านเป็นเส้นควันทั่วไป ไม่ใช่ของเธอ
+              tint: i % 2 ? SMOKE.leaf.body : SMOKE.leaf.rim, depth: 7, blend: NORM });
+        }
+        // เงาของเธอค้างอยู่ที่จุดที่ไปถึง แล้วจางหาย
+        this._ghost(e.id, e.x - (e.bx ?? e.x), 0, { alpha: 0.45, life: 16 });
+        this.emit('ring', e.bx ?? e.x, e.y - 60, { scale: 0.12, life: 16, grow: 2.4,
+          alpha: 0.8, tint: SMOKE.leaf.spark, depth: 7.4 });
+      }
+
       if (e.type === 'firepool') {
         this._shake(70, 0.004);
         this._sfx('blast', { vol: 0.6 });
@@ -2327,7 +2471,6 @@ class ScrambleScene extends Phaser.Scene {
        */
       if (e.type === 'flurry') {
         const d = e.dir;
-        const NORM = Phaser.BlendModes.NORMAL;
         /* **หมัดเดียวต่ออีเวนต์ ไม่ใช่สอง และไม่โต** — ลองสองเส้น + จุดข้อนิ้ว + grow มาก่อน
          * ได้อนุภาค 17 ตัวกองกันในพื้นที่ 70x60 px ซึ่งบนจอกลายเป็น**ปื้นขาวก้อนเดียว**
          * ไม่ใช่หมัดที่นับได้ · ปล่อยเฟรมเว้นเฟรม อายุ 6 = ค้างพร้อมกันราวหกเส้น กำลังอ่านออก */
@@ -2340,8 +2483,21 @@ class ScrambleScene extends Phaser.Scene {
          * ย้อมขาวแล้ววางบนฟ้าสว่างจะ**หายสนิท** ไม่ว่าจะ ADD หรือ NORMAL — ลองมาแล้วทั้งคู่
          * เปลี่ยนมาใช้ `slashThrust` ซึ่งเป็นทรงลูกดอกมีรูปร่างชัด ย้อมเข้มแล้วอ่านออกทั้งบนฟ้าและบนดิน
          * แล้วทับด้วยตัวเดียวกันสีอำพันเป็นขอบนำ — สีอำพันคือสีที่พิสูจน์แล้วว่าเห็นบนเวทีนี้ */
+        /* EYE ใช้โครงเดียวกันแต่เป็น **ควัน** ไม่ใช่หมัด — ทรงฟุ้งแทนลูกดอก
+         * กติกาเดิมทุกข้อยังอยู่: สองชั้น เข้มข้างหลัง สว่างข้างหน้า NORMAL เสมอ
+         * ถ้าใช้ลูกดอกอำพันของ MARCH ให้เธอด้วย สองตัวจะอ่านเป็นตัวเดียวกันตอนเล่น 4 คน */
+        const smoky = this.sim?.fighters?.find((f) => f.id === e.id)?.char === 'chronos';
+        if (smoky) {
+          // `o` มี blend: NORM อยู่แล้ว แต่เขียนซ้ำให้เห็นกับตา — เทสต์ควันอ่าน spread ไม่ออก
+          // และ "ควันต้องเป็น NORMAL" เป็นข้อที่พลาดมาแล้วสามรอบ ยอมเขียนซ้ำดีกว่าปล่อยให้ตรวจไม่ได้
+          this.emit('smokeWisp', x - d * 6, y, { ...o, life: 9, scale: 0.20, alpha: 0.62,
+            tint: SMOKE.leaf.body, depth: 7, spin: lane * 0.03, blend: NORM });
+          this.emit('smokeCurl', x + d * 4, y, { ...o, life: 8, scale: 0.15, alpha: 0.85,
+            tint: SMOKE.leaf.rim, depth: 7.1, blend: NORM });
+        } else {
         this.emit('slashThrust', x - d * 6, y, { ...o, scale: 0.26, alpha: 0.8, tint: 0x2a2338, depth: 7 });
         this.emit('slashThrust', x + d * 4, y, { ...o, scale: 0.19, alpha: 0.9, tint: 0xffd166, depth: 7.1 });
+        }
         if (e.i % 4 === 0)
           this.emit('star4', e.x + d * 112, e.y - 96 + (((e.i >> 2) % 3) - 1) * 18,
             { scale: 0.11, life: 7, grow: 1.4, alpha: 0.8, tint: 0xffb02e, depth: 7.3, blend: NORM });
@@ -2427,9 +2583,39 @@ class ScrambleScene extends Phaser.Scene {
 
   /** นับอายุอนุภาค ประกาย และป้ายเลข — ต่อ tick ไม่ใช่ต่อเฟรมซิม
    *  พวกนี้เป็นของฝั่งภาพล้วน อายุจึงเดินตามรอบของเกม ไม่ใช่ตามเลขเฟรมของซิม */
+  /** ไอควันลอยทั่วเวทีระหว่างม่านควัน — ของที่ทำให้รู้สึกว่า "กติกาเปลี่ยนอยู่ตอนนี้"
+   *
+   *  **เป็นเรื่องวาดล้วน ๆ ซิมไม่รู้เรื่องนี้เลย** อ่านจาก sim.haze อย่างเดียว ไม่เขียนอะไรกลับ
+   *  จึงใช้ Math.random ได้เต็มที่ สองเครื่องเห็นควันคนละก้อนได้ ไม่กระทบผลแพ้ชนะ
+   *
+   *  ปล่อยทุก 3 เฟรม ไม่ใช่ทุกเฟรม — ทุกเฟรมได้ 300 ตัวต่ออัลติหนึ่งครั้ง ซึ่งกลายเป็นหมอกทึบ
+   *  จนมองไม่เห็นตัวละคร การบังจอของตัวเองไม่ใช่เอฟเฟค มันคือบั๊ก
+   */
+  _hazeAmbient() {
+    const left = this.sim?.haze ?? 0;
+    if (left <= 0 || (this.sim.frame % 3)) return;
+    const w = STAGE.w, t = SMOKE.haze;
+    // จางเข้าตอนเปิด จางออกตอนใกล้หมด คนเล่นจะได้รู้ว่าเหลืออีกนิดเดียว
+    const fade = Math.min(1, left / 45);
+    const side = Math.random() < 0.5 ? -1 : 1;
+    this.emit(Math.random() < 0.5 ? 'smokeCurl' : 'smokeWisp',
+      Math.random() * w, STAGE.groundY - 10 - Math.random() * 120,
+      { scale: 0.22 + Math.random() * 0.26, life: 50 + Math.round(Math.random() * 30),
+        alpha: (0.16 + Math.random() * 0.16) * fade, grow: 1.2,
+        vx: side * (0.5 + Math.random()), vy: -0.5 - Math.random() * 0.7, drag: 0.99,
+        rot: Math.random() * 3.1, spin: side * 0.006,
+        tint: Math.random() < 0.35 ? t.rim : t.body, depth: 6.3, blend: NORM });
+    // ควันเลื้อยไปกับพื้นเป็นระยะ ๆ — ชั้นล่างทำให้เวทีดูจมอยู่ในควัน ไม่ใช่มีควันลอยอยู่เฉย ๆ
+    if (this.sim.frame % 12 === 0)
+      this.emit('dustFlat', Math.random() * w, STAGE.groundY - 6,
+        { scale: 0.5 + Math.random() * 0.5, life: 60, alpha: 0.2 * fade, grow: 0.8,
+          vx: side * 1.6, drag: 0.98, flipX: side < 0, tint: t.body, depth: 6.2, blend: NORM });
+  }
+
   _ageFx() {
     this._stepFx();
     this._stepGhosts();
+    this._hazeAmbient();
     for (const s of this.sparks) s.life--;
     this.sparks = this.sparks.filter(s => s.life > 0);
     for (const p of this.popups) { p.life--; p.t.y -= 0.8; p.t.setAlpha(Math.min(1, p.life / 15)); if (p.life <= 0) p.t.destroy(); }

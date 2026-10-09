@@ -160,7 +160,9 @@ const S = await import(new URL("../../src/net/session.js", import.meta.url).href
   const names = [...soon.matchAll(/name: '([^']+)'/g)].map((m) => m[1]);
   for (const n of names)
     ok(!Object.keys(CHARACTERS).includes(n), `"${n}" ไม่อยู่ในรายชื่อตัวละครจริง`);
-  ok(Object.keys(CHARACTERS).length === 6, `ตัวละครที่เล่นได้ยังมี ${Object.keys(CHARACTERS).length} ตัวเท่าเดิม`);
+  // ล็อกจำนวนไว้เพื่อให้ "เพิ่มตัวละคร" เป็นการตัดสินใจที่ต้องมาแก้บรรทัดนี้ด้วยเสมอ
+  // ไม่ใช่เผลอเพิ่มเข้าไปแล้วไม่มีใครรู้ว่าการ์ด COMING_SOON ควรลดลงหรือยัง
+  ok(Object.keys(CHARACTERS).length === 7, `ตัวละครที่เล่นได้มี ${Object.keys(CHARACTERS).length} ตัว`);
 
   // ไฟล์เงาต้องมีจริง — ชี้ไปไฟล์ที่ไม่มี = การ์ดว่างเปล่า ดูเหมือนอาร์ตโหลดไม่ขึ้น
   for (const pic of pics)
