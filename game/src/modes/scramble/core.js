@@ -790,7 +790,17 @@ const MOMUS_SKILL_CD = [150, 300, 0];
  */
 const CHARACTERS = {
   nyx: { id: 'nyx', label: 'BOMB', moves: MOVES, skills: SKILLS, skillCd: SKILL_CD },
-  helios: { id: 'helios', label: 'MARCH', moves: HELIOS_MOVES, skills: HELIOS_SKILLS, skillCd: HELIOS_SKILL_CD },
+  /* `run` = ความเร็ววิ่งเฉพาะตัว (ค่ากลางคือ PHYS.run 5.2)
+   *
+   *  MARCH เป็นสายประชิด ท่าทั้งหมดของเขากินระยะใกล้ แต่ตอนวิ่งเขาเร็วเท่าทุกคนเป๊ะ
+   *  **เท่ากันเป๊ะแปลว่าไล่ไม่ทันตลอดกาล** ในที่โล่ง: ช่องว่างตีบลง 0 px ต่อวินาที
+   *  คนที่ถอยหนีอย่างเดียวจึงไม่ต้องเสี่ยงอะไรเลย นอกจากรอชนกำแพง
+   *
+   *  5.6 (+8%) ทำให้ช่องว่างตีบ 23 px/วินาที = ครึ่งตัวต่อวินาที — พอให้การไล่เป็นการไล่จริง
+   *  แต่ยังไม่ถึงขั้นเปลี่ยนเขาเป็นตัวความเร็ว (6.4 ตีบ 68 px/วิ ซึ่งมากเกินไป)
+   *  วัดจาก tools/tests/march.test.mjs */
+  helios: { id: 'helios', label: 'MARCH', moves: HELIOS_MOVES, skills: HELIOS_SKILLS,
+    skillCd: HELIOS_SKILL_CD, run: 5.6 },
   alecto: { id: 'alecto', label: 'KUNJAE', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
     skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP, runLow: 72 },
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
@@ -882,6 +892,9 @@ class Fighter {
   get skills() { return CHARACTERS[this.char].skills; }
   get skillCd() { return CHARACTERS[this.char].skillCd; }
   get backstep() { return CHARACTERS[this.char].backstep ?? null; }
+
+  /** ความเร็ววิ่งของตัวนี้ — ตัวละครประกาศทับได้ ไม่ประกาศก็ได้ค่ากลาง */
+  get runSpeed() { return CHARACTERS[this.char]?.run ?? PHYS.run; }
   /** ตัวนี้ใช้ระบบไอพ่นไหม — ตั้งที่ตารางตัวละคร ไม่ใช่เช็กชื่อตัวละครกระจายทั่วซิม */
   get boostJump() { return !!CHARACTERS[this.char].boost; }
   /** ตารางท่าตีปกติชุดที่สอง (ถ้าตัวนี้มี) — ว่างเปล่าแปลว่าไม่มีให้สลับ */
@@ -1953,7 +1966,13 @@ class Game {
       if (inp.down) { f.setState('crouch'); f.vx *= PHYS.stopFric; return; }
       if (dir !== 0) {
         f.facing = dir;
-        const target = dir * (running ? PHYS.run : PHYS.walk);
+        // ความเร็ววิ่งของตัวละครตัวนั้น — ค่ากลางคือ PHYS.run ใครไม่ประกาศก็ได้ค่ากลาง
+        //
+        // **จงใจไม่แตะความเร็วของท่าที่เคลื่อนที่** (`m.mobile` ข้างบนยังอ่าน PHYS.run ตรง ๆ)
+        // ท่าพวกนั้นถูกจูนระยะเอื้อมมาแล้วทีละท่าด้วยการวัดจริง ถ้าให้มันเร็วตามไปด้วย
+        // ระยะของทุกไม้จะยืดพร้อมกันเงียบ ๆ แล้วตารางคอมโบที่วัดไว้ทั้งหมดใช้ไม่ได้อีกต่อไป
+        // ของที่เร็วขึ้นคือ "การวิ่งเปล่า" ซึ่งคือการไล่กับการหนี ไม่ใช่ระยะของท่า
+        const target = dir * (running ? f.runSpeed : PHYS.walk);
         f.vx += Math.sign(target - f.vx) * Math.min(PHYS.groundAccel * (running ? PHYS.runAccelMul : 1), Math.abs(target - f.vx));
         f.setState(running ? 'run' : 'walk');
       } else { f.vx *= PHYS.stopFric; if (Math.abs(f.vx) < 0.2) f.vx = 0; f.setState('idle'); }

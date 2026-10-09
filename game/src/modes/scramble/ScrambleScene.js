@@ -3176,6 +3176,10 @@ class ScrambleScene extends Phaser.Scene {
     if (!key || !art.anims[key]) { sp.setVisible(false); return false; }
 
     this._applyCharTransform(f);
+    // ตัวที่วิ่งเร็วกว่าค่ากลางต้องย่ำเท้าเร็วตามด้วย ไม่งั้นเท้าไถไปกับพื้นเท่าส่วนที่เร็วขึ้น
+    // (วงจรวิ่งลงทะเบียนไว้ที่ fps ที่ดูพอดีกับความเร็วของตัวเอง ไม่ได้ผูกกับความเร็วจริง)
+    // ตัวที่ไม่ประกาศความเร็วของตัวเองได้ 1 เป๊ะ = ภาพเดิมทุกเฟรม
+    if (key === 'run') sp.anims.timeScale = f.runSpeed / PHYS.run;
     const anim = art.atlasKey + '/' + key;
     // เล่นใหม่เมื่อเปลี่ยน state — โดนตีซ้ำตอนยังอยู่ใน hitstun เอนจิ้นไม่รีเซ็ต stateF ให้
     // (setState เช็คว่าซ้ำเดิมไหม) ท่าจึงควรเล่นต่อไม่กระตุกกลับเฟรมแรก

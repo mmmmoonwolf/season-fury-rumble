@@ -2,6 +2,7 @@
 // รัน: node tools/tests/march.test.mjs   (จากโฟลเดอร์ game)
 //
 // ชื่อไฟล์เป็น march เพราะเป็นชื่อที่โชว์ ส่วน `id` ในซิมยังเป็น 'helios' ซึ่งห้ามเปลี่ยน
+import fs from "fs";
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
 const { Game, CHARACTERS, PHYS, STAGE } = await import(G + "/core.js");
 
@@ -167,4 +168,95 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
     if (g.p1.moveId?.startsWith('sky')) seen.add(g.p1.moveId);
   }
   ok(seen.size === 5, `ชุดลอยมีห้าท่าตายตัว กดรัวยืดไม่ได้ (${seen.size} ท่า)`);
+}
+
+// ══ MARCH วิ่งเร็วกว่าคนอื่นนิดหน่อย — เขาเป็นสายประชิด ════════════════════════
+//
+// **เท่ากันเป๊ะแปลว่าไล่ไม่ทันตลอดกาล** คนที่ถอยหนีอย่างเดียวไม่ต้องเสี่ยงอะไรเลย
+// นอกจากรอชนกำแพง ซึ่งแปลว่าตัวที่ต้องเข้าประชิดถึงจะทำอะไรได้เลย เสียเปรียบโดยโครงสร้าง
+{
+  ok(CHARACTERS.helios.run > PHYS.run,
+    `MARCH วิ่งเร็วกว่าค่ากลาง (${CHARACTERS.helios.run} > ${PHYS.run})`);
+  ok(CHARACTERS.helios.run <= PHYS.run * 1.12,
+    `แต่ไม่เกิน +12% ไม่งั้นกลายเป็นตัวความเร็ว (+${((CHARACTERS.helios.run / PHYS.run - 1) * 100).toFixed(0)}%)`);
+  const others = Object.values(CHARACTERS).filter((c) => c.id !== "helios");
+  ok(others.every((c) => (c.run ?? PHYS.run) === PHYS.run),
+    `คนอื่นยังใช้ค่ากลางเหมือนเดิมทุกตัว (${others.length} ตัว)`);
+
+  /** ปล่อยให้วิ่งจนเต็มสปีดแล้ววัดความเร็วจริงที่ได้ */
+  const topSpeed = (char) => {
+    const g = new Game();
+    g.p1.char = char; g.p1.ai = g.p2.ai = false;
+    for (let f = 0; f < 90; f++) g.step(inp({ right: 1, run: 1 }), null);
+    return Math.abs(g.p1.vx);
+  };
+  const march = topSpeed("helios"), bomb = topSpeed("nyx");
+  ok(march > bomb, `วิ่งจริงแล้วเร็วกว่าจริง (MARCH ${march.toFixed(2)} vs BOMB ${bomb.toFixed(2)})`);
+  ok(Math.abs(march - CHARACTERS.helios.run) < 0.01,
+    `และได้ความเร็วตามที่ประกาศไว้เป๊ะ (${march.toFixed(2)})`);
+
+  // ── ของจริงที่เปลี่ยน: ไล่ทันในที่โล่ง ──
+  //
+  // ในเวทีมีกำแพง คนหนีชนกำแพงแล้วต้องวกกลับอยู่ดี ความต่างจึงดูน้อย
+  // ตัวเลขที่มีความหมายคือ "ช่องว่างตีบลงกี่ px ต่อวินาที" ตอนวิ่งไล่กันตรง ๆ
+  const closeRate = (char) => {
+    const g = new Game();
+    g.p1.char = char; g.p2.char = "nyx"; g.p1.ai = g.p2.ai = false;
+    g.p1.x = 200; g.p2.x = 500;
+    const gap0 = g.p2.x - g.p1.x;
+    for (let f = 0; f < 60; f++) {
+      g.step(inp({ right: 1, run: 1 }), inp({ right: 1, run: 1 }));
+      g.p2.x = Math.min(g.p2.x, STAGE.w - 60);     // กันคนหนีทะลุกำแพงไป
+    }
+    return gap0 - (g.p2.x - g.p1.x);
+  };
+  const same = closeRate("nyx");
+  ok(Math.abs(same) < 1, `ความเร็วเท่ากัน = ช่องว่างไม่ตีบเลย ไล่ไม่ทันตลอดกาล (${same.toFixed(0)} px/วิ)`);
+  const faster = closeRate("helios");
+  ok(faster > 15, `MARCH ไล่แล้วช่องว่างตีบจริง (${faster.toFixed(0)} px/วิ)`);
+  ok(faster < 50, `แต่ไม่ถึงขั้นวิ่งไล่ทันทันที (${faster.toFixed(0)} px/วิ — เกิน 50 คือเร็วเกิน)`);
+}
+
+// ── ความเร็วของ "ท่าที่เคลื่อนที่" ต้องไม่ขยับตาม ──
+//
+// ท่าพวกนั้นถูกจูนระยะเอื้อมมาทีละท่าด้วยการวัดจริง (ดูหมวด sky1 ข้างบน)
+// ถ้าให้มันเร็วตามความเร็ววิ่งไปด้วย ระยะของทุกไม้จะยืดพร้อมกันเงียบ ๆ
+// แล้วตารางคอมโบที่วัดไว้ทั้งหมดใช้ไม่ได้อีกต่อไปโดยไม่มีอะไรฟ้อง
+{
+  const src = fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url).pathname, "utf8");
+  const mobile = src.slice(src.indexOf("m.mobile;") - 200, src.indexOf("m.mobile;") + 20);
+  ok(/PHYS\.run \* m\.mobile/.test(mobile),
+    "ท่าที่เคลื่อนที่ยังอ่านค่ากลาง ไม่ใช่ความเร็วของตัวละคร");
+  ok(/f\.runSpeed/.test(src), "ส่วนการวิ่งเปล่าอ่านความเร็วของตัวละคร");
+
+  // วัดผลจริง ไม่ใช่อ่านแต่โค้ด — ต้องเทียบ **ตัวเดียวกัน ท่าเดียวกัน** ที่ความเร็ววิ่งต่างกัน
+  // (เทียบ MARCH กับ BOMB ไม่ได้: คนละท่า คนละค่า mobile คนละความยาวท่า ต่างกันอยู่แล้วตั้งแต่ต้น)
+  // วัด **เฉพาะช่วงที่ยังอยู่ในท่า** ไม่งั้นจะติดระยะที่เขาวิ่งต่อหลังท่าจบมาด้วย
+  // แล้วเทสต์จะแดงเพราะวัดผิด ไม่ใช่เพราะโค้ดรั่ว (เจอมาแล้วรอบหนึ่ง)
+  const travel = () => {
+    const g = new Game();
+    g.p1.char = "helios"; g.p1.ai = g.p2.ai = false;
+    g.p2.x = g.p1.x + 400;
+    const x0 = g.p1.x;
+    g.step(inp({ p: { attack: 1 }, attack: 1 }), null);
+    let moved = 0;
+    for (let f = 0; f < 40 && g.p1.move; f++) { g.step(inp({ right: 1 }), null); moved = g.p1.x - x0; }
+    return moved;
+  };
+  const was = CHARACTERS.helios.run;
+  const slow = travel();
+  CHARACTERS.helios.run = PHYS.run * 3;          // เร่งให้สุดโต่งไปเลย จะได้เห็นชัดถ้ามันรั่ว
+  const fast = travel();
+  CHARACTERS.helios.run = was;
+  ok(Math.abs(slow - fast) < 0.01,
+    `เร่งความเร็ววิ่งสามเท่าแล้วระยะที่ไม้แรกพาไปไม่ขยับเลย (${slow.toFixed(1)} vs ${fast.toFixed(1)})`);
+}
+
+// ── ฝั่งวาด: วิ่งเร็วขึ้นแล้วต้องย่ำเท้าเร็วตาม ไม่งั้นเท้าไถไปกับพื้น ──
+{
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url).pathname, "utf8");
+  ok(/key === 'run'\) sp\.anims\.timeScale = f\.runSpeed \/ PHYS\.run/.test(scene),
+    "ฉากหรี่/เร่งวงจรวิ่งตามความเร็วของตัวละคร");
+  ok(/get runSpeed\(\)/.test(fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url).pathname, "utf8")),
+    "และอ่านจากที่เดียวกับที่ซิมใช้ ไม่ใช่ค่าที่ก๊อปมาวางไว้อีกที");
 }
