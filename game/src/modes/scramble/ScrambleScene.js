@@ -229,7 +229,7 @@ const CHAR_ART = {
   // ลบ artPending ใน core.js แล้วเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
   chronos: {
     artPending: true,
-    box: 0x9bbf7a, boxAccent: 0x4a3b5c,   // เขียวใบไม้ + ม่วงควัน
+    box: 0x24242a, boxAccent: 0x4f9b3f,   // ชุดดำล้วน + ใบไม้เขียว (ตามเรฟที่เคาะแล้ว)
     title: 'Chronos',
     role: 'สายรัวควัน',
     tip: 'ทุกไม้ทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม — หยุดรัวแล้วแรงกดดันยังไม่หยุด',

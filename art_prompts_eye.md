@@ -4,8 +4,12 @@
 > ตอนนี้วาดเป็นกล่องเขียว (`artPending: true`) — ชีตชุดนี้คือของจริงที่จะมาแทนทั้งตัว
 > เจนแล้ววางที่ `art_reference/chronos_sheets/sheet_A.jpg` … `sheet_F.jpg`
 
-> 📎 **แนบ "ขั้น 0" (ท่ายืนที่ผ่านแล้ว) ไปกับทุก prompt** ทุกบล็อกเขียนว่า "the same character"
+> 📎 **แนบ `art_reference/chronos_sheets/REF_turnaround.jpg` ไปกับทุก prompt**
+> นั่นคือดีไซน์ที่เคาะแล้ว (หน้า/ผม/ชุด/สไตล์) · ทุกบล็อกเขียนว่า "the same character"
 > ซึ่งแปลว่าไม่มีภาพอ้างอิง = ได้คนละคนทุกใบ (บทเรียนจาก MARCH ที่เจนครบ 102 เฟรมสำเร็จ)
+>
+> **ร่างแรกของไฟล์นี้บรรยายเป็นคนละคน** (หน้าบึ้ง ผมมัดจุก แจ็กเก็ตน้ำตาล ผ้าพันมือ รองเท้าผ้าใบ)
+> เจนออกมาแล้วไม่เหมือนเรฟเลย — anchor ข้างล่างถูกเขียนใหม่ทั้งย่อหน้าให้ตรงกับเรฟแล้ว
 
 ---
 
@@ -40,12 +44,14 @@ anchor สั่งไว้แล้วว่า **ก้านใบต้อ�
 
 ---
 
-## 🔴 ความเสี่ยงข้อสาม: เขียวจมไปกับฉากหลัง
+## ✅ ความเสี่ยงข้อสาม (เขียวจมฉากหลัง) — ดีไซน์จากเรฟแก้ให้แล้ว
 
 ฉากหลังของเวทีคือ **เนินเขาเขียว** · ถ้าเธอเขียวทั้งตัวเธอจะจมหายตอนยืนหน้าเนิน
 
-anchor จึงสั่งว่า **เสื้อผ้าเป็นโทนเข้ม (ดำ/น้ำตาลเข้ม/ม่วงเข้ม) ใบไม้เป็นเขียวเดียวในตัว**
-ใบไม้จึงกลายเป็นจุดอ่านซิลูเอตของเธอ ไม่ใช่ตัวกลืนฉาก
+ดีไซน์จากเรฟเป็น **ชุดดำล้วน ใบไม้เป็นเขียวเดียวในตัว** ซึ่งตรงกับที่ต้องการพอดี
+ใบไม้จึงเป็นจุดอ่านซิลูเอตของเธอ ไม่ใช่ตัวกลืนฉาก
+
+**วัดจากเรฟจริงแล้ว: 40% ล่าง = 63** (เพดาน 140) — ผ่านสบาย ไม่ต้องวัดซ้ำตอนขั้น 0
 
 > 📌 **ต้องวัดจริงตอนขั้น 0 ก่อนเจนอีก 6 ใบ** วิธีเดียวกับ DEAR และ MARCH:
 > ตัดพื้นขาวออก แล้ววัดความสว่างเฉลี่ยของ **40% ล่างของตัว ถ้าเกิน ~140 ให้เจนใหม่**
@@ -56,19 +62,69 @@ anchor จึงสั่งว่า **เสื้อผ้าเป็นโ�
 
 ## ดีไซน์ตัวละคร (anchor — ก๊อปท่อนนี้ลงทุก prompt)
 
-เธอคือ **"หมัดมาช้ากว่าเสียง"** — เมา ช้า แต่บู๊ ไม่ใช่สายเวทมนตร์ ไม่ใช่สายวางของ
-ท่าทางต้องอ่านว่า **คนที่พร้อมจะเข้าไปต่อย** ไม่ใช่คนที่ยืนร่ายอะไรอยู่
+**เคาะจากเรฟแล้ว** — `art_reference/chronos_sheets/REF_turnaround.jpg`
+อย่าบรรยายเอง อย่าเดาเอง ใช้ท่อนข้างล่างนี้คำต่อคำ
 
-- ผู้หญิงวัยยี่สิบต้น ตัวสูงโปร่ง ไหล่กว้างพอให้เห็นว่าเธอออกแรงได้
-- ผมยาวมัดหลวม ๆ สีเข้ม มีปอยหลุดลงหน้า — **ผมต้องแนบหัว ไม่ใช่พองเป็นวงกลม**
-- ตาปรือครึ่งหลับตลอด (ที่มาของชื่อ EYE) แต่ **ไม่ยิ้ม ไม่ทำหน้าน่ารัก** — นิ่ง ๆ เบื่อ ๆ
-- เสื้อกล้ามสีเข้ม ทับด้วยแจ็กเก็ตตัวใหญ่ปลดกระดุม แขนพับขึ้นถึงศอก
-- กางเกงขายาวหลวมสีเข้ม รัดข้อเท้า · รองเท้าผ้าใบสูงสีเข้ม
-- ผ้าพันมือทั้งสองข้างแบบนักมวย — **นี่คือสิ่งที่บอกว่าเธอเป็นสายต่อย**
-- **ใบกัญชายักษ์ใบเดียว** ขนาดราวครึ่งลำตัว ถือที่ก้านด้วยมือข้างหนึ่งเสมอ
-  ใช้เหมือนพัดหรือไม้ตี ไม่ใช่คทา ไม่ใช่อาวุธวิเศษ · **เขียวเข้มด้าน ไม่เรืองแสง**
+- ผู้หญิงสาว หน้ากลมนุ่ม **ตาโตสีเข้มรูปอัลมอนด์ คิ้วบาง ยิ้มมุมปากเบา ๆ ปากปิด**
+  — ไม่ใช่หน้าบึ้ง ไม่ใช่ตาปรือครึ่งหลับ ไม่ใช่หน้าดุ
+- **ผมดำยาวสยายถึงใต้ไหล่ แสกข้าง ปล่อยลงกรอบหน้า มีแถบไฮไลต์เงาวาวแบบอนิเมะ**
+  แนบหัวด้านบน พองออกด้านข้าง — ไม่ใช่มัดจุก ไม่ใช่ผมสั้น ไม่ใช่วงกลมฟู
+- **ชุดดำล้วนทั้งตัว**: เสื้อแขนยาวทรงหลวมปล่อย แขนกว้าง ชายเสื้อตรง
+  กับกางเกงขายาวทรงหลวมปล่อยยาวคลุมข้อเท้า — ไม่มีแจ็กเก็ต ไม่มีเสื้อกล้าม
+  ไม่มีเข็มขัด ไม่มีผ้าพันมือ ไม่มีกระเป๋า ไม่มีลาย
+- **เท้าเปล่า** ไม่ใส่รองเท้า ไม่ใส่ถุงเท้า
+- **ใบกัญชายักษ์ใบเดียว เขียวสดตัดเส้นดำหนา** ถือที่ก้านด้วยมือข้างหนึ่งเสมอ
+  ขนาดราวจากสะโพกถึงหัวเข่า · ถือห้อยต่ำระดับสะโพก ทับซ้อนกับขา
+  เป็น**สีเขียวเดียวในทั้งตัว** ของที่เหลือดำหมด
+- เส้นตัด **ดำหนา สม่ำเสมอ** · ลงสี **แบนเรียบ เงาน้อยขั้น** · สะอาด ไม่ใช่โทนหม่นเปื้อน
 
----
+### ตัวเลขที่วัดจากเรฟแล้ว (ผ่านด่านหมดแล้ว ไม่ต้องวัดซ้ำ)
+
+| ของ | ค่า | เกณฑ์ |
+|---|---|---|
+| ความสว่าง 40% ล่าง | **63** | ต้อง < 140 ✅ |
+| ความสว่างทั้งตัว | 62 | — |
+| ความสูงสามท่าในเรฟ | 707 / 707 / 697 px | ต่างกัน 1.4% ✅ |
+
+ชุดดำล้วนทำให้เธอเป็นตัวที่เข้มที่สุดในโรสเตอร์รองจาก KUNJAE (49) · เทียบ DEAR 66-68 · MARCH เดิม 126
+**ไม่มีทางจมไปกับพื้นเวที** (พื้นสว่าง 150-190) ซึ่งแปลว่าความเสี่ยงข้อสามข้างบนหายไปแล้วด้วยดีไซน์นี้เอง
+
+### 🔴 สองข้อที่เรฟให้มาแล้วต้องระวังต่อตอนทำท่า
+
+**1. ผมยาวสยายคือ "ของที่หลุดได้" ตัวใหม่** — แทนที่แจ็กเก็ตในร่างเก่า
+ท่าที่สะบัดแรง ๆ (โดนตี ล้ม ม้วนตัว หมุนกลางอากาศ) ผมจะปลิวออกจากตัว
+แล้วตัวตัดชีตจะทิ้งมันหรือนับเป็นท่าหนึ่งท่า → **สั่งทุกใบว่าผมต้องแตะไหล่หรือหลังเสมอ**
+
+**2. ชุดสบาย ๆ เท้าเปล่า อ่านว่า "สาวชิล" ไม่ใช่ "นักสู้"**
+ซึ่งเข้ากับคาแรกเตอร์เมา ๆ ของเธอ และเป็นเรื่องตลกในตัวอยู่แล้ว
+แต่แปลว่า **ความเป็นนักสู้ต้องมาจากท่า ไม่ใช่จากชุด** — ทุกใบของท่าตีจึงสั่งย้ำว่า
+ถ่างขากว้าง ลงน้ำหนักต่ำ ทุ่มตัวตามหมัด ไม่ใช่ยืนตรงแล้วยื่นมือ
+
+### ท่อนภาษาอังกฤษ (ก๊อปลงทุก prompt)
+
+```
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean bright colors — match the attached reference sheet exactly.
+
+Character: a young woman with a soft round face, large dark almond eyes, thin
+eyebrows and a small closed-mouth smile — calm and friendly, never angry, never
+scowling, never half-lidded. Her BLACK HAIR IS LONG AND LOOSE, falling well below
+her shoulders, parted to one side and framing her face, with glossy anime
+highlight streaks; it lies flat across the top of her skull and widens at the
+sides — never tied up, never a bun, never a wide round frizzy halo. She wears an
+ALL-BLACK outfit: a loose boxy long-sleeved top with wide sleeves and a straight
+hem, and loose black trousers that fall over her ankles. No jacket, no tank top,
+no belt, no hand wraps, no pockets, no patterns. She is BAREFOOT — no shoes, no
+socks. In one hand she holds a single oversized cannabis leaf by its stem, about
+as long as from her hip to her knee, hanging down at hip height and overlapping
+her leg. The leaf is BRIGHT SATURATED GREEN with a bold dark outline — it is the
+only green in the entire design; everything else she wears is black.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The leaf stem stays in her hand and the leaf always touches her
+body or arm. Nothing is ever detached from her anywhere in the image.
+```
 
 ## แผนชีต — 68 เฟรม
 
@@ -101,54 +157,74 @@ the art is a defect and the whole sheet gets thrown away.
 
 ---
 
-## 1. ขั้น 0 — ท่ายืน (ทำใบนี้ให้ผ่านก่อน แล้วค่อยเจนที่เหลือ)
+## 1. ขั้น 0 — ท่ายืน 3/4 หันขวา (ทำใบนี้ให้ผ่านก่อน แล้วค่อยเจนที่เหลือ)
 
-**อย่าเจนใบอื่นจนกว่าใบนี้จะผ่าน** ทุกใบที่เหลือแนบใบนี้เป็น reference
-ถ้า anchor ผิด ทั้งชุด 68 เฟรมผิดตามโดยไม่มีทางกู้
+**เรฟที่เคาะแล้วเป็นมุมเกือบหน้าตรง แต่เกมต้องการ 3/4 หันขวา** — ใบนี้คือการแปลงเรฟ
+ให้เป็นมุมที่เกมใช้ ไม่ใช่การออกแบบใหม่ · **ห้ามเปลี่ยนหน้า ผม ชุด หรือใบไม้แม้แต่นิดเดียว**
+
+ทำไมต้อง 3/4 หันขวา: เกมเป็นแนวนอน ตัวละครหันเข้าหากัน เกมพลิกภาพเองเมื่อหันซ้าย
+มุมหน้าตรงจะอ่านไม่ออกว่าหมัดออกไปทางไหนตอนตี (DEAR เป็นมุมหน้าตรงและเป็นตัวที่
+อ่านทิศทางยากที่สุดในโรสเตอร์ — ไม่อยากได้ตัวที่สอง)
+
+**อย่าเจนใบอื่นจนกว่าใบนี้จะผ่าน** ทุกใบที่เหลือแนบทั้งเรฟและใบนี้คู่กัน
+ถ้า anchor ผิด ทั้งชุด 67 เฟรมที่เหลือผิดตามโดยไม่มีทางกู้
 
 ```
 ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO HAZE, NO FOG, NO CLOUDS, NO GLOW, NO
 SPARKLES, NO MAGIC EFFECTS anywhere in this image. The character never exhales
-smoke and nothing is burning or lit. This is a clean character sprite illustration only —
-the game engine draws every smoke and light effect by itself.
+smoke and nothing is burning or lit. This is a clean character sprite
+illustration only — the game engine draws every smoke and light effect by itself.
 
-A single standing idle pose of an original game character, full body, facing
-three-quarter toward the viewer's right.
+A single standing idle pose of the SAME character as the attached reference
+sheet, full body, drawn in a THREE-QUARTER view with her body angled toward the
+viewer's right.
 
-Chibi-proportioned anime game sprite, large head roughly one third of the total
-height, short stubby limbs, bold dark outlines, flat cel shading, muted
-desaturated palette.
+This is the same girl from the reference turned to a three-quarter angle — do
+NOT redesign her. Keep her face, her hairstyle, her outfit, her bare feet and
+her leaf exactly as they are in the reference. Only the camera angle changes.
 
-Character: a young woman in her early twenties, tall and lean with shoulders
-broad enough to read as someone who throws punches. Dark hair tied in a loose
-bun with a few strands fallen across her face; the hair lies FLAT against her
-skull with the hairline visible, never a wide round frizzy halo. Her eyes are
-half-lidded and heavy, her expression flat and unimpressed — never smiling,
-never cute, never wide-eyed. She wears a dark charcoal tank top under an
-oversized unbuttoned dark brown jacket with the sleeves pushed up to the
-elbows, loose dark trousers cuffed at the ankle, and dark high-top sneakers.
-Both hands are wrapped in boxer's hand wraps. In one hand she holds a single
-oversized cannabis leaf by its stem, about half as tall as her torso, held like
-a fan or a paddle — not a staff, not a magic wand. The leaf is matte deep green
-and does not glow. Everything else she wears is dark; the leaf is the only
-green in the whole design.
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean bright colors — match the attached reference sheet exactly.
 
-She stands with her feet planted WELL APART and her weight low, so her
-silhouette stays broad rather than a narrow column. The leaf stem stays in her
-hand and the leaf itself always touches her arm or body — nothing is ever
-detached from her anywhere in the image.
+Character: a young woman with a soft round face, large dark almond eyes, thin
+eyebrows and a small closed-mouth smile — calm and friendly, never angry, never
+scowling, never half-lidded. Her BLACK HAIR IS LONG AND LOOSE, falling well below
+her shoulders, parted to one side and framing her face, with glossy anime
+highlight streaks; it lies flat across the top of her skull and widens at the
+sides — never tied up, never a bun, never a wide round frizzy halo. She wears an
+ALL-BLACK outfit: a loose boxy long-sleeved top with wide sleeves and a straight
+hem, and loose black trousers that fall over her ankles. No jacket, no tank top,
+no belt, no hand wraps, no pockets, no patterns. She is BAREFOOT — no shoes, no
+socks. In one hand she holds a single oversized cannabis leaf by its stem, about
+as long as from her hip to her knee, hanging down at hip height and overlapping
+her leg. The leaf is BRIGHT SATURATED GREEN with a bold dark outline — it is the
+only green in the entire design; everything else she wears is black.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The leaf stem stays in her hand and the leaf always touches her
+body or arm. Nothing is ever detached from her anywhere in the image.
+
+She stands relaxed but with her feet planted a little apart and her weight
+settled low, so her silhouette stays broad rather than a narrow column.
 
 Pure white background, no shadow, no ground line, no props of any kind, no
 text, no labels, no panel borders. Full body visible from the top of her hair
-to the soles of both shoes — do not crop, do not zoom. Leave a clear band of
-empty white space below the soles and above her hair. Exactly two arms and two
+to the soles of both bare feet — do not crop, do not zoom. Leave a clear band of
+empty white space below her feet and above her hair. Exactly two arms and two
 legs, clearly separated, do not overlap or duplicate limbs. Anatomically
 correct human proportions.
 ```
 
-**ตรวจก่อนผ่าน:** วัดความสว่าง 40% ล่าง (ต้อง < 140) · ใบไม้ติดมืออยู่ · ผมไม่พอง · ไม่มีควัน
+**ตรวจก่อนผ่าน:**
+- [ ] หน้า/ผม/ชุด/เท้าเปล่า/ใบไม้ **เหมือนเรฟทุกข้อ** — วางเทียบข้างกันดู
+- [ ] หันขวาจริง (ไหล่ขวาอยู่ใกล้ผู้ชมกว่าไหล่ซ้าย)
+- [ ] ไม่มีควันสักนิด
+- [ ] ผมไม่ปลิวหลุดจากตัว · ใบไม้ยังอยู่ในมือ
+- [ ] ความสว่าง 40% ล่าง < 140 (เรฟวัดได้ 63 ถ้าชุดยังดำล้วนก็ผ่านแน่นอน)
 
----
+> ถ้าได้มาแล้วมุมยังเป็นหน้าตรง: **อย่าทิ้ง** แนบตัวที่ได้กลับไปแล้วบอกให้แก้เฉพาะมุมกล้อง
+> (กติกาจาก `STYLE_LOCK.md`: มุมผิด = ขอแก้ · แขนขาเกิน = ทิ้งอย่างเดียว)
 
 ## 2. คลิปวิ่ง — เจนเป็น **วิดีโอ** ไม่ใช่ชีต
 
@@ -174,9 +250,11 @@ plants, then right foot plants, then left again — each stride the same length.
 
 The camera does not move, does not zoom and does not change angle. She stays
 the same size in frame the whole time and her whole body including the soles of
-her shoes stays inside the frame at all times. She keeps holding the cannabis
+her bare feet stays inside the frame at all times. She keeps holding the cannabis
 leaf by its stem the whole run; the leaf stays close against her body and never
-flies away from her hand. Her hair stays flat against her skull.
+flies away from her hand. Her long loose hair bounces with the run but always
+stays touching her shoulders or her back — it never streams out away from her
+body, and it never separates from her head.
 
 Pure white background throughout, no shadow, no ground line, no props, no text.
 ```
@@ -420,8 +498,9 @@ settling.
 
 ## เช็กลิสต์ก่อน build
 
-- [ ] ขั้น 0 ผ่านแล้ว และวัดความสว่าง 40% ล่างได้ **ต่ำกว่า 140**
-- [ ] ทุกใบแนบขั้น 0 เป็น reference
+- [ ] ขั้น 0 ผ่านแล้ว (ความสว่าง 40% ล่างวัดจากเรฟได้ 63 แล้ว — ชุดดำล้วนผ่านแน่นอน)
+- [ ] ทุกใบแนบ **ทั้งเรฟและขั้น 0** คู่กัน
+- [ ] หน้า/ผม/ชุด/เท้าเปล่า ยังเหมือนเรฟทุกใบ (ข้อที่หลุดง่ายที่สุดตอนเจนหลายใบ)
 - [ ] ท่อนห้ามควันอยู่ **บรรทัดแรก** ของทุก prompt ไม่ใช่ท้าย
 - [ ] เปิดดูทุกใบด้วยตา: **ใบกัญชาอยู่ในมือครบทุกท่าไหม** (ตัวเลขจับข้อนี้ไม่ได้)
 - [ ] ไม่มีควัน/แสงเรือง/ประกายติดมาสักท่า
@@ -429,6 +508,7 @@ settling.
 - [ ] `tools/measure_sheet_scale.py` — ท่าตั้งหลักต้องได้ 96-100% ของท่ายืน
 - [ ] ใบ E ท่า 9 ต่อเข้าท่า 4 ได้เนียน (ลูปปิด)
 - [ ] ใบ D ทุกท่าเท้าลอยจริง
+- [ ] **ผมยาวไม่ปลิวหลุดจากตัวสักท่า** โดยเฉพาะท่าล้ม/ม้วน/หมุนกลางอากาศ
 
 ---
 
