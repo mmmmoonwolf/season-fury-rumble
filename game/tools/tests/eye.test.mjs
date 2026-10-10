@@ -7,7 +7,7 @@ import "./phaser_stub.mjs";
 globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {} };
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
-const { Game, CHARACTERS, STAGE } = await import(G + "/core.js");
+const { Game, Fighter, CHARACTERS, STAGE } = await import(G + "/core.js");
 const { ScrambleScene } = await import(G + "/ScrambleScene.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
@@ -61,24 +61,49 @@ const run = (g, n, press = () => ({})) => {
     `สกิลสามช่องชี้ไปท่าที่มีจริงครบ (${sk.join(", ")})`);
 }
 
+// ══ ควันเป็นของสกิลเท่านั้น ไม้ปกติห้ามทิ้งควัน ═════════════════════════════
+//
+// เคยใส่ควันไว้ทุกไม้ เล่นจริงแล้ว**รำคาญ** ตีธรรมดาทีเดียวก็มีระเบิดตามมาทุกครั้ง
+// จนอ่านไม่ออกว่าอันไหนสกิลอันไหนไม้ปกติ · ควันย้ายไปอยู่กับสกิลอย่างเดียว
+{
+  const NORMALS = ["jab1", "jab2", "jab3", "jab4", "side", "up", "down", "nair", "sair", "dair"];
+  const mv = CHARACTERS.chronos.moves;
+  const leak = NORMALS.filter((k) => mv[k]?.puff);
+  ok(leak.length === 0, `ไม้ปกติไม่มี puff สักไม้ (เจอ ${leak.join(", ") || "ไม่เจอ"})`);
+  const smokers = Object.keys(mv).filter((k) => mv[k].puff);
+  ok(smokers.length > 0 && smokers.every((k) => CHARACTERS.chronos.skills.includes(k)
+      || mv[k].label === "Hazeflurry"),
+    `ไม้ที่ทิ้งควันเป็นสกิลล้วน (${smokers.join(", ")})`);
+
+  // ไม่ใช่แค่ดูโครงสร้าง — รัวปุ่มตีจริงทั้งชุดแย็บแล้วต้องไม่มีควันหลุดมาสักก้อน
+  const g = mk();
+  let dropped = 0;
+  for (let f = 1; f < 160; f++) {
+    g.step(inp(f % 10 === 1 ? { attack: 1, p: { attack: 1 } } : {}), null);
+    for (const e of g.events) if (e.type === "puffDrop") dropped++;
+  }
+  ok(dropped === 0, `รัวแย็บ 160 เฟรมแล้วไม่มีควันหลุดมาเลย (เจอ ${dropped} ก้อน)`);
+}
+
 // ══ ควันค้าง: ทิ้งตอนไม้ออก ระเบิดทีหลัง ไม่ใช่ตอนตีโดน ═══════════════════════
 //
 // **นี่คือทั้งหมดของตัวนี้** ถ้าควันลงพร้อมหมัด เธอก็เป็นแค่ตัวที่ดาเมจสูงกว่าชาวบ้าน
 // สิ่งที่ทำให้เธอต่างคือ "เธอหยุดรัวแล้วแรงกดดันยังไม่หยุด"
 {
-  // วัดด้วย jab3 ไม่ใช่ชุดรัว — ควันของชุดรัวมีฟิวส์ยาวกว่าเพราะมันรอไม้จบ (ดู PUFF_FUSE_FLURRY)
-  // วัดจากชุดรัวแล้วจะได้เลขที่ไม่มีความหมาย เพราะไม้จบไปเร่งมันลงก่อนครบฟิวส์
-  const g = mk();
+  // วัดด้วยอัลติที่ยิงจากระยะไกล **ให้ตีไม่โดนอะไรเลย**
+  // ถ้าวัดตอนไม้เข้าเป้า คนตีจะติด hitstop ด้วย แล้ว moveF ค้าง = ควันลงช้ากว่าจริง
+  // (วัดแล้ว: snap1 ที่ตั้ง at 9 ไว้ในช่วงกรอบชนเปิด ตอนโดนเป้าควันเลื่อนไปลงเฟรม 20)
+  const g = mk(600);
+  g.p1.ki = 100;
   let dropped = -1, popped = -1;
   for (let f = 1; f < 90; f++) {
-    // ต้องกดตีซ้ำให้ต่อถึงไม้สาม — ไม้ที่ทิ้งควันคือ jab3 ไม่ใช่ jab1
-    g.step(inp(f % 12 === 1 ? { attack: 1, p: { attack: 1 } } : {}), null);
+    g.step(inp(f === 1 ? { skill3: 1, p: { skill3: 1 } } : {}), null);
     for (const e of g.events) {
       if (e.type === "puffDrop" && dropped < 0) dropped = f;
       if (e.type === "puffPop" && popped < 0) popped = f;
     }
   }
-  ok(dropped > 0, `ไม้ปกติทิ้งควันจริง (เฟรม ${dropped})`);
+  ok(dropped > 0, `สกิลทิ้งควันจริง (เฟรม ${dropped})`);
   ok(popped > dropped, `แล้วระเบิดทีหลัง ไม่ใช่พร้อมกัน (ทิ้ง ${dropped} -> ระเบิด ${popped})`);
   ok(popped - dropped >= 18 && popped - dropped <= 22,
     `หน่วงราว 20 เฟรม (ได้ ${popped - dropped})`);
@@ -324,4 +349,104 @@ const run = (g, n, press = () => ({})) => {
   big.sim = { fighters: [bf] };
   big._attackSmoke();
   ok(big.emitted > once, `ไม้ที่กรอบใหญ่กว่าได้ควันเยอะกว่า (${once} -> ${big.emitted})`);
+}
+
+// ══ สกิล 2: วาร์ปล็อกเป้า — ไปถึงคนที่ใกล้ที่สุดเสมอ แล้วถูกดึงกลับที่เดิม ═══════
+//
+// ที่ยอมให้วาร์ปไม่จำกัดระยะได้เพราะท่านี้ติด `rewind`: เข้าไปต่อยแล้วกลับที่เดิมเสมอ
+// ได้ "จังหวะเข้า" อย่างเดียว ไม่ได้พื้นที่ฟรี
+//
+// 🔴 ลำดับใน startMove สำคัญ: ต้องจำที่ยืน **ก่อน** วาร์ป
+// เดิมบรรทัด rewindX อยู่ล่างสุด = จำตำแหน่งหลังวาร์ป แล้ว "เด้งกลับ" ไปที่เดิมที่เพิ่งไปถึง
+// ซึ่งอ่านเหมือนไม่มี rewind เลย และไม่มีอะไรฟ้อง
+{
+  for (const gap of [120, 400, 760]) {
+    const g = mk(gap);
+    const start = g.p1.x, foeX = g.p2.x;
+    let warpX = null, landed = null;
+    for (let f = 0; f < 120; f++) {
+      g.step(inp(f === 0 ? { skill2: 1, p: { skill2: 1 } } : {}), null);
+      if (f === 0) warpX = g.p1.x;
+      if (f > 2 && g.p1.moveId !== "snap1" && landed === null) { landed = g.p1.x; break; }
+    }
+    ok(Math.abs(warpX - foeX) < 80, `ห่าง ${gap}: วาร์ปไปติดตัวเป้า (เหลือ ${Math.abs(warpX - foeX).toFixed(0)} px)`);
+    ok(Math.abs(landed - start) < 2, `  แล้วเด้งกลับที่เดิม (${landed?.toFixed(0)} เทียบ ${start})`);
+  }
+  // เลือกคนที่ใกล้ที่สุด **ในทีมตรงข้าม** ไม่ใช่คนที่ใกล้ที่สุดเฉย ๆ
+  const g = mk();
+  g.fighters = [
+    new Fighter("p1", "A", 500, 1, "chronos", 0),
+    new Fighter("p2", "B", 1100, -1, "nyx", 1),     // ศัตรูไกล — อยู่ก่อนในลิสต์
+    new Fighter("p3", "C", 300, 1, "atlas", 0),     // เพื่อนร่วมทีม — ใกล้ที่สุดจริง
+    new Fighter("p4", "D", 700, -1, "helios", 1),   // ศัตรูที่ใกล้ที่สุด
+  ];
+  for (const f of g.fighters) { f.x = f.spawnX; f.y = STAGE.groundY; f.ai = false; }
+  const [a, , c, d] = g.fighters;
+  g.lockWarp(a);
+  ok(Math.abs(a.x - d.x) < 80, `2v2: ไปหาศัตรูที่ใกล้ที่สุด (ห่าง ${Math.abs(a.x - d.x).toFixed(0)})`);
+  ok(Math.abs(a.x - c.x) > 150, "ไม่ไปหาเพื่อนร่วมทีมที่ใกล้กว่า");
+}
+
+// ══ สกิล 3: ลำควันพาดทั้งจอ ทะลุคน ไม่โดนเพื่อน ═══════════════════════════════
+//
+// 🔴 shotAt ต้องอยู่ในช่วงเงื้อ กับดักเดียวกับ puff.at เป๊ะ
+// `fireShots` อยู่ใน advanceMove ซึ่งถูกข้ามตอนติด hitstop — ตั้งไว้ในช่วงกรอบชนเปิด
+// แล้วยืนติดตัวกดอัลติ ไม้ประชิดจะโดนก่อน moveF ค้าง **ลำไม่ออกเลยทั้งที่เสียหลอดเต็ม**
+{
+  const v = CHARACTERS.chronos.moves.veil1;
+  ok(v.shotAt < v.startup, `shotAt (${v.shotAt}) อยู่ในช่วงเงื้อ (startup ${v.startup})`);
+  ok(v.pierce === true, "ลำทะลุคน ไม่หยุดที่คนแรก");
+
+  // ยืนติดตัวเลย = ไม้ประชิดโดนแน่ ๆ = ติด hitstop แน่ ๆ ลำยังต้องออก
+  for (const [name, gap] of [["ยืนติดตัว", 60], ["ยืนห่าง", 600]]) {
+    const g = mk(gap);
+    g.p1.ki = 100;
+    let n = 0, reach = 0;
+    for (let f = 0; f < 200; f++) {
+      g.step(inp(f === 0 ? { skill3: 1, p: { skill3: 1 } } : {}), null);
+      n = Math.max(n, g.shots.length);
+      for (const sh of g.shots) reach = Math.max(reach, Math.abs(sh.x - g.p1.spawnX));
+    }
+    ok(n === 6, `${name}: ลำออกครบหกนัด (ได้ ${n})`);
+    ok(reach > 700, `${name}: ลำพาดไปไกล ${reach.toFixed(0)} px`);
+  }
+
+  // ทะลุคนแรกไปโดนคนที่สอง และผ่านเพื่อนร่วมทีมโดยไม่โดน
+  const g = mk();
+  g.fighters = [
+    new Fighter("p1", "A", 300, 1, "chronos", 0),
+    new Fighter("p2", "B", 700, -1, "nyx", 1),
+    new Fighter("p3", "C", 500, 1, "atlas", 0),     // เพื่อนยืนขวางแนวลำ
+    new Fighter("p4", "D", 1000, -1, "helios", 1),
+  ];
+  for (const f of g.fighters) { f.x = f.spawnX; f.y = STAGE.groundY; f.ai = false; }
+  const [a, b, c, d] = g.fighters;
+  a.ki = 100; a.facing = 1;
+  const hp0 = g.fighters.map((f) => f.hp), lo = g.fighters.map((f) => f.hp);
+  for (let f = 0; f < 200; f++) {
+    g.step(f === 0 ? inp({ skill3: 1, p: { skill3: 1 } }) : inp(), inp(), inp(), inp());
+    g.fighters.forEach((f2, j) => { lo[j] = Math.min(lo[j], f2.hp); });
+  }
+  ok(hp0[1] - lo[1] > 0, `ลำโดนศัตรูคนแรก (${hp0[1] - lo[1]})`);
+  ok(hp0[3] - lo[3] > 0, `ทะลุไปโดนศัตรูคนที่สองด้วย (${hp0[3] - lo[3]})`);
+  ok(hp0[2] - lo[2] === 0, "เพื่อนร่วมทีมที่ยืนขวางแนวลำไม่โดน");
+  ok(hp0[0] - lo[0] === 0, "ตัวเองไม่โดนลำตัวเอง");
+}
+
+// ══ jab4: ไม้จบชุดแย็บ ต่อเองด้วยการกดตีซ้ำ ไม่ใช่ต่อให้อัตโนมัติ ═══════════════
+{
+  const mv = CHARACTERS.chronos.moves;
+  ok(mv.jab3.chain === "jab4", "jab3 ต่อไป jab4 ได้");
+  ok(!mv.jab4.chain && !mv.jab4.autoChain, "jab4 เป็นไม้สุดท้าย ไม่ต่อไปไหนอีก");
+  ok(mv.jab4.dmg > mv.jab3.dmg, `jab4 แรงกว่า jab3 (${mv.jab4.dmg} > ${mv.jab3.dmg})`);
+  ok(mv.jab4.startup > mv.jab3.startup, `แต่ช้ากว่า (เงื้อ ${mv.jab4.startup} > ${mv.jab3.startup})`);
+
+  // กดตีรัวแล้วต้องเดินถึง jab4 จริง ไม่ใช่แค่ประกาศไว้ในตาราง
+  const g = mk();
+  const seen = new Set();
+  for (let f = 1; f < 200; f++) {
+    g.step(inp(f % 9 === 1 ? { attack: 1, p: { attack: 1 } } : {}), null);
+    if (g.p1.moveId) seen.add(g.p1.moveId);
+  }
+  ok(seen.has("jab4"), `กดตีซ้ำแล้วต่อถึง jab4 จริง (เห็น ${[...seen].join(" ")})`);
 }

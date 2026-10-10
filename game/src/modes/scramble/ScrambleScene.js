@@ -236,10 +236,10 @@ const CHAR_ART = {
     slashTint: 0xc2c7cf,                  // รอยฟาดของเธอเป็นควัน ไม่ใช่แสงครีมเหมือนคนอื่น
     title: 'Chronos',
     role: 'สายรัวควัน',
-    tip: 'ทุกไม้ทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม — หยุดรัวแล้วแรงกดดันยังไม่หยุด',
+    tip: 'สกิลทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม · สกิล 2 วาร์ปหาคนใกล้สุดแล้วเด้งกลับ',
     anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
       block: 1, blockstun: 1, blockcrouch: 1 },
-    attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
+    attacks: new Set(["jab1", "jab2", "jab3", "jab4", "side", "up", "down", "nair", "sair", "dair",
       "haze1", "haze2", "haze3", "hazeEnd", "snap1", "veil1"]),
   },
   // Atlas: ยังไม่มีอาร์ต — ไม่มี atlasKey จึงตกไปวาดเป็นกล่องเหมือนหุ่นซ้อม
@@ -3675,6 +3675,24 @@ class ScrambleScene extends Phaser.Scene {
 
     // มีดที่ขว้างออกไป — หมุดที่ปะทะแล้วค้างอยู่วาดเป็นวงแดงกระพริบให้รู้ว่ากดวาร์ปตามได้
     for (const sh of s.shots) {
+      // ลำควันของ EYE — ไม่ใช่มีด วาดเป็นแถบควันลากหางยาวไปด้านหลังทิศที่วิ่ง
+      // หางคือสิ่งที่ทำให้มันอ่านเป็น "ลำ" ไม่ใช่ "ก้อนควันลอยไป"
+      if (sh.smoke) {
+        const dir = Math.sign(sh.vx) || 1;
+        const TAIL = 190;
+        for (let i = 0; i < 6; i++) {
+          const t = i / 5;                       // 0 = หัวลำ 1 = ปลายหาง
+          const x = sh.x - dir * TAIL * t;
+          const r = 30 * (1 - t * 0.45);
+          g.fillStyle(SMOKE.haze.shade, 0.30 * (1 - t * 0.7));
+          g.fillEllipse(x + 3, sh.y + 6, r * 2.1, r * 1.8);
+          g.fillStyle(SMOKE.haze.body, 0.52 * (1 - t * 0.6));
+          g.fillEllipse(x, sh.y, r * 2, r * 1.7);
+        }
+        g.fillStyle(SMOKE.haze.hot, 0.5);
+        g.fillEllipse(sh.x + dir * 8, sh.y, 30, 24);
+        continue;
+      }
       if (!sh.target) {
         const ang = sh.stuck > 0 ? 0 : Math.atan2(sh.vy, sh.vx);
         g.lineStyle(4, 0xc9a227, 1);

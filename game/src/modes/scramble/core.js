@@ -712,8 +712,15 @@ const EYE_MOVES = {
   jab2: { label: 'Backswing', kind: 'ground', startup: 6, active: 4, recovery: 14, dmg: 4,
     hb: { x: 8, y: -100, w: 88, h: 66 }, kb: [3, 0], stun: 18, chain: 'jab3' },
   // ไม้จบทิ้งควัน — ต่อคอมโบเองไม่ได้ แต่ควันที่ลงทีหลังเปิดให้เริ่มชุดใหม่
-  jab3: { label: 'Smoke Puff', kind: 'ground', startup: 9, active: 5, recovery: 20, dmg: 6,
-    hb: { x: 10, y: -106, w: 96, h: 72 }, kb: [9, -4], stun: 26, puff: { at: 10 } },
+  // ไม้ปกติ**ไม่ทิ้งควัน** — เคยใส่ไว้แล้วเล่นจริงพบว่ารำคาญ ตีธรรมดาทีเดียวก็มีระเบิดตาม
+  // ควันเป็นของสกิลเท่านั้น จะได้อ่านออกว่า "นี่เธอใช้สกิล" ไม่ใช่ควันพรมทั้งจอ
+  jab3: { label: 'Backhand', kind: 'ground', startup: 9, active: 5, recovery: 20, dmg: 6,
+    hb: { x: 10, y: -106, w: 96, h: 72 }, kb: [9, -4], stun: 26, chain: 'jab4' },
+  /* ไม้จบชุดแย็บ: **คาบมวนแล้วต่อย** — ต่อเองด้วยการกดตีซ้ำ ไม่ใช่ต่อให้อัตโนมัติ
+   * เป็นรุ่นย่อของ hazeEnd ที่ไม่ต้องใช้สกิล: ช้ากว่า แลกกับดาเมจและแรงดีดที่มากกว่า jab3
+   * ไม่ทิ้งควัน — ควันยังเป็นของสกิลอย่างเดียว */
+  jab4: { label: 'Last Drag', kind: 'ground', startup: 12, active: 4, recovery: 25, dmg: 9,
+    hb: { x: 10, y: -110, w: 100, h: 68 }, kb: [13, -5], stun: 32, imp: { f: 11, vx: 5 } },
   side: { label: 'Wide Fan', kind: 'ground', startup: 11, active: 5, recovery: 24, dmg: 7,
     hb: { x: 14, y: -98, w: 118, h: 58 }, kb: [11, 0], stun: 28, imp: { f: 9, vx: 8 }, glide: true },
   up: { label: 'Updraft', kind: 'ground', startup: 9, active: 6, recovery: 21, dmg: 6,
@@ -724,8 +731,8 @@ const EYE_MOVES = {
     hb: { x: -48, y: -140, w: 112, h: 124 }, kb: [3, -6], stun: 24, jumpCancel: true },
   sair: { label: 'Air Swat', kind: 'air', startup: 8, active: 8, recovery: 15, dmg: 7,
     hb: { x: 10, y: -96, w: 110, h: 54 }, kb: [9, -4], stun: 28, floaty: true },
-  dair: { label: 'Smoke Drop', kind: 'air', startup: 9, active: 7, recovery: 17, dmg: 7,
-    hb: { x: -20, y: -50, w: 100, h: 84 }, kb: [5, -3], stun: 26, puff: { at: 10 } },
+  dair: { label: 'Plunge', kind: 'air', startup: 9, active: 7, recovery: 17, dmg: 7,
+    hb: { x: -20, y: -50, w: 100, h: 84 }, kb: [5, -3], stun: 26 },
 
   /* ── สกิล 1 "รัวควัน" (ปุ่ม 1) ── โครงเดียวกับ Hundred Hands ของ MARCH
    *  ต่างกันที่ **ทุกไม้ที่สองทิ้งควันไว้** เธอหยุดรัวแล้วแรงกดดันยังไม่หยุด
@@ -762,16 +769,31 @@ const EYE_MOVES = {
    *  และ refresh ปลดชื่อชุดรัวออกจาก used ให้ด้วย ไม่งั้นกลับมาแล้วกดซ้ำไม่ได้ */
   snap1: { label: 'Snapback', kind: 'ground', startup: 8, active: 5, recovery: 18, dmg: 8,
     hb: { x: 12, y: -104, w: 96, h: 56 }, kb: [10, -3], stun: 28,
-    imp: { f: 7, vx: 14 }, glide: true, rewind: true, puff: { at: 9 },
+    // lockWarp พาไปถึงตัวแล้ว จึงไม่ต้องพุ่งไกลเหมือนเดิม (เคย vx 14) เหลือไว้พอให้หมัดมีน้ำหนัก
+    lockWarp: true, imp: { f: 7, vx: 5 }, glide: true, rewind: true, puff: { at: 9 },
     refresh: ['haze1', 'haze2', 'haze3', 'jab1', 'jab2', 'jab3'] },
 
-  /* ── สกิล 3 "ม่านควัน" (อัลติ ปุ่ม 3 ใช้หลอดเต็ม) ──
-   *  ระเบิดควันรอบตัวดันทุกคนออก แล้ว 5 วินาทีต่อจากนั้น
-   *  **หมัดของทุกคนบนเวทีทิ้งควัน รวมหมัดที่ตีเธอเอง**
-   *  อัลติไม่ได้บัฟเธอ มันเปลี่ยนกติกาของทุกคน — คนที่ตีเธอจะโดนควันของตัวเองถ้ายืนผิดที่ */
+  /* ── สกิล 3 "ลำควัน" (อัลติ ปุ่ม 3 ใช้หลอดเต็ม) ──
+   *
+   *  สูดลึกหนึ่งที แล้ว**พ่นลำควันยาวพาดทั้งจอ** — ลำทะลุคน ไม่หยุดที่คนแรก
+   *  หกนัดซ้อนกันสองแถวสามหลัก (dx/dy) จึงอ่านเป็นลำหนา ๆ ไม่ใช่ก้อนเดียวลอยไป
+   *  ทุกนัดใช้ volley เดียวกัน = คนหนึ่งโดนได้ครั้งเดียวต่อการพ่นหนึ่งครั้ง ไม่ใช่หกเด้ง
+   *
+   *  ยังมีกรอบชนประชิดรอบตัวอยู่ ไว้ดันคนที่ยืนติดตัวออกก่อนลำจะออก
+   *  และยังตั้ง haze ไว้ ซึ่งตอนนี้อ่านเป็น "ควันที่ลำทิ้งค้างไว้กลางอากาศ"
+   *
+   *  🔴 shotAt ต้องอยู่ในช่วงเงื้อเหมือน puff.at — กับดักเดียวกันเป๊ะ
+   *  `fireShots` ถูกเรียกใน advanceMove ซึ่งถูก `continue` ข้ามตอนติด hitstop
+   *  ตั้งไว้ในช่วงที่กรอบชนเปิด แล้วไม้ประชิดดันไปโดนใครเข้า moveF จะค้าง
+   *  **ลำควันจะไม่ออกเลย** ทั้งที่เสียหลอดเต็มไปแล้ว */
   veil1: { label: 'Smokeveil', kind: 'ground', startup: 10, active: 6, recovery: 28, dmg: 10,
     hb: { x: -120, y: -170, w: 240, h: 180 }, kb: [12, -10], stun: 34, armor: 2,
-    haze: true, puff: { at: 12 } },
+    haze: true, puff: { at: 9 },
+    shots: [{ vy: 0, dy: -38 }, { vy: 0, dy: 10 },
+            { vy: 0, dx: 56, dy: -38 }, { vy: 0, dx: 56, dy: 10 },
+            { vy: 0, dx: 112, dy: -38 }, { vy: 0, dx: 112, dy: 10 }],
+    shotAt: 9, shotDmg: 16, shotStun: 30, shotKb: 7,
+    shotRange: 1300, pierce: true, smokeShot: true },
 };
 
 const EYE_SKILLS = ['haze1', 'snap1', 'veil1'];
@@ -1339,7 +1361,13 @@ class Game {
     // สลับอาวุธตั้งแต่เฟรมแรกของท่า ไม่ใช่ตอนจบ — คนเล่นกดแล้วเห็นผลทันที
     // ทั้งสองเครื่องเดินถึงบรรทัดนี้ที่เฟรมเดียวกันเสมอ เพราะมาจากปุ่มที่ส่งข้ามเน็ตเหมือนกัน
     if (mv.toggle) { f.alt = f.alt ? 0 : 1; this.events.push({ type: 'swap', alt: f.alt, x: f.x, y: f.y - 90 }); }
+    // **จำที่ยืนก่อนวาร์ปเสมอ** — เดิมบรรทัดนี้อยู่ล่างสุดหลังวาร์ปไปแล้ว
+    // ท่าที่ทั้งวาร์ปและเด้งกลับ (snap1) จะ "เด้งกลับ" ไปที่ที่เพิ่งวาร์ปไปถึง = ไม่เด้งเลย
+    if (mv.rewind) f.rewindX = f.x;
     if (mv.warp) this.warp(f);
+    // วาร์ปล็อกเป้า: ไปโผล่ข้างคนที่ใกล้ที่สุด ไม่จำกัดระยะ — คู่กับ rewind จึงไม่โกง
+    // เข้าไปแล้วโดนดึงกลับที่เดิมเสมอ ได้จังหวะเข้าแต่ไม่ได้พื้นที่ฟรี
+    if (mv.lockWarp) this.lockWarp(f);
     // ม่านควัน: เป็นสถานะของ **เวที** ไม่ใช่ของเธอ — หมัดของทุกคนทิ้งควันระหว่างนี้
     if (mv.haze) { this.haze = HAZE_LIFE; this.events.push({ type: 'hazeOn', x: f.x, y: f.y - 70 }); }
     if (mv.warpAnchor) this.warpToAnchor(f);
@@ -1354,8 +1382,6 @@ class Game {
     f.slammed = 0;
     f.carrying = [];
     f.hitList = new Set(); f.hitConfirmed = false; f.used.add(id);
-    // จำที่ยืนไว้ให้ท่าที่ต้องเด้งกลับ — เก็บแค่จุดเดียว ไม่ต้องเก็บประวัติยาว
-    if (mv.rewind) f.rewindX = f.x;
     f.setState('attack');
     this.lastMoveInfo = { id, ...f.moves[id] };
     this.events.push({ type: 'move', id });
@@ -1619,13 +1645,18 @@ class Game {
       // back = ยิงสวนทางที่หันอยู่ ใช้ทำคลื่นที่แผ่ออกสองข้างพร้อมกัน (อัลติของ Atlas)
       const dir = spec.back ? -f.facing : f.facing;
       const sh = {
-        owner: f.id, x: f.x + dir * 30, y: f.y - (m.shotLow ? 26 : 96),
+        // dx/dy = เลื่อนจุดเกิดของนัดนี้ ใช้ซ้อนหลายนัดให้กลายเป็น "ลำ" ที่หนาและยาว
+        // แทนที่จะเป็นจุดเดียวลอยไป — ทุกนัดใช้ volley เดียวกันจึงไม่โดนซ้อนหลายเด้ง
+        owner: f.id, x: f.x + dir * (30 + (spec.dx ?? 0)),
+        y: f.y - (m.shotLow ? 26 : 96) + (spec.dy ?? 0),
         // `spec.speed` = ความเร็วแนวนอนเฉพาะกระสุนนัดนี้ (ไม่ใส่ = SHOT_SPEED ปกติ)
         // มีไว้ทำมุมดิ่ง: ถ้าความเร็วแนวนอนคงที่เสมอ กระสุนที่ตั้ง vy สูงแค่ไหนก็ยัง
         // เฉียงอยู่ดี — `dair` ที่ตั้ง vy 8 ทำมุมได้แค่ 32 องศา ซึ่งลงไม่ถึงคนที่อยู่ใต้ตัว
         vx: dir * (spec.speed ?? SHOT_SPEED), vy: spec.vy, facing: dir,
         dmg: m.shotDmg, stun: m.shotStun, kb: m.shotKb ?? 2, volley, range: m.shotRange ?? SHOT_RANGE,
       pierce: !!m.pierce,
+        // ฝั่งวาดใช้ธงนี้เลือกว่าจะวาดเป็นมีด หรือเป็นลำควัน
+        smoke: !!m.smokeShot,
         anchor: !!spec.anchor, target: null, stuck: 0, travelled: 0, dead: false,
       };
       if (sh.anchor) volley.anchor = sh;
@@ -2006,6 +2037,29 @@ class Game {
     f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, dest));
     f.y = STAGE.groundY; f.vx = 0; f.vy = 0; f.onGround = true;
     a.dead = true;
+    this.events.push({ type: 'appear', x: f.x, y: f.y });
+    return true;
+  }
+
+  /** วาร์ปไปโผล่ข้างคนที่ใกล้ที่สุด (สกิล 2 ของ EYE)
+   *
+   *  ต่างจาก `warp` ตรงที่**ไม่มีเพดานระยะ** — `warp` ไกลเกิน ULT_REACH แล้วพุ่งไปเฉย ๆ
+   *  อันนี้ไปถึงเสมอ เพราะท่าที่เรียกมันติด `rewind` ไว้ด้วย: เข้าไปต่อยแล้วถูกดึงกลับที่เดิม
+   *  ได้ "จังหวะเข้า" อย่างเดียว ไม่ได้พื้นที่ฟรี จึงไม่ต้องกันด้วยระยะ
+   *
+   *  `foe()` คืนคนที่ x ใกล้ที่สุดในทีมตรงข้ามอยู่แล้ว และไล่ `this.fighters` ตามลำดับ
+   *  ทุกเครื่องจึงเลือกคนเดียวกันเสมอ ใช้ในเน็ตเพลย์ได้ไม่ต้องซิงก์อะไรเพิ่ม
+   */
+  lockWarp(f) {
+    const o = this.foe(f);
+    if (!o) return false;
+    // โผล่ฝั่งที่เธอยืนอยู่ ไม่ข้ามไปอีกฝั่ง — ข้ามแล้วคนเล่นจะงงว่าหันหลังให้ใคร
+    const side = Math.sign(f.x - o.x) || -f.facing;
+    const half = PHYS.width / 2;
+    this.events.push({ type: 'vanish', x: f.x, y: f.y });
+    f.x = Math.max(STAGE.wallL + half, Math.min(STAGE.wallR - half, o.x + side * ULT_GAP));
+    f.y = STAGE.groundY; f.vx = 0; f.vy = 0; f.onGround = true;
+    f.facing = -side;
     this.events.push({ type: 'appear', x: f.x, y: f.y });
     return true;
   }

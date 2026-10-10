@@ -134,3 +134,35 @@ const trial = (mine, move) => {
   ok(A.jab1.dmg > H.jab1.dmg, `แต่ดาเมจต่อทีสูงกว่า (${A.jab1.dmg} vs ${H.jab1.dmg})`);
   ok(A.jab1.recovery > H.jab1.recovery, `และค้างนานกว่า (${A.jab1.recovery} vs ${H.jab1.recovery} เฟรม)`);
 }
+
+/* ── ทุกอัตลาสต้องมี canvasW/canvasH ใน meta ──
+ *
+ * `_initCharSprite` เอาไปหารเป็นจุดยึด: `setOrigin(anchorX/canvasW, feetY/canvasH)`
+ * **ขาดแล้วมันไม่พัง มันตกไปใช้ค่าสำรอง 323x321 เงียบ ๆ**
+ * ถ้า canvas จริงสูงกว่านั้น feetY/canvasH จะเกิน 1 = จุดยึดอยู่ใต้ขอบล่างของภาพ
+ * ตัวละครจึง**ลอยเหนือพื้น**ทั้งเกม โดยไม่มี error สักบรรทัด
+ * (EYE เป็นแบบนี้มาหนึ่งรอบ — ลอย 29 px เพราะ canvas จริงสูง 371 แต่ค่าสำรองบอก 321)
+ */
+{
+  const fs = await import("node:fs");
+  const dir = new URL("../../assets/characters/", import.meta.url).pathname;
+  const files = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
+  ok(files.length >= 7, `เจออัตลาส ${files.length} ไฟล์`);
+  for (const f of files) {
+    const a = JSON.parse(fs.readFileSync(dir + f, "utf8"));
+    const m = a.meta ?? {};
+    const id = f.replace(/^scramble_|\.json$/g, "");
+    const has = Number.isFinite(m.canvasW) && Number.isFinite(m.canvasH);
+    ok(has, `${id}: meta มี canvasW/canvasH`);
+    if (!has) continue;
+    // ต้องตรงกับ canvas จริง ไม่ใช่แค่ "มีตัวเลขอะไรก็ได้"
+    // เทียบกับ sourceSize ไม่ใช่ frame.w/h เพราะบางอัตลาส trim เฟรมไว้
+    // (frame คือกรอบที่ตัดขอบใสออกแล้ว ส่วน sourceSize คือ canvas เต็มก่อน trim)
+    const bad = Object.entries(a.frames).filter(
+      ([, v]) => v.sourceSize.w !== m.canvasW || v.sourceSize.h !== m.canvasH);
+    ok(bad.length === 0,
+      `${id}: ทุกเฟรมมี canvas ${m.canvasW}x${m.canvasH} (ไม่ตรง ${bad.length} เฟรม)`);
+    ok(m.feetY <= m.canvasH && m.anchorX <= m.canvasW,
+      `${id}: จุดยึดอยู่ในกรอบภาพ (เท้า ${m.feetY}/${m.canvasH})`);
+  }
+}

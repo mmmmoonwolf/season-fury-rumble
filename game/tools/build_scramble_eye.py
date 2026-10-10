@@ -100,6 +100,10 @@ SEQ = {
     "haze2": ("E",  [1, 8, 10], GROUND),  # ถือมวน .264 -> ชกด้วยมือที่ถือมวน .437 -> เก็บมือ .278
     "haze3": ("E3", [1, 2, 3], GROUND),   # การ์ด+มวน .271 -> หมัดขวาสุดแขน .415 -> เก็บมวน .284
 
+    # ไม้จบชุดแย็บ — คาบมวนแล้วต่อย ใช้ใบ F เหมือน hazeEnd แต่คนละหมัด
+    # (F2 เอื้อมขวา .472 ไกลกว่า F3 ที่ hazeEnd ใช้ .416 — สองไม้จึงไม่ซ้ำภาพกัน)
+    "jab4": ("F", [1, 2, 5], GROUND),     # เงื้อ+คาบมวน -> หมัดโดยมวนคาปาก -> ยืนสูบหนึ่งที
+
     # ---- ใบ F: ไม้จบ ท่าย้อน และอัลติ ----
     "hazeEnd": ("F", [1, 3, 5], GROUND),  # เงื้อสุด -> หมัดปิด .416 -> **ยืนสูบหนึ่งที**
     "snap1":   ("F", [4, 6, 2], GROUND),  # ย่อเงื้อ -> พุ่งสุดตัว .622 กว้างสุดทั้งใบ -> ดึงกลับ
@@ -200,7 +204,12 @@ sheet.save(png)
 json.dump({"frames": frames,
            "meta": {"image": "scramble_chronos.png",
                     "size": {"w": sheet.width, "h": sheet.height}, "scale": "1",
-                    "anchorX": ANCHOR_X, "feetY": FEET_Y, "standing": STANDING}},
+                    "anchorX": ANCHOR_X, "feetY": FEET_Y, "standing": STANDING,
+                    # canvasW/canvasH ขาดไม่ได้ — ฉากเอาไปหารเป็นจุดยึดของสไปรท์
+                    # (`setOrigin(anchorX/canvasW, feetY/canvasH)` ใน _initCharSprite)
+                    # ไม่มีแล้วมันตกไปใช้ค่าสำรอง 323x321 ซึ่งทำให้ feetY/canvasH > 1
+                    # = จุดยึดอยู่ใต้ขอบล่างของภาพ แล้วตัวละคร**ลอยเหนือพื้น 29 px**
+                    "canvasW": CW, "canvasH": CH}},
           open(os.path.join(OUT, "scramble_chronos.json"), "w"), indent=1)
 print(f"เขียน {png}  {sheet.width}x{sheet.height}  ({len(frames)} เฟรม · {rows} แถว)")
 assert sheet.width <= MAXW and sheet.height <= MAXW, "อัตลาสเกิน 4096 — การ์ดจอจะวาดเป็นสีดำเงียบ ๆ"
