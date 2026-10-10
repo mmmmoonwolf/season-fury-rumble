@@ -42,20 +42,64 @@ const run = (g, n, press = () => ({})) => {
 // **นี่คือทั้งหมดของตัวนี้** ถ้าควันลงพร้อมหมัด เธอก็เป็นแค่ตัวที่ดาเมจสูงกว่าชาวบ้าน
 // สิ่งที่ทำให้เธอต่างคือ "เธอหยุดรัวแล้วแรงกดดันยังไม่หยุด"
 {
+  // วัดด้วย jab3 ไม่ใช่ชุดรัว — ควันของชุดรัวมีฟิวส์ยาวกว่าเพราะมันรอไม้จบ (ดู PUFF_FUSE_FLURRY)
+  // วัดจากชุดรัวแล้วจะได้เลขที่ไม่มีความหมาย เพราะไม้จบไปเร่งมันลงก่อนครบฟิวส์
   const g = mk();
-  g.step(inp({ skill1: 1, p: { skill1: 1 } }), null);
   let dropped = -1, popped = -1;
   for (let f = 1; f < 90; f++) {
-    g.step(inp(), null);
+    // ต้องกดตีซ้ำให้ต่อถึงไม้สาม — ไม้ที่ทิ้งควันคือ jab3 ไม่ใช่ jab1
+    g.step(inp(f % 12 === 1 ? { attack: 1, p: { attack: 1 } } : {}), null);
     for (const e of g.events) {
       if (e.type === "puffDrop" && dropped < 0) dropped = f;
       if (e.type === "puffPop" && popped < 0) popped = f;
     }
   }
-  ok(dropped > 0, `ทิ้งควันจริงตอนรัว (เฟรม ${dropped})`);
+  ok(dropped > 0, `ไม้ปกติทิ้งควันจริง (เฟรม ${dropped})`);
   ok(popped > dropped, `แล้วระเบิดทีหลัง ไม่ใช่พร้อมกัน (ทิ้ง ${dropped} -> ระเบิด ${popped})`);
   ok(popped - dropped >= 18 && popped - dropped <= 22,
     `หน่วงราว 20 เฟรม (ได้ ${popped - dropped})`);
+}
+
+// ══ gimmick สูบ joint: ไม้จบของชุดรัวเร่งควันที่ค้างอยู่ให้ลงพร้อมกัน ══════════
+//
+// **ยิ่งรัวนาน ยิ่งมีควันค้างเยอะ ยิ่งจบแล้วลงหนัก** คนเล่นจึงมีคำถามจริงให้ตอบทุกครั้ง
+// ไม่ต้องใช้ปุ่มใหม่ — ปุ่มในเกมเต็มแล้ว และเพิ่มปุ่มแปลว่าต้องแก้รูปแบบสายข้อมูลของ netplay
+{
+  const run1 = (mash) => {
+    const g = mk();
+    let n = -1, drags = 0;
+    g.step(inp({ skill1: 1, p: { skill1: 1 } }), null);
+    for (let f = 1; f < 220; f++) {
+      g.step(inp(mash && f % 3 === 0 ? { attack: 1, p: { attack: 1 } } : {}), null);
+      for (const e of g.events) if (e.type === "drag") { drags++; n = e.n; }
+    }
+    return { n, drags };
+  };
+  const plain = run1(false), long = run1(true);
+  ok(plain.drags === 1, `รัวจบหนึ่งชุด = สูบหนึ่งที (${plain.drags})`);
+  ok(plain.n >= 1, `และมีควันค้างให้เร่งลงจริง (${plain.n} ก้อน)`);
+  ok(long.n > plain.n, `รัวยาวกว่าได้เก็บเยอะกว่า (${plain.n} -> ${long.n} ก้อน)`);
+
+  // ── เร่งเฉพาะควันของตัวเอง ไม่ใช่ของทุกคนบนเวที ──
+  //
+  // ตอนม่านควันเปิด หมัดของคู่ต่อสู้ก็ทิ้งควัน — เธอสูบของเธอ ไม่ได้สูบของคนอื่น
+  const g = mk();
+  g.puffs.push({ x: g.p1.x, y: g.p1.y - 90, owner: "p2", team: 1, life: 40, n: 99 });
+  g.puffs.push({ x: g.p1.x, y: g.p1.y - 90, owner: "p1", team: 0, life: 40, n: 98 });
+  g.takeDrag(g.p1);
+  const mine = g.puffs.find((p) => p.owner === "p1"), theirs = g.puffs.find((p) => p.owner === "p2");
+  ok(mine.life === 1, `ควันของเธอถูกเร่ง (life ${mine.life})`);
+  ok(theirs.life === 40, `ควันของคู่ต่อสู้ไม่ขยับ (life ${theirs.life})`);
+
+  // ── `at` ของการสูบต้องอยู่ในช่วงเงื้อ ไม่ใช่ช่วงที่กรอบชนเปิด ──
+  //
+  // 🔴 ข้อนี้คือบั๊กที่เพิ่งเจอ: ตอนไม้เข้าเป้า คนตีก็ติด hitstop ด้วย แล้ว advanceMove
+  // ถูกข้ามทั้งบล็อก `moveF` จึงค้างอยู่ที่เลขเดิมหลายเฟรมแล้วท่าจบไปเลย
+  // ตั้ง at ไว้หลังช่วงเงื้อ = โค้ดบรรทัดนั้น**ไม่เคยทำงานสักครั้ง**ตอนตีโดน
+  // (วัดแล้ว: at 8 กับ startup 6 -> moveF ค้างที่ 6 อยู่ 12 เฟรม ไม่เคยถึง 8)
+  const he = CHARACTERS.chronos.moves.hazeEnd;
+  ok(he.drag.at < he.startup,
+    `สูบตอนเงื้อ ไม่ใช่ตอนกรอบชนเปิด (at ${he.drag.at} < startup ${he.startup})`);
 }
 
 // ── ทิ้งควันแม้อีกฝั่งกันไว้ได้ — แรงกดดันต้องเดินต่อ ──
@@ -191,4 +235,10 @@ const run = (g, n, press = () => ({})) => {
   const simDelay = Number(core.match(/const PUFF_DELAY = (\d+)/)?.[1]);
   const fxLife = Number(scene.match(/const PUFF_FX_LIFE = (\d+)/)?.[1]);
   ok(simDelay > 0 && simDelay === fxLife, `อายุควันบนจอ (${fxLife}) เท่ากับหน่วงในซิม (${simDelay})`);
+  // ควันของชุดรัวฟิวส์ยาวกว่าปกติ ฝั่งวาดจึงต้องอ่านอายุจากอีเวนต์ ไม่ใช่ใช้ค่าคงที่อย่างเดียว
+  // ไม่งั้นควันฟิวส์ยาวจะหายไปจากจอตั้งแต่ยังไม่ระเบิด แล้วคนเล่นลืมว่ามันค้างอยู่
+  ok(/const fuse = e\.life \?\? PUFF_FX_LIFE/.test(scene), "อายุควันบนจออ่านจากฟิวส์จริงของก้อนนั้น");
+  ok(/n: this\.puffN, life \}/.test(core), "และซิมส่งฟิวส์ไปกับอีเวนต์");
+  for (const ev of ["drag"]) ok(new RegExp(`e\\.type === '${ev}'`).test(scene), `มีตัววาดของ ${ev}`);
+  ok(/_jointSmoke\(\)/.test(scene), "มีควันลอยจากมวนตอนเธออยู่เฉย ๆ");
 }

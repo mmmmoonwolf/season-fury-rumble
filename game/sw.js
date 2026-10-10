@@ -22,7 +22,7 @@
  * ของหนักเป็น cache-first ได้เพราะไฟล์อาร์ต/เสียงเปลี่ยนน้อยมาก และถ้าเปลี่ยนจริง
  * เลขเวอร์ชันข้างล่างจะลบแคชเก่าทิ้งให้เอง
  */
-const VERSION = 'sfr-v18';  // ← EYE: สีกล่องตามดีไซน์ที่เคาะ (ชุดดำ ใบไม้เขียว)
+const VERSION = 'sfr-v19';  // ← EYE: gimmick สูบมวน + ควันลอยตอนยืน
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 

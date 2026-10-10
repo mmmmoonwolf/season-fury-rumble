@@ -4,18 +4,19 @@
 > ตอนนี้วาดเป็นกล่องเขียว (`artPending: true`) — ชีตชุดนี้คือของจริงที่จะมาแทนทั้งตัว
 > เจนแล้ววางที่ `art_reference/chronos_sheets/sheet_A.jpg` … `sheet_F.jpg`
 
-> 📎 **แนบ `art_reference/chronos_sheets/REF_turnaround.jpg` ไปกับทุก prompt**
+> 📎 **แนบ `art_reference/chronos_sheets/REF_joint.jpg` ไปกับทุก prompt**
 > นั่นคือดีไซน์ที่เคาะแล้ว (หน้า/ผม/ชุด/สไตล์) · ทุกบล็อกเขียนว่า "the same character"
 > ซึ่งแปลว่าไม่มีภาพอ้างอิง = ได้คนละคนทุกใบ (บทเรียนจาก MARCH ที่เจนครบ 102 เฟรมสำเร็จ)
 >
-> **ร่างแรกของไฟล์นี้บรรยายเป็นคนละคน** (หน้าบึ้ง ผมมัดจุก แจ็กเก็ตน้ำตาล ผ้าพันมือ รองเท้าผ้าใบ)
-> เจนออกมาแล้วไม่เหมือนเรฟเลย — anchor ข้างล่างถูกเขียนใหม่ทั้งย่อหน้าให้ตรงกับเรฟแล้ว
+> ไฟล์นี้ถูกเขียนใหม่สองรอบแล้ว รอบแรกบรรยายเป็นคนละคน รอบสองยังเป็น "ถือใบกัญชา"
+> **ของจริงที่เคาะคือ "คาบ/ถือมวน" ไม่ใช่ถือใบ** — anchor ข้างล่างตรงกับเรฟล่าสุดแล้ว
 
 ---
 
 ## 🔴 ความเสี่ยงอันดับหนึ่งของตัวนี้: **มันจะใส่ควันมาให้**
 
-ตัวนี้คือ "ตัวควัน" ใบกัญชา ธีมเมา — **ตัวเจนจะใส่ควัน หมอก แสงเรือง มาให้แน่นอน**
+ตัวนี้คือ "ตัวควัน" คาบมวน ธีมเมา — **ตัวเจนจะใส่ควัน หมอก แสงเรือง มาให้แน่นอน**
+และรอบนี้ **เรฟเองก็มีควัน** ยิ่งต้องห้ามแรงกว่าเดิม
 ถ้าไม่ห้ามแรงพอ และ **ห้ามที่ท้าย prompt ไม่พอ**
 
 > บทเรียนตรง ๆ จาก KUNJAE (`art_prompts_kunjae.md` บรรทัด 811):
@@ -30,26 +31,35 @@
 
 ---
 
-## 🔴 ความเสี่ยงข้อสอง: ใบกัญชายักษ์คือ "ของที่หลุดได้"
+## 🔴 ความเสี่ยงข้อสอง: **ควันในเรฟเป็นก้อนแยกจากตัว — ห้ามเอามาด้วย**
 
-ตัวตัดชีตทิ้ง "ก้อนที่ไม่ติดกับตัว" อยู่แล้ว · ใบไม้ที่ยื่นออกไปไกลหรือหลุดจากมือจะ
-**โดนตัดทิ้ง หรือถูกนับเป็นท่าหนึ่งท่า แล้วไม้บรรทัดวัดสเกลเพี้ยนทั้งใบ**
+เรฟมีควันลอยขึ้นจากปลายมวน ซึ่งน่ารักและเป็นเหตุผลที่เลือกภาพนี้
+**แต่เอาติดมากับอาร์ตไม่ได้** และนี่ไม่ใช่ความเห็น — วัดแล้ว:
 
-เคยเกิดมาแล้วสองรอบในโปรเจกต์นี้ — ผ้าคาดเอวของ MARCH และหางไซเบอร์ของ KUNJAE
-(หางของ KUNJAE ยังเหลือปัญหา "หางสองเส้น" ในใบ D จนทุกวันนี้)
+| ก้อน | ขนาด | พิกัด |
+|---|---|---|
+| ตัวเธอ | 202,336 px | x 457-953 |
+| **ควัน** | **3,263 px** | **x 907-965 · ไม่ติดตัวเลย** |
 
-anchor สั่งไว้แล้วว่า **ก้านใบต้องอยู่ในมือเสมอ และใบต้องแตะตัวหรือแขนตลอด**
-แต่ **เปิดดูทุกใบด้วยตาเสมอ** — ตัวเลขจับได้แค่ของหลุด/ท่าติดกัน/ชนขอบ/สเกลเพี้ยน
-ส่วน "ใบไม้หายไปจากมือ" ตัวเลขจับไม่ได้เลย
+ตัวตัดชีตทิ้ง "ก้อนที่ไม่ติดกับตัว" อยู่แล้ว ควันก้อนนี้จึง **ถูกลบทิ้ง**
+หรือแย่กว่านั้นคือ **ถูกนับเป็นท่าหนึ่งท่า** แล้วไม้บรรทัดวัดสเกลเพี้ยนทั้งใบ
+(เคยพังแบบนี้มาแล้วกับผ้าคาดเอวของ MARCH และหางไซเบอร์ของ KUNJAE)
 
----
+และต่อให้ตัดมาได้ มันก็ยังผิดอยู่ดี: **ควันที่วาดติดเฟรมจะหมุนตามตัว**
+ท่าตีลังกากลางอากาศจะได้ควันพุ่งลงพื้น ท่านอนล้มจะได้ควันพุ่งข้าง
+
+**ทางแก้: เกมพ่นควันให้เอง** — `_jointSmoke()` ใน `ScrambleScene.js` ปล่อยควันลอยจากมือเธอ
+ทุก 14 เฟรมตอนยืน/ย่อ/วิ่ง ซึ่ง**ดีกว่าวาดติดอาร์ตตรงที่มันขยับ** และไม่พังตอนเธอพลิกตัว
+
+> ✅ มวนเอามาได้ · ❌ ควันห้ามเอามา
 
 ## ✅ ความเสี่ยงข้อสาม (เขียวจมฉากหลัง) — ดีไซน์จากเรฟแก้ให้แล้ว
 
 ฉากหลังของเวทีคือ **เนินเขาเขียว** · ถ้าเธอเขียวทั้งตัวเธอจะจมหายตอนยืนหน้าเนิน
 
-ดีไซน์จากเรฟเป็น **ชุดดำล้วน ใบไม้เป็นเขียวเดียวในตัว** ซึ่งตรงกับที่ต้องการพอดี
-ใบไม้จึงเป็นจุดอ่านซิลูเอตของเธอ ไม่ใช่ตัวกลืนฉาก
+ดีไซน์จากเรฟเป็น **ชุดดำล้วน เท้าเปล่า** ไม่มีสีเขียวในตัวเลย ซึ่งตัดปัญหานี้ทิ้งทั้งข้อ
+สีเขียวทั้งหมดของเธอมาจาก**ควันที่เกมพ่นให้** ไม่ใช่จากอาร์ต — ซึ่งดีกว่า เพราะควันขยับและหายไปได้
+ส่วนสีที่อ่านซิลูเอตคือ **ดำล้วนบนฟ้าสว่าง** ซึ่งเป็นคู่สีที่อ่านง่ายที่สุดในเกม
 
 **วัดจากเรฟจริงแล้ว: 40% ล่าง = 63** (เพดาน 140) — ผ่านสบาย ไม่ต้องวัดซ้ำตอนขั้น 0
 
@@ -62,41 +72,42 @@ anchor สั่งไว้แล้วว่า **ก้านใบต้อ�
 
 ## ดีไซน์ตัวละคร (anchor — ก๊อปท่อนนี้ลงทุก prompt)
 
-**เคาะจากเรฟแล้ว** — `art_reference/chronos_sheets/REF_turnaround.jpg`
+**เคาะจากเรฟแล้ว** — `art_reference/chronos_sheets/REF_joint.jpg`
 อย่าบรรยายเอง อย่าเดาเอง ใช้ท่อนข้างล่างนี้คำต่อคำ
 
-- ผู้หญิงสาว หน้ากลมนุ่ม **ตาโตสีเข้มรูปอัลมอนด์ คิ้วบาง ยิ้มมุมปากเบา ๆ ปากปิด**
-  — ไม่ใช่หน้าบึ้ง ไม่ใช่ตาปรือครึ่งหลับ ไม่ใช่หน้าดุ
-- **ผมดำยาวสยายถึงใต้ไหล่ แสกข้าง ปล่อยลงกรอบหน้า มีแถบไฮไลต์เงาวาวแบบอนิเมะ**
-  แนบหัวด้านบน พองออกด้านข้าง — ไม่ใช่มัดจุก ไม่ใช่ผมสั้น ไม่ใช่วงกลมฟู
-- **ชุดดำล้วนทั้งตัว**: เสื้อแขนยาวทรงหลวมปล่อย แขนกว้าง ชายเสื้อตรง
-  กับกางเกงขายาวทรงหลวมปล่อยยาวคลุมข้อเท้า — ไม่มีแจ็กเก็ต ไม่มีเสื้อกล้าม
-  ไม่มีเข็มขัด ไม่มีผ้าพันมือ ไม่มีกระเป๋า ไม่มีลาย
-- **เท้าเปล่า** ไม่ใส่รองเท้า ไม่ใส่ถุงเท้า
-- **ใบกัญชายักษ์ใบเดียว เขียวสดตัดเส้นดำหนา** ถือที่ก้านด้วยมือข้างหนึ่งเสมอ
-  ขนาดราวจากสะโพกถึงหัวเข่า · ถือห้อยต่ำระดับสะโพก ทับซ้อนกับขา
-  เป็น**สีเขียวเดียวในทั้งตัว** ของที่เหลือดำหมด
-- เส้นตัด **ดำหนา สม่ำเสมอ** · ลงสี **แบนเรียบ เงาน้อยขั้น** · สะอาด ไม่ใช่โทนหม่นเปื้อน
+- ผู้หญิงสาว **ตาปรือครึ่งหลับ มีรอยคล้ำใต้ตา ปากเรียบ หน้าเบื่อ ๆ นิ่ง ๆ** — ไม่ยิ้ม ไม่ดุ
+- **ผมดำ มัดจุกเล็กด้านบน แต่ปล่อยยาวสยายลงมาเป็นปอยยาวกรอบหน้าและด้านหลัง**
+  แนบหัว — ไม่ใช่ผมสั้น ไม่ใช่มัดเก็บหมด ไม่ใช่วงกลมฟู
+- **ชุดดำล้วนทั้งตัว**: เสื้อแขนยาวทรงหลวมปล่อย กับกางเกงขายาวทรงหลวมคลุมข้อเท้า
+  ไม่มีแจ็กเก็ต ไม่มีเสื้อกล้าม ไม่มีเข็มขัด ไม่มีผ้าพันมือ ไม่มีลาย
+- **เท้าเปล่า**
+- **ถือมวนที่จุดแล้วหนึ่งมวนในมือข้างหนึ่ง** ปลายมีไฟสีส้มจุดเล็ก ๆ
+  มวนเป็นสีน้ำตาลอ่อน · **ห้ามมีควัน** (เกมพ่นให้เอง — ดูความเสี่ยงข้อสอง)
+- **อีกมือว่าง** — มือว่างคือมือที่เธอใช้ต่อย
+- เส้นตัด **ดำหนา สม่ำเสมอ** · ลงสี **แบนเรียบ เงาน้อยขั้น** · สะอาด
 
 ### ตัวเลขที่วัดจากเรฟแล้ว (ผ่านด่านหมดแล้ว ไม่ต้องวัดซ้ำ)
 
 | ของ | ค่า | เกณฑ์ |
 |---|---|---|
-| ความสว่าง 40% ล่าง | **63** | ต้อง < 140 ✅ |
-| ความสว่างทั้งตัว | 62 | — |
-| ความสูงสามท่าในเรฟ | 707 / 707 / 697 px | ต่างกัน 1.4% ✅ |
+| ความสว่าง 40% ล่าง | **38** | ต้อง < 140 ✅ |
+| ความสว่างทั้งตัว | 51 | — |
 
-ชุดดำล้วนทำให้เธอเป็นตัวที่เข้มที่สุดในโรสเตอร์รองจาก KUNJAE (49) · เทียบ DEAR 66-68 · MARCH เดิม 126
-**ไม่มีทางจมไปกับพื้นเวที** (พื้นสว่าง 150-190) ซึ่งแปลว่าความเสี่ยงข้อสามข้างบนหายไปแล้วด้วยดีไซน์นี้เอง
+ชุดดำล้วน + เท้าเปล่าทำให้เธอเป็นตัวที่เข้มที่สุดในโรสเตอร์ (KUNJAE 49 · DEAR 66-68 · MARCH เดิม 126)
+**ไม่มีทางจมไปกับพื้นเวที** (พื้นสว่าง 150-190)
 
-### 🔴 สองข้อที่เรฟให้มาแล้วต้องระวังต่อตอนทำท่า
+### 🔴 สองข้อที่ต้องระวังต่อตอนทำท่า
 
-**1. ผมยาวสยายคือ "ของที่หลุดได้" ตัวใหม่** — แทนที่แจ็กเก็ตในร่างเก่า
+**1. ผมยาวสยายคือ "ของที่หลุดได้"**
 ท่าที่สะบัดแรง ๆ (โดนตี ล้ม ม้วนตัว หมุนกลางอากาศ) ผมจะปลิวออกจากตัว
 แล้วตัวตัดชีตจะทิ้งมันหรือนับเป็นท่าหนึ่งท่า → **สั่งทุกใบว่าผมต้องแตะไหล่หรือหลังเสมอ**
 
-**2. ชุดสบาย ๆ เท้าเปล่า อ่านว่า "สาวชิล" ไม่ใช่ "นักสู้"**
-ซึ่งเข้ากับคาแรกเตอร์เมา ๆ ของเธอ และเป็นเรื่องตลกในตัวอยู่แล้ว
+**2. เธอต่อยด้วยมือเปล่า มวนอยู่ในมืออีกข้างตลอด**
+ไม่มีอาวุธแล้ว (ร่างก่อนหน้าให้ถือใบกัญชายักษ์ฟาด — ตัดทิ้ง)
+ท่าตีทุกท่าจึงเป็น **หมัด ฝ่ามือ ศอก เข่า เตะ** · มวนไม่เคยหลุดจากมือและไม่เคยถูกใช้ตี
+ซึ่งดีกว่าเดิมสำหรับตัวตัดชีตด้วย — ของเล็กในกำมือหลุดยากกว่าใบไม้ยักษ์มาก
+
+**ชุดสบาย ๆ เท้าเปล่าอ่านว่า "สาวชิล" ไม่ใช่ "นักสู้"** ซึ่งเข้ากับคาแรกเตอร์เมา ๆ ของเธอ
 แต่แปลว่า **ความเป็นนักสู้ต้องมาจากท่า ไม่ใช่จากชุด** — ทุกใบของท่าตีจึงสั่งย้ำว่า
 ถ่างขากว้าง ลงน้ำหนักต่ำ ทุ่มตัวตามหมัด ไม่ใช่ยืนตรงแล้วยื่นมือ
 
@@ -105,25 +116,27 @@ anchor สั่งไว้แล้วว่า **ก้านใบต้อ�
 ```
 Chibi-proportioned anime game sprite, head roughly one third of the total height,
 short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
-few tone steps, clean bright colors — match the attached reference sheet exactly.
+few tone steps, clean colors — match the attached reference exactly.
 
-Character: a young woman with a soft round face, large dark almond eyes, thin
-eyebrows and a small closed-mouth smile — calm and friendly, never angry, never
-scowling, never half-lidded. Her BLACK HAIR IS LONG AND LOOSE, falling well below
-her shoulders, parted to one side and framing her face, with glossy anime
-highlight streaks; it lies flat across the top of her skull and widens at the
-sides — never tied up, never a bun, never a wide round frizzy halo. She wears an
-ALL-BLACK outfit: a loose boxy long-sleeved top with wide sleeves and a straight
-hem, and loose black trousers that fall over her ankles. No jacket, no tank top,
-no belt, no hand wraps, no pockets, no patterns. She is BAREFOOT — no shoes, no
-socks. In one hand she holds a single oversized cannabis leaf by its stem, about
-as long as from her hip to her knee, hanging down at hip height and overlapping
-her leg. The leaf is BRIGHT SATURATED GREEN with a bold dark outline — it is the
-only green in the entire design; everything else she wears is black.
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
 
 Her hair always stays touching her shoulders or her back and never streams away
-from her body. The leaf stem stays in her hand and the leaf always touches her
-body or arm. Nothing is ever detached from her anywhere in the image.
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
 ```
 
 ## แผนชีต — 68 เฟรม
@@ -133,7 +146,7 @@ body or arm. Nothing is ever detached from her anywhere in the image.
 | ขั้น 0 | ท่ายืน (anchor ของทั้งชุด) | 1 | — |
 | คลิปวิ่ง | วิ่งหนึ่งรอบเต็ม (ท่ายืนเอาจากขั้น 0) | 10 | วิดีโอ ไม่ใช่ชีต |
 | A | เคลื่อนไหว + โดนตี + กัน | 12 | 4 แถว × 3 |
-| B | ฟาดใบไม้สามจังหวะ (`jab1-3`) | 9 | 3 × 3 |
+| B | แย็บสามจังหวะด้วยมือเปล่า (`jab1-3`) | 9 | 3 × 3 |
 | C | ท่าพิเศษบนพื้น (`side` `up` `down`) | 9 | 3 × 3 |
 | D | ท่ากลางอากาศ (`nair` `sair` `dair`) | 9 | 3 × 3 |
 | E | รัวควัน (`haze1` `haze2` `haze3`) | 9 | 3 × 3 |
@@ -159,72 +172,74 @@ the art is a defect and the whole sheet gets thrown away.
 
 ## 1. ขั้น 0 — ท่ายืน 3/4 หันขวา (ทำใบนี้ให้ผ่านก่อน แล้วค่อยเจนที่เหลือ)
 
-**เรฟที่เคาะแล้วเป็นมุมเกือบหน้าตรง แต่เกมต้องการ 3/4 หันขวา** — ใบนี้คือการแปลงเรฟ
-ให้เป็นมุมที่เกมใช้ ไม่ใช่การออกแบบใหม่ · **ห้ามเปลี่ยนหน้า ผม ชุด หรือใบไม้แม้แต่นิดเดียว**
+**เรฟเป็นมุมเกือบหน้าตรง แต่เกมต้องการ 3/4 หันขวา** — ใบนี้คือการแปลงเรฟให้เป็นมุมที่เกมใช้
+ไม่ใช่การออกแบบใหม่ · **ห้ามเปลี่ยนหน้า ผม ชุด หรือมวนแม้แต่นิดเดียว**
 
 ทำไมต้อง 3/4 หันขวา: เกมเป็นแนวนอน ตัวละครหันเข้าหากัน เกมพลิกภาพเองเมื่อหันซ้าย
 มุมหน้าตรงจะอ่านไม่ออกว่าหมัดออกไปทางไหนตอนตี (DEAR เป็นมุมหน้าตรงและเป็นตัวที่
 อ่านทิศทางยากที่สุดในโรสเตอร์ — ไม่อยากได้ตัวที่สอง)
 
 **อย่าเจนใบอื่นจนกว่าใบนี้จะผ่าน** ทุกใบที่เหลือแนบทั้งเรฟและใบนี้คู่กัน
-ถ้า anchor ผิด ทั้งชุด 67 เฟรมที่เหลือผิดตามโดยไม่มีทางกู้
 
 ```
 ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO HAZE, NO FOG, NO CLOUDS, NO GLOW, NO
-SPARKLES, NO MAGIC EFFECTS anywhere in this image. The character never exhales
-smoke and nothing is burning or lit. This is a clean character sprite
-illustration only — the game engine draws every smoke and light effect by itself.
+SPARKLES, NO MAGIC EFFECTS anywhere in this image. Even though she is holding a
+lit cigarette, NOTHING rises from it — no smoke trail, no wisp, no curl. The game
+engine draws every smoke and light effect by itself.
 
-A single standing idle pose of the SAME character as the attached reference
-sheet, full body, drawn in a THREE-QUARTER view with her body angled toward the
+A single standing idle pose of the SAME character as the attached reference,
+full body, drawn in a THREE-QUARTER view with her body angled toward the
 viewer's right.
 
 This is the same girl from the reference turned to a three-quarter angle — do
-NOT redesign her. Keep her face, her hairstyle, her outfit, her bare feet and
-her leaf exactly as they are in the reference. Only the camera angle changes.
+NOT redesign her. Keep her face, her hair, her outfit, her bare feet and her
+cigarette exactly as they are in the reference. Only the camera angle changes.
 
 Chibi-proportioned anime game sprite, head roughly one third of the total height,
 short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
-few tone steps, clean bright colors — match the attached reference sheet exactly.
+few tone steps, clean colors — match the attached reference exactly.
 
-Character: a young woman with a soft round face, large dark almond eyes, thin
-eyebrows and a small closed-mouth smile — calm and friendly, never angry, never
-scowling, never half-lidded. Her BLACK HAIR IS LONG AND LOOSE, falling well below
-her shoulders, parted to one side and framing her face, with glossy anime
-highlight streaks; it lies flat across the top of her skull and widens at the
-sides — never tied up, never a bun, never a wide round frizzy halo. She wears an
-ALL-BLACK outfit: a loose boxy long-sleeved top with wide sleeves and a straight
-hem, and loose black trousers that fall over her ankles. No jacket, no tank top,
-no belt, no hand wraps, no pockets, no patterns. She is BAREFOOT — no shoes, no
-socks. In one hand she holds a single oversized cannabis leaf by its stem, about
-as long as from her hip to her knee, hanging down at hip height and overlapping
-her leg. The leaf is BRIGHT SATURATED GREEN with a bold dark outline — it is the
-only green in the entire design; everything else she wears is black.
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
 
 Her hair always stays touching her shoulders or her back and never streams away
-from her body. The leaf stem stays in her hand and the leaf always touches her
-body or arm. Nothing is ever detached from her anywhere in the image.
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
 
 She stands relaxed but with her feet planted a little apart and her weight
 settled low, so her silhouette stays broad rather than a narrow column.
 
-Pure white background, no shadow, no ground line, no props of any kind, no
-text, no labels, no panel borders. Full body visible from the top of her hair
-to the soles of both bare feet — do not crop, do not zoom. Leave a clear band of
-empty white space below her feet and above her hair. Exactly two arms and two
-legs, clearly separated, do not overlap or duplicate limbs. Anatomically
-correct human proportions.
+Pure white background, no shadow, no ground line, no props of any kind, no text,
+no labels, no panel borders. Full body visible from the top of her
+hair to the soles of her bare feet — do not crop, do not zoom. Leave a clear band
+of empty white space below and above her pose; nothing may touch or run off the
+edge of the image. Identical camera distance and identical character size in
+the pose. Exactly two arms and two legs, clearly separated.
+Anatomically correct human proportions.
 ```
 
 **ตรวจก่อนผ่าน:**
-- [ ] หน้า/ผม/ชุด/เท้าเปล่า/ใบไม้ **เหมือนเรฟทุกข้อ** — วางเทียบข้างกันดู
+- [ ] หน้า/ผม/ชุด/เท้าเปล่า/มวน **เหมือนเรฟทุกข้อ** — วางเทียบข้างกันดู
 - [ ] หันขวาจริง (ไหล่ขวาอยู่ใกล้ผู้ชมกว่าไหล่ซ้าย)
-- [ ] ไม่มีควันสักนิด
-- [ ] ผมไม่ปลิวหลุดจากตัว · ใบไม้ยังอยู่ในมือ
-- [ ] ความสว่าง 40% ล่าง < 140 (เรฟวัดได้ 63 ถ้าชุดยังดำล้วนก็ผ่านแน่นอน)
+- [ ] **ไม่มีควันสักเส้น** แม้แต่เส้นเดียวที่ปลายมวน
+- [ ] ผมไม่ปลิวหลุดจากตัว · มวนยังอยู่ในมือ · อีกมือว่าง
+- [ ] ความสว่าง 40% ล่าง < 140 (เรฟวัดได้ 38)
 
 > ถ้าได้มาแล้วมุมยังเป็นหน้าตรง: **อย่าทิ้ง** แนบตัวที่ได้กลับไปแล้วบอกให้แก้เฉพาะมุมกล้อง
-> (กติกาจาก `STYLE_LOCK.md`: มุมผิด = ขอแก้ · แขนขาเกิน = ทิ้งอย่างเดียว)
+> ถ้ามีควันติดมา: ขอแก้เหมือนกัน อย่าทิ้งทั้งใบ
 
 ## 2. คลิปวิ่ง — เจนเป็น **วิดีโอ** ไม่ใช่ชีต
 
@@ -250,9 +265,9 @@ plants, then right foot plants, then left again — each stride the same length.
 
 The camera does not move, does not zoom and does not change angle. She stays
 the same size in frame the whole time and her whole body including the soles of
-her bare feet stays inside the frame at all times. She keeps holding the cannabis
-leaf by its stem the whole run; the leaf stays close against her body and never
-flies away from her hand. Her long loose hair bounces with the run but always
+her bare feet stays inside the frame at all times. She keeps the lit cigarette held in
+her fingers the whole run and it never leaves her hand. NOTHING rises from the
+cigarette — no smoke, no wisp, no trail. Her long loose hair bounces with the run but always
 stays touching her shoulders or her back — it never streams out away from her
 body, and it never separates from her head.
 
@@ -295,122 +310,236 @@ backward, heels dragging, body leaned away.
 Pose 11 — crouching low, knees fully bent, sitting almost on her heels, head low.
 Pose 12 — crouching low with both forearms up guarding her face at the same time.
 
-[วาง anchor ดีไซน์ตัวละครทั้งย่อหน้าตรงนี้]
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean colors — match the attached reference exactly.
+
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
 
 Pure white background, no shadow, no ground line, no props, no text, no labels,
 no panel borders. Full body visible in every pose — do not crop, do not zoom.
 Leave a clear band of empty white space below and above every pose; nothing may
 touch or run off the edge of the image. Identical camera distance and identical
 character size in every pose. Exactly two arms and two legs per pose, clearly
-separated. Nothing detached from her body anywhere in the image — the cannabis
-leaf stays in her hand and against her body in every single pose, including
-while she is knocked down and rolling.
+separated. Nothing detached from her body anywhere in the image — the
+cigarette stays held in her fingers in every single pose, including while she is
+knocked down and rolling, and nothing ever rises from it.
 ```
 
 ---
 
-## 4. ชีต B — ฟาดใบไม้สามจังหวะ (9 ท่า · 3 × 3)
+## 4. ชีต B — แย็บสามจังหวะด้วยมือเปล่า (9 ท่า · 3 × 3)
 
-ไม้ปกติของเธอ ออกช้ากว่าทุกคนในเกม แต่กรอบกว้างและสูง (กวาดคนกระโดดต่ำ ๆ ติด)
-**ใบไม้ต้องกวาดเป็นส่วนโค้งกว้าง ไม่ใช่แทง** ซิลูเอตต้องอ่านออกว่า "กวาด"
+ไม้ปกติของเธอ **ต่อยด้วยมือที่ว่าง มวนอยู่ในอีกมือตลอด**
+ออกช้ากว่าทุกคนในเกม แต่กรอบกว้างและสูง (กวาดคนกระโดดต่ำ ๆ ติด)
 
 **รอยต่อคือทั้งหมดของใบนี้** — ท่าสุดท้ายของจังหวะหนึ่งต้องเป็นท่าเดียวกับท่าแรกของจังหวะถัดไป
 มือที่ชักกลับ = มือที่กำลังจะออก · น้ำหนักตัวไหลต่อ ไม่ดีดกลับมาตั้งหลักระหว่างที
 
 ```
-ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO HAZE, NO GLOW, NO SPARKLES, NO MAGIC
-EFFECTS anywhere in this image. The character never exhales smoke. The game
-engine draws every smoke and light effect by itself.
+ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO GLOW, NO SPARKLES, NO MAGIC EFFECTS
+anywhere in this image. Nothing rises from her cigarette. No motion lines, no
+impact flashes — the game draws all of that by itself.
 
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read left
 to right, top row first. Even spacing, no pose touching another.
-No motion lines, no effects — the game draws all of that.
 
 This sheet is one continuous combination, not separate poses. Draw the LAST pose
 of each beat and the FIRST pose of the next beat as the SAME body position, so
-the sequence reads as one unbroken motion: the hand pulling back from one swing
+the sequence reads as one unbroken motion: the hand pulling back from one strike
 is already the hand starting the next one, and her weight keeps flowing forward
 instead of resetting to a neutral stance between beats.
 
-Pose 1 — the leaf drawn back beside her hip, body coiled, front shoulder dropped.
-Pose 2 — a wide flat sweep of the leaf across chest height at full reach, her
-whole torso turned through behind it, back heel lifted.
-Pose 3 — the leaf carried past the target and pulling back in, hips still turning.
-Pose 4 — the leaf raised back over her opposite shoulder, elbow high, knees loading.
-Pose 5 — a downward diagonal sweep of the leaf from high to low at full reach,
-her body dropping behind it.
-Pose 6 — the leaf swinging through to low, weight rolling onto the front foot.
-Pose 7 — both hands on the stem now, the leaf cocked low and back like a bat.
-Pose 8 — a big two-handed upward swing of the leaf from low to head height at
-full reach, her whole body uncoiling behind it, back foot leaving the ground.
-Pose 9 — following through above her head, body turned all the way through.
+She fights with the EMPTY hand. The hand holding the cigarette stays low and out
+of the way and never throws a strike.
 
-[วาง anchor ดีไซน์ตัวละครทั้งย่อหน้าตรงนี้]
+Pose 1 — her empty fist pulled back only as far as her ribs, body compact and
+already leaning in, knees bent.
+Pose 2 — a lazy but heavy straight punch with that hand, fully extended at chest
+height, shoulder turned in behind it.
+Pose 3 — that hand snapping back in, hips already rotating.
+Pose 4 — the same hand drawn back wide and low, body coiled further.
+Pose 5 — a wide swinging hook at head height at full reach, her whole torso
+turned through behind it, back heel lifted.
+Pose 6 — carried past the target, hips still turning.
+Pose 7 — winding up big: that fist drawn up and back beside her head, front
+shoulder dropped, knees loading deep.
+Pose 8 — a heavy overhand punch landing, arm swung down and forward over the top
+at head height, her whole body dropping behind it.
+Pose 9 — following through low, fist past the target, body turned through.
 
-[วางท่อนปิดท้ายเทคนิคเหมือนใบ A]
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean colors — match the attached reference exactly.
+
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
+
+Pure white background, no shadow, no ground line, no props of any kind, no text,
+no labels, no panel borders. Full body visible in every pose from the top of her
+hair to the soles of her bare feet — do not crop, do not zoom. Leave a clear band
+of empty white space below and above every pose; nothing may touch or run off the
+edge of the image. Identical camera distance and identical character size in
+every pose. Exactly two arms and two legs per pose, clearly separated.
 ```
-
----
 
 ## 5. ชีต C — ท่าพิเศษบนพื้น (9 ท่า · 3 × 3)
 
-ท่า 4-6 คือท่าส่งขึ้นฟ้าของเธอ **ใบไม้ต้องชี้ขึ้นชัด ๆ** ไม่งั้นอ่านไม่ออกว่าเป็นท่าส่งขึ้น
+ท่า 4-6 คือท่าส่งขึ้นฟ้าของเธอ **หมัดต้องชี้ขึ้นชัด ๆ** ไม่งั้นอ่านไม่ออกว่าเป็นท่าส่งขึ้น
 
 ```
-[ท่อนห้ามควัน]
+ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO GLOW, NO SPARKLES, NO MAGIC EFFECTS
+anywhere in this image. Nothing rises from her cigarette. No motion lines, no
+impact flashes — the game draws all of that by itself.
 
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read left
 to right, top row first. Even spacing, no pose touching another.
-No motion lines, no effects — the game draws all of that.
 
-Pose 1 — stepping deep into a long forward lunge, the leaf drawn back at her hip.
-Pose 2 — a long lunging thrust, pushing the leaf straight forward at chest height
-at full extension, front leg deep in a long stride, body stretched out behind it.
-Pose 3 — recovering out of the lunge, pulling the leaf back in.
-Pose 4 — crouched low, the leaf held down beside her knee, coiled to swing upward.
-Pose 5 — swinging the leaf STRAIGHT UP past her own head, arm fully extended
-vertically, body stretched tall, back heel lifted, head tipped back.
-Pose 6 — coming down out of the upward swing, knees absorbing.
-Pose 7 — dropping into a low crouch, one leg folded under her, the leaf low.
+She fights with the EMPTY hand and with her legs. The hand holding the cigarette
+stays low and out of the way and never throws a strike.
+
+Pose 1 — stepping deep into a long forward lunge, her empty fist drawn back at her ribs.
+Pose 2 — a long lunging straight punch at full extension, front leg deep in a
+long stride, her whole body stretched out behind the punch.
+Pose 3 — recovering out of the lunge, pulling the arm back in.
+Pose 4 — crouched low, empty fist down at knee height, coiled to swing upward.
+Pose 5 — a rising uppercut punched STRAIGHT UP past her own head, arm fully
+extended vertically, body stretched tall, back heel lifted, head tipped back.
+Pose 6 — coming down out of the uppercut, knees absorbing.
+Pose 7 — dropping into a low crouch, one hand planted on the ground.
 Pose 8 — a low sweeping kick with her back leg swung all the way through at
-ankle height, body low to the ground, one hand planted, the leaf in the other.
+ankle height, body low to the ground, one hand planted.
 Pose 9 — recovering up out of the low sweep.
 
-[anchor + ท่อนปิดท้าย]
-```
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean colors — match the attached reference exactly.
 
----
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
+
+Pure white background, no shadow, no ground line, no props of any kind, no text,
+no labels, no panel borders. Full body visible in every pose from the top of her
+hair to the soles of her bare feet — do not crop, do not zoom. Leave a clear band
+of empty white space below and above every pose; nothing may touch or run off the
+edge of the image. Identical camera distance and identical character size in
+every pose. Exactly two arms and two legs per pose, clearly separated.
+```
 
 ## 6. ชีต D — ท่ากลางอากาศ (9 ท่า · 3 × 3)
 
 **ทุกท่าในใบนี้เท้าต้องลอย** ไม่มีท่าไหนแตะพื้น — พลาดข้อนี้แล้วท่าอากาศจะดูเหมือนท่าพื้น
 
 ```
-[ท่อนห้ามควัน]
+ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO GLOW, NO SPARKLES, NO MAGIC EFFECTS
+anywhere in this image. Nothing rises from her cigarette. No motion lines, no
+impact flashes — the game draws all of that by itself.
 
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read left
 to right, top row first. Even spacing, no pose touching another.
+
+She fights with the EMPTY hand and with her legs. The hand holding the cigarette
+stays low and out of the way and never throws a strike.
+
 Every pose in this sheet happens in mid-air — both of her feet are off the
 ground in all nine poses, with nothing below her.
-No motion lines, no effects — the game draws all of that.
 
-Pose 1 — airborne, curling up, the leaf tucked in across her chest.
-Pose 2 — airborne, spinning with the leaf swept out in a full circle around her
-at waist height, both legs tucked.
-Pose 3 — airborne, coming out of the spin, the leaf pulling back in.
-Pose 4 — airborne, the leaf drawn back behind her shoulder, body angled forward.
-Pose 5 — airborne, thrusting the leaf forward sideways at full reach, body
-stretched out flat behind it, legs trailing.
-Pose 6 — airborne, pulling the leaf back in, body folding.
-Pose 7 — airborne, the leaf raised high over her head with both hands.
-Pose 8 — airborne, smashing the leaf straight DOWN below her at full reach,
-head and shoulders driving down after it, knees pulled up.
-Pose 9 — airborne, after the downward smash, body curled under.
+Pose 1 — airborne, curling up, knees tucked, empty arm drawn across her chest.
+Pose 2 — airborne, spinning with a horizontal kick swung out in a full circle
+around her at waist height.
+Pose 3 — airborne, coming out of the spin, limbs pulling back in.
+Pose 4 — airborne, empty fist drawn back behind her shoulder, body angled forward.
+Pose 5 — airborne, a sideways punch at full reach, body stretched out flat
+behind it, legs trailing.
+Pose 6 — airborne, pulling the arm back in, body folding.
+Pose 7 — airborne, both knees pulled up high, empty arm raised over her head.
+Pose 8 — airborne, a downward hammer punch driven STRAIGHT DOWN below her at
+full reach, head and shoulders driving down after it.
+Pose 9 — airborne, after the downward strike, body curled under.
 
-[anchor + ท่อนปิดท้าย]
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean colors — match the attached reference exactly.
+
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
+
+Pure white background, no shadow, no ground line, no props of any kind, no text,
+no labels, no panel borders. Full body visible in every pose from the top of her
+hair to the soles of her bare feet — do not crop, do not zoom. Leave a clear band
+of empty white space below and above every pose; nothing may touch or run off the
+edge of the image. Identical camera distance and identical character size in
+every pose. Exactly two arms and two legs per pose, clearly separated.
 ```
-
----
 
 ## 7. ชีต E — รัวควัน `haze1` `haze2` `haze3` (9 ท่า · 3 × 3)
 
@@ -420,7 +549,9 @@ Pose 9 — airborne, after the downward smash, body curled under.
 ท่า 9 จึงต้องต่อเข้าท่า 4 ได้เนียนเหมือนต่อเข้าท่า 1 — **เป็นลูปปิด ไม่ใช่เส้นตรง**
 
 ```
-[ท่อนห้ามควัน]
+ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO GLOW, NO SPARKLES, NO MAGIC EFFECTS
+anywhere in this image. Nothing rises from her cigarette. No motion lines, no
+impact flashes — the game draws all of that by itself.
 
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read left
 to right, top row first. Even spacing, no pose touching another.
@@ -433,10 +564,10 @@ only her arms move fast. Her feet barely shift between poses.
 This sequence LOOPS: pose 9 must flow straight back into pose 4 just as cleanly
 as pose 3 flows into pose 4, so the flurry can repeat without a visible seam.
 
-Pose 1 — dropping into a tight forward stance, both hands coming up, the leaf
-held close against her forearm so it does not swing out.
-Pose 2 — a fast short strike with the leaf at chest height, arm barely extended,
-elbow still bent, body leaning in.
+Pose 1 — dropping into a tight forward stance, both hands coming up, the hand
+with the cigarette tucked close against her ribs.
+Pose 2 — a fast short punch at chest height, arm barely extended, elbow still
+bent, body leaning in.
 Pose 3 — that arm snapping back in while the other hand is already coming out.
 Pose 4 — the other hand striking short and fast at chest height.
 Pose 5 — the first hand striking again, slightly higher, at shoulder height.
@@ -446,7 +577,36 @@ Pose 8 — a fast short strike at stomach height, elbow tight.
 Pose 9 — both hands pulled back in tight against her chest, already coiled to
 throw the next strike, her stance and weight identical to pose 3.
 
-[anchor + ท่อนปิดท้าย — เน้นว่าใบไม้ต้องแนบแขน ไม่กางออก]
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean colors — match the attached reference exactly.
+
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
+
+Pure white background, no shadow, no ground line, no props of any kind, no text,
+no labels, no panel borders. Full body visible in every pose from the top of her
+hair to the soles of her bare feet — do not crop, do not zoom. Leave a clear band
+of empty white space below and above every pose; nothing may touch or run off the
+edge of the image. Identical camera distance and identical character size in
+every pose. Exactly two arms and two legs per pose, clearly separated.
 ```
 
 ---
@@ -455,43 +615,73 @@ throw the next strike, her stance and weight identical to pose 3.
 
 สามท่าที่หนักที่สุดของเธอ แต่ละท่าต้องอ่านออกจากกันที่ซิลูเอตอย่างเดียว
 
-- ท่า 1-3 `hazeEnd` — หมัดปิดหมัดเดียวหลังรัวจนเป็นกำแพง **ต้องใหญ่กว่าทุกไม้ในใบ E ชัด ๆ**
+- ท่า 1-3 `hazeEnd` — หมัดปิดหมัดเดียว **พร้อมสูบหนึ่งที** (ควันที่ค้างลงพร้อมกันตรงนี้)
+  ต้องใหญ่กว่าทุกไม้ในใบ E ชัด ๆ
 - ท่า 4-6 `snap1` — พุ่งเข้าไปต่อย **แล้วเกมจะเด้งเธอกลับที่เดิมเอง** ท่าไม่ต้องแสดงการย้อน
   (เกมวาดทางควันให้แล้ว — ดู `rewind` ใน `ScrambleScene.js`)
-- ท่า 7-9 `veil1` อัลติ — กางใบไม้ออกเต็มที่รอบตัว **ท่ากว้างที่สุดของเธอ**
+- ท่า 7-9 `veil1` อัลติ — สูดลึกแล้วกางแขนพ่นออกรอบตัว **ท่ากว้างที่สุดของเธอ**
 
 ```
-[ท่อนห้ามควัน]
+ABSOLUTELY NO SMOKE, NO VAPOR, NO MIST, NO GLOW, NO SPARKLES, NO MAGIC EFFECTS
+anywhere in this image. Nothing rises from her cigarette. No motion lines, no
+impact flashes — the game draws all of that by itself.
 
 A 9-pose sprite sheet of the same character, arranged in 3 rows of 3, read left
 to right, top row first. Even spacing, no pose touching another.
 No motion lines, no effects — the game draws all of that.
 
-Pose 1 — winding up fully: the leaf drawn all the way back past her hip with
-both hands, knees deeply loaded, shoulder turned away, the biggest wind-up in
-her whole moveset.
-Pose 2 — a single enormous two-handed swing of the leaf across chest height at
-maximum reach, her entire body uncoiling behind it, back foot off the ground,
-teeth gritted.
-Pose 3 — following all the way through, the swing carried past her, body turned
-completely around.
+Pose 1 — winding up fully: her empty fist drawn all the way back past her hip,
+knees deeply loaded, shoulder turned away, the biggest wind-up in her whole
+moveset, and she is raising the cigarette toward her mouth with the other hand.
+Pose 2 — a single enormous punch at chest height at maximum reach, her entire
+body uncoiling behind it, back foot off the ground, cheeks drawn in as she takes
+a deep drag on the cigarette at the same time.
+Pose 3 — following all the way through, the punch carried past her, body turned
+completely around, the cigarette hand lowering again.
 
-Pose 4 — dropping low and launching forward, front foot reaching out, the leaf
+Pose 4 — dropping low and launching forward, front foot reaching out, empty fist
 drawn back tight against her ribs.
-Pose 5 — a long committed lunging strike, pushing the leaf forward at chest
-height at full extension while her body is stretched far out over her front
-leg, almost falling forward.
-Pose 6 — landing out of the lunge, front knee deep, the leaf still extended.
+Pose 5 — a long committed lunging punch at chest height at full extension while
+her body is stretched far out over her front leg, almost falling forward.
+Pose 6 — landing out of the lunge, front knee deep, the arm still extended.
 
-Pose 7 — standing tall and still, the leaf held flat in front of her chest with
-both hands, head lowered, feet together — the calmest pose in the whole sheet.
-Pose 8 — both arms thrown WIDE open to either side, the leaf swept out at full
-arm's length, chest open, head tipped back, feet planted far apart — the widest
-and most open pose in her entire moveset.
-Pose 9 — arms coming back down from the wide opening, the leaf lowering, body
-settling.
+Pose 7 — standing tall and still, head lowered, feet together, the cigarette
+held up near her mouth — the calmest pose in the whole sheet.
+Pose 8 — both arms thrown WIDE open to either side at full arm's length, chest
+open, head tipped back, mouth open as she exhales, feet planted far apart — the
+widest and most open pose in her entire moveset.
+Pose 9 — arms coming back down from the wide opening, body settling.
 
-[anchor + ท่อนปิดท้าย]
+Chibi-proportioned anime game sprite, head roughly one third of the total height,
+short stubby limbs, BOLD THICK UNIFORM BLACK OUTLINES, FLAT cel shading with very
+few tone steps, clean colors — match the attached reference exactly.
+
+Character: a young woman with heavy half-lidded sleepy eyes, faint shadows under
+them, and a flat bored mouth — never smiling, never angry, never wide-eyed. Her
+BLACK HAIR is gathered into a small messy bun on top of her head while long loose
+strands still hang down around her face and down her back; it lies flat against
+her skull and is never a wide round frizzy halo. She wears an ALL-BLACK outfit: a
+loose long-sleeved top and loose black trousers that fall over her ankles. No
+jacket, no tank top, no belt, no hand wraps, no pockets, no patterns. She is
+BAREFOOT — no shoes, no socks. She holds a single lit hand-rolled cigarette
+between the fingers of ONE hand; it is pale tan with a small orange ember at the
+tip. Her OTHER HAND IS EMPTY — that is the hand she fights with. She has no
+weapon of any kind.
+
+THE CIGARETTE PRODUCES NO SMOKE IN THIS IMAGE. Draw the cigarette and its ember
+only — no smoke trail, no wisp, no curl, nothing rising from it. The game engine
+draws her smoke by itself.
+
+Her hair always stays touching her shoulders or her back and never streams away
+from her body. The cigarette stays held in her fingers in every pose and never
+leaves her hand. Nothing is ever detached from her anywhere in the image.
+
+Pure white background, no shadow, no ground line, no props of any kind, no text,
+no labels, no panel borders. Full body visible in every pose from the top of her
+hair to the soles of her bare feet — do not crop, do not zoom. Leave a clear band
+of empty white space below and above every pose; nothing may touch or run off the
+edge of the image. Identical camera distance and identical character size in
+every pose. Exactly two arms and two legs per pose, clearly separated.
 ```
 
 ---
@@ -502,8 +692,8 @@ settling.
 - [ ] ทุกใบแนบ **ทั้งเรฟและขั้น 0** คู่กัน
 - [ ] หน้า/ผม/ชุด/เท้าเปล่า ยังเหมือนเรฟทุกใบ (ข้อที่หลุดง่ายที่สุดตอนเจนหลายใบ)
 - [ ] ท่อนห้ามควันอยู่ **บรรทัดแรก** ของทุก prompt ไม่ใช่ท้าย
-- [ ] เปิดดูทุกใบด้วยตา: **ใบกัญชาอยู่ในมือครบทุกท่าไหม** (ตัวเลขจับข้อนี้ไม่ได้)
-- [ ] ไม่มีควัน/แสงเรือง/ประกายติดมาสักท่า
+- [ ] เปิดดูทุกใบด้วยตา: **มวนอยู่ในมือครบทุกท่าไหม · มีควันติดมาไหม** (ตัวเลขจับไม่ได้)
+- [ ] ไม่มีควัน/แสงเรือง/ประกายติดมาสักท่า **แม้แต่เส้นเดียวที่ปลายมวน**
 - [ ] แขนขาไม่เกิน ไม่ซ้อน · ไม่มีท่าชนขอบ · ไม่มีท่าติดกัน
 - [ ] `tools/measure_sheet_scale.py` — ท่าตั้งหลักต้องได้ 96-100% ของท่ายืน
 - [ ] ใบ E ท่า 9 ต่อเข้าท่า 4 ได้เนียน (ลูปปิด)
@@ -542,7 +732,7 @@ settling.
 | `haze1` | E | 1, 2, 3 | |
 | `haze2` | E | 4, 5, 6 | ไม้ที่ทิ้งควัน |
 | `haze3` | E | 7, 8, 9 | วนกลับไป `haze2` |
-| `hazeEnd` | F | 1, 2, 3 | |
+| `hazeEnd` | F | 1, 2, 3 | สูบหนึ่งที — ควันที่ค้างลงพร้อมกัน |
 | `snap1` | F | 4, 5, 6 | เกมเด้งกลับที่เดิมให้เอง |
 | `veil1` | F | 7, 8, 9 | อัลติ |
 

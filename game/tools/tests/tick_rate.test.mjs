@@ -135,13 +135,17 @@ function pair({ lag = 0 } = {}) {
 // ── อนุภาคหมดอายุแล้วคืนเข้าพูลจริง ไม่ค้าง ──
 {
   const sc = { _fxPool: [], _fxLive: [], _ghPool: [], _ghLive: [], sparks: [], popups: [], comboFade: 0 };
-  sc._stepFx = ScrambleScene.prototype._stepFx;
-  sc._stepGhosts = ScrambleScene.prototype._stepGhosts;
-  // _ageFx เรียกไอควันของม่านควันด้วย — สตับนี้หยิบเมธอดมาทีละตัว จึงต้องหยิบอันนี้มาด้วย
-  // (ลืมแล้วเทสต์ทั้งไฟล์ crash ไม่ใช่ FAIL ซึ่งอ่านยากกว่ามาก — เคยเจอมาแล้วตอนเพิ่มเงาตามตัว)
-  sc._hazeAmbient = ScrambleScene.prototype._hazeAmbient;
+  /* **หยิบเมธอดทุกตัวของฉากมาให้สตับ ไม่ใช่เลือกทีละตัว**
+   *
+   *  เลือกทีละตัวมาแล้วสามรอบ และพังแบบเดิมทั้งสามรอบ: เพิ่มอะไรที่ `_ageFx` เรียก
+   *  (เงาตามตัว · ไอควันม่านควัน · ควันจากมวน) แล้วลืมมาเติมตรงนี้
+   *  ผลคือเทสต์ทั้งไฟล์ **CRASH ไม่ใช่ FAIL** ซึ่งอ่านยากกว่ามากเพราะไม่มีบรรทัดไหนบอกว่าข้อไหนพัง
+   *
+   *  ก๊อปทั้งโปรโตไทป์แล้วทับเฉพาะตัวที่สตับอยากคุมเอง = เพิ่มเมธอดใหม่กี่ตัวก็ไม่ต้องกลับมาแก้
+   *  ตัวที่ต้องการ sim/Phaser จริงจะไม่ถูกเรียกอยู่แล้วเพราะ _ageFx ไม่ได้เรียกมัน */
+  for (const k of Object.getOwnPropertyNames(ScrambleScene.prototype))
+    if (typeof ScrambleScene.prototype[k] === "function" && k !== "constructor") sc[k] = ScrambleScene.prototype[k];
   sc.emit = function () { this.emitted = (this.emitted ?? 0) + 1; };
-  sc._ageFx = ScrambleScene.prototype._ageFx;
   const img = () => ({ x: 0, y: 0, rotation: 0, setVisible() { return this; }, setActive() { return this; },
     setScale() { return this; }, setAlpha() { return this; } });
   for (let i = 0; i < 6; i++)

@@ -2239,16 +2239,19 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'puffDrop') {
         const n = e.n ?? 0;
         const tone = e.haze ? SMOKE.haze : SMOKE.leaf;
+        // อายุบนจอ = ฟิวส์จริงของก้อนนั้น ไม่ใช่ค่าคงที่ — ควันของชุดรัวฟิวส์ยาวกว่าปกติ
+        // เพราะมันรอไม้จบ (ดู PUFF_FUSE_FLURRY) ถ้าใช้ค่าคงที่มันจะหายไปตั้งแต่ยังไม่ระเบิด
+        const fuse = e.life ?? PUFF_FX_LIFE;
         // ก้อนตั้งต้น — จางมาก มันคือ "คำเตือน" ไม่ใช่ตัวเอฟเฟค ของจริงอยู่ที่ puffPop
         this.emit(['smokeCurl', 'smokeWisp', 'smokeCurl'][n % 3], e.x, e.y,
-          { scale: 0.40 + (n % 3) * 0.08, life: PUFF_FX_LIFE, alpha: 0.6, grow: 0.5,
+          { scale: 0.40 + (n % 3) * 0.08, life: fuse, alpha: 0.6, grow: 0.5,
             vy: -0.5, rot: ((n % 5) - 2) * 0.22, spin: ((n % 2) ? 1 : -1) * 0.012,
             tint: tone.body, depth: 6.6, blend: NORM });
         this.emit('smokeBall', e.x, e.y + 4,
-          { scale: 0.30, life: PUFF_FX_LIFE, alpha: 0.45, grow: 0.9, vy: -0.3,
+          { scale: 0.30, life: fuse, alpha: 0.45, grow: 0.9, vy: -0.3,
             tint: tone.rim, depth: 6.5, blend: NORM });
         // จุดเรืองเล็ก ๆ ตรงกลาง = ที่หมายว่า "ตรงนี้จะระเบิด" อ่านออกแม้ควันจาง
-        this.emit('glow', e.x, e.y, { scale: 0.07, life: PUFF_FX_LIFE, alpha: 0.32,
+        this.emit('glow', e.x, e.y, { scale: 0.07, life: fuse, alpha: 0.32,
           grow: -0.4, tint: tone.spark, depth: 6.7 });
       }
 
@@ -2283,6 +2286,29 @@ class ScrambleScene extends Phaser.Scene {
         // วงแหวนบาง ๆ บอกระยะ — **จาง ๆ พอ** รอบแรกตั้งไว้สว่างจนกลายเป็นตัวเอกแทนควัน
         this.emit('ring', e.x, e.y, { scale: 0.12, life: 12, grow: 3.0, alpha: 0.35,
           tint: tone.spark, depth: 6.9 });
+      }
+
+      /* สูบหนึ่งที — ควันที่ค้างอยู่ลงพร้อมกัน
+       * ภาพต้องอ่านว่า "สูดเข้าแล้วพ่นออก" ไม่ใช่ระเบิดอีกลูก (ระเบิดเป็นหน้าที่ของ puffPop
+       * ซึ่งจะตามมาเฟรมถัดไปอยู่แล้ว) ตรงนี้จึงเป็นไฟปลายมวนวาบ + ลำควันพุ่งออกจากปาก */
+      if (e.type === 'drag') {
+        const d = e.dir, t = SMOKE.leaf;
+        this._sfx('whoosh', { vol: 0.5, rate: 0.7 });
+        // ไฟปลายมวนวาบขึ้นตอนสูด — จุดสว่างจุดเดียว อ่านออกทันทีว่าเธอทำอะไร
+        this.emit('ember', e.x + d * 26, e.y - 104,
+          { scale: 0.16, life: 10, grow: -0.3, alpha: 0.95, tint: 0xff7a3a, depth: 7.5 });
+        this.emit('glow', e.x + d * 26, e.y - 104,
+          { scale: 0.12, life: 12, grow: 1.2, alpha: 0.5, tint: 0xffb86b, depth: 7.4 });
+        // ลำควันพ่นออกข้างหน้า — ยาวขึ้นตามจำนวนควันที่เร่งลง คนเล่นอ่านออกว่า "เก็บได้เยอะแค่ไหน"
+        const plume = 4 + Math.min(6, e.n ?? 0) * 2;
+        for (let i = 0; i < plume; i++) {
+          const t2 = i / plume;
+          this.emit(i % 2 ? 'smokeWisp' : 'smokeCurl',
+            e.x + d * (34 + t2 * 70), e.y - 96 - t2 * 10,
+            { scale: 0.16 + t2 * 0.22, life: 22 + i, alpha: 0.72 - t2 * 0.25, grow: 1.4,
+              vx: d * (2.2 + t2 * 1.6), vy: -0.5 - t2 * 0.4, drag: 0.93, flipX: d < 0,
+              rot: t2 * 0.9, tint: i % 3 === 0 ? t.rim : t.body, depth: 7.1, blend: NORM });
+        }
       }
 
       /* ม่านควัน (อัลติ) — ระเบิดเปิดม่าน
@@ -2612,10 +2638,35 @@ class ScrambleScene extends Phaser.Scene {
           vx: side * 1.6, drag: 0.98, flipX: side < 0, tint: t.body, depth: 6.2, blend: NORM });
   }
 
+  /** ควันลอยจากมวนของ EYE ตลอดเวลาที่เธอไม่ได้ออกท่า
+   *
+   *  **เป็นเรื่องวาดล้วน ๆ ซิมไม่รู้เรื่องนี้เลย** ต้นทุนสมดุลเป็นศูนย์ (ดูชั้น "โกหกด้วยภาพ"
+   *  ใน EYE_KIT) — และดีกว่าวาดควันติดไปกับอาร์ตตรงที่ **มันขยับ** กับไม่พังตอนเธอตีลังกา
+   *
+   *  ทำไมไม่เอาควันติดมากับชีตอาร์ต: วัดจากเรฟแล้วควันเป็น**ก้อนแยกจากตัว** (3,263 px ลอยอยู่
+   *  ไม่ติดตัวเลย) ตัวตัดชีตทิ้งก้อนที่ไม่ติดกับตัวอยู่แล้ว มันจะโดนลบ หรือถูกนับเป็นท่าหนึ่งท่า
+   *  แล้วไม้บรรทัดวัดสเกลเพี้ยนทั้งใบ
+   */
+  _jointSmoke() {
+    const s = this.sim;
+    if (!s?.fighters || (s.frame % 14)) return;
+    for (const f of s.fighters) {
+      if (f.char !== 'chronos') continue;
+      // ออกท่าอยู่/โดนตีอยู่/ล้มอยู่ = ไม่ใช่จังหวะสูบ ควันจะไปกวนเอฟเฟคของท่าเปล่า ๆ
+      if (f.state !== 'idle' && f.state !== 'crouch' && f.state !== 'run') continue;
+      const d = f.facing;
+      this.emit('smokeCurl', f.x + d * 22, f.y - 102,
+        { scale: 0.12, life: 40, alpha: 0.34, grow: 1.6,
+          vx: d * 0.25, vy: -0.75, drag: 0.99, rot: (s.frame % 3) * 0.3 - 0.3,
+          spin: d * 0.008, tint: SMOKE.leaf.body, depth: 6.8, blend: NORM });
+    }
+  }
+
   _ageFx() {
     this._stepFx();
     this._stepGhosts();
     this._hazeAmbient();
+    this._jointSmoke();
     for (const s of this.sparks) s.life--;
     this.sparks = this.sparks.filter(s => s.life > 0);
     for (const p of this.popups) { p.life--; p.t.y -= 0.8; p.t.setAlpha(Math.min(1, p.life / 15)); if (p.life <= 0) p.t.destroy(); }
