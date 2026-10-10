@@ -22,7 +22,7 @@
  * ของหนักเป็น cache-first ได้เพราะไฟล์อาร์ต/เสียงเปลี่ยนน้อยมาก และถ้าเปลี่ยนจริง
  * เลขเวอร์ชันข้างล่างจะลบแคชเก่าทิ้งให้เอง
  */
-const VERSION = 'sfr-v22';  // ← EYE: อาร์ตจริงเข้าเกม 68 เฟรม
+const VERSION = 'sfr-v23';  // ← EYE: ใบ D E E3 F เข้าแทนเฟรมที่ยืม เหลือยืมท่าเดียว
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 
