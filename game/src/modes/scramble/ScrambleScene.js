@@ -229,8 +229,8 @@ const CHAR_ART = {
   // ลบ artPending ใน core.js แล้วเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
   chronos: {
     artPending: true,
-    box: 0x24242a, boxAccent: 0x4f9b3f,   // ชุดดำล้วน + ไฟปลายมวน (ตามเรฟที่เคาะแล้ว)
-    slashTint: 0x8fb573,                  // รอยฟาดของเธอเป็นควัน ไม่ใช่แสงครีมเหมือนคนอื่น
+    box: 0x24242a, boxAccent: 0xff7a3a,   // ชุดดำล้วน + ไฟปลายมวน (ตามเรฟที่เคาะแล้ว)
+    slashTint: 0xc2c7cf,                  // รอยฟาดของเธอเป็นควันเทา ไม่ใช่แสงครีมเหมือนคนอื่น
     title: 'Chronos',
     role: 'สายรัวควัน',
     tip: 'ทุกไม้ทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม — หยุดรัวแล้วแรงกดดันยังไม่หยุด',
@@ -523,11 +523,21 @@ const NET_CATCHUP = 3;
  *
  * leaf = ควันใบไม้ของท่าปกติและสกิล · haze = ม่านควันของอัลติ เปลี่ยนเป็นม่วงให้แยกออกทันที
  */
+/* ── จานสีควันของ EYE — ขาวทึบแบบควันจริง ──
+ *
+ * **ชั้นต้องสลับกับที่เคยทำ** รอบก่อนเป็น "ก้อนเข้มหลัง + ขอบสว่างหน้า" ซึ่งได้ควันสีเทาหม่น
+ * ควันขาวทึบต้องเป็น **เงาเทาอยู่หลังและเยื้องลง + ก้อนขาวทึบอยู่หน้า**
+ * เงาคือสิ่งที่ทำให้ก้อนขาวมี "รูปทรง" ไม่ใช่ปื้นขาวแบน ๆ
+ *
+ * **แล้วทำไมขาวถึงไม่หายไปกับฟ้าสว่าง** (ซึ่งเคยพังมาสามรอบ) — รอบที่พังคือขาว
+ * **อัลฟาต่ำ ขอบฟุ้ง** (เฟรม `streak` อัลฟาเฉลี่ย 76/255) ซึ่งกลายเป็นหมอกจาง
+ * รอบนี้เป็นขาว **อัลฟาสูง ทึบ มีเงาใต้ตัวเอง** ซึ่งอ่านออกเพราะมันทึบ ไม่ใช่เพราะมันเข้ม
+ */
 const SMOKE = {
-  leaf: { body: 0x2e3a2a, rim: 0x8fb573, spark: 0xd8f0a8 },
-  // body ของม่านควันเคยเป็น 0x312a40 ซึ่งเข้มจนบนจออ่านเป็น **แท่งดำพาดกลางเวที** ไม่ใช่ควัน
-  // ควันต้องมีไล่น้ำหนักในตัวมันเอง สีเข้มสนิทไม่มีไล่น้ำหนักเลยไม่ว่าจะซ้อนกี่ก้อน
-  haze: { body: 0x544868, rim: 0xa88fd0, spark: 0xe0ccff },
+  // ควันปกติ — ขาวนวล เงาเทาอุ่น
+  ash: { shade: 0x8e949e, body: 0xf4f6f8, hot: 0xffffff },
+  // ม่านควัน (อัลติ) — ขาวเย็นกว่าและเงาเข้มกว่า ให้แยกออกจากควันปกติได้โดยไม่ต้องใช้สี
+  haze: { shade: 0x6f7886, body: 0xe9eef5, hot: 0xffffff },
 };
 /** ควันตั้งต้นอยู่กี่เฟรมก่อนระเบิด — ต้องเท่า PUFF_DELAY ในซิมเป๊ะ
  *  ไม่เท่ากันแล้วควันจะหายไปก่อนระเบิด (หรือค้างอยู่หลังระเบิดไปแล้ว) ซึ่งอ่านว่าเอฟเฟคพัง */
@@ -2172,14 +2182,14 @@ class ScrambleScene extends Phaser.Scene {
         this.popup(e.x, e.y - 30, 'Blocked', '#8fc0ff');
         this._sfx('block');
         this.emit('ring', e.x, e.y, { scale: 0.22, life: 14, grow: 1.4, tint: 0x8fc0ff });
-        this.emit('burst', e.x, e.y, { scale: 0.14, life: 9, grow: 0.7, tint: 0x5aa0ff });
+        this.puff('burst', e.x, e.y, { scale: 0.14, life: 9, grow: 0.7, tint: 0x5aa0ff });
       }
       if (e.type === 'wall') { this.spark(e.x, e.y, 16, 0xffd166); this.popup(e.x, e.y - 40, 'Wall bounce', '#ffd166'); this._shake(90, 0.005); this._sfx('wall'); }
       if (e.type === 'tech') {
         this.popup(e.x, e.y, e.label, '#8ff0bd');
         this._sfx('whoosh');
         this.emit('ring', e.x, e.y + 20, { scale: 0.16, life: 13, grow: 1.8, tint: 0x8ff0bd });
-        this.emit('dustFlat', e.x, e.y + 6, { scale: 0.34, life: 18, grow: 0.9, alpha: 0.5,
+        this.puff('dustFlat', e.x, e.y + 6, { scale: 0.34, life: 18, grow: 0.9, alpha: 0.5,
           tint: 0xd8c9a8, blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
       if (e.type === 'djump') {
@@ -2191,7 +2201,7 @@ class ScrambleScene extends Phaser.Scene {
         this._sfx(e.hard ? 'landHard' : 'landSoft');
         for (let i = 0; i < 3; i++) {
           const d = (i - 1) * 14;
-          this.emit('dustFlat', e.x + d, e.y - 4, { scale: 0.16 + Math.random() * 0.1, life: 14, grow: 1.2,
+          this.puff('dustFlat', e.x + d, e.y - 4, { scale: 0.16 + Math.random() * 0.1, life: 14, grow: 1.2,
             vx: d * 0.08, alpha: 0.42, tint: 0xd8c9a8, blend: Phaser.BlendModes.NORMAL, depth: 6 });
         }
       }
@@ -2200,7 +2210,7 @@ class ScrambleScene extends Phaser.Scene {
         this._shake(60, 0.003);
         this._sfx('whoosh');
         for (let i = 0; i < 4; i++)
-          this.emit('smokeCurl', e.x + (i - 1.5) * 18, e.y - 40 - Math.random() * 50,
+          this.puff('smokeCurl', e.x + (i - 1.5) * 18, e.y - 40 - Math.random() * 50,
             { scale: 0.22, life: 22, grow: 0.9, vy: -1.4, alpha: 0.55, tint: 0x6b5f7a,
               blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
@@ -2239,26 +2249,26 @@ class ScrambleScene extends Phaser.Scene {
        * (ฝั่งวาดใช้ random ได้ แต่ทำแบบนี้แล้วไล่บั๊กง่ายกว่ามากตอนเทียบสองจอ) */
       if (e.type === 'puffDrop') {
         const n = e.n ?? 0;
-        const tone = e.haze ? SMOKE.haze : SMOKE.leaf;
+        const tone = e.haze ? SMOKE.haze : SMOKE.ash;
         // อายุบนจอ = ฟิวส์จริงของก้อนนั้น ไม่ใช่ค่าคงที่ — ควันของชุดรัวฟิวส์ยาวกว่าปกติ
         // เพราะมันรอไม้จบ (ดู PUFF_FUSE_FLURRY) ถ้าใช้ค่าคงที่มันจะหายไปตั้งแต่ยังไม่ระเบิด
         const fuse = e.life ?? PUFF_FX_LIFE;
         // ก้อนตั้งต้น — จางมาก มันคือ "คำเตือน" ไม่ใช่ตัวเอฟเฟค ของจริงอยู่ที่ puffPop
         this.emit(['smokeCurl', 'smokeWisp', 'smokeCurl'][n % 3], e.x, e.y,
-          { scale: 0.40 + (n % 3) * 0.08, life: fuse, alpha: 0.6, grow: 0.5,
+          { scale: 0.40 + (n % 3) * 0.08, life: fuse, alpha: 0.6, grow: 0.5, tone,
             vy: -0.5, rot: ((n % 5) - 2) * 0.22, spin: ((n % 2) ? 1 : -1) * 0.012,
-            tint: tone.body, depth: 6.6, blend: NORM });
-        this.emit('smokeBall', e.x, e.y + 4,
-          { scale: 0.30, life: fuse, alpha: 0.45, grow: 0.9, vy: -0.3,
-            tint: tone.rim, depth: 6.5, blend: NORM });
+            depth: 6.6, blend: NORM });
+        this.puff('smokeBall', e.x, e.y + 4,
+          { scale: 0.30, life: fuse, alpha: 0.45, grow: 0.9, tone, vy: -0.3,
+            hot: 1, depth: 6.5, blend: NORM });
         // จุดเรืองเล็ก ๆ ตรงกลาง = ที่หมายว่า "ตรงนี้จะระเบิด" อ่านออกแม้ควันจาง
         this.emit('glow', e.x, e.y, { scale: 0.07, life: fuse, alpha: 0.32,
-          grow: -0.4, tint: tone.spark, depth: 6.7 });
+          grow: -0.4, tint: tone.hot, depth: 6.7 });
       }
 
       if (e.type === 'puffPop') {
         const n = e.n ?? 0;
-        const tone = SMOKE.leaf;
+        const tone = SMOKE.ash;
         this._sfx('whoosh', { vol: 0.45, rate: 1.25 });
         /* ลองรอบแรกแล้วบนจอมันอ่านเป็น **"วงแหวนเขียว" ไม่ใช่ควัน** — วงแหวนกับแสง (ADD)
          * กลบก้อนควันทิ้งหมด เพราะก้อนเล็กเกินและจางเกินเมื่อเทียบกัน
@@ -2274,26 +2284,26 @@ class ScrambleScene extends Phaser.Scene {
             e.x + Math.cos(a) * 15, e.y + Math.sin(a) * 10,
             { scale: 0.25 + ((i + n) % 3) * 0.07, life: 22 + ((i * 3 + n) % 10), alpha: 0.85,
               grow: 1.3, vx: Math.cos(a) * 2.2, vy: Math.sin(a) * 1.4 - 0.9, drag: 0.9,
-              spin: (i % 2 ? 1 : -1) * 0.02, tint: tone.body, depth: 7, blend: NORM });
+              spin: (i % 2 ? 1 : -1) * 0.02, depth: 7, blend: NORM });
         }
         // ชั้นขอบ: ม้วนสว่างพุ่งออกจากก้อน ทำให้ควันมีทิศ ไม่ใช่แค่ก้อนกลม ๆ
         for (let i = 0; i < 5; i++) {
           const a = (i / 5) * Math.PI * 2 - n * 0.5;
-          this.emit('smokeWisp', e.x + Math.cos(a) * 24, e.y + Math.sin(a) * 15,
+          this.puff('smokeWisp', e.x + Math.cos(a) * 24, e.y + Math.sin(a) * 15,
             { scale: 0.22, life: 18, alpha: 0.55, grow: 1.0, vx: Math.cos(a) * 3.2,
               vy: Math.sin(a) * 2.0 - 1.1, drag: 0.88, rot: a,
-              tint: tone.rim, depth: 7.2, blend: NORM });
+              hot: 1, depth: 7.2, blend: NORM });
         }
         // วงแหวนบาง ๆ บอกระยะ — **จาง ๆ พอ** รอบแรกตั้งไว้สว่างจนกลายเป็นตัวเอกแทนควัน
         this.emit('ring', e.x, e.y, { scale: 0.12, life: 12, grow: 3.0, alpha: 0.35,
-          tint: tone.spark, depth: 6.9 });
+          tint: tone.hot, depth: 6.9 });
       }
 
       /* สูบหนึ่งที — ควันที่ค้างอยู่ลงพร้อมกัน
        * ภาพต้องอ่านว่า "สูดเข้าแล้วพ่นออก" ไม่ใช่ระเบิดอีกลูก (ระเบิดเป็นหน้าที่ของ puffPop
        * ซึ่งจะตามมาเฟรมถัดไปอยู่แล้ว) ตรงนี้จึงเป็นไฟปลายมวนวาบ + ลำควันพุ่งออกจากปาก */
       if (e.type === 'drag') {
-        const d = e.dir, t = SMOKE.leaf;
+        const d = e.dir, t = SMOKE.ash;
         this._sfx('whoosh', { vol: 0.5, rate: 0.7 });
         // ไฟปลายมวนวาบขึ้นตอนสูด — จุดสว่างจุดเดียว อ่านออกทันทีว่าเธอทำอะไร
         this.emit('ember', e.x + d * 26, e.y - 104,
@@ -2308,7 +2318,7 @@ class ScrambleScene extends Phaser.Scene {
             e.x + d * (34 + t2 * 70), e.y - 96 - t2 * 10,
             { scale: 0.16 + t2 * 0.22, life: 22 + i, alpha: 0.72 - t2 * 0.25, grow: 1.4,
               vx: d * (2.2 + t2 * 1.6), vy: -0.5 - t2 * 0.4, drag: 0.93, flipX: d < 0,
-              rot: t2 * 0.9, tint: i % 3 === 0 ? t.rim : t.body, depth: 7.1, blend: NORM });
+              rot: t2 * 0.9, depth: 7.1, blend: NORM });
         }
       }
 
@@ -2318,31 +2328,31 @@ class ScrambleScene extends Phaser.Scene {
         this._shake(140, 0.009);
         this._sfx('blast', { vol: 0.9, rate: 0.75 });
         this.emit('ring', e.x, e.y, { scale: 0.16, life: 26, grow: 6.5, alpha: 0.9,
-          tint: SMOKE.haze.spark, depth: 7.6 });
+          tint: SMOKE.haze.hot, depth: 7.6 });
         this.emit('ring', e.x, e.y, { scale: 0.10, life: 34, grow: 9.0, alpha: 0.45,
-          tint: SMOKE.haze.rim, depth: 7.5 });
+          tint: SMOKE.haze.hot, depth: 7.5 });
         // กำแพงควันตั้งขึ้นรอบตัว — ไล่ขนาดจากโคนขึ้นยอด ให้ดูเป็นเสาควัน ไม่ใช่วงกลม
         for (let i = 0; i < 14; i++) {
           const side = i % 2 ? 1 : -1, t = (i >> 1) / 7;
           this.emit(['smokeBall', 'burst'][i % 2], e.x + side * (20 + t * 150), e.y + 30 - t * 40,
-            { scale: 0.30 + t * 0.34, life: 34 + i, alpha: 0.80, grow: 1.4,
+            { scale: 0.30 + t * 0.34, life: 34 + i, alpha: 0.80, grow: 1.4, tone: SMOKE.haze,
               vx: side * (1.8 + t * 2), vy: -1.1 - t, drag: 0.93,
-              spin: side * 0.014, tint: SMOKE.haze.body, depth: 7.1, blend: NORM });
+              spin: side * 0.014, depth: 7.1, blend: NORM });
         }
         // ควันเลื้อยไปกับพื้นสองข้าง — ของที่ทำให้รู้สึกว่า "ทั้งเวที" ไม่ใช่ "รอบตัวเธอ"
         for (let i = 0; i < 8; i++) {
           const side = i % 2 ? 1 : -1;
-          this.emit('dustFlat', e.x + side * (60 + (i >> 1) * 120), STAGE.groundY - 10,
+          this.puff('dustFlat', e.x + side * (60 + (i >> 1) * 120), STAGE.groundY - 10,
             { scale: 0.5 + (i >> 1) * 0.2, life: 44 + i * 3, alpha: 0.34, grow: 0.9,
               vx: side * (3.6 + i * 0.5), drag: 0.95, flipX: side < 0,
-              tint: SMOKE.haze.body, depth: 6.4, blend: NORM });
+              depth: 6.4, blend: NORM });
         }
         // ไอลอยขึ้นจากพื้น
         for (let i = 0; i < 10; i++)
-          this.emit('smokeCurl', e.x + (i - 5) * 46, STAGE.groundY - 20,
-            { scale: 0.30, life: 46 + i * 2, alpha: 0.42, grow: 1.5, vy: -1.5 - (i % 3) * 0.4,
+          this.puff('smokeCurl', e.x + (i - 5) * 46, STAGE.groundY - 20,
+            { scale: 0.30, life: 46 + i * 2, alpha: 0.42, grow: 1.5, tone: SMOKE.haze, vy: -1.5 - (i % 3) * 0.4,
               rot: ((i % 5) - 2) * 0.2, spin: (i % 2 ? 1 : -1) * 0.01,
-              tint: SMOKE.haze.rim, depth: 6.5, blend: NORM });
+              hot: 1, depth: 6.5, blend: NORM });
       }
 
       /* ต่อยแล้วย้อน — ควันลากเป็นทางจากจุดที่เธอไปถึง กลับมาที่จุดที่ยืนตอนกด
@@ -2357,12 +2367,12 @@ class ScrambleScene extends Phaser.Scene {
             { scale: 0.30 - t * 0.12, life: 15 + i, alpha: 0.7 - t * 0.3, grow: 1.0,
               vy: -0.7, rot: t * 1.4, flipX: dx < 0,
               // สลับเข้ม/อ่อนไปตามทาง — ทางที่เป็นสีเดียวล้วนอ่านเป็นเส้นควันทั่วไป ไม่ใช่ของเธอ
-              tint: i % 2 ? SMOKE.leaf.body : SMOKE.leaf.rim, depth: 7, blend: NORM });
+              depth: 7, blend: NORM });
         }
         // เงาของเธอค้างอยู่ที่จุดที่ไปถึง แล้วจางหาย
         this._ghost(e.id, e.x - (e.bx ?? e.x), 0, { alpha: 0.45, life: 16 });
         this.emit('ring', e.bx ?? e.x, e.y - 60, { scale: 0.12, life: 16, grow: 2.4,
-          alpha: 0.8, tint: SMOKE.leaf.spark, depth: 7.4 });
+          alpha: 0.8, tint: SMOKE.ash.hot, depth: 7.4 });
       }
 
       if (e.type === 'firepool') {
@@ -2371,16 +2381,16 @@ class ScrambleScene extends Phaser.Scene {
         for (let i = 0; i < 7; i++)
           this.emit('flame', e.x + (i - 3) * 16, e.y, { scale: 0.18 + Math.random() * 0.14,
             life: 16 + Math.round(Math.random() * 14), grow: 0.6, vy: -1.6 - Math.random(), tint: 0xffb03a });
-        this.emit('burst', e.x, e.y - 26, { scale: 0.42, life: 13, grow: 1.1, tint: 0xffd166 });
+        this.puff('burst', e.x, e.y - 26, { scale: 0.42, life: 13, grow: 1.1, tint: 0xffd166 });
       }
       if (e.type === 'blast') {
         this._shake(110, 0.007);
         this._sfx('blast');
-        this.emit('burst', e.x, e.y - 40, { scale: 0.55, life: 15, grow: 1.5, tint: 0xffd166 });
+        this.puff('burst', e.x, e.y - 40, { scale: 0.55, life: 15, grow: 1.5, tint: 0xffd166 });
         this.emit('ring', e.x, e.y - 40, { scale: 0.30, life: 18, grow: 2.6, tint: 0xfff2d0 });
         // ควันต้องเป็น NORMAL ไม่ใช่ ADD — ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท
         for (let i = 0; i < 5; i++)
-          this.emit('smokeBall', e.x + (i - 2) * 26, e.y - 30 - Math.random() * 30,
+          this.puff('smokeBall', e.x + (i - 2) * 26, e.y - 30 - Math.random() * 30,
             { scale: 0.25 + Math.random() * 0.2, life: 30 + Math.round(Math.random() * 20), grow: 1.1,
               vy: -0.7, alpha: 0.5, tint: 0x9aa3b5, blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
@@ -2417,7 +2427,7 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'breakOut') {
         this._sfx('block', { vol: 1.1 });
         this.popup(e.x, e.y - 30, 'หลุด!', '#ffd166');
-        this.emit('burst', e.x, e.y, { scale: 0.34, life: 12, grow: 1.6, tint: 0xffd166 });
+        this.puff('burst', e.x, e.y, { scale: 0.34, life: 12, grow: 1.6, tint: 0xffd166 });
       }
       // ทุบพื้น: คลื่นวิ่งตามพื้นสองข้าง — ต้องเห็นขอบเขตชัดว่าไกลแค่ไหน ไม่งั้นมันคือกับดักที่มองไม่เห็น
       /* วงดูดของอัลติ — วาดขอบจริงตามค่าที่ซิมส่งมา ไม่ใช่ขนาดที่เดาให้สวย
@@ -2427,7 +2437,7 @@ class ScrambleScene extends Phaser.Scene {
         this._shake(120, 0.008);
         this._sfx('whoosh', { vol: 0.9 });
         this._ringOfRadius(e.x, e.y - 70, e.r, { life: 16, grow: -0.85, tint: 0x7fe3ff });
-        this.emit('burst', e.x, e.y - 70, { scale: 0.5, life: 14, grow: 1.5, tint: 0xfff2d0 });
+        this.puff('burst', e.x, e.y - 70, { scale: 0.5, life: 14, grow: 1.5, tint: 0xfff2d0 });
         // เศษโลหะไหลเข้าหาศูนย์กลางจากขอบวง — ทิศเข้าในคือสิ่งที่บอกว่ามันคือ "ดูด" ไม่ใช่ "ระเบิด"
         for (let i = 0; i < 8; i++) {
           const dir = i % 2 ? 1 : -1, far = e.r * (0.45 + 0.55 * ((i >> 1) / 3));
@@ -2446,7 +2456,7 @@ class ScrambleScene extends Phaser.Scene {
         this._shake(120 + 130 * big, 0.008 + 0.014 * big);
         this._sfx('blast', { vol: 0.7 + 0.5 * big });
         this.popup(e.x, e.y - 34, '\u00d7' + e.n + ' จุด!', '#c77dff');
-        this.emit('burst', e.x, e.y, { scale: 0.3 + 0.5 * big, life: 15, grow: 2.2, tint: 0xc77dff });
+        this.puff('burst', e.x, e.y, { scale: 0.3 + 0.5 * big, life: 15, grow: 2.2, tint: 0xc77dff });
         this.emit('ring', e.x, e.y, { scale: 0.2 + 0.5 * big, life: 18, grow: 3.0, tint: 0xe0b0ff });
         // ประกายกระจายออกรอบวง จำนวนตามหมุด — นับด้วยตาได้ว่าจุดไปกี่ดวง
         for (let i = 0; i < e.n * 3; i++) {
@@ -2517,10 +2527,10 @@ class ScrambleScene extends Phaser.Scene {
         if (smoky) {
           // `o` มี blend: NORM อยู่แล้ว แต่เขียนซ้ำให้เห็นกับตา — เทสต์ควันอ่าน spread ไม่ออก
           // และ "ควันต้องเป็น NORMAL" เป็นข้อที่พลาดมาแล้วสามรอบ ยอมเขียนซ้ำดีกว่าปล่อยให้ตรวจไม่ได้
-          this.emit('smokeWisp', x - d * 6, y, { ...o, life: 9, scale: 0.20, alpha: 0.62,
-            tint: SMOKE.leaf.body, depth: 7, spin: lane * 0.03, blend: NORM });
-          this.emit('smokeCurl', x + d * 4, y, { ...o, life: 8, scale: 0.15, alpha: 0.85,
-            tint: SMOKE.leaf.rim, depth: 7.1, blend: NORM });
+          this.puff('smokeWisp', x - d * 6, y, { ...o, life: 9, scale: 0.20, alpha: 0.62,
+            depth: 7, spin: lane * 0.03, blend: NORM });
+          this.puff('smokeCurl', x + d * 4, y, { ...o, life: 8, scale: 0.15, alpha: 0.85,
+            hot: 1, depth: 7.1, blend: NORM });
         } else {
         this.emit('slashThrust', x - d * 6, y, { ...o, scale: 0.26, alpha: 0.8, tint: 0x2a2338, depth: 7 });
         this.emit('slashThrust', x + d * 4, y, { ...o, scale: 0.19, alpha: 0.9, tint: 0xffd166, depth: 7.1 });
@@ -2551,7 +2561,7 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'slam') {
         this._shake(200, 0.012);
         this._sfx('blast', { vol: 1.15 });
-        this.emit('burst', e.x, e.y - 30, { scale: 0.6, life: 16, grow: 1.6, tint: 0xfff2d0 });
+        this.puff('burst', e.x, e.y - 30, { scale: 0.6, life: 16, grow: 1.6, tint: 0xfff2d0 });
         for (const dir of [-1, 1])
           this.emit('ring', e.x + dir * e.r * 0.5, e.y - 16,
             { scale: 0.34, life: 20, grow: 2.8, tint: 0x7fe3ff });
@@ -2581,7 +2591,7 @@ class ScrambleScene extends Phaser.Scene {
       if (e.type === 'overclockEnd') {
         this._sfx('whoosh', { vol: 0.5 });
         for (let i = 0; i < 5; i++)
-          this.emit('smokeWisp', e.x + (i - 2) * 14, e.y - Math.random() * 40,
+          this.puff('smokeWisp', e.x + (i - 2) * 14, e.y - Math.random() * 40,
             { scale: 0.18, life: 22, grow: 1.1, vy: -1.0, alpha: 0.4, tint: 0x9aa3b5,
               blend: Phaser.BlendModes.NORMAL, depth: 6 });
       }
@@ -2628,15 +2638,15 @@ class ScrambleScene extends Phaser.Scene {
     this.emit(Math.random() < 0.5 ? 'smokeCurl' : 'smokeWisp',
       Math.random() * w, STAGE.groundY - 10 - Math.random() * 120,
       { scale: 0.22 + Math.random() * 0.26, life: 50 + Math.round(Math.random() * 30),
-        alpha: (0.16 + Math.random() * 0.16) * fade, grow: 1.2,
+        alpha: (0.16 + Math.random() * 0.16) * fade, grow: 1.2, tone: t,
         vx: side * (0.5 + Math.random()), vy: -0.5 - Math.random() * 0.7, drag: 0.99,
         rot: Math.random() * 3.1, spin: side * 0.006,
-        tint: Math.random() < 0.35 ? t.rim : t.body, depth: 6.3, blend: NORM });
+        depth: 6.3, blend: NORM });
     // ควันเลื้อยไปกับพื้นเป็นระยะ ๆ — ชั้นล่างทำให้เวทีดูจมอยู่ในควัน ไม่ใช่มีควันลอยอยู่เฉย ๆ
     if (this.sim.frame % 12 === 0)
-      this.emit('dustFlat', Math.random() * w, STAGE.groundY - 6,
-        { scale: 0.5 + Math.random() * 0.5, life: 60, alpha: 0.2 * fade, grow: 0.8,
-          vx: side * 1.6, drag: 0.98, flipX: side < 0, tint: t.body, depth: 6.2, blend: NORM });
+      this.puff('dustFlat', Math.random() * w, STAGE.groundY - 6,
+        { scale: 0.5 + Math.random() * 0.5, life: 60, alpha: 0.2 * fade, grow: 0.8, tone: t,
+          vx: side * 1.6, drag: 0.98, flipX: side < 0, depth: 6.2, blend: NORM });
   }
 
   /** ควันลอยจากมวนของ EYE ตลอดเวลาที่เธอไม่ได้ออกท่า
@@ -2656,10 +2666,10 @@ class ScrambleScene extends Phaser.Scene {
       // ออกท่าอยู่/โดนตีอยู่/ล้มอยู่ = ไม่ใช่จังหวะสูบ ควันจะไปกวนเอฟเฟคของท่าเปล่า ๆ
       if (f.state !== 'idle' && f.state !== 'crouch' && f.state !== 'run') continue;
       const d = f.facing;
-      this.emit('smokeCurl', f.x + d * 22, f.y - 102,
+      this.puff('smokeCurl', f.x + d * 22, f.y - 102,
         { scale: 0.12, life: 40, alpha: 0.34, grow: 1.6,
           vx: d * 0.25, vy: -0.75, drag: 0.99, rot: (s.frame % 3) * 0.3 - 0.3,
-          spin: d * 0.008, tint: SMOKE.leaf.body, depth: 6.8, blend: NORM });
+          spin: d * 0.008, depth: 6.8, blend: NORM });
     }
   }
 
@@ -3137,6 +3147,20 @@ class ScrambleScene extends Phaser.Scene {
     return img;
   }
 
+  /** ควันหนึ่งก้อน = **สองใบซ้อน** เงาเทาอยู่หลังเยื้องลง + ก้อนขาวทึบอยู่หน้า
+   *
+   *  เรียกแทน emit() ทุกที่ที่เป็นควัน ไม่งั้นได้ปื้นขาวแบน ๆ ที่ไม่มีรูปทรง
+   *  เงาใหญ่กว่านิดและจางกว่า — มันทำหน้าที่ "ขอบล่างของก้อน" ไม่ใช่ก้อนที่สอง
+   */
+  puff(frame, x, y, o = {}) {
+    const tone = o.tone ?? SMOKE.ash;
+    this.emit(frame, x + (o.sx ?? 2), y + (o.sy ?? 5), {
+      ...o, blend: NORM, tint: tone.shade, depth: (o.depth ?? 7) - 0.05,
+      scale: (o.scale ?? 1) * 1.08, alpha: (o.alpha ?? 1) * 0.72,
+    });
+    return this.emit(frame, x, y, { ...o, blend: NORM, tint: o.hot ? tone.hot : tone.body });
+  }
+
   _stepFx() {
     if (!this._fxLive?.length) return;
     const keep = [];
@@ -3261,7 +3285,7 @@ class ScrambleScene extends Phaser.Scene {
   _smokeFor(f) {
     const hb = f.hitbox();
     if (!hb) return;
-    const d = f.facing, t = SMOKE.leaf;
+    const d = f.facing, t = SMOKE.ash;
     const cx = hb.x + hb.w / 2, cy = hb.y + hb.h / 2;
     const tall = hb.h > hb.w * 1.3;          // ท่าส่งขึ้น (up / nair) — ควันเป็นเสา
     const flat = hb.w > hb.h * 2;            // ท่ากวาดต่ำ (down / side) — ควันเลื้อยไปกับพื้น
@@ -3280,26 +3304,26 @@ class ScrambleScene extends Phaser.Scene {
         { scale: (hb.w / 350) * (0.7 + (i % 3) * 0.25), life: 15 + (i % 6), alpha: 0.72,
           grow: 1.1, vx: d * (1.2 + k * 1.4), vy: tall ? -2.2 - k : -0.5,
           drag: 0.9, spin: (i % 2 ? 1 : -1) * 0.02,
-          tint: t.body, depth: 6.9, blend: NORM });
+          depth: 6.9, blend: NORM });
     }
     // ม้วนควันสว่างพุ่งนำหน้าไม้ — ชั้นนี้คือสิ่งที่ทำให้มันอ่านออกบนฟ้าสว่าง
     for (let i = 0; i < 3; i++) {
       const k = i / 3;
-      this.emit('smokeWisp', cx + d * (hb.w * 0.25 + k * 12), cy + (tall ? -hb.h * 0.3 * k : (k - 0.5) * hb.h * 0.4),
+      this.puff('smokeWisp', cx + d * (hb.w * 0.25 + k * 12), cy + (tall ? -hb.h * 0.3 * k : (k - 0.5) * hb.h * 0.4),
         { scale: (hb.w / 420) * 0.9, life: 13 + i, alpha: 0.8, grow: 0.9,
           vx: d * (2.6 + k), vy: tall ? -2.6 : -0.8, drag: 0.88, flipX: d < 0,
           rot: tall ? -1.2 * d : k * 0.5,
-          tint: t.rim, depth: 7.05, blend: NORM });
+          hot: 1, depth: 7.05, blend: NORM });
     }
     // ควันสาวออกจากมือไปหาปลายไม้ — บอกว่าควันมาจากตัวเธอ ไม่ใช่โผล่กลางอากาศ
-    this.emit('smokeCurl', f.x + d * 20, f.y - 96,
+    this.puff('smokeCurl', f.x + d * 20, f.y - 96,
       { scale: 0.22, life: 14, alpha: 0.6, grow: 1.3, vx: d * 2.2, vy: -0.6,
-        drag: 0.9, flipX: d < 0, tint: t.body, depth: 6.85, blend: NORM });
+        drag: 0.9, flipX: d < 0, depth: 6.85, blend: NORM });
     // ไม้หนักเพิ่มควันเลื้อยพื้นให้รู้สึกว่ามันลงน้ำหนัก
     if (heavy && f.onGround)
-      this.emit('dustFlat', f.x + d * 40, STAGE.groundY - 8,
+      this.puff('dustFlat', f.x + d * 40, STAGE.groundY - 8,
         { scale: 0.52, life: 22, alpha: 0.5, grow: 1.4, vx: d * 2.4, drag: 0.93,
-          flipX: d < 0, tint: t.body, depth: 6.6, blend: NORM });
+          flipX: d < 0, depth: 6.6, blend: NORM });
   }
   popup(x, y, s, color) {
     const t = this._world(this.add.text(x, y, s, { fontFamily: FONT, fontSize: '20px', color, fontStyle: '700', stroke: '#0c111c', strokeThickness: 4 }).setOrigin(0.5));

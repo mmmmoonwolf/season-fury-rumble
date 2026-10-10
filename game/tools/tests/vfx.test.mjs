@@ -86,20 +86,27 @@ const { CHARACTERS } = await import(G + "/core.js");
     "ออกจากท่าแล้วล้างตัวจำ — ท่าเดิมซ้ำติด ๆ กันจึงปล่อยรอยฟาดทุกครั้ง");
 }
 
-// ── ควันต้องเป็น NORMAL ไม่ใช่ ADD ──
-// ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท — เป็นกับดักที่เห็นก็ต่อเมื่อเปลี่ยนฉากเป็นกลางวันแล้ว
+// ── ควันต้องเดินผ่าน puff() เท่านั้น และ puff() บังคับ NORMAL ให้เอง ──
+//
+// ควันขาวบนฟ้าสว่างในโหมด ADD จะหายสนิท — เป็นกับดักที่พลาดมาสามรอบในโปรเจกต์นี้
+// เดิมเทสต์ไล่เช็ค `blend` ทีละจุดที่เรียก emit() ซึ่งแปลว่า **จุดใหม่ที่ลืมใส่ก็หลุดได้**
+// ตอนนี้ควันทุกก้อนต้องเรียก puff() ซึ่งบังคับ NORMAL ไว้ในตัว = ลืมไม่ได้อีกแล้วโดยโครงสร้าง
 {
-  // ตัวย่อ NORM ต้องเป็น NORMAL จริง ไม่งั้นทุกข้อข้างล่างนี้ผ่านโดยไม่ได้ตรวจอะไรเลย
   ok(/const NORM = Phaser\.BlendModes\.NORMAL;/.test(scene), "NORM = BlendModes.NORMAL");
+  const helper = scene.slice(scene.indexOf("puff(frame, x, y, o = {})"), scene.indexOf("puff(frame, x, y, o = {})") + 700);
+  ok(helper.length > 100, "มีตัวช่วย puff() อยู่จริง");
+  ok((helper.match(/blend: NORM/g) ?? []).length >= 2,
+    "puff() บังคับ NORMAL ทั้งชั้นเงาและชั้นขาว — ผู้เรียกลืมใส่ไม่ได้");
+  // ควันขาวทึบต้องมีเงาอยู่หลัง ไม่งั้นได้ปื้นขาวแบน ๆ ที่ไม่มีรูปทรง
+  ok(/tint: tone\.shade/.test(helper) && /tint: o\.hot \? tone\.hot : tone\.body/.test(helper),
+    "วาดสองชั้น: เงาเทาอยู่หลัง + ก้อนขาวอยู่หน้า");
+
   for (const f of ["smokeBall", "smokeCurl", "smokeWisp", "dustFlat"]) {
-    // **ตรวจทุกจุดที่เรียก ไม่ใช่จุดแรก** — เดิมเช็คแค่ match แรก พอมีจุดใหม่แทรกเข้ามาข้างบน
-    // จุดที่เหลือก็ไม่เคยถูกตรวจเลย (เจอตอนเพิ่มควันของ EYE: จุดแรกเปลี่ยนไปเป็นของตัวใหม่)
-    const all = [...scene.matchAll(new RegExp(`emit\\('${f}'[\\s\\S]{0,500}?\\}\\)`, "g"))];
-    ok(all.length > 0, `${f}: มีใช้จริงในฉาก (${all.length} จุด)`);
-    const bad = all.filter((m) => !/BlendModes\.NORMAL|blend: NORM\b/.test(m[0])).length;
-    ok(bad === 0, `${f}: ใช้ NORMAL ไม่ใช่ ADD ครบทุกจุด (${all.length} จุด · ผิด ${bad})`);
+    const viaPuff = [...scene.matchAll(new RegExp(`this\\.puff\\('${f}'`, "g"))].length;
+    const viaEmit = [...scene.matchAll(new RegExp(`this\\.emit\\('${f}'`, "g"))].length;
+    ok(viaPuff > 0, `${f}: วาดผ่าน puff() จริง (${viaPuff} จุด)`);
+    ok(viaEmit === 0, `${f}: ไม่มีจุดไหนเรียก emit() ตรง ๆ (เจอ ${viaEmit})`);
   }
-  ok(/setBlendMode\(o\.blend \?\? Phaser\.BlendModes\.ADD\)/.test(scene), "ค่าเริ่มต้นเป็น ADD (ของส่วนใหญ่คือแสง)");
 }
 
 // ── ชื่อเมธอดต้องไม่ชนกับพรอเพอร์ตี้ของอินสแตนซ์ ──
