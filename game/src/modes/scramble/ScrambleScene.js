@@ -228,13 +228,17 @@ const CHAR_ART = {
   // ใส่เข้าเกมก่อนเพื่อให้ลองกลไกควันกับคอมโบได้จริง ก่อนลงทุนเจนอาร์ตทั้งตัว
   // ลบ artPending ใน core.js แล้วเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
   chronos: {
-    artPending: true,
-    box: 0x24242a, boxAccent: 0xff7a3a,   // ชุดดำล้วน + ไฟปลายมวน (ตามเรฟที่เคาะแล้ว)
-    slashTint: 0xc2c7cf,                  // รอยฟาดของเธอเป็นควันเทา ไม่ใช่แสงครีมเหมือนคนอื่น
+    atlasKey: 'scchronos',
+    texture: 'assets/characters/scramble_chronos.png',
+    data: 'assets/characters/scramble_chronos.json',
+    runStride: 96,
+    box: 0x24242a, boxAccent: 0xff7a3a,   // ชุดดำล้วน + ไฟปลายมวน (เผื่ออาร์ตโหลดไม่ขึ้น)
+    slashTint: 0xc2c7cf,                  // รอยฟาดของเธอเป็นควัน ไม่ใช่แสงครีมเหมือนคนอื่น
     title: 'Chronos',
     role: 'สายรัวควัน',
     tip: 'ทุกไม้ทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม — หยุดรัวแล้วแรงกดดันยังไม่หยุด',
-    anims: {},
+    anims: { idle: 1, run: 10, jump: 4, crouch: 1, hurt: 1, knockdown: 1, techroll: 1, tech: 1,
+      block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "haze1", "haze2", "haze3", "hazeEnd", "snap1", "veil1"]),
   },

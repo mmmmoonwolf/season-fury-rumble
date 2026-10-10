@@ -926,10 +926,9 @@ const CHARACTERS = {
    * และเวลาคือธีมของเธอพอดี · **เปลี่ยน id ไม่ได้อีกแล้วหลังจากนี้** มันคือคีย์ของอัตลาส
    * ชื่อไฟล์ชีตใน tools/ และค่าที่ส่งข้ามเน็ตตอนเลือกตัว
    *
-   * artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน — ใส่เข้าเกมก่อนเพื่อให้ลองเล่นกลไกกับควันได้จริง
-   * ก่อนจะลงทุนเจนอาร์ตทั้งตัว (ท่าเดียวกับที่ TEEMEE เคยใช้ตอนยังไม่มีชีต) */
+   * อาร์ตเข้าแล้ว 68 เฟรม (tools/build_scramble_eye.py) — ยังยืมเฟรมอยู่หลายท่า ดู BORROW ในสคริปต์ */
   chronos: { id: 'chronos', label: 'EYE', moves: EYE_MOVES, skills: EYE_SKILLS,
-    skillCd: EYE_SKILL_CD, artPending: true },
+    skillCd: EYE_SKILL_CD },
 };
 const DEFAULT_CHAR = 'nyx';
 

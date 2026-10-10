@@ -33,9 +33,29 @@ const run = (g, n, press = () => ({})) => {
   ok(!!CHARACTERS.chronos, "EYE อยู่ในรายชื่อตัวละคร");
   ok(CHARACTERS.chronos.id === "chronos" && CHARACTERS.chronos.label === "EYE",
     `id=${CHARACTERS.chronos.id} label=${CHARACTERS.chronos.label}`);
-  ok(CHARACTERS.chronos.artPending === true, "ติดธงว่ายังไม่มีอาร์ต วาดเป็นกล่องไปก่อน");
+  ok(!CHARACTERS.chronos.artPending, "อาร์ตมาแล้ว ไม่ได้วาดเป็นกล่องอีกต่อไป");
   const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url).pathname, "utf8");
-  ok(/chronos:\s*\{[\s\S]{0,400}?artPending:\s*true/.test(scene), "ฝั่งวาดก็รู้ว่ายังไม่มีอาร์ต");
+  ok(/chronos:\s*\{[\s\S]{0,200}?atlasKey: 'scchronos'/.test(scene), "ฝั่งวาดชี้ไปอัตลาสจริง");
+
+  // ── ทุกเฟรมที่ฉากจะขอ ต้องมีอยู่ในอัตลาสจริง ──
+  //
+  // Phaser **ไม่ throw เมื่อหาเฟรมไม่เจอ** มันเตือนใน console แล้วคืนเฟรมแรกของอัตลาสมาแทน
+  // ท่าที่ขาดจึงกลายเป็นท่ายืนเงียบ ๆ ซึ่งดูเหมือน "แอนิเมชันไม่เล่น" ไม่ใช่ "เฟรมหาย"
+  const atlas = JSON.parse(fs.readFileSync(
+    new URL("../../assets/characters/scramble_chronos.json", import.meta.url).pathname, "utf8"));
+  const have = new Set(Object.keys(atlas.frames));
+  const art = scene.slice(scene.indexOf("chronos: {"), scene.indexOf("chronos: {") + 1400);
+  const anims = [...art.matchAll(/(\w+): (\d+)/g)].filter(([, k]) => !["runStride"].includes(k));
+  const want = [];
+  for (const [, k, n] of anims) for (let i = 1; i <= Number(n); i++) want.push(`${k}_${i}.png`);
+  for (const id of Object.keys(CHARACTERS.chronos.moves)) for (let i = 1; i <= 3; i++) want.push(`${id}_${i}.png`);
+  const missing = want.filter((f) => !have.has(f));
+  ok(missing.length === 0, `อัตลาสมีครบทุกเฟรมที่ฉากขอ (ขาด ${missing.length}: ${missing.slice(0, 5).join(" ")})`);
+  ok(have.size === want.length, `ไม่มีเฟรมเกินที่ไม่มีใครเรียก (มี ${have.size} ขอ ${want.length})`);
+
+  // อัตลาสเกิน 4096 px แล้วการ์ดจอวาดเป็นสีดำ **โดยไม่มี error** — บทเรียนเดิมของทุกตัวในเกม
+  ok(atlas.meta.size.w <= 4096 && atlas.meta.size.h <= 4096,
+    `อัตลาสไม่เกินลิมิตการ์ดจอ (${atlas.meta.size.w}x${atlas.meta.size.h})`);
   const sk = CHARACTERS.chronos.skills;
   ok(sk.length === 3 && sk.every((id) => CHARACTERS.chronos.moves[id]),
     `สกิลสามช่องชี้ไปท่าที่มีจริงครบ (${sk.join(", ")})`);
