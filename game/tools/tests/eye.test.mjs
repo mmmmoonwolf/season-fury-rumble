@@ -3,8 +3,12 @@
 //
 // ชื่อไฟล์เป็น eye เพราะเป็นชื่อที่โชว์ ส่วน `id` ในซิมเป็น 'chronos' ซึ่งห้ามเปลี่ยน
 import fs from "fs";
+import "./phaser_stub.mjs";
+globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {} };
+globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
 const { Game, CHARACTERS, STAGE } = await import(G + "/core.js");
+const { ScrambleScene } = await import(G + "/ScrambleScene.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
@@ -241,4 +245,63 @@ const run = (g, n, press = () => ({})) => {
   ok(/n: this\.puffN, life \}/.test(core), "และซิมส่งฟิวส์ไปกับอีเวนต์");
   for (const ev of ["drag"]) ok(new RegExp(`e\\.type === '${ev}'`).test(scene), `มีตัววาดของ ${ev}`);
   ok(/_jointSmoke\(\)/.test(scene), "มีควันลอยจากมวนตอนเธออยู่เฉย ๆ");
+}
+
+// ══ ควันตามไม้: ทุกท่าโจมตี ไม่ใช่เฉพาะสกิล ═════════════════════════════════
+//
+// 🔴 ครั้งแรกแขวนไว้ในทางวาดสไปรท์ (ข้าง slashFor) แล้ว **ควันไม่เคยออกสักครั้ง**
+// เพราะทางนั้นคืนค่าออกก่อนสำหรับตัวที่ยัง artPending (วาดเป็นกล่อง ไม่เดินไปถึงโค้ดรอยฟาด)
+// เทสต์เขียวหมด เห็นก็ต่อเมื่อเปิดดูของจริงบนจอ — ข้อนี้คือตาข่ายกันไม่ให้ย้ายกลับไปที่นั่น
+{
+  const scene = fs.readFileSync(new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url).pathname, "utf8");
+  ok(/_attackSmoke\(\);/.test(scene) && /_ageFx\(\) \{[\s\S]{0,400}_attackSmoke\(\)/.test(scene),
+    "ควันตามไม้ถูกเรียกจากรอบวาดทุกเฟรม");
+  const rigBlock = scene.slice(scene.indexOf("rig.lastSlash = tag;"), scene.indexOf("rig.lastSlash = tag;") + 200);
+  ok(!/_smokeFor/.test(rigBlock),
+    "**ไม่ได้แขวนไว้ในทางวาดสไปรท์** ซึ่งตัวที่ยังไม่มีอาร์ตเดินไปไม่ถึง");
+
+  // ขนาดควันต้องยึดกรอบชนจริง ไม่ใช่เลขตายตัว — ควันที่ใหญ่กว่าที่กินจริงคือการโกหกระยะ
+  const sf = scene.slice(scene.indexOf("_smokeFor(f) {"), scene.indexOf("_smokeFor(f) {") + 2600);
+  ok(/hb\.w \/ \d+/.test(sf), "ขนาดควันคิดจากความกว้าง hitbox จริง");
+  ok(!/scale: 0\.[0-9]+,\s*life: 1[0-9] \+ \(i % 6\)/.test(sf), "ไม่ใช่สเกลตายตัวของก้อนหลัก");
+
+  // ── พฤติกรรมจริง: ออกครั้งเดียวต่อไม้ · เฉพาะ EYE · เฉพาะช่วง active ──
+  const mkStub = () => {
+    const sc = { emitted: 0, sim: null };
+    for (const k of Object.getOwnPropertyNames(ScrambleScene.prototype))
+      if (typeof ScrambleScene.prototype[k] === "function" && k !== "constructor") sc[k] = ScrambleScene.prototype[k];
+    sc.emit = function () { this.emitted++; };
+    return sc;
+  };
+  const fighter = (char, phase) => ({
+    id: "p1", char, x: 400, y: 500, facing: 1, onGround: true, state: "attack",
+    moveId: "jab1", move: {}, used: new Set(),
+    phase: () => phase, hitbox: () => ({ x: 420, y: 420, w: 100, h: 60 }),
+  });
+
+  const a = mkStub();
+  a.sim = { fighters: [fighter("chronos", "active")] };
+  a._attackSmoke();
+  ok(a.emitted > 0, `EYE ออกท่าแล้วมีควัน (${a.emitted} อนุภาค)`);
+  const once = a.emitted;
+  a._attackSmoke(); a._attackSmoke();
+  ok(a.emitted === once, `เรียกซ้ำในไม้เดิมไม่ปล่อยเพิ่ม (${a.emitted}/${once})`);
+
+  const b = mkStub();
+  b.sim = { fighters: [fighter("chronos", "startup")] };
+  b._attackSmoke();
+  ok(b.emitted === 0, "ช่วงเงื้อยังไม่มีควัน — ออกตอนกรอบชนเปิดเท่านั้น");
+
+  const c = mkStub();
+  c.sim = { fighters: [fighter("helios", "active")] };
+  c._attackSmoke();
+  ok(c.emitted === 0, "ตัวอื่นไม่ได้ควันติดมาด้วย");
+
+  // กรอบใหญ่ขึ้น = ควันเยอะขึ้น (ไม้หนักต้องดูหนักกว่า)
+  const big = mkStub();
+  const bf = fighter("chronos", "active");
+  bf.hitbox = () => ({ x: 400, y: 380, w: 240, h: 180 });
+  big.sim = { fighters: [bf] };
+  big._attackSmoke();
+  ok(big.emitted > once, `ไม้ที่กรอบใหญ่กว่าได้ควันเยอะกว่า (${once} -> ${big.emitted})`);
 }

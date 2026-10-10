@@ -22,7 +22,7 @@
  * ของหนักเป็น cache-first ได้เพราะไฟล์อาร์ต/เสียงเปลี่ยนน้อยมาก และถ้าเปลี่ยนจริง
  * เลขเวอร์ชันข้างล่างจะลบแคชเก่าทิ้งให้เอง
  */
-const VERSION = 'sfr-v19';  // ← EYE: gimmick สูบมวน + ควันลอยตอนยืน
+const VERSION = 'sfr-v20';  // ← EYE: ควันตามทุกไม้ ไม่ใช่เฉพาะสกิล
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 

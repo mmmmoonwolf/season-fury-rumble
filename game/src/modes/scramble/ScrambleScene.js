@@ -229,7 +229,8 @@ const CHAR_ART = {
   // ลบ artPending ใน core.js แล้วเติม atlasKey/texture/data/anims/attacks ตอนอาร์ตมาถึง
   chronos: {
     artPending: true,
-    box: 0x24242a, boxAccent: 0x4f9b3f,   // ชุดดำล้วน + ใบไม้เขียว (ตามเรฟที่เคาะแล้ว)
+    box: 0x24242a, boxAccent: 0x4f9b3f,   // ชุดดำล้วน + ไฟปลายมวน (ตามเรฟที่เคาะแล้ว)
+    slashTint: 0x8fb573,                  // รอยฟาดของเธอเป็นควัน ไม่ใช่แสงครีมเหมือนคนอื่น
     title: 'Chronos',
     role: 'สายรัวควัน',
     tip: 'ทุกไม้ทิ้งควันไว้ ระเบิดทีหลัง 20 เฟรม — หยุดรัวแล้วแรงกดดันยังไม่หยุด',
@@ -2662,11 +2663,35 @@ class ScrambleScene extends Phaser.Scene {
     }
   }
 
+  /** ควันตามไม้ของ EYE — เรียกทุกเฟรมที่วาด ไม่ใช่จากทางวาดสไปรท์
+   *
+   *  🔴 **ทางวาดสไปรท์ใช้ไม่ได้** เพราะมันคืนค่าออกก่อนสำหรับตัวที่ยัง `artPending`
+   *  (วาดเป็นกล่อง ไม่ได้เดินไปถึงโค้ดรอยฟาด) ครั้งแรกผมแขวนไว้ตรงนั้นแล้ว
+   *  **ควันไม่เคยออกสักครั้ง** ทั้งที่เทสต์เขียวหมด — เห็นก็ต่อเมื่อเปิดดูของจริงบนจอ
+   *
+   *  ผลข้างเคียงที่ยังไม่แก้: ตัวที่ยังไม่มีอาร์ตก็ไม่มี "รอยฟาด" ด้วยเหมือนกัน
+   *  (เป็นแบบนี้มาตั้งแต่ก่อนหน้านี้แล้ว ไม่ใช่ของใหม่ — แยกเรื่องกัน)
+   */
+  _attackSmoke() {
+    const s = this.sim;
+    if (!s?.fighters) return;
+    this._smokeSeen ??= {};
+    for (const f of s.fighters) {
+      if (f.char !== 'chronos' || !f.move || f.state !== 'attack') { this._smokeSeen[f.id] = null; continue; }
+      // เฟรมแรกของช่วง active เท่านั้น — เฟรมละครั้ง ไม่ใช่ทุกเฟรมที่ยังอยู่ในท่า
+      const tag = f.moveId + ':' + f.used.size;
+      if (f.phase() !== 'active' || this._smokeSeen[f.id] === tag) continue;
+      this._smokeSeen[f.id] = tag;
+      this._smokeFor(f);
+    }
+  }
+
   _ageFx() {
     this._stepFx();
     this._stepGhosts();
     this._hazeAmbient();
     this._jointSmoke();
+    this._attackSmoke();
     for (const s of this.sparks) s.life--;
     this.sparks = this.sparks.filter(s => s.life > 0);
     for (const p of this.popups) { p.life--; p.t.y -= 0.8; p.t.setAlpha(Math.min(1, p.life / 15)); if (p.life <= 0) p.t.destroy(); }
@@ -3217,8 +3242,64 @@ class ScrambleScene extends Phaser.Scene {
       scale: (reach / (src?.width || 300)) * 1.15,
       life: 10, grow: 0.3, alpha: 0.5, flipX: f.facing < 0,
       rot: (spec.rot ?? 0) * Math.PI / 180 * f.facing,
-      tint: 0xfff2d0, depth: 7,
+      // รอยฟาดของ EYE เป็นควัน ไม่ใช่แสง — ตัวละครที่ไม่ประกาศก็ได้ครีมเดิมเป๊ะ
+      tint: art.slashTint ?? 0xfff2d0, depth: 7,
     });
+  }
+
+  /** ควันตามไม้ — **ทุกท่าโจมตีของ EYE ไม่ใช่เฉพาะสกิล**
+   *
+   *  อยู่ฝั่งวาดล้วน ๆ ซิมไม่รู้เรื่องนี้เลย จึงไม่ต้องแตะ netplay และไม่ต้องเติมอะไรลงตารางท่า
+   *  **ครอบคลุมท่าที่เพิ่มทีหลังเองอัตโนมัติ** — ท่าไหนมีกรอบชน ท่านั้นมีควัน
+   *
+   *  ขนาดควันยึด **กรอบชนจริง** เหมือนรอยฟาด (ดู slashFor) ไม่ใช่เลขตายตัว
+   *  ควันที่ใหญ่กว่าระยะที่โดนจริงคือการโกหก คนเล่นจะอ่านระยะผิดทุกครั้งที่เห็น
+   *  — เป็นข้อเดียวกับที่เพิ่งแก้ไปตอนทำควันระเบิด (เคยกว้าง 200 px ขณะที่กินจริง 116)
+   *
+   *  ทรงควันเลือกจาก **สัดส่วนของกรอบ** ไม่ใช่จากรายชื่อท่า ท่าถูกปรับค่าเมื่อไหร่ควันตามเอง
+   */
+  _smokeFor(f) {
+    const hb = f.hitbox();
+    if (!hb) return;
+    const d = f.facing, t = SMOKE.leaf;
+    const cx = hb.x + hb.w / 2, cy = hb.y + hb.h / 2;
+    const tall = hb.h > hb.w * 1.3;          // ท่าส่งขึ้น (up / nair) — ควันเป็นเสา
+    const flat = hb.w > hb.h * 2;            // ท่ากวาดต่ำ (down / side) — ควันเลื้อยไปกับพื้น
+    const heavy = hb.w * hb.h > 6000;        // ไม้หนัก — ควันเยอะกว่า
+    const n = heavy ? 7 : 5;
+
+    for (let i = 0; i < n; i++) {
+      const k = i / n;
+      // กระจายตามแกนยาวของกรอบ ควันจึงกินพื้นที่เท่าที่ไม้นั้นกินจริง
+      const px = cx + (flat || !tall ? (k - 0.5) * hb.w * 0.8 : (Math.random() - 0.5) * hb.w * 0.5);
+      const py = cy + (tall ? (k - 0.5) * hb.h * 0.8 : (Math.random() - 0.5) * hb.h * 0.5);
+      this.emit(i % 2 ? 'smokeBall' : 'burst', px, py,
+        /* ฐานหาร 350 มาจากขนาดจริงของเฟรม: `smokeBall` กว้าง 266 px ในอัตลาส
+         * อยากได้ก้อนละราว 80-110 px สำหรับกรอบกว้าง ~118 = สเกล 0.24-0.40
+         * ครั้งแรกหารด้วย 900 ได้ก้อนละ 35 px ซึ่งบนจอแทบมองไม่เห็น */
+        { scale: (hb.w / 350) * (0.7 + (i % 3) * 0.25), life: 15 + (i % 6), alpha: 0.72,
+          grow: 1.1, vx: d * (1.2 + k * 1.4), vy: tall ? -2.2 - k : -0.5,
+          drag: 0.9, spin: (i % 2 ? 1 : -1) * 0.02,
+          tint: t.body, depth: 6.9, blend: NORM });
+    }
+    // ม้วนควันสว่างพุ่งนำหน้าไม้ — ชั้นนี้คือสิ่งที่ทำให้มันอ่านออกบนฟ้าสว่าง
+    for (let i = 0; i < 3; i++) {
+      const k = i / 3;
+      this.emit('smokeWisp', cx + d * (hb.w * 0.25 + k * 12), cy + (tall ? -hb.h * 0.3 * k : (k - 0.5) * hb.h * 0.4),
+        { scale: (hb.w / 420) * 0.9, life: 13 + i, alpha: 0.8, grow: 0.9,
+          vx: d * (2.6 + k), vy: tall ? -2.6 : -0.8, drag: 0.88, flipX: d < 0,
+          rot: tall ? -1.2 * d : k * 0.5,
+          tint: t.rim, depth: 7.05, blend: NORM });
+    }
+    // ควันสาวออกจากมือไปหาปลายไม้ — บอกว่าควันมาจากตัวเธอ ไม่ใช่โผล่กลางอากาศ
+    this.emit('smokeCurl', f.x + d * 20, f.y - 96,
+      { scale: 0.22, life: 14, alpha: 0.6, grow: 1.3, vx: d * 2.2, vy: -0.6,
+        drag: 0.9, flipX: d < 0, tint: t.body, depth: 6.85, blend: NORM });
+    // ไม้หนักเพิ่มควันเลื้อยพื้นให้รู้สึกว่ามันลงน้ำหนัก
+    if (heavy && f.onGround)
+      this.emit('dustFlat', f.x + d * 40, STAGE.groundY - 8,
+        { scale: 0.52, life: 22, alpha: 0.5, grow: 1.4, vx: d * 2.4, drag: 0.93,
+          flipX: d < 0, tint: t.body, depth: 6.6, blend: NORM });
   }
   popup(x, y, s, color) {
     const t = this._world(this.add.text(x, y, s, { fontFamily: FONT, fontSize: '20px', color, fontStyle: '700', stroke: '#0c111c', strokeThickness: 4 }).setOrigin(0.5));
@@ -3364,7 +3445,10 @@ class ScrambleScene extends Phaser.Scene {
       // แต่เสียงต้องมาก่อน เพราะถ้าออกพร้อม active เสียงหวดกับเสียงหมัดจะห่างกันเฟรมเดียว
       // แล้วหักล้างกันเป็นเสียงเดียวขุ่น ๆ แทนที่จะเป็นเงื้อ-แล้ว-โดน
       if (rig.lastSwing !== tag) { rig.lastSwing = tag; this._swingFor(f); }
-      if (f.phase() === 'active' && rig.lastSlash !== tag) { rig.lastSlash = tag; this.slashFor(f); }
+      if (f.phase() === 'active' && rig.lastSlash !== tag) {
+        rig.lastSlash = tag;
+        this.slashFor(f);
+      }
       else if (f.phase() !== 'active' && rig.lastSlash === tag && f.moveF < f.move.startup) rig.lastSlash = null;
       // ท่าที่ติดธง mobile (โหมดไรเฟิล) เดินไปด้วยยิงไปด้วยได้ เฟรมท่ายิงเป็นท่ายืนนิ่ง
       // ถ้าใช้เฟรมนั้นตอนเธอเคลื่อนที่จริง เท้าจะไถไปกับพื้น -> สลับไปเล่นวงจรเดินถือปืนแทน
