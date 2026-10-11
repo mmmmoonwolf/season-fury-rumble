@@ -22,7 +22,7 @@
  * ของหนักเป็น cache-first ได้เพราะไฟล์อาร์ต/เสียงเปลี่ยนน้อยมาก และถ้าเปลี่ยนจริง
  * เลขเวอร์ชันข้างล่างจะลบแคชเก่าทิ้งให้เอง
  */
-const VERSION = 'sfr-v25';  // ← EYE: ชุดรัวเร่งจังหวะขึ้นเรื่อย ๆ เลิกซ้ำ Hundred Hands ของ MARCH
+const VERSION = 'sfr-v26';  // ← EYE: ท่ากางแขนพ่นควันค้างคลุมช่วงที่ลำวิ่ง · ลำเร็วขึ้น
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 

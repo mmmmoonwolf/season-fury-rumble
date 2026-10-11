@@ -8,7 +8,7 @@ globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener()
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
 const { Game, Fighter, CHARACTERS, STAGE } = await import(G + "/core.js");
-const { ScrambleScene } = await import(G + "/ScrambleScene.js");
+const { ScrambleScene, attackFrameIndex } = await import(G + "/ScrambleScene.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
@@ -498,4 +498,51 @@ const run = (g, n, press = () => ({})) => {
   ok(mv.haze2.startup === mv.haze2.ramp[0] && mv.haze3.startup === mv.haze3.ramp[0],
     `เล่นจบแล้วตารางกลางยังเป็นค่าตั้งต้น (haze2 เงื้อ ${mv.haze2.startup})`);
   ok(mv.haze1.startup > 6, `ไม้เปิดชุดช้ากว่าของ MARCH (เงื้อ ${mv.haze1.startup} เทียบ 6)`);
+}
+
+// ══ ท่ากางแขนพ่นควันต้องค้างคลุมช่วงที่ลำวิ่ง ไม่ใช่แวบเดียว ═══════════════════
+//
+// `active` ของอัลติยาวแค่ 6 เฟรม แต่ลำควันอยู่บนจอเกือบ 50 เฟรม
+// ปล่อยตามช่วงของเอนจิ้นตรง ๆ แล้วท่ากางแขนโชว์ 0.10 วิ ที่เหลือเธอยืนนิ่ง
+// ทั้งที่ควันยังพุ่งอยู่ — อ่านเหมือนท่าหายไป (เคยเป็นแบบนี้จริงจนต้องมาแก้)
+//
+// แก้ที่ฝั่งวาดด้วย `poseHold` **ห้ามแก้ startup/active/recovery**
+// เพราะสามค่านั้นคือกรอบชน ยืดแล้วเท่ากับเปลี่ยนบาลานซ์ ไม่ใช่เปลี่ยนภาพ
+{
+  const g = mk(600);
+  g.p1.ki = 100;
+  let shotF = -1, lastShotF = -1; const drawn = [];
+  for (let f = 1; f < 200; f++) {
+    g.step(inp(f === 1 ? { skill3: 1, p: { skill3: 1 } } : {}), null);
+    if (g.shots.length) { if (shotF < 0) shotF = f; lastShotF = f; }
+    if (g.p1.moveId === "veil1")
+      drawn.push([f, attackFrameIndex(g.p1.move, g.p1.moveF, g.p1.phase())]);
+  }
+  const f2 = drawn.filter(([, i]) => i === 2).map(([f]) => f);
+  ok(f2.length >= 30, `ท่ากางแขนโชว์ ${f2.length} เฟรม (${(f2.length / 60).toFixed(2)} วิ) ไม่ใช่แวบเดียว`);
+  ok(f2[0] <= shotF, `ขึ้นท่าก่อนลำควันออก (ท่าเฟรม ${f2[0]} · ลำเฟรม ${shotF})`);
+  const cover = f2.filter((f) => f >= shotF && f <= lastShotF).length;
+  const span = lastShotF - shotF + 1;
+  ok(cover / span > 0.8, `ท่าคลุมช่วงที่ลำวิ่งได้ ${Math.round(cover / span * 100)}%`);
+
+  // poseHold เป็นเรื่องของการวาดล้วน ๆ ห้ามไปขยับกรอบชน
+  const v = CHARACTERS.chronos.moves.veil1;
+  ok(v.active === 6 && v.startup === 10,
+    `กรอบชนไม่ถูกยืดตาม (เงื้อ ${v.startup} ติด ${v.active})`);
+}
+
+// ══ attackFrameIndex: เฟรมสุดแขนต้องตรงกับช่วงที่กรอบชนเปิดเสมอ (ท่าที่ไม่ยืด) ══
+{
+  const plain = { startup: 6, active: 3, recovery: 8 };
+  const at = (n) => attackFrameIndex(plain, n,
+    n < plain.startup ? "startup" : n < plain.startup + plain.active ? "active" : "recovery");
+  ok(at(0) === 1 && at(5) === 1, "ช่วงเงื้อได้เฟรม 1");
+  ok(at(6) === 2 && at(8) === 2, "ช่วงกรอบชนเปิดได้เฟรม 2");
+  ok(at(9) === 3, "ช่วงชักกลับได้เฟรม 3");
+  // snapBack ของเดิมต้องไม่พัง
+  const snap = { startup: 5, active: 3, recovery: 10, snapBack: 4 };
+  const sb = (n) => attackFrameIndex(snap, n,
+    n < 5 ? "startup" : n < 8 ? "active" : "recovery");
+  ok(sb(8) === 3 && sb(11) === 3, "snapBack: สี่เฟรมแรกของชักกลับยังเป็นเฟรมสะบัด");
+  ok(sb(12) === 1, "snapBack: พ้นโควต้าแล้วกลับไปเฟรมตั้งท่า");
 }

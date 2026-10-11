@@ -800,9 +800,14 @@ const EYE_MOVES = {
   veil1: { label: 'Smokeveil', kind: 'ground', startup: 10, active: 6, recovery: 28, dmg: 10,
     hb: { x: -120, y: -170, w: 240, h: 180 }, kb: [12, -10], stun: 34, armor: 2,
     haze: true, puff: { at: 9 },
-    shots: [{ vy: 0, dy: -38 }, { vy: 0, dy: 10 },
-            { vy: 0, dx: 56, dy: -38 }, { vy: 0, dx: 56, dy: 10 },
-            { vy: 0, dx: 112, dy: -38 }, { vy: 0, dx: 112, dy: 10 }],
+    // ยืดท่ากางแขนพ่นควันให้ค้างคลุมช่วงที่ลำวิ่ง ไม่งั้นมันแวบเดียว 6 เฟรมแล้วหาย
+    // lead 2 = ขึ้นท่าก่อนลำออกหนึ่งเฟรม จะได้เห็น "กางแขนแล้วควันพุ่ง" ไม่ใช่กลับกัน
+    poseHold: { lead: 2, hold: 24 },
+    // speed 22 (ปกติ 13) — ลำช้าเกินแล้วอ่านเป็นก้อนควันลอย ไม่ใช่ลมที่พ่นออกมา
+    // และต้องให้มันข้ามเวทีจบใกล้ ๆ ตอนท่าจบ ไม่ใช่ยังวิ่งอยู่ตอนเธอยืนนิ่งไปแล้ว
+    shots: [{ vy: 0, dy: -38, speed: 22 }, { vy: 0, dy: 10, speed: 22 },
+            { vy: 0, dx: 56, dy: -38, speed: 22 }, { vy: 0, dx: 56, dy: 10, speed: 22 },
+            { vy: 0, dx: 112, dy: -38, speed: 22 }, { vy: 0, dx: 112, dy: 10, speed: 22 }],
     shotAt: 9, shotDmg: 16, shotStun: 30, shotKb: 7,
     shotRange: 1300, pierce: true, smokeShot: true },
 };

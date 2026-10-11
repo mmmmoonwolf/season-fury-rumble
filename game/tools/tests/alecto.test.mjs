@@ -8,6 +8,10 @@
 // ถูกถอดออกหมดแล้ว เวอร์ชันแส้/ไรเฟิลอยู่ที่ docs/archive/ALECTO_KIT_whipgun.md
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
 const { Game, CHARACTERS, KI_MAX, STAGE } = await import(G + "/core.js");
+globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {} };
+globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+await import("./phaser_stub.mjs");
+const { attackFrameIndex } = await import(G + "/ScrambleScene.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
@@ -217,10 +221,20 @@ const press = (k) => (i) => (i < 2 ? inp({ [k]: 1, p: { [k]: 1 } }) : inp());
   });
   ok(hog.length === 0, `เฟรมสะบัดกินไม่เกิน 1/3 ของท่า${hog.length ? " — เกิน: " + hog.join(",") : ""}`);
 
-  const scene = fs.readFileSync(
-    new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url), "utf8");
-  ok(/f\.move\.snapBack/.test(scene) && /i === 3 && f\.move\.snapBack/.test(scene),
-    "ตัวเลือกเฟรมของฝั่งวาดอ่าน snapBack จริง (ไม่ใช่ตั้งไว้เฉย ๆ)");
+  // เรียกตัวเลือกเฟรมของฝั่งวาดตรง ๆ แทนการ grep หาข้อความในซอร์ส
+  // (เคย grep หา `f.move.snapBack` แล้วพอย้ายโค้ดออกมาเป็นฟังก์ชันก็แดงทันที
+  //  ทั้งที่พฤติกรรมไม่ได้เปลี่ยนเลย — เช็กพฤติกรรมจริงไม่พังแบบนั้น)
+  {
+    const m = mv[GUNS[0]];
+    const ph = (n) => n < m.startup ? "startup"
+      : n < m.startup + m.active ? "active" : "recovery";
+    const first = m.startup + m.active;                 // เฟรมแรกของชักกลับ
+    ok(attackFrameIndex(m, first, ph(first)) === 3,
+      `${GUNS[0]}: ต้นชักกลับยังเป็นเฟรมสะบัด`);
+    const after = first + m.snapBack;
+    ok(attackFrameIndex(m, after, ph(after)) === 1,
+      `${GUNS[0]}: พ้น snapBack (${m.snapBack} เฟรม) แล้วกลับไปเฟรมตั้งท่า ไม่ค้างเอนหลัง`);
+  }
 }
 
 // ── วิ่งย่อ: กรอบเตี้ยลงตอนวิ่งเต็มสปีด ───────────────────────────────────

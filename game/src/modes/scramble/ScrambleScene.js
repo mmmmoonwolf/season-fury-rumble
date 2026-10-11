@@ -999,6 +999,22 @@ const TUNE = [
 const DEFAULTS = Object.fromEntries(TUNE.map(([k]) => [k, PHYS[k]]));
 /** ค่าปรับจูนปัจจุบันเป็นก้อนเดียว — ต้องส่งข้ามเน็ต เพราะ sim สองฝั่งจะเดินตรงกันได้ก็ต่อเมื่อ PHYS เท่ากัน
  *  (แผง Tune เซฟค่าลง localStorage ใครเคยลากสไลเดอร์ไว้ เครื่องนั้นจะฟิสิกส์ต่างจากเพื่อนถาวร) */
+/** เลือกเฟรมอาร์ตของท่าโจมตี (1 เงื้อ · 2 สุดแขน · 3 ชักกลับ) จากช่วงของเอนจิ้น
+ *
+ *  แยกออกมาเป็นฟังก์ชันล้วนเพื่อให้เทสต์เรียกตรงได้ — ตอนอยู่ในลูปวาด
+ *  ไม่มีทางวัดได้เลยว่า "เฟรมไหนโชว์กี่เฟรม" นอกจากเปิดเกมดูเอาเอง
+ */
+function attackFrameIndex(m, moveF, ph) {
+  let i = { startup: 1, active: 2, recovery: 3 }[ph] ?? 1;
+  const hold = m.poseHold;
+  if (hold) {
+    const st = m.startup, en = st + m.active;
+    if (moveF >= st - (hold.lead ?? 0) && moveF < en + (hold.hold ?? 0)) i = 2;
+  }
+  if (i === 3 && m.snapBack && moveF - m.startup - m.active >= m.snapBack) i = 1;
+  return i;
+}
+
 export const tuneSnapshot = () => Object.fromEntries(TUNE.map(([k]) => [k, PHYS[k]]));
 export const applyTune = (t) => { for (const k in DEFAULTS) if (typeof t?.[k] === 'number') PHYS[k] = t[k]; };
 try { const saved = JSON.parse(localStorage.getItem('scramble-tune') || '{}'); for (const k in saved) if (k in DEFAULTS) PHYS[k] = saved[k]; } catch (e) {}
@@ -3499,10 +3515,15 @@ class ScrambleScene extends Phaser.Scene {
        * "เอนถอยหลังค้าง" ทุกครั้งที่ยิง ทั้งที่ควรเป็นแค่จังหวะสะบัดสั้น ๆ แล้วตั้งลำกลับ
        *
        * แก้ที่ฝั่งวาด ไม่ต้องเจนอาร์ตใหม่ — เฟรมที่มีอยู่ถูกแล้ว ผิดแค่ระยะเวลาที่ค้างไว้ */
-      const ph = f.phase();
-      let i = { startup: 1, active: 2, recovery: 3 }[ph] ?? 1;
-      if (i === 3 && f.move.snapBack
-          && f.moveF - f.move.startup - f.move.active >= f.move.snapBack) i = 1;
+      /* `poseHold: { lead, hold }` = ยืดเวลาที่โชว์ "เฟรมสุดแขน" (เฟรม 2) ออกไป
+       *  lead = โชว์ล่วงหน้าก่อนกรอบชนเปิดกี่เฟรม · hold = โชว์ต่อเข้าไปในช่วงชักกลับกี่เฟรม
+       *  ตรงข้ามกับ snapBack ด้านบนเป๊ะ และด้วยเหตุผลเดียวกัน: อาร์ตถูกแล้ว ผิดแค่ระยะเวลา
+       *
+       *  อัลติของ EYE เป็นเคสที่ชัดที่สุด: active แค่ 6 เฟรม (0.10 วิ)
+       *  แต่ลำควันอยู่บนจอ 73 เฟรม (1.22 วิ) — ไม่ยืด แล้วท่ากางแขนพ่นควันจะแวบเดียว
+       *  เหลือภาพเธอยืนนิ่งอีก 66 เฟรมทั้งที่ควันยังพุ่งอยู่ อ่านเหมือนท่าหายไปเลย
+       *  **ไม่แตะ startup/active/recovery** เพราะนั่นคือกรอบชน ไม่ใช่เรื่องของการวาด */
+      const i = attackFrameIndex(f.move, f.moveF, f.phase());
       this._applyCharTransform(f);
       sp.anims.stop();
       sp.setFrame(`${artId}_${i}.png`);
@@ -3802,4 +3823,5 @@ class ScrambleScene extends Phaser.Scene {
   }
 }
 
-export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM, BINDS, ALONE_EXTRA, readInput };
+export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM, BINDS, ALONE_EXTRA, readInput,
+  attackFrameIndex };
