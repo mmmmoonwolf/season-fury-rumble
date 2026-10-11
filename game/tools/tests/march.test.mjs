@@ -260,3 +260,84 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
   ok(/get runSpeed\(\)/.test(fs.readFileSync(new URL("../../src/modes/scramble/core.js", import.meta.url).pathname, "utf8")),
     "และอ่านจากที่เดียวกับที่ซิมใช้ ไม่ใช่ค่าที่ก๊อปมาวางไว้อีกที");
 }
+
+// ══ สกิล 1 ต้องแตกทางได้จริงตอนกดรัว ไม่ใช่โดนปุ่มตีตัดทิ้ง ════════════════════
+//
+// 🔴 `rush5` ใช้ `branch` ไม่ใช่ `autoChain` — ด่านกันการยกเลิกใน controlPlayer
+// เดิมเช็กแค่ `autoChain || mashChain` จึงไม่ครอบ branch
+// ผล: กดรัวปุ่มตี แล้ว rush5 ถูกตัดเข้า jab1 ก่อนจะทันแตกทาง **ไม้จบไม่เคยออกเลย**
+// คนที่กดรัวซึ่งเป็นคนส่วนใหญ่ จึงไม่เคยเห็นจุดที่ทำให้สกิล 1 ต่างจากสกิล 3
+{
+  const ACT = new Set(["idle", "run", "air", "crouch", "landing"]);
+  /** กดสกิล1 แล้วรัวปุ่มตีตลอด — เลียนแบบคนเล่นจริงที่กดรัว */
+  const mashRush = () => {
+    const g = new Game();
+    g.p1.char = "helios"; g.p2.char = "nyx"; g.p1.ai = g.p2.ai = false;
+    g.p2.x = g.p1.x + 70; g.p1.facing = 1;
+    const seen = [];
+    for (let f = 1; f < 200; f++) {
+      const o = { ...NONE, p: {} };
+      if (f === 1) { o.skill1 = 1; o.p.skill1 = 1; }
+      else if (f % 2 === 0) { o.attack = 1; o.p.attack = 1; }
+      g.step(o, null);
+      if (g.p1.moveId && seen[seen.length - 1] !== g.p1.moveId) seen.push(g.p1.moveId);
+    }
+    return seen;
+  };
+  const seen = mashRush();
+  ok(seen.some((k) => /^rushEnd/.test(k)),
+    `กดรัวแล้วไม้จบของชุดยังออก (${seen.slice(0, 7).join(" ")})`);
+  const i5 = seen.indexOf("rush5"), ie = seen.findIndex((k) => /^rushEnd/.test(k));
+  ok(i5 >= 0 && ie === i5 + 1, `ไม้จบมาต่อจาก rush5 ทันที ไม่มีแย็บแทรก (${seen[i5]} -> ${seen[i5 + 1]})`);
+}
+
+// ══ แตกสามทางต้องได้คนละอย่าง ไม่ใช่ภาพต่างแต่ผลเท่ากัน ═══════════════════════
+//
+// ของเดิมวัดได้ 17 ดาเมจ 6 ที 72 เฟรม **เท่ากันเป๊ะทั้งสามทาง** ต่างแค่ระยะเดินหน้า
+//   หน้า = ผลักออกไกลสุด · บน = แรงสุดในไม้เดียว · ล่าง = เบาสุดแต่ต่อยาวสุด
+{
+  const ACT = new Set(["idle", "run", "air", "crouch", "landing"]);
+  /** เส้นทางจริงของคนเล่น: แย็บสามที -> ตัดเข้าสกิล1 -> ค้างทิศ -> รัวต่อ
+   *  ต้องมีแย็บนำหน้า ไม่งั้น refresh ของทางล่างไม่มีอะไรให้ปลด (used ยังว่าง) */
+  const route = (dir) => {
+    const g = new Game();
+    g.p1.char = "helios"; g.p2.char = "nyx"; g.p1.ai = g.p2.ai = false;
+    g.p2.x = g.p1.x + 70; g.p1.facing = 1;
+    const seen = []; let dmg = 0, hits = 0, hp = g.p2.hp, started = false, endF = -1;
+    for (let f = 1; f < 320; f++) {
+      const o = { ...NONE, p: {} };
+      if ([1, 9, 17].includes(f)) { o.attack = 1; o.p.attack = 1; }
+      else if (f === 27) { o.skill1 = 1; o.p.skill1 = 1; }
+      else if (f > 27 && endF < 0) { if (dir) o[dir] = 1; }
+      else if (endF > 0 && f % 2 === 0) { o.attack = 1; o.p.attack = 1; }
+      g.step(o, null);
+      const id = g.p1.moveId;
+      if (id && seen[seen.length - 1] !== id) seen.push(id);
+      if (endF < 0 && /^rushEnd/.test(id ?? "")) endF = f;
+      if (g.p2.hp < hp) { dmg += hp - g.p2.hp; hits++; hp = g.p2.hp; started = true; }
+      if (started && ACT.has(g.p2.state) && g.p2.hitstop === 0) break;
+    }
+    const ender = seen.find((k) => /^rushEnd/.test(k));
+    const after = seen.slice(seen.findIndex((k) => /^rushEnd/.test(k)) + 1).length;
+    return { dmg, hits, ender, after };
+  };
+  const F = route(null), U = route("up"), D = route("down");
+  ok(F.ender === "rushEndF" && U.ender === "rushEndU" && D.ender === "rushEndD",
+    `ค้างทิศแล้วได้ไม้จบตามที่สั่ง (${F.ender} / ${U.ender} / ${D.ender})`);
+
+  const mv = CHARACTERS.helios.moves;
+  ok(mv.rushEndU.dmg > mv.rushEndF.dmg && mv.rushEndF.dmg > mv.rushEndD.dmg,
+    `ดาเมจไม้จบไล่ระดับ บน ${mv.rushEndU.dmg} > หน้า ${mv.rushEndF.dmg} > ล่าง ${mv.rushEndD.dmg}`);
+  ok(mv.rushEndF.kb[0] > mv.rushEndU.kb[0] && mv.rushEndF.kb[0] > mv.rushEndD.kb[0],
+    `ทางหน้าผลักออกไกลสุด (kb ${mv.rushEndF.kb[0]})`);
+  ok(Array.isArray(mv.rushEndD.refresh) && mv.rushEndD.refresh.includes("jab1"),
+    "ทางล่างปลดชุดพื้นให้เริ่มใหม่ได้");
+  // ทางล่างเบาสุดแต่ต้องต่อได้ยาวสุด ไม่งั้นมันคือทางที่แย่กว่าเขาทุกด้าน
+  ok(D.after > F.after && D.after > U.after,
+    `ทางล่างต่อได้อีกมากสุด (ล่าง ${D.after} · หน้า ${F.after} · บน ${U.after} ไม้)`);
+  ok(D.dmg > F.dmg, `และรวมแล้วคุ้มกับที่ไม้จบเบากว่า (ล่าง ${D.dmg} · หน้า ${F.dmg})`);
+  // ไม่มีทางไหนทิ้งห่างจนทางอื่นไร้ความหมาย
+  const all = [F.dmg, U.dmg, D.dmg];
+  ok(Math.max(...all) - Math.min(...all) <= 6,
+    `สามทางยังสูสีกัน ไม่มีทางที่ดีกว่าชัดจนไม่ต้องเลือก (${all.join(" / ")})`);
+}

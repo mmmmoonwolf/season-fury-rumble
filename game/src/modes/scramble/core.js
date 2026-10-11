@@ -217,12 +217,30 @@ const HELIOS_MOVES = {
   rush5: { label: 'Chain Rush', kind: 'ground', startup: 3, active: 3, recovery: 4, dmg: 3,
     hb: { x: 6, y: -96, w: 80, h: 34 }, kb: [1.2, 0], stun: 18, imp: { f: 3, vx: 4 },
     branch: { neutral: 'rushEndF', up: 'rushEndU', down: 'rushEndD' } },
-  rushEndF: { label: 'Chain Rush', kind: 'ground', startup: 5, active: 4, recovery: 20, dmg: 7,
-    hb: { x: 10, y: -98, w: 96, h: 34 }, kb: [13, -4], stun: 30, imp: { f: 4, vx: 7 } },
-  rushEndU: { label: 'Chain Rush', kind: 'ground', startup: 5, active: 5, recovery: 22, dmg: 6,
+  /* สามทางนี้ต้อง "เลือกแล้วได้คนละอย่าง" ไม่ใช่แค่ท่าจบคนละภาพ
+   * วัดของเดิมแล้วได้ 17 ดาเมจ 6 ที 72 เฟรม **เท่ากันเป๊ะทั้งสามทาง**
+   * ต่างกันแค่ระยะเดินหน้า เลยไม่มีเหตุผลต้องเลือกอะไร
+   *
+   *   หน้า  = แรงสุด ผลักออกไกลสุด แต่จบตรงนั้น (ใช้ต้อนเข้าขอบเวที)
+   *   บน    = เบากว่า แต่งัดลอยแล้วตามขึ้นไปต่อได้ (jumpCancel)
+   *   ล่าง  = เบาสุด แลกกับ **ปลดชุดพื้นให้เริ่มใหม่ได้** = ต่อยาวที่สุด
+   *
+   * ทางล่างคือสิ่งที่ทำให้สกิล 1 ต่างจากสกิล 3 จริง ๆ:
+   * สกิล 3 ยืดด้วยการกดรัว (ยาวแต่เส้นตรง) ส่วนสกิล 1 ยืดด้วยการวนกลับมาเริ่มใหม่ */
+  rushEndF: { label: 'Chain Rush', kind: 'ground', startup: 5, active: 4, recovery: 20, dmg: 8,
+    hb: { x: 10, y: -98, w: 96, h: 34 }, kb: [15, -4], stun: 30, imp: { f: 4, vx: 7 } },
+  // แรงสุดในไม้เดียว (9) เพราะเป็นทางเดียวที่**ต่ออะไรไม่ได้เลย**
+  // กวาดแรงงัดตั้งแต่ -7 ถึง -17 แล้ววัดทุกจังหวะกระโดดตาม: ได้ไม้อากาศไม้เดียวเท่ากันหมด
+  // ไม่ใช่เพราะงัดแรงเกิน แต่เอนจิ้นให้ต่อกลางอากาศได้ครั้งเดียว ปรับค่ายังไงก็เท่าเดิม
+  // จึงเลิกทำให้มันเป็นตัวเปิดคอมโบอากาศ แล้วให้เป็น "ไม้ปิดที่เจ็บที่สุด" แทน
+  rushEndU: { label: 'Chain Rush', kind: 'ground', startup: 5, active: 5, recovery: 22, dmg: 9,
     hb: { x: -8, y: -170, w: 80, h: 120 }, kb: [1.5, -17], stun: 38, jumpCancel: true },
-  rushEndD: { label: 'Chain Rush', kind: 'ground', crouch: true, startup: 5, active: 4, recovery: 20, dmg: 6,
-    hb: { x: 4, y: -34, w: 96, h: 30 }, kb: [3, -12], stun: 32 },
+  // เบาสุดในสามทาง (5) เพราะมันคือทางที่ได้ต่อยาวที่สุด — refresh ปลดชุดพื้นออกจาก used
+  // กลไกเดียวกับที่ snap1 ของ EYE และ sky5 ใช้อยู่ ไม่ใช่ของใหม่
+  // ไม่ปลด rush1 ด้วย เพราะ skillReady ยังติดคูลดาวน์ 120 อยู่ดี ใส่ไปก็ไม่มีผล
+  rushEndD: { label: 'Chain Rush', kind: 'ground', crouch: true, startup: 5, active: 4, recovery: 20, dmg: 5,
+    hb: { x: 4, y: -34, w: 96, h: 30 }, kb: [3, -9], stun: 34,
+    refresh: ['jab1', 'jab2', 'jab3', 'side', 'up', 'down'] },
 
   // ---- สกิล 2 Sky Drive: ยกคาง -> ตีสี่ทีกลางอากาศ -> ตบลงพื้น -> เด้ง -> ต่อบนพื้นได้ ----
   //
@@ -2191,10 +2209,16 @@ class Game {
         this.consume(f, 'skill' + (i + 1));
         this.startSkill(f, i, f.facing); return;
       }
-      // ชุดท่าที่ต่อกันเองอยู่แล้ว (autoChain/mashChain) ห้ามโดนปุ่มตียกเลิกกลางคัน
+      // ชุดท่าที่ต่อกันเองอยู่แล้ว (autoChain/mashChain/branch) ห้ามโดนปุ่มตียกเลิกกลางคัน
       // ไม่งั้นการ "กดรัวเพื่อต่อรอบ" กลายเป็นการยกเลิกอัลติทิ้งไปออกหมัดธรรมดาแทน
       // (วัดได้จริง: กดรัวตอนอัลติแล้วหลุดไป jab1 ตั้งแต่จังหวะแรก)
-      if (m.autoChain || m.mashChain) return;
+      //
+      // **`branch` ต้องอยู่ในรายการนี้ด้วย** — เดิมมีแค่สองตัวแรก
+      // `rush5` ของ MARCH ใช้ branch ไม่ใช่ autoChain จึงไม่ถูกกัน
+      // กดรัวปุ่มตีแล้วมันถูกตัดเข้า jab1 ก่อนจะทันแตกทาง = **ไม้จบไม่เคยออกเลย**
+      // (วัดได้: rush1 rush2 rush3 rush4 rush5 jab1 jab2 jab3 — ไม่มี rushEnd สักตัว)
+      // คนที่กดรัวซึ่งเป็นคนส่วนใหญ่ จึงไม่เคยเห็นจุดที่ทำให้สกิล 1 ต่างจากสกิล 3
+      if (m.autoChain || m.mashChain || m.branch) return;
       if (this.buffered(f, 'attack')) {
         const neutral = dir === 0 && !inp.up && !inp.down;
         let next = null;
