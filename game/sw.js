@@ -22,7 +22,7 @@
  * ของหนักเป็น cache-first ได้เพราะไฟล์อาร์ต/เสียงเปลี่ยนน้อยมาก และถ้าเปลี่ยนจริง
  * เลขเวอร์ชันข้างล่างจะลบแคชเก่าทิ้งให้เอง
  */
-const VERSION = 'sfr-v24';  // ← EYE: แก้ลอย · ไม้ปกติเลิกทิ้งควัน · jab4 · สกิล2 ล็อกเป้า · สกิล3 ลำควัน
+const VERSION = 'sfr-v25';  // ← EYE: ชุดรัวเร่งจังหวะขึ้นเรื่อย ๆ เลิกซ้ำ Hundred Hands ของ MARCH
 const SHELL = VERSION + '-shell';
 const ASSETS = VERSION + '-assets';
 

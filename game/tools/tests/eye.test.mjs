@@ -450,3 +450,52 @@ const run = (g, n, press = () => ({})) => {
   }
   ok(seen.has("jab4"), `กดตีซ้ำแล้วต่อถึง jab4 จริง (เห็น ${[...seen].join(" ")})`);
 }
+
+// ══ ชุดรัวต้องเร่งขึ้นเรื่อย ๆ ไม่ใช่จังหวะเดียวแบบ MARCH ═══════════════════════
+//
+// นี่คือสิ่งเดียวที่แยกสกิล 1 ของเธอออกจาก Hundred Hands ของ MARCH
+// ก่อนหน้านี้ตัวเลขเหมือนกัน**ทุกช่อง** ต่างกันแค่ชื่อกับควันที่ไม้สอง
+{
+  /** รัวปุ่มให้ครบโควต้า แล้วคืนช่องว่างระหว่างหมัดที่มาจากชุดรัวจริง ๆ */
+  const rhythm = (char, slot, prefix) => {
+    const g = new Game();
+    g.p1.char = char; g.p2.char = "nyx"; g.p1.ai = g.p2.ai = false;
+    g.p1.ki = 100; g.p2.x = g.p1.x + 70; g.p1.facing = 1;
+    const hits = []; let last = g.p2.hp;
+    for (let f = 1; f < 240; f++) {
+      const press = f === 1 ? { [slot]: 1, p: { [slot]: 1 } }
+                  : (f % 2 === 0 ? { attack: 1, p: { attack: 1 } } : {});
+      g.step(inp(press), null);
+      // ไม้ที่ขึ้นชื่อชุดรัวเท่านั้น — แย็บที่ตามมาหลังชุดจบไม่นับ
+      if (g.p2.hp < last) { if (String(g.p1.moveId).startsWith(prefix)) hits.push(f); last = g.p2.hp; }
+    }
+    return hits.slice(1).map((v, i) => v - hits[i]);
+  };
+
+  const eye = rhythm("chronos", "skill1", "haze");
+  const march = rhythm("helios", "skill3", "hh");
+  // ตัดหางที่เป็นควันระเบิด (ช่องว่างสั้นผิดปกติ) ออก ดูเฉพาะจังหวะหมัด
+  const punches = eye.filter((g) => g >= 8);
+  ok(punches.length >= 8, `จับจังหวะหมัดได้ ${punches.length} ช่วง`);
+  ok(punches.every((g, i) => i === 0 || g <= punches[i - 1]),
+    `ช่องว่างหดลงเรื่อย ๆ ไม่มีช่วงไหนช้าลง (${punches.join(" ")})`);
+  ok(punches[0] - punches[punches.length - 1] >= 3,
+    `ไม้แรกช้ากว่าไม้ท้ายชัดเจน (${punches[0]} -> ${punches[punches.length - 1]})`);
+
+  const flat = march.filter((g) => g >= 8);
+  ok(new Set(flat).size <= 2, `ของ MARCH เป็นจังหวะเดียวจริง (${[...new Set(flat)].join(" ")})`);
+  ok(new Set(punches).size > new Set(flat).size,
+    `ของเธอมีหลายจังหวะกว่าของ MARCH (${new Set(punches).size} เทียบ ${new Set(flat).size})`);
+
+  // ช้าสุดต้องยังสั้นกว่าสตัน ไม่งั้นคอมโบขาดตั้งแต่ไม้แรก ๆ ที่ยังช้าอยู่
+  ok(punches[0] < CHARACTERS.chronos.moves.haze2.stun,
+    `ช่องว่างที่ช้าที่สุด ${punches[0]} ยังน้อยกว่าสตัน ${CHARACTERS.chronos.moves.haze2.stun} คอมโบไม่ขาด`);
+
+  // 🔴 ramp ต้องทำเป็นสำเนา ห้ามเขียนทับตารางท่ากลาง
+  // ตารางใช้ร่วมกันทุกตัวในแมตช์ แก้ทับแล้วอีกฝั่งที่ใช้ตัวเดียวกันจะเร็วตามไปด้วย
+  // และเร็วค้างข้ามแมตช์ เพราะตารางเป็น module-level ไม่ได้สร้างใหม่ตอนเริ่มแมตช์
+  const mv = CHARACTERS.chronos.moves;
+  ok(mv.haze2.startup === mv.haze2.ramp[0] && mv.haze3.startup === mv.haze3.ramp[0],
+    `เล่นจบแล้วตารางกลางยังเป็นค่าตั้งต้น (haze2 เงื้อ ${mv.haze2.startup})`);
+  ok(mv.haze1.startup > 6, `ไม้เปิดชุดช้ากว่าของ MARCH (เงื้อ ${mv.haze1.startup} เทียบ 6)`);
+}
