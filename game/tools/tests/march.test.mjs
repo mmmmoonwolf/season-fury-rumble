@@ -5,6 +5,10 @@
 import fs from "fs";
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
 const { Game, CHARACTERS, PHYS, STAGE } = await import(G + "/core.js");
+globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {} };
+globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+await import("./phaser_stub.mjs");
+const { ScrambleScene } = await import(G + "/ScrambleScene.js");
 
 const ok = (c, m) => console.log((c ? "PASS " : "FAIL ") + m);
 const NONE = { left:0,right:0,up:0,down:0,jump:0,attack:0,block:0,run:0,skill1:0,skill2:0,skill3:0 };
@@ -160,7 +164,7 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
 // ── Sky Drive ต้องไม่กลายเป็น DEAR: ชุดลอยยืดออกไปไม่ได้ ──
 //
 // กดรัวทุกปุ่มตลอดชุด ถ้ามีทางยืด (mashChain/holdChain หลงมา) จะเห็นเป็นจำนวนท่าที่โตเกินที่ตั้งไว้
-// **ความยาวตายตัวทั้งสองทาง** — ทางไม่กดทิศเจ็ดท่า ทางกดลงห้าท่า กดรัวยังไงก็ไม่เกินนี้
+// **ความยาวตายตัวเจ็ดท่า** — ต่อยขึ้นฟ้าหกไม้แล้วจบที่ท่าตบลงพื้น กดทิศหรือกดรัวก็ไม่เปลี่ยน
 {
   const count = (dir) => {
     const g = mk();
@@ -174,11 +178,11 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
     }
     return seen;
   };
-  const open = count(null), slam = count('down');
-  ok(open.size === 7, `ทางไม่กดทิศมีเจ็ดท่าตายตัว กดรัวยืดไม่ได้ (${open.size} ท่า)`);
-  ok(slam.size === 5, `ทางกดลงมีห้าท่าตายตัว (${slam.size} ท่า)`);
-  ok(open.has('skyEnd') && !slam.has('skyEnd'), "ไม้ปลิวอยู่เฉพาะทางไม่กดทิศ");
-  ok(slam.has('sky5') && !open.has('sky5'), "ท่าตบลงพื้นอยู่เฉพาะทางกดลง");
+  const open = count(null), down = count('down'), up = count('up');
+  ok(open.size === 7, `ชุดลอยมีเจ็ดท่าตายตัว กดรัวยืดไม่ได้ (${open.size} ท่า)`);
+  ok(down.size === 7 && up.size === 7,
+    `กดทิศก็ไม่เปลี่ยนความยาว ไม่มีการแยกทางแล้ว (ลง ${down.size} · ขึ้น ${up.size})`);
+  ok(open.has('sky5'), "และจบที่ท่าตบลงพื้นเสมอ");
   const seen = open;
 }
 
@@ -388,29 +392,114 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
   const mashed = fly(600, null, true);
   ok(mashed.skyN === 7, `กดรัวแล้วชุดลอยยังเดินครบเจ็ดไม้ (${mashed.skyN}) — ${mashed.seen.slice(0, 8).join(" ")}`);
 
-  // ชุดสองต่อท้ายจริง และจบด้วยไม้ปลิว
+  // ชุดสองต่อท้ายจริง แล้วจบที่ท่าตบลงพื้นเหมือนเดิม (ไม่ใช่ไม้ปลิวแล้ว)
   const open = fly(600, null, false);
-  ok(/sky4 sky6 sky7 skyEnd/.test(open.seen.join(" ")),
-    `ทีที่สี่ไหลเข้าชุดสองแล้วจบด้วยไม้ปลิว (${open.seen.join(" ")})`);
+  ok(/sky4 sky6 sky7 sky5/.test(open.seen.join(" ")),
+    `ชุดลอยยาวหกไม้แล้วจบที่ท่าตบลงพื้น (${open.seen.join(" ")})`);
+  ok(open.seen.filter((k) => /^sky/.test(k)).length === 7,
+    `ชุดลอยทั้งหมดเจ็ดไม้ (${open.seen.filter((k) => /^sky/.test(k)).length})`);
 
-  // ไม้ปลิวต้องส่งไปชนขอบเวทีจริง ไม่ใช่แค่ลอยไปกองอยู่ข้างขอบ
-  ok(open.wall >= 1, `เตะแล้วเป้าไปชนขอบเวทีจริง (อีเวนต์ wall ${open.wall} ครั้ง · ไปถึง x=${Math.round(open.far)} ขอบ ${STAGE.wallR})`);
-  const E = CHARACTERS.helios.moves.skyEnd;
-  ok(E.kb[0] > 7, `แรงส่งเกินเกณฑ์เด้งกำแพงของ physics (kb ${E.kb[0]} > 7)`);
+  // ไม่มีไม้ที่ตีปลิวข้ามเวทีแล้ว — ถอดออกตามที่สั่ง
+  ok(!CHARACTERS.helios.moves.skyEnd, "ไม่มีไม้ปลิวชนขอบเวทีแล้ว");
+  ok(Math.abs(open.far - 670) < 400, `เป้าไม่ปลิวข้ามเวที (ไปถึง x=${Math.round(open.far)})`);
 
-  // ทางกดลงยังเป็นของเดิม: สั้นกว่า เบากว่า แลกกับต่อ Chain Rush ได้
-  const slam = fly(600, "down", false);
-  ok(slam.seen.includes("sky5") && !slam.seen.includes("skyEnd"), "กดลงได้ทางตบลงพื้นแบบเดิม");
-  ok(open.dmg > slam.dmg, `ทางยาวแรงกว่า (${open.dmg} เทียบ ${slam.dmg})`);
+  // ท่าตบลงพื้นยังเป็นทางเดียวที่ต่อ Chain Rush ได้
   ok(Array.isArray(CHARACTERS.helios.moves.sky5.refresh)
     && CHARACTERS.helios.moves.sky5.refresh.includes("rush1"),
-    "แต่ทางตบลงพื้นเป็นทางเดียวที่ต่อ Chain Rush ได้");
+    "ท่าตบลงพื้นยังปลด Chain Rush ให้ต่อได้");
+  ok(CHARACTERS.helios.moves.sky5.bounce === true, "และยังเด้งพื้น");
 
   // ทุกท่าของชุดสองต้องมีอาร์ตจริง ไม่งั้น Phaser คืนเฟรมแรกของอัตลาสมาเงียบ ๆ
   const atlas = JSON.parse(fs.readFileSync(
     new URL("../../assets/characters/scramble_helios.json", import.meta.url).pathname, "utf8"));
   const missing = [];
-  for (const k of ["sky6", "sky7", "skyEnd"]) for (let i = 1; i <= 3; i++)
+  for (const k of ["sky6", "sky7"]) for (let i = 1; i <= 3; i++)
     if (!atlas.frames[`${k}_${i}.png`]) missing.push(`${k}_${i}`);
   ok(missing.length === 0, `ชุดสองมีอาร์ตครบ (ขาด ${missing.join(",") || "ไม่ขาด"})`);
+}
+
+// ══ สายฟ้าประจำตัว MARCH — คู่กับควันของ EYE ═══════════════════════════════════
+//
+// ทั้งสองระบบต้องอ่านออกว่าเป็นคนละตัวโดยไม่ต้องดูหน้า: ควันขาวทึบ NORMAL · สายฟ้าน้ำเงิน ADD
+// ถ้าใช้โหมดผสมเดียวกันหรือสีใกล้กัน เล่น 4 คนแล้วจะแยกไม่ออกว่าใครทำอะไร
+{
+  const scene = fs.readFileSync(
+    new URL("../../src/modes/scramble/ScrambleScene.js", import.meta.url).pathname, "utf8");
+
+  ok(/const BOLT = \{/.test(scene), "มีจานสีสายฟ้าแยกเป็นค่าคงที่ ไม่ใช่เลขโปรยอยู่ในโค้ด");
+  const pal = scene.slice(scene.indexOf("const BOLT = {"), scene.indexOf("const BOLT = {") + 300);
+  ok(/glow:/.test(pal) && /body:/.test(pal) && /core:/.test(pal),
+    "สามชั้น: รัศมี เนื้อสาย แกนใน");
+
+  // สายฟ้าต้องเรืองแสง (ADD) ส่วนควันต้องทับพื้นสว่างได้ (NORMAL) — คนละโหมดกันคนละเหตุผล
+  const draw = scene.slice(scene.indexOf("_drawArcs()"), scene.indexOf("_drawArcs()") + 900);
+  ok(/BlendModes\.ADD/.test(draw), "สายฟ้าวาดโหมด ADD");
+  ok(/BOLT\.glow[\s\S]*BOLT\.body[\s\S]*BOLT\.core/.test(draw),
+    "วาดไล่จากชั้นหนาจางไปบางสว่าง ไม่ใช่เส้นเดียว");
+
+  // 🔴 ชั้นสายฟ้าต้องตั้ง depth เอง — สไปรท์ตัวละครถูกสร้างทีหลัง world/fx
+  // ปล่อย depth 0 แล้วสายฟ้าจะไปอยู่ **ใต้** ตัวละคร ซึ่งมองแทบไม่เห็น
+  ok(/this\.boltG = this\.add\.graphics\(\)\.setDepth\(/.test(scene),
+    "ชั้นสายฟ้าตั้ง depth ไว้ชัดเจน");
+
+  // ต้องยิงจาก "เฟรมแรกของช่วงกรอบชนเปิด" เหมือนควัน ไม่ใช่ทุกเฟรมที่ยังอยู่ในท่า
+  // หา **ตัวเมธอด** ไม่ใช่จุดที่เรียก (ชื่อเดียวกันโผล่สองที่: ใน _ageFx กับตัวเมธอดเอง)
+  const hookAt = scene.indexOf("  _attackBolt() {");
+  const hook = scene.slice(hookAt, hookAt + 900);
+  ok(/phase\(\) !== 'active'/.test(hook), "ยิงเฉพาะเฟรมที่กรอบชนเปิด");
+  ok(/_boltSeen/.test(hook), "และยิงครั้งเดียวต่อไม้ ไม่ใช่ทุกเฟรม");
+
+  // ขนาดสายฟ้าต้องคิดจากกรอบชนจริง ไม่ใช่ค่าคงที่ (บทเรียนเดิมจากควันของ EYE)
+  const size = scene.slice(scene.indexOf("_boltFor(f)"), scene.indexOf("_boltFor(f)") + 900);
+  ok(/hb\.w/.test(size) && /hb\.h/.test(size), "ขนาดคิดจากกรอบชนของไม้นั้น");
+
+  // ทุกสกิลต้องได้สายฟ้า ไม่ใช่เฉพาะบางไม้ — ดูจาก label ที่ทั้งชุดใช้ร่วมกัน
+  const labels = new Set(["Chain Rush", "Sky Drive", "Hundred Hands"]);
+  const mv = CHARACTERS.helios.moves;
+  for (const id of CHARACTERS.helios.skills) {
+    ok(labels.has(mv[id].label), `สกิล ${id} ใช้ label ที่ระบบสายฟ้ารู้จัก (${mv[id].label})`);
+  }
+  const listed = scene.slice(scene.indexOf("MARCH_SKILL_LABELS"), scene.indexOf("MARCH_SKILL_LABELS") + 200);
+  for (const l of labels) ok(listed.includes(l), `ลิสต์ label มี '${l}'`);
+
+  // ฝุ่นตอนกระแทกพื้นต้องผ่าน puff() — กฎเดิมของโปรเจกต์ (ฝุ่นสว่างในโหมด ADD หายสนิท)
+  ok(/this\.puff\('dustFlat'/.test(scene), "ฝุ่นกระแทกพื้นวาดผ่าน puff()");
+  ok(!/this\.emit\('dustFlat'/.test(scene), "ไม่มีจุดไหนวาดฝุ่นด้วย emit() ตรง ๆ");
+}
+
+// ── สายฟ้า: วัดพฤติกรรมจริงของตัวสร้างเส้น ไม่ใช่แค่ไล่อ่านซอร์ส ──
+//
+// `_arc` / `_stepArcs` เป็นข้อมูลล้วน เรียกตรงได้โดยไม่ต้องมี Phaser จริง
+// (ตัววาด `_drawArcs` ต้องมี Graphics จึงทดสอบที่นี่ไม่ได้ — ตรวจด้วยการอ่านซอร์สข้างบนแทน)
+{
+  const S = Object.create(ScrambleScene.prototype);
+  S._arcs = [];
+  const pts = S._arc(100, 200, 300, 200, { segs: 6, spread: 20, life: 7 });
+  ok(pts.length === 7, `แบ่งเส้นเป็น ${pts.length} จุดตามที่สั่ง (segs 6)`);
+  // ปลายสองข้างต้องตรงเป๊ะ ไม่งั้นสายฟ้าลอยหลุดจากมือกับจากเป้า
+  ok(pts[0][0] === 100 && pts[0][1] === 200, "ปลายต้นตรงจุดที่สั่ง");
+  ok(pts[6][0] === 300 && pts[6][1] === 200, "ปลายปลายตรงจุดที่สั่ง");
+  // ข้อกลางต้องหักออกจากเส้นตรง ไม่งั้นได้เส้นตรงธรรมดาไม่ใช่สายฟ้า
+  const bent = pts.slice(1, 6).some(([, y]) => Math.abs(y - 200) > 0.5);
+  ok(bent, "ข้อกลางหักออกจากแนวเส้นตรง");
+  ok(pts.slice(1, 6).every(([, y]) => Math.abs(y - 200) <= 10),
+    "แต่ไม่หักเกินครึ่งหนึ่งของ spread ที่ตั้งไว้");
+
+  // อายุต้องนับถอยหลังแล้วหายไปเอง ไม่ค้างสะสม
+  S._arcs = []; S._arc(0, 0, 10, 10, { life: 3 });
+  S._stepArcs(); ok(S._arcs.length === 1, "อายุ 3 เหลือ 2 ยังอยู่");
+  S._stepArcs(); S._stepArcs();
+  ok(S._arcs.length === 0, "หมดอายุแล้วถูกเก็บออกจากลิสต์");
+
+  // กันลิสต์บวมตอนรัว — สกิล 3 ยิงถี่มาก ปล่อยไว้แล้วเฟรมเรตตก
+  S._arcs = [];
+  for (let i = 0; i < 200; i++) S._arc(0, 0, 10, 10, { life: 99 });
+  ok(S._arcs.length <= 60, `รัวจนลิสต์ไม่บวม (${S._arcs.length} เส้น)`);
+
+  // แตกแขนงรอบจุด — ทุกเส้นต้องเริ่มจากจุดเดียวกัน
+  S._arcs = [];
+  S._arcBurst(500, 300, 5, 40, { life: 6 });
+  ok(S._arcs.length === 5, `แตกแขนงได้ห้าเส้น (${S._arcs.length})`);
+  ok(S._arcs.every((a) => a.pts[0][0] === 500 && a.pts[0][1] === 300),
+    "ทุกเส้นออกจากจุดเดียวกัน");
 }

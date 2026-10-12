@@ -177,7 +177,7 @@ const CHAR_ART = {
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD",
-      "sky1", "sky2", "sky3", "sky4", "sky5", "sky6", "sky7", "skyEnd",
+      "sky1", "sky2", "sky3", "sky4", "sky5", "sky6", "sky7",
       "hh1", "hh2", "hh3", "hhEnd"]),
   },
   // Alecto: ท่าตีปกติเป็นแส้ จึงต้องมี runStride ของตัวเอง (ขายาวใกล้ Helios)
@@ -546,6 +546,26 @@ const SMOKE = {
 };
 /** ควันตั้งต้นอยู่กี่เฟรมก่อนระเบิด — ต้องเท่า PUFF_DELAY ในซิมเป๊ะ
  *  ไม่เท่ากันแล้วควันจะหายไปก่อนระเบิด (หรือค้างอยู่หลังระเบิดไปแล้ว) ซึ่งอ่านว่าเอฟเฟคพัง */
+/** สายฟ้าของ MARCH — คู่กับควันของ EYE: ตัวหนึ่งขาวทึบ อีกตัวน้ำเงินเรืองแสง
+ *
+ *  วาดด้วย Graphics เป็นเส้นหักซิกแซก **ไม่ใช่สไปรท์** เพราะในอัตลาส vfx
+ *  ไม่มีทรงสายฟ้าเลย (มีแต่ประกาย/รอยฟาด/ควัน) และเส้นหักที่สุ่มมุมทุกครั้ง
+ *  อ่านเป็นไฟฟ้าได้ดีกว่าภาพนิ่งที่ซ้ำรูปเดิมทุกที
+ *
+ *  สามชั้นซ้อนจากหนาจางไปบางสว่าง — สูตรเดียวกับควัน (เงาข้างหลัง เนื้อข้างหน้า)
+ *  ต่างกันที่ควันใช้ NORMAL เพราะต้องทับฟ้าสว่าง ส่วนสายฟ้าใช้ ADD เพราะต้องเรืองแสง */
+/** โทนดินสำหรับฝุ่นตอนกระแทกพื้น — ส่งเข้า puff() เป็น tone
+ *  ต้องผ่าน puff() ไม่ใช่ emit() ตรง ๆ เพราะ puff บังคับ NORMAL ไว้ในตัว
+ *  (ฝุ่นสว่างในโหมด ADD จะหายสนิทบนพื้นหลังฟ้าสว่าง — กับดักเดิมของโปรเจกต์นี้) */
+const SOIL = { shade: 0x7a6a55, body: 0xcbb79a, hot: 0xe6dcc8 };
+const BOLT = {
+  glow: 0x1b3a8f,   // รัศมีนอก น้ำเงินเข้ม
+  body: 0x4f8ff7,   // เนื้อสาย น้ำเงินสด
+  core: 0xdfe9ff,   // แกนใน ขาวอมฟ้า
+};
+/** สามสกิลของ MARCH ใช้ label ร่วมกันทั้งชุด — ใช้เป็นตัวบอกว่า "ไม้นี้เป็นสกิล"
+ *  ดีกว่าไล่ชื่อไม้ทีละตัว เพราะเพิ่มไม้เข้าชุดแล้วได้สายฟ้าเองโดยไม่ต้องมาแก้ลิสต์ */
+const MARCH_SKILL_LABELS = new Set(['Chain Rush', 'Sky Drive', 'Hundred Hands']);
 const PUFF_FX_LIFE = 20;
 const NORM = Phaser.BlendModes.NORMAL;
 
@@ -1309,6 +1329,10 @@ class ScrambleScene extends Phaser.Scene {
     this._startMusic();
     this.world = this.add.graphics();
     this.fx = this.add.graphics();
+    // ชั้นของสายฟ้า — **ต้องตั้ง depth เอง** สไปรท์ตัวละครถูกสร้างทีหลัง (`_initSprites`)
+    // ถ้าปล่อย depth 0 เหมือน world/fx มันจะถูกวาดใต้ตัวละครเพราะเรียงตามลำดับการสร้าง
+    // 7.6 อยู่เหนืออนุภาคเอฟเฟคที่ใช้ช่วง 7.0-7.3 อยู่แล้ว
+    this.boltG = this.add.graphics().setDepth(7.6);
     // ทุกชิ้นที่กล้อง UI เป็นคนวาด — ต้องเก็บไว้ตอนสร้าง ไม่ใช่ไปไล่หาทีหลังจากชนิดของอ็อบเจกต์
     this.uiObjects = [];
     // แถบมืดรอง HUD ต้องเป็นชิ้นแรก — วาดก่อนทุกอย่างที่มันรองอยู่
@@ -2544,7 +2568,8 @@ class ScrambleScene extends Phaser.Scene {
         /* EYE ใช้โครงเดียวกันแต่เป็น **ควัน** ไม่ใช่หมัด — ทรงฟุ้งแทนลูกดอก
          * กติกาเดิมทุกข้อยังอยู่: สองชั้น เข้มข้างหลัง สว่างข้างหน้า NORMAL เสมอ
          * ถ้าใช้ลูกดอกอำพันของ MARCH ให้เธอด้วย สองตัวจะอ่านเป็นตัวเดียวกันตอนเล่น 4 คน */
-        const smoky = this.sim?.fighters?.find((f) => f.id === e.id)?.char === 'chronos';
+        const who = this.sim?.fighters?.find((f) => f.id === e.id)?.char;
+        const smoky = who === 'chronos', marchy = who === 'helios';
         if (smoky) {
           // `o` มี blend: NORM อยู่แล้ว แต่เขียนซ้ำให้เห็นกับตา — เทสต์ควันอ่าน spread ไม่ออก
           // และ "ควันต้องเป็น NORMAL" เป็นข้อที่พลาดมาแล้วสามรอบ ยอมเขียนซ้ำดีกว่าปล่อยให้ตรวจไม่ได้
@@ -2559,10 +2584,22 @@ class ScrambleScene extends Phaser.Scene {
         if (e.i % 4 === 0)
           this.emit('star4', e.x + d * 112, e.y - 96 + (((e.i >> 2) % 3) - 1) * 18,
             { scale: 0.11, life: 7, grow: 1.4, alpha: 0.8, tint: 0xffb02e, depth: 7.3, blend: NORM });
-        // **ทุกสามอีเวนต์ อายุ 11 เฟรม** — ตั้งไว้ทุกสี่/อายุ 8 ตอนแรกแล้ววัดในเบราว์เซอร์จริง
-        // ได้เงาซ้อนกันสูงสุด 1 ตัว ซึ่งไม่ใช่ "ร่างซ้อน" แต่เป็นเงาโดด ๆ ที่กะพริบทีละตัว
-        // อีเวนต์ถูกปล่อยเฟรมเว้นเฟรม ทุกสามอีเวนต์ = ทุกหกเฟรม อายุ 11 จึงซ้อนกันได้เกือบสองตัว
-        if (e.i % 3 === 0) this._ghost(e.id, -d * (14 + (e.i % 2) * 10), 0, { alpha: 0.38, life: 11 });
+        /* เงาซ้อน — เดิมทุกสามอีเวนต์ อายุ 11 ได้ซ้อนกันเกือบสองตัว
+         * ที่อยากได้คือ "วิบวับเหมือนต่อยเร็วมาก" ซึ่งต้องเห็นหลายร่างพร้อมกัน
+         * อีเวนต์ถูกปล่อยเฟรมเว้นเฟรม: ทุกอีเวนต์ + อายุ 13 = ซ้อนกันราว 6 ตัว
+         * ไล่ระยะถอยหลังเป็นขั้น ๆ ตามลำดับอีเวนต์ จึงอ่านเป็นแถวร่างที่ทิ้งหางไว้
+         * ไม่ใช่เงาเดียวกะพริบ · ไล่ความจางลงตามระยะด้วย ตัวที่อยู่ไกลสุดจางสุด */
+        if (marchy) {
+          const lag = (e.i % 4) + 1;
+          this._ghost(e.id, -d * (10 + lag * 9), -lag * 1.5,
+            { alpha: 0.42 - lag * 0.055, life: 13, tint: 0x1d2b5c });
+          // สายฟ้าแลบระหว่างร่างที่ซ้อนกัน — คือสิ่งที่ทำให้ "เงา" อ่านเป็น "เร็วจนเกิดไฟฟ้า"
+          if (e.i % 2 === 0)
+            this._arc(e.x - d * 46, e.y - 96 + (lag - 2) * 9, e.x + d * 70, e.y - 96 + ((e.i >> 1) % 3 - 1) * 14,
+              { life: 5, w: 1.9, spread: 13, segs: 5 });
+        } else if (e.i % 3 === 0) {
+          this._ghost(e.id, -d * (14 + (e.i % 2) * 10), 0, { alpha: 0.38, life: 11 });
+        }
       }
       if (e.type === 'pin') {
         this._shake(150, 0.009);
@@ -2570,14 +2607,35 @@ class ScrambleScene extends Phaser.Scene {
         this.popup(e.x, e.y - 30, 'ตอกหมุด!', '#c77dff');
         this.emit('ring', e.x, e.y - 8, { scale: 0.26, life: 16, grow: 2.0, tint: 0xc77dff });
       }
+      /* ตบลงพื้น (ท่าจบสกิล 2) — ธง `bounce` มีอยู่ท่าเดียวในเกม จึงแรงเท่าไหร่ก็ได้
+       * โดยไม่กระทบท่าอื่น · ของเดิมเป็นวงแหวนกับหนามสี่อัน ซึ่งเบากว่าที่ภาพควรเป็นเยอะ */
       if (e.type === 'bounce') {
-        this._shake(120, 0.007);
-        this._sfx('wall', { vol: 0.9 });
-        this.emit('ring', e.x, e.y - 6, { scale: 0.3, life: 14, grow: 2.2, tint: 0xffd166 });
+        this._shake(260, 0.016);                      // เดิม 120/0.007
+        this._sfx('wall', { vol: 1.2 });
+        const gy = STAGE.groundY;
+        // คลื่นกระแทกสองวง วงนอกบานกว้างกว่าและจางกว่า
+        this.emit('ring', e.x, gy - 6, { scale: 0.34, life: 16, grow: 3.4, tint: 0x8fc0ff });
+        this.emit('ring', e.x, gy - 4, { scale: 0.22, life: 22, grow: 6.0, alpha: 0.5, tint: 0x4f8ff7 });
+        // ดินกระจายสองฝั่ง — ก้อนไกลบินแรงกว่าและตกช้ากว่า
+        for (let i = 0; i < 10; i++) {
+          const side = i % 2 ? 1 : -1, step = (i >> 1) + 1;
+          this.emit('soilBurst' + (1 + (i % 3)), e.x + side * step * 16, gy - 6,
+            { scale: 0.20 + step * 0.03, life: 22 + step * 2, grow: 1.1,
+              vx: side * (2.2 + step * 1.3), vy: -(3.4 + step * 0.5), g: 0.42,
+              tint: 0xcbb79a, blend: Phaser.BlendModes.NORMAL, depth: 6.2 });
+        }
+        // ฝุ่นแบนคลุมรอยกระแทก ให้มีน้ำหนักไม่ใช่มีแต่เศษกระเด็น
         for (let i = 0; i < 4; i++)
-          this.emit('spike', e.x + (i - 1.5) * 22, e.y - 10,
-            { scale: 0.16, life: 13, grow: 0.8, vy: -1.8 - Math.random(), tint: 0xd8c9a8,
-              blend: Phaser.BlendModes.NORMAL, depth: 6 });
+          this.puff('dustFlat', e.x + (i - 1.5) * 40, gy - 8,
+            { scale: 0.30, life: 26, grow: 1.9, alpha: 0.55, vx: (i - 1.5) * 1.6,
+              tone: SOIL, depth: 6.1 });
+        // สายฟ้าฟาดลงพื้นแล้วแตกแขนงไปตามพื้น
+        this._arc(e.x, gy - 230, e.x, gy - 8, { life: 9, w: 4, spread: 26, segs: 8 });
+        for (let i = 0; i < 6; i++) {
+          const side = i % 2 ? 1 : -1, len = 50 + (i >> 1) * 42;
+          this._arc(e.x, gy - 8, e.x + side * len, gy - 8 - Math.random() * 16,
+            { life: 8, w: 2.4, spread: 14, segs: 5 });
+        }
       }
       if (e.type === 'slam') {
         this._shake(200, 0.012);
@@ -2720,9 +2778,11 @@ class ScrambleScene extends Phaser.Scene {
   _ageFx() {
     this._stepFx();
     this._stepGhosts();
+    this._stepArcs();
     this._hazeAmbient();
     this._jointSmoke();
     this._attackSmoke();
+    this._attackBolt();
     for (const s of this.sparks) s.life--;
     this.sparks = this.sparks.filter(s => s.life > 0);
     for (const p of this.popups) { p.life--; p.t.y -= 0.8; p.t.setAlpha(Math.min(1, p.life / 15)); if (p.life <= 0) p.t.destroy(); }
@@ -3180,6 +3240,97 @@ class ScrambleScene extends Phaser.Scene {
       scale: (o.scale ?? 1) * 1.08, alpha: (o.alpha ?? 1) * 0.72,
     });
     return this.emit(frame, x, y, { ...o, blend: NORM, tint: o.hot ? tone.hot : tone.body });
+  }
+
+  /** ยิงสายฟ้าหนึ่งเส้นจาก (x1,y1) ไป (x2,y2) — หักมุมสุ่มทุกข้อ
+   *  สุ่มด้วย Math.random ได้เพราะเป็นฝั่งวาดล้วน ไม่แตะซิม (ตัวเด้งพื้นก็สุ่มแบบนี้อยู่แล้ว) */
+  _arc(x1, y1, x2, y2, o = {}) {
+    this._arcs ??= [];
+    if (this._arcs.length > 48) return null;      // กันกรณีรัวจนลิสต์บวม
+    const segs = o.segs ?? 6, spread = o.spread ?? 16;
+    const pts = [];
+    for (let i = 0; i <= segs; i++) {
+      const t = i / segs;
+      const edge = i === 0 || i === segs;         // ปลายสองข้างต้องตรงจุด ไม่งั้นสายลอยหลุดจากมือ
+      pts.push([
+        x1 + (x2 - x1) * t + (edge ? 0 : (Math.random() - 0.5) * spread),
+        y1 + (y2 - y1) * t + (edge ? 0 : (Math.random() - 0.5) * spread),
+      ]);
+    }
+    const life = o.life ?? 7;
+    this._arcs.push({ pts, life, max: life, w: o.w ?? 2.6 });
+    return pts;
+  }
+
+  /** สายฟ้าแตกแขนงรอบจุดหนึ่ง — ใช้ตอนหมัดเข้าเป้าหรือตอนกระแทกพื้น */
+  _arcBurst(x, y, n, r, o = {}) {
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2 + Math.random() * 0.6;
+      const len = r * (0.6 + Math.random() * 0.6);
+      this._arc(x, y, x + Math.cos(a) * len, y + Math.sin(a) * len * 0.75, o);
+    }
+  }
+
+  _drawArcs() {
+    const g = this.boltG;
+    if (!g) return;
+    g.clear();
+    if (!this._arcs?.length) return;
+    const line = (pts) => {
+      g.beginPath();
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+      g.strokePath();
+    };
+    g.setBlendMode(Phaser.BlendModes.ADD);
+    for (const a of this._arcs) {
+      const t = a.life / a.max;
+      g.lineStyle(a.w * 3.4, BOLT.glow, 0.30 * t); line(a.pts);
+      g.lineStyle(a.w * 1.8, BOLT.body, 0.62 * t); line(a.pts);
+      g.lineStyle(a.w * 0.7, BOLT.core, 0.95 * t); line(a.pts);
+    }
+  }
+
+  _stepArcs() {
+    if (!this._arcs?.length) return;
+    this._arcs = this._arcs.filter((a) => --a.life > 0);
+  }
+
+  /* สายฟ้าตามทุกสกิลของ MARCH — โครงเดียวกับ `_attackSmoke` ของ EYE เป๊ะ
+   * ยิงเฉพาะ**เฟรมแรกของช่วงที่กรอบชนเปิด** ไม่ใช่ทุกเฟรมที่ยังอยู่ในท่า
+   *
+   * ดูจาก `label` ไม่ใช่ไล่ชื่อไม้ทีละตัว — สามสกิลของเขาใช้ label ร่วมกันทั้งชุดอยู่แล้ว
+   * (`Chain Rush` · `Sky Drive` · `Hundred Hands`) เพิ่มไม้ใหม่เข้าชุดแล้วได้สายฟ้าเองโดยไม่ต้องมาแก้ที่นี่ */
+  _attackBolt() {
+    const s = this.sim;
+    if (!s?.fighters) return;
+    this._boltSeen ??= {};
+    for (const f of s.fighters) {
+      if (f.char !== 'helios' || !f.move || f.state !== 'attack'
+          || !MARCH_SKILL_LABELS.has(f.move.label)) { this._boltSeen[f.id] = null; continue; }
+      const tag = f.moveId + ':' + f.used.size;
+      if (f.phase() !== 'active' || this._boltSeen[f.id] === tag) continue;
+      this._boltSeen[f.id] = tag;
+      this._boltFor(f);
+    }
+  }
+
+  /** ขนาดสายฟ้าคิดจากกรอบชนจริงของไม้นั้น ไม่ใช่ค่าคงที่
+   *  ไม้จิ้มกับไม้จบจึงได้สายฟ้าคนละขนาด โดยไม่ต้องมานั่งตั้งเลขทีละไม้
+   *  (บทเรียนเดียวกับควันของ EYE ที่เคยวาดก้อน 200 px ให้กรอบชนกว้าง 116) */
+  _boltFor(f) {
+    const hb = f.move.hb;
+    if (!hb) return;
+    const d = f.facing;
+    const cx = f.x + d * (hb.x + hb.w / 2);
+    const cy = f.y + hb.y + hb.h / 2;
+    const r = Math.max(18, hb.w * 0.42);
+    const heavy = (f.move.dmg ?? 0) >= 6;
+    this._arcBurst(cx, cy, heavy ? 5 : 3, r, {
+      life: heavy ? 8 : 6, w: heavy ? 3 : 2.2, spread: Math.max(10, hb.h * 0.35),
+    });
+    // เส้นหนึ่งวิ่งจากตัวเขาไปหาจุดกระทบ ให้อ่านว่าไฟฟ้าออกจากหมัด ไม่ใช่โผล่กลางอากาศ
+    this._arc(f.x + d * 14, f.y - 86, cx, cy, { life: 6, w: 2, spread: 12, segs: 5 });
   }
 
   _stepFx() {
@@ -3648,6 +3799,7 @@ class ScrambleScene extends Phaser.Scene {
     this._stepCamera(s);
     this._fadeHudFor(s);
     g.clear(); fx.clear(); hud.clear();
+    this._drawArcs();
     // ทั้งสองฝั่งวาดด้วยเส้นทางเดียวกัน — ท่าที่ยังไม่มีอาร์ตตกไปเป็นกล่องเหมือนเดิม
     // เงาใต้เท้ายังวาดจาก graphics เสมอ ทั้งตอนใช้สไปรท์และตอนใช้กล่อง
     for (const f of [...s.fighters].reverse()) {

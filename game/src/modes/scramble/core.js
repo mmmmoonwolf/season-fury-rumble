@@ -283,13 +283,9 @@ const HELIOS_MOVES = {
   sky3: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 3, dmg: 3,
     hb: { x: 8, y: -104, w: 76, h: 34 }, kb: [1.5, -9], stun: 20,
     imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky4', airChain: true },
-  /* ทีที่สี่แยกทางกลางอากาศ — **กดลง** = ตบลงพื้นแบบเดิม · **ไม่กด/กดขึ้น** = ไปต่อชุดสอง
-   * ของเดิมจบที่ตบลงพื้นทางเดียว ซึ่งคือทางที่ต่อ Chain Rush ได้ (refresh) จึงเก็บไว้
-   * ทางใหม่ยาวกว่าและจบด้วยการเตะปลิวไปชนขอบเวที แลกกับไม่ได้ต่อ Chain Rush */
   sky4: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 4, dmg: 3,
     hb: { x: 8, y: -100, w: 78, h: 36 }, kb: [2, -9], stun: 20,
-    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, airChain: true,
-    branch: { neutral: 'sky6', up: 'sky6', down: 'sky5' } },
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky6', airChain: true },
   // ตบลง: kb แนวตั้งเป็นบวก = ปักลงพื้น · ธง bounce ทำให้เขาเด้งแทนที่จะล้มแล้วได้อมตะ
   // landLag สั้นกว่าปกติเพื่อให้เขาฟื้นก่อนคนที่เด้ง — นั่นคือสิ่งที่ทำให้ต่อติดจริง
   sky5: { label: 'Sky Drive', kind: 'air', startup: 5, active: 5, recovery: 6, dmg: 6,
@@ -307,20 +303,7 @@ const HELIOS_MOVES = {
     imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky7', airChain: true },
   sky7: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 4, dmg: 3,
     hb: { x: 8, y: -100, w: 78, h: 36 }, kb: [2, -9], stun: 20,
-    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'skyEnd', airChain: true },
-
-  /* ไม้ปลิว: เตะส่งออกแนวนอนเต็มแรงให้ไปชนขอบเวที
-   *
-   * **กลไกเด้งกำแพงมีอยู่แล้วใน physics()** — คนที่อยู่ใน hitstun และ |vx| > 7
-   * พอชนขอบจะเด้งกลับ 0.55 เท่า บวกสตัน 12 และยิงอีเวนต์ `wall` ออกมา
-   * ไม่ต้องเขียนกลไกใหม่ แค่ต้องส่งแรงให้พอไปถึงขอบโดยยังเหลือ vx เกิน 7
-   * (แรงลดด้วย airFric ทุกเฟรม จึงต้องตั้งสูงกว่าเกณฑ์เยอะ ไม่ใช่แค่ 8) */
-  skyEnd: { label: 'Sky Drive', kind: 'air', startup: 5, active: 5, recovery: 8, dmg: 8,
-    // kb 38 ไม่ใช่เลขสวย — เป็นเกณฑ์ที่วัดมา: ต่ำกว่านี้เป้าไปถึงขอบแต่ \`vx\` เหลือไม่ถึง 7
-    // (airFric กินทุกเฟรม) กลไกเด้งกำแพงจึงไม่ทริกเกอร์ ได้แค่ "ลอยไปกองอยู่ข้างขอบ"
-    // กวาดแล้ว: 22/26/30/34 ไปถึง x=1036/1085/1138/1218 ไม่เด้งสักค่า · 38 ขึ้นไปเด้งจริง
-    hb: { x: 10, y: -104, w: 96, h: 48 }, kb: [38, -5], stun: 34,
-    imp: { f: 5, vx: 7, vy: -2 }, floaty: true, untilLand: true, landLag: 12, airChain: true },
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky5', airChain: true },
 
   // ---- สกิล 3 Hundred Hands (อัลติ): รัวหมัดเตะ กดรัวเพิ่มจำนวนทีได้ ----
   // `flurry` = ปล่อยอีเวนต์หมัดทุกสองเฟรมให้ฝั่งวาดทำกำแพงหมัด (ดู advanceMove)
@@ -405,7 +388,12 @@ const SLAM_WAVE = 0.45;
 // ตั้งไว้ตอนแรกโดย**วัดจริงไม่ได้** เพราะการเด้งถูก `f.vy = 0` ล้างทิ้งทุกครั้ง (ดู onLand)
 // พอแก้ให้เด้งจริงแล้วกวาดค่าใหม่ทั้งช่วง -11 ถึง -20: **ค่าเดิมดีที่สุดอยู่แล้ว**
 // ตั้งแต่ -14 ลงไปเป้าลอยสูงจนหลุดกล่องชนของชุด Chain Rush กลางคัน (ดาเมจตกจาก 42 เหลือ 23)
-const BOUNCE_VY = -11;
+// -11 -> -13 ตอนชุดลอยยาวขึ้นจากสามไม้เป็นหกไม้
+// ไม้ที่มากขึ้นทำให้ตัวคูณแรงโน้มถ่วงตามความยาวคอมโบ (g *= 1 + 0.04 * comboHits) สูงขึ้นตาม
+// เป้าจึงร่วงเร็วกว่าเดิมหลังเด้ง หน้าต่างต่อ Chain Rush หดจาก >=10 เหลือ 9 เฟรม
+// กวาดแล้ว: -11 ได้ 9 · **-13 ได้ 12-28** · -15 ขึ้นไปลอยค้าง 100+ เฟรม ซึ่งเกินไป
+// (ลอง BOUNCE_STUN 12/14/16/18 ก่อนแล้ว **ไม่ขยับเลย** — ตัวกำหนดคือเวลาลอย ไม่ใช่สตัน)
+const BOUNCE_VY = -13;
 const BOUNCE_VX_KEEP = 0.5;   // เก็บแรงแนวนอนไว้ครึ่งเดียว ไม่งั้นเด้งแล้วลอยหลุดออกไปไกล
 const BOUNCE_STUN = 10;
 // รัศมีดูดของอัลติ METEOR — แนวนอนกว้างกว่าแนวตั้งเพราะเวทีกว้างกว่าสูง
@@ -995,8 +983,10 @@ const CHARACTERS = {
    *  5.6 (+8%) ทำให้ช่องว่างตีบ 23 px/วินาที = ครึ่งตัวต่อวินาที — พอให้การไล่เป็นการไล่จริง
    *  แต่ยังไม่ถึงขั้นเปลี่ยนเขาเป็นตัวความเร็ว (6.4 ตีบ 68 px/วิ ซึ่งมากเกินไป)
    *  วัดจาก tools/tests/march.test.mjs */
+  // jumpV แรงกว่ากลาง (-20) นิดเดียว — ความสูงโตตามกำลังสอง (21.4/20)^2 = +14%
+  // ไม่แตะ dJumpV เพราะดับเบิลจัมพ์เป็นของทุกตัวเท่ากัน ขยับด้วยจะกลายเป็นคนละเรื่อง
   helios: { id: 'helios', label: 'MARCH', moves: HELIOS_MOVES, skills: HELIOS_SKILLS,
-    skillCd: HELIOS_SKILL_CD, run: 5.6 },
+    skillCd: HELIOS_SKILL_CD, run: 5.6, jumpV: -21.4 },
   alecto: { id: 'alecto', label: 'KUNJAE', moves: ALECTO_MOVES, skills: ALECTO_SKILLS,
     skillCd: ALECTO_SKILL_CD, backstep: ALECTO_BACKSTEP, runLow: 72 },
   // artPending = ยังไม่มีอาร์ต วาดเป็นกล่องไปก่อน · เทสที่ตรวจอาร์ตจะข้ามตัวที่ติดธงนี้
@@ -1098,6 +1088,9 @@ class Fighter {
 
   /** ความเร็ววิ่งของตัวนี้ — ตัวละครประกาศทับได้ ไม่ประกาศก็ได้ค่ากลาง */
   get runSpeed() { return CHARACTERS[this.char]?.run ?? PHYS.run; }
+  // แรงถีบกระโดดต่อตัว — โครงเดียวกับ runSpeed ข้างบน ตัวที่ไม่ตั้งใช้ค่ากลางของ PHYS
+  // ความสูงโตตามกำลังสองของแรงถีบ ขยับเลขนิดเดียวก็เห็นผลชัด
+  get jumpV() { return CHARACTERS[this.char]?.jumpV ?? PHYS.jumpV; }
   /** ตัวนี้ใช้ระบบไอพ่นไหม — ตั้งที่ตารางตัวละคร ไม่ใช่เช็กชื่อตัวละครกระจายทั่วซิม */
   get boostJump() { return !!CHARACTERS[this.char].boost; }
   /** ตารางท่าตีปกติชุดที่สอง (ถ้าตัวนี้มี) — ว่างเปล่าแปลว่าไม่มีให้สลับ */
@@ -2179,7 +2172,7 @@ class Game {
     // ซึ่งขัดกฎที่ใช้มาทั้งโปรเจกต์ว่าต้องมีทางดิ้นเสมอ (ดู docs/ALECTO_KIT.md)
     if (f.pinned > 0) return false;
     if (f.onGround || f.coyote > 0) {
-      f.vy = PHYS.jumpV; f.onGround = false; f.coyote = 0;
+      f.vy = f.jumpV; f.onGround = false; f.coyote = 0;
     } else if (f.jumpsLeft > 0 || (f.boostJump && f.boost > 0)) {
       // DEAR: ดับเบิลจัมพ์หมดแล้วยังกระโดดต่อได้ ถ้ายังมีไอพ่นเหลือ — กินขีดละครั้ง
       // ไม่ใช่ปุ่มใหม่ ใช้ปุ่มกระโดดเดิม ต่อเมื่อไม่มีอย่างอื่นให้ใช้แล้วเท่านั้น
