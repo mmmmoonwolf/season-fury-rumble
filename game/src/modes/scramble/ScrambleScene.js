@@ -177,7 +177,8 @@ const CHAR_ART = {
       block: 1, blockstun: 1, blockcrouch: 1 },
     attacks: new Set(["jab1", "jab2", "jab3", "side", "up", "down", "nair", "sair", "dair",
       "rush1", "rush2", "rush3", "rush4", "rush5", "rushEndF", "rushEndU", "rushEndD",
-      "sky1", "sky2", "sky3", "sky4", "sky5", "hh1", "hh2", "hh3", "hhEnd"]),
+      "sky1", "sky2", "sky3", "sky4", "sky5", "sky6", "sky7", "skyEnd",
+      "hh1", "hh2", "hh3", "hhEnd"]),
   },
   // Alecto: ท่าตีปกติเป็นแส้ จึงต้องมี runStride ของตัวเอง (ขายาวใกล้ Helios)
   alecto: {

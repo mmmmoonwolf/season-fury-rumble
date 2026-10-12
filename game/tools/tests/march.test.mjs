@@ -59,11 +59,12 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
 // แต่บรรทัด `f.vy = 0` ที่อยู่ถัดจากการเรียก `onLand` ล้างมันทิ้งในเฟรมเดียวกัน
 // เท่ากับเทสต์วัด "ประกาศว่าจะเด้ง" ไม่ได้วัด "เด้งจริงไหม"
 // เปลี่ยนมาวัดผลทางกายภาพ: หลังอีเวนต์เด้ง ตัวเป้าต้องลอยพ้นพื้นขึ้นไปจริง
+// (ตอนนี้ทางตบลงพื้นอยู่หลัง **ปุ่มลง** แล้ว — ไม่กดทิศจะไปต่อชุดสองแล้วจบด้วยไม้ปลิวแทน)
 {
   const g = mk();
   let bounceAt = null, peak = 0;
   for (let i = 0; i < 160; i++) {
-    g.step(i < 2 ? SKY() : inp(), inp());
+    g.step(i < 2 ? SKY() : inp({ down: 1 }), inp());
     if (bounceAt === null && g.events.some((e) => e.type === 'bounce')) bounceAt = i;
     if (bounceAt !== null && i > bounceAt) peak = Math.max(peak, STAGE.groundY - g.p2.y);
   }
@@ -158,16 +159,27 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
 
 // ── Sky Drive ต้องไม่กลายเป็น DEAR: ชุดลอยยืดออกไปไม่ได้ ──
 //
-// กดรัวทุกปุ่มตลอดชุด ถ้ามีทางยืด (mashChain/holdChain หลงมา) จะเห็นเป็นจำนวนท่าที่โตเกินห้า
+// กดรัวทุกปุ่มตลอดชุด ถ้ามีทางยืด (mashChain/holdChain หลงมา) จะเห็นเป็นจำนวนท่าที่โตเกินที่ตั้งไว้
+// **ความยาวตายตัวทั้งสองทาง** — ทางไม่กดทิศเจ็ดท่า ทางกดลงห้าท่า กดรัวยังไงก็ไม่เกินนี้
 {
-  const g = mk();
-  const seen = new Set();
-  for (let i = 0; i < 200; i++) {
-    // กดรัวเฉพาะปุ่มที่ไม่ยกเลิกท่า (ปุ่มตียกเลิกชุดได้อยู่แล้วซึ่งเป็นคนละเรื่อง)
-    g.step(i < 2 ? SKY() : inp({ jump: 1, skill2: 1, p: { jump: 1, skill2: 1 } }), inp());
-    if (g.p1.moveId?.startsWith('sky')) seen.add(g.p1.moveId);
-  }
-  ok(seen.size === 5, `ชุดลอยมีห้าท่าตายตัว กดรัวยืดไม่ได้ (${seen.size} ท่า)`);
+  const count = (dir) => {
+    const g = mk();
+    const seen = new Set();
+    for (let i = 0; i < 220; i++) {
+      // กดรัวเฉพาะปุ่มที่ไม่ยกเลิกท่า (ปุ่มตียกเลิกชุดได้อยู่แล้วซึ่งเป็นคนละเรื่อง)
+      const held = { jump: 1, skill2: 1, p: { jump: 1, skill2: 1 } };
+      if (dir) held[dir] = 1;
+      g.step(i < 2 ? SKY() : inp(held), inp());
+      if (g.p1.moveId?.startsWith('sky')) seen.add(g.p1.moveId);
+    }
+    return seen;
+  };
+  const open = count(null), slam = count('down');
+  ok(open.size === 7, `ทางไม่กดทิศมีเจ็ดท่าตายตัว กดรัวยืดไม่ได้ (${open.size} ท่า)`);
+  ok(slam.size === 5, `ทางกดลงมีห้าท่าตายตัว (${slam.size} ท่า)`);
+  ok(open.has('skyEnd') && !slam.has('skyEnd'), "ไม้ปลิวอยู่เฉพาะทางไม่กดทิศ");
+  ok(slam.has('sky5') && !open.has('sky5'), "ท่าตบลงพื้นอยู่เฉพาะทางกดลง");
+  const seen = open;
 }
 
 // ══ MARCH วิ่งเร็วกว่าคนอื่นนิดหน่อย — เขาเป็นสายประชิด ════════════════════════
@@ -340,4 +352,65 @@ const SKY = () => inp({ skill2: 1, p: { skill2: 1 } });
   const all = [F.dmg, U.dmg, D.dmg];
   ok(Math.max(...all) - Math.min(...all) <= 6,
     `สามทางยังสูสีกัน ไม่มีทางที่ดีกว่าชัดจนไม่ต้องเลือก (${all.join(" / ")})`);
+}
+
+// ══ สกิล 2 ชุดสองกลางอากาศ + ไม้เตะปลิวชนขอบเวที ══════════════════════════════
+//
+// 🔴 `sky1` ใช้ `onHit` ไม่ใช่ autoChain — ด่านกันการยกเลิกใน controlPlayer
+// เดิมไม่ครอบ onHit กดรัวปุ่มตีแล้วชุดลอยถูกตัดเข้า jab1 ตั้งแต่ไม้แรก
+// วัดได้: sky1 jab1 jab2 jab3 — **ออกแค่ 1 ไม้จาก 5** คนเล่นจึงบอกว่า "ต่อคอมโบอากาศไม่ได้"
+{
+  const ACT = new Set(["idle", "run", "air", "crouch", "landing"]);
+  const fly = (startX, dir, mash) => {
+    const g = new Game();
+    g.p1.char = "helios"; g.p2.char = "nyx"; g.p1.ai = g.p2.ai = false;
+    g.p1.x = startX; g.p2.x = startX + 70; g.p1.facing = 1;
+    const seen = []; let dmg = 0, hits = 0, hp = g.p2.hp, started = false, wall = 0, far = g.p2.x;
+    for (let f = 1; f < 320; f++) {
+      const o = { ...NONE, p: {} };
+      if (f === 1) { o.skill2 = 1; o.p.skill2 = 1; }
+      else {
+        if (dir) o[dir] = 1;
+        if (mash && f % 2 === 0) { o.attack = 1; o.p.attack = 1; }
+      }
+      g.step(o, null);
+      const id = g.p1.moveId;
+      if (id && seen[seen.length - 1] !== id) seen.push(id);
+      for (const e of g.events) if (e.type === "wall") wall++;
+      far = Math.max(far, g.p2.x);
+      if (g.p2.hp < hp) { dmg += hp - g.p2.hp; hits++; hp = g.p2.hp; started = true; }
+      if (started && ACT.has(g.p2.state) && g.p2.hitstop === 0) break;
+    }
+    return { dmg, hits, wall, far, seen, skyN: seen.filter((k) => /^sky/.test(k)).length };
+  };
+
+  // กดรัวแล้วชุดลอยต้องยังเดินครบ ไม่ใช่โดนปุ่มตีตัดตั้งแต่ไม้แรก
+  const mashed = fly(600, null, true);
+  ok(mashed.skyN === 7, `กดรัวแล้วชุดลอยยังเดินครบเจ็ดไม้ (${mashed.skyN}) — ${mashed.seen.slice(0, 8).join(" ")}`);
+
+  // ชุดสองต่อท้ายจริง และจบด้วยไม้ปลิว
+  const open = fly(600, null, false);
+  ok(/sky4 sky6 sky7 skyEnd/.test(open.seen.join(" ")),
+    `ทีที่สี่ไหลเข้าชุดสองแล้วจบด้วยไม้ปลิว (${open.seen.join(" ")})`);
+
+  // ไม้ปลิวต้องส่งไปชนขอบเวทีจริง ไม่ใช่แค่ลอยไปกองอยู่ข้างขอบ
+  ok(open.wall >= 1, `เตะแล้วเป้าไปชนขอบเวทีจริง (อีเวนต์ wall ${open.wall} ครั้ง · ไปถึง x=${Math.round(open.far)} ขอบ ${STAGE.wallR})`);
+  const E = CHARACTERS.helios.moves.skyEnd;
+  ok(E.kb[0] > 7, `แรงส่งเกินเกณฑ์เด้งกำแพงของ physics (kb ${E.kb[0]} > 7)`);
+
+  // ทางกดลงยังเป็นของเดิม: สั้นกว่า เบากว่า แลกกับต่อ Chain Rush ได้
+  const slam = fly(600, "down", false);
+  ok(slam.seen.includes("sky5") && !slam.seen.includes("skyEnd"), "กดลงได้ทางตบลงพื้นแบบเดิม");
+  ok(open.dmg > slam.dmg, `ทางยาวแรงกว่า (${open.dmg} เทียบ ${slam.dmg})`);
+  ok(Array.isArray(CHARACTERS.helios.moves.sky5.refresh)
+    && CHARACTERS.helios.moves.sky5.refresh.includes("rush1"),
+    "แต่ทางตบลงพื้นเป็นทางเดียวที่ต่อ Chain Rush ได้");
+
+  // ทุกท่าของชุดสองต้องมีอาร์ตจริง ไม่งั้น Phaser คืนเฟรมแรกของอัตลาสมาเงียบ ๆ
+  const atlas = JSON.parse(fs.readFileSync(
+    new URL("../../assets/characters/scramble_helios.json", import.meta.url).pathname, "utf8"));
+  const missing = [];
+  for (const k of ["sky6", "sky7", "skyEnd"]) for (let i = 1; i <= 3; i++)
+    if (!atlas.frames[`${k}_${i}.png`]) missing.push(`${k}_${i}`);
+  ok(missing.length === 0, `ชุดสองมีอาร์ตครบ (ขาด ${missing.join(",") || "ไม่ขาด"})`);
 }

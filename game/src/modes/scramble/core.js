@@ -283,15 +283,44 @@ const HELIOS_MOVES = {
   sky3: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 3, dmg: 3,
     hb: { x: 8, y: -104, w: 76, h: 34 }, kb: [1.5, -9], stun: 20,
     imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky4', airChain: true },
+  /* ทีที่สี่แยกทางกลางอากาศ — **กดลง** = ตบลงพื้นแบบเดิม · **ไม่กด/กดขึ้น** = ไปต่อชุดสอง
+   * ของเดิมจบที่ตบลงพื้นทางเดียว ซึ่งคือทางที่ต่อ Chain Rush ได้ (refresh) จึงเก็บไว้
+   * ทางใหม่ยาวกว่าและจบด้วยการเตะปลิวไปชนขอบเวที แลกกับไม่ได้ต่อ Chain Rush */
   sky4: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 4, dmg: 3,
     hb: { x: 8, y: -100, w: 78, h: 36 }, kb: [2, -9], stun: 20,
-    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky5', airChain: true },
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, airChain: true,
+    branch: { neutral: 'sky6', up: 'sky6', down: 'sky5' } },
   // ตบลง: kb แนวตั้งเป็นบวก = ปักลงพื้น · ธง bounce ทำให้เขาเด้งแทนที่จะล้มแล้วได้อมตะ
   // landLag สั้นกว่าปกติเพื่อให้เขาฟื้นก่อนคนที่เด้ง — นั่นคือสิ่งที่ทำให้ต่อติดจริง
   sky5: { label: 'Sky Drive', kind: 'air', startup: 5, active: 5, recovery: 6, dmg: 6,
     hb: { x: 4, y: -70, w: 80, h: 60 }, kb: [2, 14], stun: 30,
     imp: { f: 5, vx: 1, vy: 14 },
     bounce: true, untilLand: true, landLag: 10, refresh: ['rush1'] },
+
+  /* ---- ชุดสองกลางอากาศ: เตะหมุน -> หมัดตรง -> เตะพุ่งปลิวชนขอบ ----
+   *
+   * ยกทั้งคู่ขึ้นต่อ (imp.vy -7 / kb -9) ด้วยเหตุผลเดียวกับ sky2-4:
+   * ชุดนี้ต่อท้ายของเดิมอีก ~35 เฟรม ไม่ยกซ้ำแล้วจะแตะพื้นกลางชุด
+   * ซึ่ง onLand ล้าง f.move ทิ้ง = ชุดขาดตรงนั้นเงียบ ๆ */
+  sky6: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 3, dmg: 3,
+    hb: { x: 6, y: -104, w: 76, h: 36 }, kb: [1.5, -9], stun: 20,
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'sky7', airChain: true },
+  sky7: { label: 'Sky Drive', kind: 'air', startup: 3, active: 3, recovery: 4, dmg: 3,
+    hb: { x: 8, y: -100, w: 78, h: 36 }, kb: [2, -9], stun: 20,
+    imp: { f: 3, vx: 2, vy: -7 }, floaty: true, autoChain: 'skyEnd', airChain: true },
+
+  /* ไม้ปลิว: เตะส่งออกแนวนอนเต็มแรงให้ไปชนขอบเวที
+   *
+   * **กลไกเด้งกำแพงมีอยู่แล้วใน physics()** — คนที่อยู่ใน hitstun และ |vx| > 7
+   * พอชนขอบจะเด้งกลับ 0.55 เท่า บวกสตัน 12 และยิงอีเวนต์ `wall` ออกมา
+   * ไม่ต้องเขียนกลไกใหม่ แค่ต้องส่งแรงให้พอไปถึงขอบโดยยังเหลือ vx เกิน 7
+   * (แรงลดด้วย airFric ทุกเฟรม จึงต้องตั้งสูงกว่าเกณฑ์เยอะ ไม่ใช่แค่ 8) */
+  skyEnd: { label: 'Sky Drive', kind: 'air', startup: 5, active: 5, recovery: 8, dmg: 8,
+    // kb 38 ไม่ใช่เลขสวย — เป็นเกณฑ์ที่วัดมา: ต่ำกว่านี้เป้าไปถึงขอบแต่ \`vx\` เหลือไม่ถึง 7
+    // (airFric กินทุกเฟรม) กลไกเด้งกำแพงจึงไม่ทริกเกอร์ ได้แค่ "ลอยไปกองอยู่ข้างขอบ"
+    // กวาดแล้ว: 22/26/30/34 ไปถึง x=1036/1085/1138/1218 ไม่เด้งสักค่า · 38 ขึ้นไปเด้งจริง
+    hb: { x: 10, y: -104, w: 96, h: 48 }, kb: [38, -5], stun: 34,
+    imp: { f: 5, vx: 7, vy: -2 }, floaty: true, untilLand: true, landLag: 12, airChain: true },
 
   // ---- สกิล 3 Hundred Hands (อัลติ): รัวหมัดเตะ กดรัวเพิ่มจำนวนทีได้ ----
   // `flurry` = ปล่อยอีเวนต์หมัดทุกสองเฟรมให้ฝั่งวาดทำกำแพงหมัด (ดู advanceMove)
@@ -2213,12 +2242,13 @@ class Game {
       // ไม่งั้นการ "กดรัวเพื่อต่อรอบ" กลายเป็นการยกเลิกอัลติทิ้งไปออกหมัดธรรมดาแทน
       // (วัดได้จริง: กดรัวตอนอัลติแล้วหลุดไป jab1 ตั้งแต่จังหวะแรก)
       //
-      // **`branch` ต้องอยู่ในรายการนี้ด้วย** — เดิมมีแค่สองตัวแรก
-      // `rush5` ของ MARCH ใช้ branch ไม่ใช่ autoChain จึงไม่ถูกกัน
-      // กดรัวปุ่มตีแล้วมันถูกตัดเข้า jab1 ก่อนจะทันแตกทาง = **ไม้จบไม่เคยออกเลย**
-      // (วัดได้: rush1 rush2 rush3 rush4 rush5 jab1 jab2 jab3 — ไม่มี rushEnd สักตัว)
-      // คนที่กดรัวซึ่งเป็นคนส่วนใหญ่ จึงไม่เคยเห็นจุดที่ทำให้สกิล 1 ต่างจากสกิล 3
-      if (m.autoChain || m.mashChain || m.branch) return;
+      // **`branch` กับ `onHit` ต้องอยู่ในรายการนี้ด้วย** — เดิมมีแค่สองตัวแรก
+      // `rush5` ของ MARCH ใช้ branch และ `sky1` ใช้ onHit ไม่ใช่ autoChain จึงไม่ถูกกัน
+      // กดรัวปุ่มตีแล้วถูกตัดเข้า jab1 ก่อนชุดจะเดินต่อ:
+      //   rush1..rush5 -> jab1 jab2 jab3   (**ไม้จบไม่เคยออกเลย**)
+      //   sky1 -> jab1 jab2 jab3           (**ชุดลอยออกแค่ไม้เดียวจากห้าไม้**)
+      // คนที่กดรัวซึ่งเป็นคนส่วนใหญ่ จึงไม่เคยเห็นชุดเต็มของทั้งสองสกิล
+      if (m.autoChain || m.mashChain || m.branch || m.onHit) return;
       if (this.buffered(f, 'attack')) {
         const neutral = dir === 0 && !inp.up && !inp.down;
         let next = null;
@@ -2590,7 +2620,9 @@ class Game {
       if (f.moveF >= m.startup + m.active + m.recovery) {
         // ท่าที่มี branch: ไม้จบแยกทางตามปุ่มทิศที่ "กดค้างอยู่ตอนท่าจบ"
         // อ่านตอนท่าจบ ไม่ใช่ตอนเริ่มกดสกิล คนเล่นจึงมีเวลาทั้งชุดในการตัดสินใจว่าจะจบทางไหน
-        if (m.branch && f.onGround) {
+        // `|| m.airChain` ให้ตรงกับ autoChain ด้านล่างที่ยอมให้ชุดลอยต่อกลางอากาศอยู่แล้ว
+        // ไม่มีบรรทัดนี้ ชุดที่แยกทางกลางอากาศจะไหลลง autoChain เสมอ = แยกทางไม่ได้เลย
+        if (m.branch && (f.onGround || m.airChain)) {
           const i = f.inp ?? {};
           const pick = i.up ? 'up' : i.down ? 'down' : 'neutral';
           this.startMove(f, m.branch[pick] ?? m.branch.neutral, f.facing); return;
