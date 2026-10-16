@@ -179,3 +179,72 @@ const { CHARACTERS } = await import(G + "/core.js");
     `อีเวนต์ทุกตัวที่ซิมปล่อยมีสาขารับในฝั่งวาด${missing.length ? " — ขาด " + missing.join(", ") : ""}`);
   ok(drawn.has('flurry'), "อีเวนต์หมัดรัวของอัลติ MARCH มีคนวาดรับ");
 }
+
+// ══ บิดท่าตามจังหวะ — ให้ภาพนิ่งสามเฟรมอ่านเป็นการเคลื่อนไหว ═══════════════════
+//
+// สไปรท์เรามีสามเฟรมต่อท่า (เงื้อ/สุดแขน/ชักกลับ) ซึ่งอ่านเป็นสไลด์ ไม่ใช่การเคลื่อนไหว
+// ตัวนี้เติมน้ำหนักโดยแปลงภาพเดิม **ไม่เพิ่มอาร์ตสักเฟรม**
+{
+  globalThis.window = { matchMedia: () => ({ matches: false }), addEventListener() {} };
+  globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
+  await import("./phaser_stub.mjs");
+  const { poseWarp } = await import(G + "/ScrambleScene.js");
+  const mk = (m, n) => ({
+    state: "attack", move: m, moveF: n, hitstop: 0, onGround: true, stateF: 0, vy: 0,
+    phase: () => (n < m.startup ? "startup" : n < m.startup + m.active ? "active" : "recovery"),
+  });
+  const jab = CHARACTERS.helios.moves.jab1;
+
+  // ยืนเฉย ๆ ต้องไม่บิดเลย ไม่งั้นตัวเอียงค้างตลอดเวลา
+  const idle = poseWarp({ state: "idle", move: null, moveF: 0, hitstop: 0, onGround: true, stateF: 40, vy: 0, phase: () => null });
+  ok(idle.rot === 0 && idle.sx === 1 && idle.sy === 1 && idle.dx === 0, "ยืนเฉย ๆ ไม่บิด");
+
+  // เงื้อ = เอนหลัง · กรอบชนเปิด = เอนหน้า — ต้องสลับเครื่องหมายกันจริง
+  const back = poseWarp(mk(jab, jab.startup - 1));
+  const fwd = poseWarp(mk(jab, jab.startup));
+  ok(back.rot < 0, `ช่วงเงื้อเอนหลัง (${(back.rot * 57.3).toFixed(1)}°)`);
+  ok(fwd.rot > 0, `ช่วงกรอบชนเปิดเอนหน้า (${(fwd.rot * 57.3).toFixed(1)}°)`);
+  // ต้องสะบัดข้ามในเฟรมเดียว นั่นคือสิ่งที่อ่านว่า "ออกหมัด"
+  ok((fwd.rot - back.rot) * 57.3 > 8,
+    `สะบัดข้ามในเฟรมเดียว ${( (fwd.rot - back.rot) * 57.3).toFixed(1)}° ไม่ใช่ค่อย ๆ ไหล`);
+  // เงื้อหดกว้างยืดสูง · ออกหมัดยืดกว้างหดสูง (squash & stretch)
+  ok(back.sx < 1 && back.sy > 1, "เงื้อ: หดกว้าง ยืดสูง");
+  ok(fwd.sx > 1 && fwd.sy < 1, "ออกหมัด: ยืดกว้าง หดสูง");
+
+  // แรงสุดต้องอยู่ที่ **เฟรมแรก** ของช่วงกรอบชนเปิด แล้วคลายลง ไม่ใช่ค้างเท่ากันทั้งช่วง
+  const a0 = poseWarp(mk(jab, jab.startup)), a2 = poseWarp(mk(jab, jab.startup + jab.active - 1));
+  ok(a0.rot > a2.rot, `แรงสุดที่เฟรมแรกของการกระทบแล้วคลาย (${(a0.rot * 57.3).toFixed(1)}° -> ${(a2.rot * 57.3).toFixed(1)}°)`);
+
+  // ไม้หนักต้องบิดมากกว่าไม้เบา โดยไม่ต้องตั้งเลขทีละไม้
+  const heavy = CHARACTERS.helios.moves.rushEndU;
+  const hw = poseWarp(mk(heavy, heavy.startup));
+  ok(hw.rot > fwd.rot, `ไม้หนัก (dmg ${heavy.dmg}) บิดมากกว่าไม้เบา (dmg ${jab.dmg}): ${(hw.rot * 57.3).toFixed(1)}° > ${(fwd.rot * 57.3).toFixed(1)}°`);
+
+  // เพดาน — ตัวสูงบนเวทีแค่ 130 px เอียงเกินนี้อ่านเป็นภาพเพี้ยน ไม่ใช่แรง
+  let maxDeg = 0, maxS = 0, maxDx = 0;
+  for (const char of ["helios", "chronos"])
+    for (const m of Object.values(CHARACTERS[char].moves)) {
+      if (!m.startup || !m.hb) continue;
+      for (let n = 0; n < m.startup + m.active + m.recovery; n++) {
+        const w = poseWarp(mk(m, n));
+        maxDeg = Math.max(maxDeg, Math.abs(w.rot * 57.3));
+        maxS = Math.max(maxS, Math.abs(w.sx - 1), Math.abs(w.sy - 1));
+        maxDx = Math.max(maxDx, Math.abs(w.dx));
+      }
+    }
+  ok(maxDeg <= 12, `เอียงไม่เกิน 12° ทั้งโรสเตอร์ (สุด ${maxDeg.toFixed(1)}°)`);
+  ok(maxS <= 0.20, `ย่อ/ยืดไม่เกิน 20% (สุด ${(maxS * 100).toFixed(0)}%)`);
+  // 🔴 ภาพที่เลื่อนไปข้างหน้าเกินกรอบชน = โกหกระยะ ซึ่งเป็นกับดักเดิมของโปรเจกต์นี้
+  ok(maxDx <= 8, `เลื่อนไปข้างหน้าไม่เกิน 8 px (สุด ${maxDx.toFixed(1)})`);
+
+  // ลงพื้นต้องย่อ · โดนตีต้องเอนถอย
+  const land = poseWarp({ state: "landing", move: null, moveF: 0, hitstop: 0, onGround: true, stateF: 0, vy: 0, phase: () => null });
+  ok(land.sy < 1 && land.sx > 1, `แตะพื้นแล้วย่อ (สูง ${land.sy.toFixed(2)})`);
+  const hurt = poseWarp({ state: "hitstun", move: null, moveF: 0, hitstop: 0, onGround: true, stateF: 0, vy: 0, phase: () => null });
+  ok(hurt.rot < 0, "โดนตีแล้วเอนถอย");
+
+  // หมุนต้องคูณ facing ตอนวาด ไม่งั้นหันซ้ายแล้วเอนผิดข้าง
+  ok(/setRotation\(w\.rot \* f\.facing\)/.test(scene), "ตอนวาดคูณ facing ให้การหมุน");
+  // เงาซ้อนต้องก๊อปการหมุนไปด้วย ไม่งั้นร่างซ้อนตั้งตรงขณะตัวจริงเอน
+  ok(/setRotation\(src\.rotation\)/.test(scene), "เงาซ้อนก๊อปการหมุนของตัวจริง");
+}

@@ -1020,6 +1020,66 @@ const TUNE = [
 const DEFAULTS = Object.fromEntries(TUNE.map(([k]) => [k, PHYS[k]]));
 /** ค่าปรับจูนปัจจุบันเป็นก้อนเดียว — ต้องส่งข้ามเน็ต เพราะ sim สองฝั่งจะเดินตรงกันได้ก็ต่อเมื่อ PHYS เท่ากัน
  *  (แผง Tune เซฟค่าลง localStorage ใครเคยลากสไลเดอร์ไว้ เครื่องนั้นจะฟิสิกส์ต่างจากเพื่อนถาวร) */
+/** ท่าทางที่ "บิด" จากจังหวะของท่า — เอน/ยืด/ย่อ โดยไม่ต้องมีอาร์ตเพิ่มสักเฟรม
+ *
+ *  สไปรท์ของเราเป็นภาพนิ่งสามเฟรมต่อท่า (เงื้อ/สุดแขน/ชักกลับ) ซึ่งอ่านเป็น "สไลด์" ไม่ใช่ "การเคลื่อนไหว"
+ *  ตัวนี้เติมน้ำหนักให้โดยแปลงภาพเดิมตามเฟรมที่เดินอยู่: เงื้อ = เอนหลังเก็บแรง ·
+ *  กรอบชนเปิด = พุ่งไปข้างหน้าแล้วยืดออก · ชักกลับ = สะบัดคืนแล้วนิ่ง
+ *
+ *  **ความแรงคิดจากดาเมจของไม้นั้น ไม่ใช่ค่าคงที่** — ไม้จิ้มกับไม้จบจึงบิดไม่เท่ากัน
+ *  โดยไม่ต้องมานั่งตั้งเลขทีละไม้ (หลักเดียวกับขนาดควัน/สายฟ้าที่คิดจากกรอบชน)
+ *
+ *  จุดหมุนของสไปรท์อยู่ที่ **ปลายเท้า** (`setOrigin(anchorX/canvasW, feetY/canvasH)`)
+ *  หมุนและย่อจึงไม่ทำให้เท้าลอยหรือจมพื้น ซึ่งเป็นเหตุผลที่ทำตรงนี้ได้โดยไม่ต้องแก้จุดยึด
+ *
+ *  ค่าทุกตัวเล็กโดยตั้งใจ: ตัวสูงบนเวทีแค่ 130 px เอียงเกิน ~6 องศาแล้วอ่านเป็นภาพเพี้ยน ไม่ใช่แรง
+ *  และ `dx` ถูกกดไว้ไม่เกิน 7 px เพราะภาพที่เลื่อนไปข้างหน้าเกินกรอบชนคือการโกหกระยะ
+ */
+function poseWarp(f) {
+  let rot = 0, sx = 1, sy = 1, dx = 0;
+  const m = f.state === 'attack' ? f.move : null;
+  if (m) {
+    // **พื้น 0.5 แล้วค่อยบวกตามดาเมจ** — ไม่ใช่ dmg/9 ตรง ๆ
+    // ไม้จิ้มดาเมจ 3 จะได้ 0.33 ซึ่งคูณกับค่าฐานแล้วเหลือเอียง 1-2 องศา = มองไม่เห็น
+    // แบบนี้ไม้เบาได้ 0.67 ไม้หนักได้ 1.0 ต่างกันจริงแต่ไม้เบาก็ยังอ่านออก
+    const heft = 0.5 + 0.5 * Math.min(1, (m.dmg ?? 3) / 9);
+    const ph = f.phase();
+    if (ph === 'startup') {
+      // (moveF+1)/startup เพื่อให้เฟรมสุดท้ายของช่วงเงื้อได้ t = 1 เต็ม
+      // ใช้ moveF/startup เฉย ๆ แล้วท่าที่เงื้อ 3 เฟรมจะขึ้นไปถึงแค่ 0.67 ตลอดกาล
+      const t = Math.min(1, (f.moveF + 1) / Math.max(1, m.startup));
+      rot = -0.11 * heft * t;                              // เอนหลัง
+      sx = 1 - 0.08 * heft * t; sy = 1 + 0.07 * heft * t;  // หดกว้าง ยืดสูง = เก็บแรง
+      dx = -6 * heft * t;
+    } else if (ph === 'active') {
+      // แรงสุดที่ **เฟรมแรก** ของช่วงกรอบชนเปิด แล้วคลายลง — ไม่ใช่ค้างแรงเท่ากันทั้งช่วง
+      const punch = 1 - (f.moveF - m.startup) / Math.max(1, m.active);
+      rot = 0.17 * heft * punch;
+      sx = 1 + 0.16 * heft * punch; sy = 1 - 0.11 * heft * punch;
+      dx = 7 * heft * punch;
+    } else if (ph === 'recovery') {
+      // สะบัดคืนภายในครึ่งแรกของชักกลับ ที่เหลือยืนนิ่ง ไม่ใช่ค่อย ๆ คืนจนจบท่า
+      const back = Math.max(0, 1 - (f.moveF - m.startup - m.active) / Math.max(1, m.recovery / 2));
+      rot = 0.06 * heft * back; sx = 1 + 0.05 * heft * back;
+    }
+  }
+  // จังหวะกระทบ (ติด hitstop) — อัดให้แน่นอีกชั้นทับของเดิม
+  if (f.hitstop > 0) { sx *= 1.06; sy *= 0.94; }
+  // โดนตี: เอนถอยตามแรง
+  if (f.state === 'hitstun') { rot -= 0.09; sx *= 0.97; }
+  // แตะพื้น: ย่อสั้น ๆ แล้วคืน
+  if (f.state === 'landing' && f.stateF < 5) {
+    const t = 1 - f.stateF / 5;
+    sx *= 1 + 0.12 * t; sy *= 1 - 0.14 * t;
+  }
+  // ลอยอยู่: ยืดตามความเร็วแนวตั้ง (ท่าโจมตีกลางอากาศไม่เอา เพราะมีการบิดของตัวเองอยู่แล้ว)
+  if (!f.onGround && !m) {
+    const v = Math.min(1, Math.abs(f.vy) / 18);
+    sx *= 1 - 0.05 * v; sy *= 1 + 0.07 * v;
+  }
+  return { rot, sx, sy, dx };
+}
+
 /** เลือกเฟรมอาร์ตของท่าโจมตี (1 เงื้อ · 2 สุดแขน · 3 ชักกลับ) จากช่วงของเอนจิ้น
  *
  *  แยกออกมาเป็นฟังก์ชันล้วนเพื่อให้เทสต์เรียกตรงได้ — ตอนอยู่ในลูปวาด
@@ -3368,7 +3428,7 @@ class ScrambleScene extends Phaser.Scene {
     const a = o.alpha ?? 0.32, life = o.life ?? 9;
     g.setTexture(src.texture.key, src.frame.name).setVisible(true).setActive(true)
       .setOrigin(src.originX, src.originY).setScale(src.scaleX, src.scaleY)
-      .setFlipX(src.flipX).setPosition(src.x + dx, src.y + dy)
+      .setFlipX(src.flipX).setPosition(src.x + dx, src.y + dy).setRotation(src.rotation)
       .setDepth(src.depth - 0.05).setBlendMode(o.blend ?? Phaser.BlendModes.NORMAL).setAlpha(a);
     g.setTintFill(o.tint ?? 0x231d33);
     this._ghLive.push({ img: g, life, max: life, a0: a });
@@ -3574,9 +3634,13 @@ class ScrambleScene extends Phaser.Scene {
     // เก็บมา 300 px จึงย่อลงด้วยอัตราส่วนนี้ แล้วเลื่อนให้ "เท้าในภาพ" ไปอยู่ที่เท้าของตัวละครพอดี
     const scale = SPRITE_H / m.standing;
     const sp = rig.sprite;
-    sp.setVisible(true).setScale(scale).setFlipX(f.facing < 0);
+    // บิดท่าตามจังหวะของไม้ — ใช้อาร์ตเดิมทั้งหมด ไม่ได้เพิ่มเฟรมสักเฟรม
+    // **หมุนต้องคูณ facing** เพราะ flipX ไม่กลับทิศการหมุนให้ หันซ้ายแล้วจะเอนผิดข้าง
+    const w = poseWarp(f);
+    sp.setVisible(true).setScale(scale * w.sx, scale * w.sy).setFlipX(f.facing < 0);
+    sp.setRotation(w.rot * f.facing);
     sp.setOrigin(m.anchorX / m.canvasW, m.feetY / m.canvasH);
-    sp.setPosition(f.x, f.y);
+    sp.setPosition(f.x + w.dx * f.facing, f.y);
     sp.setAlpha(this._veilAlpha(f, f.invuln > 0 && Math.floor(f.invuln / 3) % 2 ? 0.5 : 1));
     this._hitFlash(f, sp);
   }
@@ -3977,4 +4041,4 @@ class ScrambleScene extends Phaser.Scene {
 }
 
 export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM, BINDS, ALONE_EXTRA, readInput,
-  attackFrameIndex };
+  attackFrameIndex, poseWarp };
