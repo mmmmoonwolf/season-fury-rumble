@@ -6,6 +6,14 @@ const read = (p) => fs.readFileSync(new URL(p, import.meta.url), "utf8");
 const atlas = JSON.parse(read("../../assets/vfx/vfx.json"));
 const scene = read("../../src/modes/scramble/ScrambleScene.js");
 const G = new URL("../../src/modes/scramble", import.meta.url).href;
+
+/** ตัดเนื้อเมธอดจากซอร์ส — ถึง "\n  }" ตัวแรกซึ่งคือท้ายเมธอดระดับคลาส
+ *  เคยตัดด้วยการนับตัวอักษร (+1500) แล้วพอโค้ดยาวขึ้นก็ตัดครึ่งเมธอด เทสต์แดงทั้งที่ของถูก */
+const methodBody = (name) => {
+  const i = scene.indexOf(`  ${name}(`);
+  return i < 0 ? "" : scene.slice(i, scene.indexOf("\n  }", i) + 4);
+};
+
 const { CHARACTERS } = await import(G + "/core.js");
 
 // ── เฟรมครบทั้งสองใบ ──
@@ -75,7 +83,14 @@ const { CHARACTERS } = await import(G + "/core.js");
 // รอยที่ใหญ่กว่าระยะที่โดนจริงคือการโกหกคนเล่น เขาจะอ่านระยะผิดทุกครั้งที่เห็น
 {
   ok(/const reach = hb \? hb\.w : \d+/.test(scene), "อ่านความกว้าง hitbox มาใช้");
-  ok(/scale: \(reach \/ \(src\?\.width \|\| \d+\)\)/.test(scene), "แปลงเป็นสเกลเทียบความกว้างเฟรมต้นฉบับ");
+  // เดิมเช็กข้อความ `scale: (reach / ...)` ตรง ๆ แล้วแดงทันทีตอนแยกเป็นตัวแปร `base`
+  // ทั้งที่เจตนาไม่เปลี่ยน — เช็กว่า **สเกลทุกชั้นมาจาก base ที่คิดจาก reach** แทน
+  ok(/const base = \(reach \/ \(src\?\.width \|\| \d+\)\)/.test(scene),
+    "ฐานของสเกลคิดจากความกว้าง hitbox เทียบความกว้างเฟรมต้นฉบับ");
+  const sf = methodBody("slashFor");
+  const scales = [...sf.matchAll(/scale: ([^,]+),/g)].map((m) => m[1].trim());
+  ok(scales.length >= 2 && scales.every((v) => v.startsWith("base")),
+    `ทุกชั้นสเกลจาก base (${scales.join(" · ")})`);
 }
 
 // ── ปล่อยรอยฟาดเฟรมเดียวต่อหนึ่งท่า ไม่ใช่ทุกเฟรมที่ยังอยู่ในท่า ──
@@ -247,4 +262,74 @@ const { CHARACTERS } = await import(G + "/core.js");
   ok(/setRotation\(w\.rot \* f\.facing\)/.test(scene), "ตอนวาดคูณ facing ให้การหมุน");
   // เงาซ้อนต้องก๊อปการหมุนไปด้วย ไม่งั้นร่างซ้อนตั้งตรงขณะตัวจริงเอน
   ok(/setRotation\(src\.rotation\)/.test(scene), "เงาซ้อนก๊อปการหมุนของตัวจริง");
+}
+
+// ══ รอยฟาดต้องครบทุกท่าโจมตี ไม่ใช่เฉพาะไม้ที่มีชื่อในตาราง ═══════════════════
+//
+// `SLASH_DEFAULT` ไล่ตาม **ชื่อไม้** (jab/side/up/down/air) ซึ่งครอบแค่ไม้ทั่วไป
+// ไม้สกิลทุกตัวจึงหลุด — วัดแล้ว 48 ท่าทั่วโรสเตอร์ไม่มีรอยฟาดเลย
+// MARCH ไม่มี 19 จาก 28 (Chain Rush · Sky Drive · Hundred Hands ทั้งชุด) · EYE ไม่มีทั้งสกิล
+{
+  const { slashShapeFor, SLASH_DEFAULT } = await import(G + "/ScrambleScene.js");
+  const block = (id) => {
+    const i = scene.indexOf(`  ${id}: {`);
+    return i < 0 ? "" : scene.slice(i, scene.indexOf("\n  },", i));
+  };
+  let total = 0, covered = 0;
+  const miss = [];
+  for (const [id, c] of Object.entries(CHARACTERS)) {
+    if (c.artPending) continue;
+    const blk = block(id);
+    const own = new Set([...blk.slice(blk.indexOf("slash:")).matchAll(/(\w+):\s*\{\s*f:/g)].map((m) => m[1]));
+    for (const [k, m] of Object.entries(c.moves)) {
+      if (!m.startup || !m.hb || (m.hb.w === 0 && m.hb.h === 0)) continue;
+      total++;
+      if (own.has(k) || SLASH_DEFAULT[k] || slashShapeFor(m.hb)) covered++;
+      else miss.push(`${id}/${k}`);
+    }
+  }
+  // 🔴 ต้องเช็กว่า **slashFor เรียกตัวสำรองจริง** ไม่ใช่แค่ฟังก์ชันมีอยู่
+  // เทสต์ที่เรียก slashShapeFor เองจะเขียวอยู่ดีถ้ามีคนถอดมันออกจากจุดเรียก
+  // (ลองถอดออกแล้วเทสต์ไม่แดง จึงต้องมีข้อนี้)
+  ok(/\?\? \(hb \? slashShapeFor\(hb\) : null\)/.test(methodBody("slashFor")),
+    "slashFor ตกไปใช้ตัวสำรองเมื่อไม้ไม่มีชื่อในตาราง");
+  ok(total > 90, `นับท่าโจมตีได้ ${total} ท่า`);
+  ok(covered === total, `ทุกท่ามีรอยฟาด ${covered}/${total}${miss.length ? " ขาด: " + miss.slice(0, 5).join(",") : ""}`);
+
+  // ตัวสำรองเลือกทรงจาก **สัดส่วนกรอบชน** ไม่ใช่ชื่อไม้ — ไม้ใหม่จึงได้รอยฟาดเองโดยไม่ต้องแก้ตาราง
+  ok(slashShapeFor({ w: 60, h: 130 }).f === "slashRise", "กรอบตั้ง -> รอยงัดขึ้น");
+  ok(slashShapeFor({ w: 160, h: 34 }).f === "slashChop", "กรอบแบนยาว -> รอยกวาด");
+  ok(slashShapeFor({ w: 240, h: 180 }).f === "crescent", "กรอบใหญ่มาก -> รอยโค้งใหญ่");
+  ok(slashShapeFor({ w: 90, h: 60 }).f === "slashThrust", "กรอบธรรมดา -> รอยพุ่ง");
+  // ทุกทรงที่ตัวสำรองคืนต้องมีอยู่จริงในอัตลาส ไม่งั้น Phaser คืนเฟรมแรกมาเงียบ ๆ
+  for (const hb of [{ w: 60, h: 130 }, { w: 160, h: 34 }, { w: 240, h: 180 }, { w: 90, h: 60 }])
+    ok(!!atlas.frames[slashShapeFor(hb).f + ".png"], `ทรง ${slashShapeFor(hb).f} มีในอัตลาส`);
+
+  // 🔴 ขนาดรอยฟาดต้องผูกกับกรอบชนเสมอ — รอยที่ใหญ่เกินระยะจริงคือการโกหกคนเล่น
+  // ไม้หนักได้ "สว่างกว่า/อยู่นานกว่า" ไม่ใช่ "ใหญ่กว่า"
+  const body = methodBody("slashFor");
+  ok(/reach \/ \(src\?\.width/.test(body), "ขนาดคิดจากความกว้างกรอบชน");
+  ok(!/heavy \?[^:]*scale/.test(body), "ไม้หนักไม่ได้ขนาดใหญ่กว่า");
+  ok((body.match(/this\.emit\(spec\.f/g) ?? []).length === 2, "วาดสองชั้น (ชั้นเงาทึบ + แกนเรืองแสง)");
+
+  // 🔴 ชั้นหลังต้องเป็น NORMAL สีเข้ม — `emit()` ตั้งค่าเริ่มต้นเป็น ADD
+  // รอยสีครีมในโหมด ADD บนฟ้าสว่างของเวทีนี้**จางหายไปเกือบหมด** (ถ่ายในเบราว์เซอร์จริงแล้วเห็น)
+  // กับดักเดียวกับที่ทำให้ต้องสร้าง puff() ขึ้นมาบังคับ NORMAL ให้ควัน
+  ok(/blend: Phaser\.BlendModes\.NORMAL/.test(body), "ชั้นหลังบังคับ NORMAL ไม่ใช่ ADD ตามค่าเริ่มต้น");
+  ok(/tint: art\.slashShade \?\? SLASH_SHADE/.test(body), "ชั้นหลังใช้สีเข้ม ไม่ใช่สีเดียวกับแกน");
+  ok(/const SLASH_SHADE = 0x[0-9a-f]{6}/.test(scene), "สีเงาแยกเป็นค่าคงที่");
+  // แกนยังต้องเป็น ADD เพื่อให้เรืองแสงบนพื้นหลังมืด — เวทีมีทั้งฟ้าสว่างและหินมืดในจอเดียวกัน
+  const layers = body.split("this.emit(spec.f");
+  ok(!/blend:/.test(layers[2] ?? ""), "แกนไม่ได้ตั้ง blend = ใช้ ADD ตามค่าเริ่มต้น");
+}
+
+// ══ ร่างซ้อนตอนพุ่ง — ดูจากความเร็วจริง ไม่ใช่ไล่ชื่อไม้ ════════════════════════
+{
+  const hook = methodBody("_rushGhosts");
+  ok(/Math\.abs\(f\.vx\) < 6\.5/.test(hook), "เกณฑ์ความเร็วสูงกว่าความเร็ววิ่งปกติ");
+  const { PHYS } = await import(G + "/core.js");
+  const fastest = Math.max(PHYS.run, ...Object.values(CHARACTERS).map((c) => c.run ?? 0));
+  ok(6.5 > fastest, `วิ่งเฉย ๆ ไม่ได้ร่างซ้อน (เร็วสุดในโรสเตอร์ ${fastest} < 6.5)`);
+  ok(/s\.frame % 2/.test(hook), "เว้นเฟรม ไม่งั้นร่างซ้อนกันทึบ");
+  ok(/f\.state !== 'attack'/.test(hook), "เฉพาะตอนออกท่า ไม่ใช่ตอนถูกตีกระเด็น");
 }

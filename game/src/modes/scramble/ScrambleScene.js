@@ -421,6 +421,38 @@ const SLASH_DEFAULT = {
   nair: { f: 'slashSpin' }, sair: { f: 'slashThrust', rot: 16 }, dair: { f: 'slashChop', rot: 52 },
 };
 
+/** จานสีรอยฟาด — **สองชั้นคนละโหมดผสม** ด้วยเหตุผลเดียวกับควันและสายฟ้า
+ *
+ *  `emit()` ตั้งค่าเริ่มต้นเป็น ADD และ `slashFor` ไม่เคยส่ง blend มา
+ *  รอยฟาดสีครีมในโหมด ADD บน**ฟ้าสว่างของเวทีนี้จึงจางหายไปเกือบหมด**
+ *  (ถ่ายในเบราว์เซอร์จริงแล้วเห็นเป็นเส้นบางจนแทบไม่สังเกต)
+ *  — กับดักเดียวกับที่ทำให้ต้องสร้าง `puff()` ขึ้นมาบังคับ NORMAL ให้ควัน
+ *
+ *  ชั้นหลังจึงเป็น **NORMAL สีเข้ม** = มีเนื้อ อ่านออกบนพื้นหลังสว่าง
+ *  ชั้นหน้าเป็น **ADD สีสว่าง** = เรืองแสง อ่านออกบนพื้นหลังมืด
+ *  รวมกันแล้วอ่านออกทั้งบนฟ้าและบนหิน ซึ่งเวทีนี้มีทั้งสองอย่างอยู่ในจอเดียวกัน
+ */
+const SLASH_SHADE = 0x3a3346;
+
+/** รอยฟาดสำรองสำหรับไม้ที่ไม่มีชื่อในตารางข้างบน — **เลือกทรงจากสัดส่วนกรอบชน**
+ *
+ *  ตารางข้างบนไล่ตาม "ชื่อไม้" ซึ่งครอบแค่ไม้ทั่วไป (jab/side/up/down/air)
+ *  ไม้สกิลทุกตัวจึงหลุดหมด — วัดแล้ว **48 ท่าทั่วโรสเตอร์ไม่มีรอยฟาดเลย**
+ *  (MARCH ไม่มี 19 จาก 28 คือ Chain Rush · Sky Drive · Hundred Hands ทั้งชุด)
+ *
+ *  เลือกจากสัดส่วนแทนการไล่ชื่อ เพราะ **ไม้ที่เพิ่มทีหลังได้รอยฟาดเองโดยไม่ต้องมาแก้ตาราง**
+ *  หลักเดียวกับที่ `_smokeFor` เลือกทรงควัน และ `_boltFor` คิดขนาดสายฟ้า
+ */
+function slashShapeFor(hb) {
+  const tall = hb.h > hb.w * 1.3;      // กรอบตั้ง = ท่างัดขึ้น
+  const flat = hb.w > hb.h * 2.2;      // กรอบแบนยาว = ท่ากวาด
+  const huge = hb.w * hb.h > 9000;     // กรอบใหญ่มาก = ท่าระเบิดรอบตัว
+  if (huge) return { f: 'crescent', rot: 0 };
+  if (tall) return { f: 'slashRise', rot: 0 };
+  if (flat) return { f: 'slashChop', rot: 20 };
+  return { f: 'slashThrust', rot: 0 };
+}
+
 /** ลูกไฟ/ประกายที่โปรยตอนหมัดเข้า — ตัวเลขทั้งหมดคูณตามน้ำหนักหมัด (hitstop) */
 const HIT_FX = { tint: 0xffe08a, spark: 0xffd166 };
 
@@ -2839,6 +2871,7 @@ class ScrambleScene extends Phaser.Scene {
     this._stepFx();
     this._stepGhosts();
     this._stepArcs();
+    this._rushGhosts();
     this._hazeAmbient();
     this._jointSmoke();
     this._attackSmoke();
@@ -3435,6 +3468,25 @@ class ScrambleScene extends Phaser.Scene {
     return g;
   }
 
+  /** ร่างซ้อนตอนออกท่าที่พุ่งไปข้างหน้าเร็ว ๆ — "เร็วจนเห็นร่างค้าง"
+   *
+   *  ไม่ต้องไล่ชื่อไม้: ดูจาก**ความเร็วจริงตอนนั้น** ท่าไหนพุ่งแรงท่านั้นได้ร่างซ้อนเอง
+   *  ท่าที่ยืนตีอยู่กับที่ (แย็บ ชุดรัว) ความเร็วไม่ถึงเกณฑ์จึงไม่ได้ ซึ่งถูกแล้ว
+   *  — ชุดรัวมีร่างซ้อนของตัวเองอยู่แล้วจากอีเวนต์ flurry คนละเส้นทางกัน
+   *
+   *  เกณฑ์ 6.5 สูงกว่าความเร็ววิ่งปกติ (PHYS.run 5-5.6) นิดเดียว
+   *  วิ่งเฉย ๆ จึงไม่ได้ร่างซ้อน ต้องเป็นท่าที่พุ่ง (glide/imp) เท่านั้น
+   */
+  _rushGhosts() {
+    const s = this.sim;
+    if (!s?.fighters || s.frame % 2) return;     // เว้นเฟรม ไม่งั้นซ้อนกันทึบ
+    for (const f of s.fighters) {
+      if (f.state !== 'attack' || !f.move || Math.abs(f.vx) < 6.5) continue;
+      const d = Math.sign(f.vx) || f.facing;
+      this._ghost(f.id, -d * 18, 0, { alpha: 0.30, life: 9 });
+    }
+  }
+
   _stepGhosts() {
     if (!this._ghLive?.length) return;
     const keep = [];
@@ -3484,9 +3536,10 @@ class ScrambleScene extends Phaser.Scene {
   slashFor(f) {
     const art = CHAR_ART[f.char];
     if (!art) return;
-    const spec = art.slash && f.moveId in art.slash ? art.slash[f.moveId] : SLASH_DEFAULT[f.moveId];
-    if (!spec) return;
     const hb = f.hitbox();
+    const spec = (art.slash && f.moveId in art.slash ? art.slash[f.moveId] : SLASH_DEFAULT[f.moveId])
+      ?? (hb ? slashShapeFor(hb) : null);
+    if (!spec) return;
     const x = hb ? hb.x + hb.w / 2 : f.x + f.facing * 60;
     const y = hb ? hb.y + hb.h / 2 : f.y - 70;
     // ขนาดรอยฟาดยึด **ความกว้างของ hitbox จริง** ไม่ใช่เลขตายตัวหรือดาเมจ
@@ -3494,12 +3547,23 @@ class ScrambleScene extends Phaser.Scene {
     // และมันปรับตัวเองตามท่า: จิ้มสั้นได้รอยสั้น แส้ยาวได้รอยยาว โดยไม่ต้องจูนทีละท่า
     const src = this.textures.get('vfx').get(spec.f + '.png');
     const reach = hb ? hb.w : 90;
+    const base = (reach / (src?.width || 300)) * 1.15;
+    const tint = art.slashTint ?? 0xfff2d0;
+    const rot = (spec.rot ?? 0) * Math.PI / 180 * f.facing;
+    const flipX = f.facing < 0;
+    // ไม้หนักได้รอยที่ "สว่างกว่าและอยู่นานกว่า" **ไม่ใช่ใหญ่กว่า**
+    // ขนาดยังผูกกับกรอบชนเหมือนเดิมทุกไม้ รอยที่ใหญ่เกินระยะจริงคือการโกหกคนเล่น
+    const heavy = (f.move?.dmg ?? 0) >= 7;
+    // ชั้นหลัง: **NORMAL สีเข้ม** บานกว่า อยู่นานกว่า — นี่คือชั้นที่ทำให้รอยอ่านออกบนฟ้าสว่าง
     this.emit(spec.f, x, y, {
-      scale: (reach / (src?.width || 300)) * 1.15,
-      life: 10, grow: 0.3, alpha: 0.5, flipX: f.facing < 0,
-      rot: (spec.rot ?? 0) * Math.PI / 180 * f.facing,
-      // รอยฟาดของ EYE เป็นควัน ไม่ใช่แสง — ตัวละครที่ไม่ประกาศก็ได้ครีมเดิมเป๊ะ
-      tint: art.slashTint ?? 0xfff2d0, depth: 7,
+      scale: base * 1.3, life: heavy ? 15 : 12, grow: 0.8, alpha: heavy ? 0.5 : 0.36,
+      flipX, rot, tint: art.slashShade ?? SLASH_SHADE, depth: 6.9,
+      blend: Phaser.BlendModes.NORMAL,
+    });
+    // ชั้นหน้า: **ADD สีสว่าง** = แกนเรืองแสง อ่านออกบนพื้นหลังมืด
+    this.emit(spec.f, x, y, {
+      scale: base, life: heavy ? 12 : 10, grow: 0.3, alpha: heavy ? 0.85 : 0.62,
+      flipX, rot, tint, depth: 7,
     });
   }
 
@@ -4041,4 +4105,4 @@ class ScrambleScene extends Phaser.Scene {
 }
 
 export { ScrambleScene, C as SCRAMBLE_COLORS, drawBackground, CAM, BINDS, ALONE_EXTRA, readInput,
-  attackFrameIndex, poseWarp };
+  attackFrameIndex, poseWarp, slashShapeFor, SLASH_DEFAULT };
