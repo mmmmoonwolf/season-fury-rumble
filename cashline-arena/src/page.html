@@ -1,0 +1,468 @@
+<title>Cashline Arena</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Chakra+Petch:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: full-screen 3D canvas, DOM screens layered on top like a TV broadcast overlay.
+   Deliberately single (dark) look: a live-show stage at night. */
+:root {
+  --bg: #0b0c1d; --panel: #15173a; --panel2: #1d2050; --line: #33377a;
+  --fg: #eef0ff; --mut: #9aa0d0; --accent: #ff3d6e; --gold: #ffc94a; --ok: #3ee69a;
+  --f-display: 'Bungee', 'Impact', 'Arial Black', sans-serif;
+  --f-body: 'Chakra Petch', 'Tahoma', 'Leelawadee UI', sans-serif;
+  color-scheme: dark;
+}
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font-family: var(--f-body); font-size: 15px; overflow: hidden; user-select: none; -webkit-user-select: none; touch-action: none; }
+#gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+button { font-family: inherit; color: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.scr { position: fixed; inset: 0; display: flex; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-bottom, 0px)); overflow-y: auto; }
+.shade { background: linear-gradient(90deg, rgba(11,12,29,.94) 0%, rgba(11,12,29,.78) 45%, rgba(11,12,29,.25) 100%); }
+.shade-full { background: rgba(11,12,29,.86); }
+.logo { font-family: var(--f-display); font-size: clamp(44px, 9vw, 92px); line-height: .9; letter-spacing: 1px; margin: 0; }
+.logo span { color: var(--accent); }
+.logo small { display: block; font-size: .28em; color: var(--gold); letter-spacing: 4px; margin-top: 10px; }
+.live { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; letter-spacing: 3px; color: var(--fg); background: var(--accent); padding: 4px 10px 4px 8px; border-radius: 3px; }
+.live::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; animation: blink 1.2s infinite; }
+@keyframes blink { 50% { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .live::before, .ticker-in { animation: none !important; } }
+.btn { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 14px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; font-size: 17px; font-weight: 600; cursor: pointer; text-align: left; transition: background .12s, border-color .12s, transform .12s; }
+.btn:hover { background: var(--panel2); border-color: var(--gold); transform: translateX(3px); }
+.btn .k { font-family: var(--f-display); font-size: 12px; color: var(--mut); letter-spacing: 1px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-family: var(--f-display); font-size: 22px; font-weight: 400; letter-spacing: 1px; }
+.btn.primary .k { color: rgba(255,255,255,.8); }
+.btn.primary:hover { background: #ff5683; }
+.btn[disabled] { opacity: .45; cursor: not-allowed; transform: none; }
+.btn.sm { padding: 9px 14px; font-size: 14px; width: auto; }
+.col { display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+h2.ttl { font-family: var(--f-display); font-size: clamp(26px, 5vw, 40px); margin: 0; font-weight: 400; letter-spacing: 1px; text-wrap: balance; }
+.eyebrow { font-size: 12px; letter-spacing: 3px; color: var(--gold); font-weight: 700; text-transform: uppercase; }
+.mut { color: var(--mut); }
+.panel { background: rgba(21,23,58,.92); border: 1px solid var(--line); border-radius: 6px; padding: 18px; }
+.wrap { width: 100%; max-width: 1100px; margin: auto; display: flex; flex-direction: column; gap: 18px; }
+.back { align-self: flex-start; }
+.ticker { position: fixed; left: 0; right: 0; bottom: 0; height: 30px; background: var(--accent); color: #fff; overflow: hidden; font-weight: 600; font-size: 13px; display: flex; align-items: center; padding-bottom: env(safe-area-inset-bottom, 0px); box-sizing: content-box; }
+.ticker b { font-family: var(--f-display); font-weight: 400; background: var(--fg); color: var(--accent); padding: 0 12px; height: 100%; display: flex; align-items: center; flex-shrink: 0; z-index: 1; padding-left: max(12px, env(safe-area-inset-left, 0px)); }
+.ticker-in { white-space: nowrap; animation: tick 40s linear infinite; padding-left: 100%; }
+@keyframes tick { to { transform: translateX(-100%); } }
+
+/* boot */
+#boot { align-items: center; justify-content: center; text-align: center; background: radial-gradient(ellipse at center, rgba(255,61,110,.18), rgba(11,12,29,.95) 60%); cursor: pointer; }
+#boot .press { margin-top: 28px; font-size: 16px; letter-spacing: 2px; color: var(--gold); animation: blink 1.6s infinite; }
+/* main */
+#main { align-items: flex-start; }
+.menu { width: min(420px, 100%); display: flex; flex-direction: column; gap: 22px; margin-block: auto; padding-bottom: 36px; }
+.me-chip { display: flex; align-items: center; gap: 12px; background: var(--panel); border: 1px solid var(--line); padding: 10px 12px; border-radius: 4px; }
+.me-chip .av { width: 46px; height: 56px; border-radius: 4px; padding: 0; border: 1px solid var(--line); background: var(--panel2); flex-shrink: 0; cursor: pointer; overflow: hidden; }
+.me-chip .av img, .chr img, .pt-mini { image-rendering: pixelated; display: block; }
+.me-chip .av img { width: 100%; height: 100%; object-fit: contain; }
+.me-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.me-sub { font-size: 12px; color: var(--mut); } .me-sub b { color: var(--gold); font-weight: 600; }
+.chars { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .chars { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.chr { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; text-align: center; transition: transform .12s, border-color .12s; }
+.chr:hover { transform: translateY(-3px); border-color: var(--gold); }
+.chr img { width: 128px; height: 144px; max-width: 100%; object-fit: contain; background: radial-gradient(circle at 50% 60%, var(--panel2), transparent 70%); }
+.chr b { font-family: var(--f-display); font-weight: 400; font-size: 18px; }
+.chr .mut { font-size: 12px; }
+.chr .emo { font-size: 11px; color: var(--gold); }
+.chr.sel { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; background: var(--panel2); }
+.pt-mini { width: 40px; height: 45px; flex-shrink: 0; border-radius: 4px; background: var(--panel2); }
+.pop { position: absolute; font-family: var(--f-display); font-size: 22px; white-space: nowrap; text-shadow: 0 0 0 #000, 2px 2px 0 #0b0c1d, -2px 2px 0 #0b0c1d, 2px -2px 0 #0b0c1d, -2px -2px 0 #0b0c1d; pointer-events: none; }
+.me-chip input { flex: 1; min-width: 0; background: transparent; border: none; color: var(--fg); font: inherit; font-size: 17px; font-weight: 600; }
+.me-chip input::placeholder { color: var(--mut); }
+.netline { font-size: 12px; color: var(--mut); display: flex; gap: 6px; align-items: center; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--mut); }
+.dot.on { background: var(--ok); } .dot.off { background: var(--accent); }
+
+/* modes */
+.modes { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.mode { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 6px; min-height: 150px; text-align: left; cursor: pointer; }
+.mode h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 20px; letter-spacing: .5px; }
+.mode .sub { font-size: 12px; color: var(--gold); letter-spacing: 1px; }
+.mode p { margin: 0; font-size: 13px; color: var(--mut); line-height: 1.45; }
+.mode .tag { position: absolute; top: 12px; right: 12px; font-size: 11px; font-weight: 700; padding: 3px 7px; border-radius: 3px; background: var(--panel2); color: var(--mut); letter-spacing: 1px; }
+.mode.open { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.mode.open .tag { background: var(--accent); color: #fff; }
+.mode.locked { cursor: default; opacity: .7; }
+.mode.sel { background: var(--panel2); }
+.qc-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.codebox { display: flex; gap: 8px; }
+.codebox input { flex: 1; min-width: 0; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; color: var(--fg); font-family: var(--f-display); font-size: 20px; letter-spacing: 6px; padding: 8px 12px; text-transform: uppercase; }
+
+/* armory */
+.classes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cls { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: flex; flex-direction: column; gap: 10px; cursor: pointer; text-align: left; }
+.cls.sel { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold) inset; background: var(--panel2); }
+.cls h3 { margin: 0; font-family: var(--f-display); font-weight: 400; font-size: 24px; }
+.stat { display: grid; grid-template-columns: 70px 1fr 40px; gap: 8px; align-items: center; font-size: 12px; color: var(--mut); }
+.bar { height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--gold); }
+.wpns { display: flex; flex-direction: column; gap: 6px; }
+.wpn { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); font-size: 13px; cursor: pointer; }
+.wpn.sel { border-color: var(--accent); background: rgba(255,61,110,.12); }
+.kit { font-size: 12px; color: var(--mut); display: flex; flex-direction: column; gap: 3px; }
+.kit b { color: var(--fg); font-weight: 600; }
+
+/* lobby */
+.lobby-head { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.roomcode { font-family: var(--f-display); font-size: 34px; letter-spacing: 8px; color: var(--gold); }
+.teams { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.team { border-radius: 6px; border: 1px solid var(--line); background: var(--panel); overflow: hidden; display: flex; flex-direction: column; }
+.team .th { padding: 10px 14px; font-family: var(--f-display); font-size: 16px; color: var(--bg); display: flex; justify-content: space-between; align-items: center; }
+.slot { padding: 12px 14px; display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--line); min-height: 58px; }
+.slot .nm { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot .meta { font-size: 12px; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot { flex-wrap: wrap; }
+.slot.bot .nm { color: var(--mut); font-weight: 500; }
+.badge { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: var(--panel2); color: var(--mut); letter-spacing: 1px; flex-shrink: 0; }
+.badge.rd { background: var(--ok); color: var(--bg); } .badge.host { background: var(--gold); color: var(--bg); } .badge.you { background: var(--fg); color: var(--bg); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { background: var(--panel); border: none; padding: 9px 14px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.seg button.on { background: var(--gold); color: var(--bg); }
+.seg button[disabled] { cursor: default; }
+.lobby-foot { display: flex; gap: 10px; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+
+/* loading */
+#load { background: radial-gradient(ellipse at 50% 30%, rgba(255,201,74,.12), rgba(11,12,29,.96) 65%); }
+.vs { display: flex; gap: 14px; align-items: stretch; justify-content: center; flex-wrap: wrap; margin: 16px 0; }
+.vs .tcard { min-width: 150px; padding: 14px; border-radius: 6px; background: var(--panel); border-top: 4px solid; display: flex; flex-direction: column; gap: 4px; }
+.vs .vsx { font-family: var(--f-display); align-self: center; color: var(--mut); }
+.count { font-family: var(--f-display); font-size: 64px; color: var(--accent); line-height: 1; }
+.rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; text-align: left; }
+.rules div { background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 10px 12px; font-size: 13px; }
+.rules b { display: block; color: var(--gold); font-size: 12px; letter-spacing: 1px; margin-bottom: 2px; }
+
+/* HUD */
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#hud * { pointer-events: none; }
+.top { position: absolute; top: max(10px, env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 6px; width: min(640px, calc(100% - 32px)); }
+.scorebar { display: flex; gap: 6px; align-items: stretch; width: 100%; justify-content: center; }
+.tchip { flex: 1; max-width: 150px; background: rgba(11,12,29,.8); border-radius: 4px; padding: 5px 8px 6px; border-bottom: 3px solid; display: flex; flex-direction: column; gap: 3px; }
+.tchip .tn { font-size: 11px; font-weight: 700; letter-spacing: 1px; display: flex; justify-content: space-between; }
+.tchip .cash { font-family: var(--f-display); font-size: 16px; font-variant-numeric: tabular-nums; }
+.tchip .mb { height: 3px; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden; }
+.tchip .mb i { display: block; height: 100%; }
+.tchip.mine { background: rgba(29,32,80,.95); outline: 1px solid rgba(255,255,255,.35); }
+.clock { font-family: var(--f-display); font-size: 20px; background: rgba(11,12,29,.85); padding: 4px 12px; border-radius: 4px; min-width: 84px; text-align: center; font-variant-numeric: tabular-nums; }
+.obj { font-size: 14px; font-weight: 600; background: rgba(11,12,29,.75); padding: 4px 12px; border-radius: 4px; text-align: center; }
+.xh { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; transform: translate(-50%, -50%); }
+.xh::before, .xh::after { content: ""; position: absolute; background: #fff; box-shadow: 0 0 2px #000; }
+.xh::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; clip-path: polygon(0 0,100% 0,100% 35%,0 35%,0 65%,100% 65%,100% 100%,0 100%); }
+.xh::after { top: 50%; left: 0; right: 0; height: 2px; margin-top: -1px; clip-path: polygon(0 0,35% 0,35% 100%,0 100%,0 0,65% 0,100% 0,100% 100%,65% 100%,65% 0); }
+.hitm { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; transform: translate(-50%,-50%) rotate(45deg); opacity: 0; }
+.hitm::before, .hitm::after { content: ""; position: absolute; background: #fff; }
+.hitm::before { left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; clip-path: polygon(0 0,100% 0,100% 30%,0 30%,0 70%,100% 70%,100% 100%,0 100%); }
+.hitm::after { top: 50%; left: 0; right: 0; height: 2px; margin-top: -1px; clip-path: polygon(0 0,30% 0,30% 100%,0 100%,0 0,70% 0,100% 0,100% 100%,70% 100%,70% 0); }
+.hitm.kill::before, .hitm.kill::after { background: var(--accent); }
+.vign { position: absolute; inset: 0; box-shadow: inset 0 0 120px rgba(255,40,70,.0); transition: box-shadow .25s; }
+.bl { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); width: min(300px, 42vw); display: flex; flex-direction: column; gap: 6px; }
+.hpbox { background: rgba(11,12,29,.8); border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column; gap: 5px; }
+.hpbox .r { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; letter-spacing: 1px; }
+.hpbar { height: 10px; background: rgba(255,255,255,.1); border-radius: 2px; overflow: hidden; }
+.hpbar i { display: block; height: 100%; background: var(--fg); transition: width .15s; }
+.br { position: absolute; right: max(16px, env(safe-area-inset-right, 0px)); bottom: max(16px, env(safe-area-inset-bottom, 0px)); display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.ammo { background: rgba(11,12,29,.8); border-radius: 4px; padding: 6px 12px; text-align: right; }
+.ammo .n { font-family: var(--f-display); font-size: 30px; font-variant-numeric: tabular-nums; line-height: 1; }
+.ammo .n small { font-size: 15px; color: var(--mut); }
+.ammo .wn { font-size: 12px; color: var(--mut); font-weight: 600; }
+.abil { display: flex; gap: 6px; }
+.ab { background: rgba(11,12,29,.8); border-radius: 4px; padding: 5px 9px; font-size: 12px; font-weight: 700; display: flex; gap: 6px; align-items: center; position: relative; overflow: hidden; }
+.ab .key { font-family: var(--f-display); font-size: 11px; background: var(--fg); color: var(--bg); padding: 1px 5px; border-radius: 2px; }
+.ab .cd { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--gold); }
+.ab.dim { opacity: .45; }
+.feed { position: absolute; top: max(12px, env(safe-area-inset-top, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 4px; align-items: flex-end; max-width: 46vw; }
+.feed div { background: rgba(11,12,29,.8); padding: 4px 9px; border-radius: 3px; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.feed em { font-style: normal; color: var(--mut); font-weight: 500; margin: 0 6px; font-size: 12px; }
+.prompt { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); background: rgba(11,12,29,.85); padding: 8px 14px; border-radius: 4px; font-weight: 600; display: flex; flex-direction: column; gap: 6px; align-items: center; min-width: 220px; text-align: center; }
+.prompt .pb { width: 100%; height: 4px; background: rgba(255,255,255,.12); border-radius: 2px; overflow: hidden; }
+.prompt .pb i { display: block; height: 100%; background: var(--gold); width: 0; }
+.kbd { font-family: var(--f-display); background: var(--fg); color: var(--bg); padding: 0 6px; border-radius: 2px; font-size: 12px; margin-right: 4px; }
+.mk { position: absolute; transform: translate(-50%, -100%); display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+.mk svg { width: 26px; height: 26px; filter: drop-shadow(0 1px 2px rgba(0,0,0,.7)); }
+.toast { position: absolute; left: 50%; top: 24%; transform: translateX(-50%); text-align: center; font-family: var(--f-display); font-size: clamp(20px, 4vw, 34px); text-shadow: 0 2px 10px rgba(0,0,0,.8); opacity: 0; transition: opacity .3s; white-space: nowrap; }
+.toast small { display: block; font-family: var(--f-body); font-size: 15px; font-weight: 600; color: var(--fg); }
+.dead { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: radial-gradient(ellipse, rgba(11,12,29,.2), rgba(60,10,25,.7)); }
+.dead .big { font-family: var(--f-display); font-size: 40px; color: var(--accent); }
+.board { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(640px, calc(100% - 32px)); background: rgba(11,12,29,.94); border: 1px solid var(--line); border-radius: 6px; padding: 14px; }
+.board table, .res table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.board th, .board td, .res th, .res td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.board th, .res th { font-size: 11px; color: var(--mut); letter-spacing: 1px; font-weight: 700; }
+.num { text-align: right !important; }
+.tsw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.carry { position: absolute; left: 50%; bottom: 23%; transform: translateX(-50%); color: var(--gold); font-weight: 700; font-size: 13px; background: rgba(11,12,29,.75); padding: 4px 10px; border-radius: 3px; }
+.spec-note { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); font-size: 13px; background: rgba(11,12,29,.75); padding: 4px 10px; border-radius: 3px; }
+
+/* touch */
+#touch { position: fixed; inset: 0; pointer-events: none; }
+#touch .tz { position: absolute; pointer-events: auto; }
+#tjoy { left: 0; bottom: 0; width: 45%; height: 60%; }
+#tlook { right: 0; top: 0; width: 55%; height: 100%; }
+.knob { position: absolute; width: 110px; height: 110px; border-radius: 50%; border: 2px solid rgba(255,255,255,.3); transform: translate(-50%,-50%); pointer-events: none; }
+.knob i { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; border-radius: 50%; background: rgba(255,255,255,.35); transform: translate(-50%,-50%); }
+.tb { position: absolute; pointer-events: auto; width: 58px; height: 58px; border-radius: 50%; background: rgba(21,23,58,.7); border: 2px solid rgba(255,255,255,.35); font-family: var(--f-display); font-size: 12px; display: grid; place-items: center; color: #fff; touch-action: none; }
+.tb.fire { width: 78px; height: 78px; background: rgba(255,61,110,.55); font-size: 14px; }
+.tb.on { background: rgba(255,201,74,.6); }
+
+/* pause & results */
+.res { width: min(760px, 100%); display: flex; flex-direction: column; gap: 16px; margin: auto; }
+.winner { font-family: var(--f-display); font-size: clamp(30px, 7vw, 60px); line-height: 1; text-wrap: balance; }
+.howto { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.howto div { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; font-size: 14px; line-height: 1.55; }
+.howto h4 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 400; font-size: 16px; color: var(--gold); }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; align-items: center; }
+.range { display: flex; gap: 12px; align-items: center; }
+.range input { flex: 1; }
+.err { color: var(--accent); font-size: 13px; min-height: 18px; }
+body.touch .br { right: auto; left: 50%; transform: translateX(-50%); bottom: max(10px, env(safe-area-inset-bottom, 0px)); flex-direction: row; align-items: flex-end; }
+body.touch .bl { width: min(220px, 30vw); }
+body.touch .ammo .n { font-size: 22px; }
+.pbar { display: flex; align-items: center; gap: 8px; width: 100%; }
+.pbar .pt { flex-shrink: 0; background: rgba(11,12,29,.85); border-radius: 4px; padding: 4px 8px; font-size: 12px; font-weight: 700; letter-spacing: 1px; display: flex; flex-direction: column; align-items: center; min-width: 74px; border-bottom: 3px solid; }
+.pbar .pt b { font-family: var(--f-display); font-weight: 400; font-size: 16px; font-variant-numeric: tabular-nums; }
+.pbar .pt.mine { outline: 1px solid rgba(255,255,255,.35); }
+.trk { position: relative; flex: 1; height: 10px; background: rgba(11,12,29,.85); border-radius: 5px; border: 1px solid rgba(255,255,255,.18); }
+.trk::after { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: rgba(255,255,255,.4); }
+.trk .fl { position: absolute; top: 0; bottom: 0; border-radius: 5px; }
+.trk .mk2 { position: absolute; top: 50%; width: 16px; height: 16px; border-radius: 3px; transform: translate(-50%, -50%) rotate(45deg); background: #fff; border: 2px solid var(--bg); }
+@media (max-height: 520px) {
+  .logo { font-size: 40px; } .logo small { margin-top: 4px; }
+  .menu { gap: 12px; } .btn { padding: 10px 14px; font-size: 15px; } .btn.primary { font-size: 18px; }
+  .count { font-size: 44px; } .rules { display: none; } .vs { margin: 6px 0; }
+}
+@media (max-width: 560px) {
+  .btn { padding: 12px 14px; font-size: 15px; }
+  .btn.primary { font-size: 19px; }
+  .tchip .cash { font-size: 13px; }
+  .ammo .n { font-size: 24px; }
+  .logo { font-size: 46px; }
+}
+</style>
+
+<canvas id="gl"></canvas>
+
+<!-- BOOT -->
+<section class="scr" id="boot" tabindex="0">
+  <div>
+    <span class="live">LIVE</span>
+    <h1 class="logo" style="margin-top:18px">CASH<span>LINE</span><small>ARENA · เกมโชว์ยิงชิงเงิน</small></h1>
+    <div class="press">แตะหรือคลิกเพื่อเข้าสู่สนาม</div>
+    <p class="mut" style="font-size:12px;margin-top:24px">เกม FPS 3D บนเว็บ · ห้องละ 4 คน · พังได้ทั้งฉาก</p>
+  </div>
+</section>
+
+<!-- MAIN MENU -->
+<section class="scr shade" id="main" hidden>
+  <div class="menu">
+    <div><span class="live">LIVE</span><h1 class="logo" style="margin-top:12px">CASH<span>LINE</span><small>ARENA</small></h1></div>
+    <div class="me-chip"><button class="av" id="meAv" aria-label="เลือกตัวละคร"></button><div class="me-col"><input id="nameIn" maxlength="14" placeholder="ชื่อผู้เข้าแข่งขัน" aria-label="ชื่อผู้เล่น"><span class="me-sub">ตัวละคร <b id="meChName"></b></span></div><span class="badge" id="meCls">MEDIUM</span></div>
+    <div class="col">
+      <button class="btn primary" id="bPlay">เล่น <span class="k">PLAY</span></button>
+      <button class="btn" id="bChars">ตัวละคร · เลือกคนในทีม <span class="k">CHARACTER</span></button>
+      <button class="btn" id="bArmory">คลังอาวุธ · เลือกคลาส <span class="k">LOADOUT</span></button>
+      <button class="btn" id="bHow">วิธีเล่น <span class="k">HOW TO</span></button>
+      <button class="btn" id="bSet">ตั้งค่า <span class="k">SETTINGS</span></button>
+    </div>
+    <div class="netline"><span class="dot" id="netDot"></span><span id="netTxt">กำลังเชื่อมต่อระบบห้องออนไลน์…</span></div>
+  </div>
+  <div class="ticker"><b>ON AIR</b><div class="ticker-in" id="tick">ยินดีต้อนรับสู่ CASHLINE ARENA · เปิดตู้เซฟ ขนกล่องเงิน ไปแลกที่จุด CASHOUT · ทีมแรกที่ทำเงินถึง $20,000 ชนะ · ทุกกำแพงพังได้ เลือกทางของคุณเอง · ห้องละ 4 คน ช่องว่างใช้บอทเติม</div></div>
+</section>
+
+<!-- MODE SELECT -->
+<section class="scr shade-full" id="modes" hidden>
+  <div class="wrap">
+    <button class="btn sm back" data-back="main">← กลับ</button>
+    <div><div class="eyebrow">เลือกโหมด · แตะการ์ดที่เปิดแล้วเพื่อเลือก</div><h2 class="ttl">รายการแข่งขัน</h2></div>
+    <div class="modes" id="modeGrid"></div>
+    <div class="panel col" id="qcPanel">
+      <div class="row" style="justify-content:space-between"><div><div class="eyebrow" id="qcEye">CASH RUSH</div><b>เข้าเกมแบบไหน</b></div><span class="mut" style="font-size:13px" id="qcNet"></span></div>
+      <div class="qc-actions">
+        <button class="btn primary" id="bQuick">หาห้องอัตโนมัติ <span class="k">QUICK</span></button>
+        <button class="btn" id="bCreate">สร้างห้องส่วนตัว <span class="k">HOST</span></button>
+        <div class="codebox"><input id="codeIn" maxlength="4" placeholder="รหัส" aria-label="รหัสห้อง"><button class="btn sm" id="bJoin">เข้าห้อง</button></div>
+        <button class="btn" id="bBots">ฝึกกับบอท (ออฟไลน์) <span class="k">SOLO</span></button>
+      </div>
+      <div class="err" id="joinErr"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ARMORY -->
+<section class="scr shade-full" id="armory" hidden>
+  <div class="wrap">
+    <button class="btn sm back" id="armBack">← กลับ</button>
+    <div><div class="eyebrow">คลังอาวุธ</div><h2 class="ttl">เลือกคลาสและอาวุธหลัก</h2></div>
+    <div class="classes" id="clsGrid"></div>
+    <p class="mut" style="margin:0;font-size:13px">อุปกรณ์และความสามารถพิเศษผูกกับคลาส เปลี่ยนคลาสได้ในล็อบบี้ก่อนเริ่มเกม และมีผลตอนเกิดใหม่ระหว่างแมตช์</p>
+  </div>
+</section>
+
+<!-- CHARACTERS -->
+<section class="scr shade-full" id="chars" hidden>
+  <div class="wrap">
+    <button class="btn sm back" id="chBack">← กลับ</button>
+    <div><div class="eyebrow">ตัวละคร</div><h2 class="ttl">เลือกคนในทีม</h2></div>
+    <div class="chars" id="chGrid"></div>
+    <p class="mut" style="margin:0;font-size:13px">ตัวละครเปลี่ยนแค่หน้าตา ไม่มีผลกับพลัง เลือกซ้ำกับเพื่อนได้ · ในเกมกด T เพื่อโชว์ท่าประจำตัว</p>
+  </div>
+</section>
+
+<!-- HOW TO -->
+<section class="scr shade-full" id="how" hidden>
+  <div class="wrap">
+    <button class="btn sm back" data-back="main">← กลับ</button>
+    <div><div class="eyebrow">วิธีเล่น</div><h2 class="ttl">Cash Rush ใน 4 ขั้น</h2></div>
+    <div class="howto">
+      <div><h4>1 · เปิดตู้เซฟ</h4>ไปที่ตู้เซฟที่มีลำแสงสีทอง กด E ค้างจนเปิด ใครยืนเปิดก็ได้ แต่ระวังโดนดักยิง</div>
+      <div><h4>2 · ขนกล่องเงิน</h4>เดินชนกล่องแล้วกด E เพื่อหยิบ ระหว่างถือยิงไม่ได้และเดินช้าลง คลิกซ้ายเพื่อโยนกล่อง</div>
+      <div><h4>3 · ฝากที่ CASHOUT</h4>จะมีจุดแลกเงินเปิด 2 จุด ยืนบนจุดแล้วกด E ค้าง 1 วินาที เวลานับถอยหลัง 40 วินาทีจะเริ่ม</div>
+      <div><h4>4 · ป้องกัน หรือขโมย</h4>ทีมอื่นขโมยจุดได้ด้วยการกด E ค้างบนจุด 3 วินาที ใครถือจุดตอนเวลาหมด ได้ $10,000 ทีมแรกถึง $20,000 ชนะ</div>
+    </div>
+    <div><div class="eyebrow">อีกโหมด</div><h2 class="ttl">Platform Push</h2></div>
+    <div class="howto">
+      <div><h4>ขึ้นแท่น</h4>แท่นกลางสนามวิ่งบนรางยาวข้ามแมพ ขึ้นไปยืนบนแท่นแล้วมันจะเดินไปทางฐานศัตรู</div>
+      <div><h4>คนเยอะ ยิ่งเร็ว</h4>ยืนบนแท่นพร้อมเพื่อนร่วมทีม แท่นจะเร็วขึ้น ถ้ามีศัตรูขึ้นมาด้วย แท่นจะหยุดจนกว่าจะเคลียร์</div>
+      <div><h4>ชนะ</h4>ดันแท่นเข้าประตูฐานศัตรูสุดราง หรือดันได้ไกลกว่าเมื่อหมดเวลา 7 นาที</div>
+    </div>
+    <div class="panel"><div class="keys">
+      <span class="kbd">WASD</span><span>เดิน · <span class="kbd">SHIFT</span>วิ่ง · <span class="kbd">SPACE</span>กระโดด · <span class="kbd">C</span>ย่อ</span>
+      <span class="kbd">คลิกซ้าย</span><span>ยิง / ฟาดค้อน · คลิกขวา เล็ง</span>
+      <span class="kbd">R</span><span>รีโหลด</span>
+      <span class="kbd">Q</span><span>อุปกรณ์ (ระเบิดมือ / ระเบิดเจาะ / RPG)</span>
+      <span class="kbd">F</span><span>ความสามารถพิเศษ (พุ่งหลบ / คลื่นฮีล / ชาร์จ)</span>
+      <span class="kbd">E</span><span>กดค้างเพื่อเปิดตู้ หยิบกล่อง ฝาก หรือขโมยจุด</span>
+      <span class="kbd">T</span><span>โชว์ท่าประจำตัวละคร</span>
+      <span class="kbd">TAB</span><span>ตารางคะแนน · <span class="kbd">ESC</span>เมนูหยุด</span>
+    </div></div>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section class="scr shade-full" id="settings" hidden>
+  <div class="wrap" style="max-width:560px">
+    <button class="btn sm back" data-back="main">← กลับ</button>
+    <div><div class="eyebrow">ตั้งค่า</div><h2 class="ttl">การควบคุม</h2></div>
+    <div class="panel col">
+      <label class="range"><span style="width:120px">ความไวเมาส์</span><input type="range" id="sens" min="0.3" max="3" step="0.05"><b id="sensV"></b></label>
+      <label class="range"><span style="width:120px">ระยะมอง (FOV)</span><input type="range" id="fov" min="65" max="100" step="1"><b id="fovV"></b></label>
+      <label class="range"><span style="width:120px">ความดัง</span><input type="range" id="vol" min="0" max="1" step="0.05"><b id="volV"></b></label>
+      <label class="range"><span style="width:120px">คุณภาพภาพ</span><span class="seg" id="qual"><button data-q="0">ลื่น</button><button data-q="1">สมดุล</button><button data-q="2">คมชัด</button></span></label>
+    </div>
+  </div>
+</section>
+
+<!-- MATCHMAKING -->
+<section class="scr shade-full" id="mm" hidden>
+  <div class="wrap" style="max-width:520px;text-align:center;align-items:center">
+    <span class="live">SEARCHING</span>
+    <h2 class="ttl" id="mmT">กำลังหาห้อง…</h2>
+    <p class="mut" id="mmS">มองหาห้อง Cash Rush ที่ยังว่าง</p>
+    <button class="btn sm" id="mmCancel">ยกเลิก</button>
+  </div>
+</section>
+
+<!-- LOBBY -->
+<section class="scr shade-full" id="lobby" hidden>
+  <div class="wrap">
+    <div class="lobby-head">
+      <div><div class="eyebrow" id="lbMode">CASH RUSH · ล็อบบี้</div><h2 class="ttl" id="lbTitle">ห้องรอแข่ง</h2></div>
+      <div style="text-align:right"><div class="mut" style="font-size:12px" id="lbCodeL">รหัสห้อง ส่งให้เพื่อน</div><div class="row" style="justify-content:flex-end"><span class="roomcode" id="lbCode">----</span><button class="btn sm" id="bCopy">คัดลอก</button></div></div>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <div class="row"><span class="mut" style="font-size:13px">โหมด</span><span class="seg" id="mdSeg"></span><span class="mut" style="font-size:13px">รูปแบบทีม</span><span class="seg" id="fmtSeg"></span></div>
+      <span class="mut" style="font-size:13px" id="lbHint"></span>
+    </div>
+    <div class="teams" id="lbTeams"></div>
+    <div class="panel row" style="justify-content:space-between">
+      <div class="row"><button class="btn sm" id="lbChar">ตัวละคร</button><span class="mut" style="font-size:13px">คลาสของคุณ</span><span class="seg" id="lbCls"></span><span class="seg" id="lbWpn"></span></div>
+      <span class="mut" style="font-size:13px" id="lbSpec"></span>
+    </div>
+    <div class="lobby-foot">
+      <button class="btn sm" id="bLeave">ออกจากห้อง</button>
+      <div class="row"><span class="mut" style="font-size:13px" id="lbReadyTxt"></span><button class="btn sm" id="bReady">พร้อม</button><button class="btn primary" style="width:auto" id="bStart">เริ่มเกม</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- LOADING -->
+<section class="scr" id="load" hidden>
+  <div class="wrap" style="text-align:center;align-items:center;max-width:860px">
+    <span class="live">LIVE IN</span>
+    <div class="count" id="ldCount">5</div>
+    <div><div class="eyebrow"><span id="ldMode">CASH RUSH</span> · <span id="ldFmt"></span></div><h2 class="ttl">สนาม <span id="ldMap">Studio Plaza</span></h2></div>
+    <div class="vs" id="ldVs"></div>
+    <div class="rules" id="ldRules"></div>
+  </div>
+</section>
+
+<!-- HUD -->
+<section id="hud" hidden>
+  <div class="vign" id="vign"></div>
+  <div id="marks"></div>
+  <div id="pops"></div>
+  <div class="top">
+    <div class="clock" id="hClock">8:00</div>
+    <div class="scorebar" id="hScore"></div>
+    <div class="obj" id="hObj">เปิดตู้เซฟ</div>
+  </div>
+  <div class="feed" id="hFeed"></div>
+  <div class="xh" id="xh"></div>
+  <div class="hitm" id="hitm"></div>
+  <div class="toast" id="toast"></div>
+  <div class="prompt" id="hPrompt" hidden><span id="hPromptT"></span><div class="pb"><i id="hPromptB"></i></div></div>
+  <div class="carry" id="hCarry" hidden>ถือกล่องเงิน · ยิงไม่ได้ · คลิกซ้ายเพื่อโยน</div>
+  <div class="spec-note" id="hSpecNote" hidden></div>
+  <div class="bl">
+    <div class="hpbox"><div class="r"><span id="hCls">MEDIUM</span><span id="hHpN">250</span></div><div class="hpbar"><i id="hHp" style="width:100%"></i></div></div>
+  </div>
+  <div class="br">
+    <div class="abil"><div class="ab" id="hGad"><span class="key">Q</span><span id="hGadT"></span><i class="cd" id="hGadCd"></i></div><div class="ab" id="hSpec"><span class="key">F</span><span id="hSpecT"></span><i class="cd" id="hSpecCd"></i></div></div>
+    <div class="ammo"><div class="n" id="hAmmo">30<small>/30</small></div><div class="wn" id="hWpn"></div></div>
+  </div>
+  <div class="dead" id="hDead" hidden><div class="big">ตกรอบชั่วคราว</div><div id="hDeadBy" class="mut"></div><div style="font-size:18px;font-weight:700">เกิดใหม่ใน <span id="hDeadT">8</span></div></div>
+  <div class="board" id="hBoard" hidden></div>
+</section>
+
+<section id="touch" hidden>
+  <div class="tz" id="tjoy"></div>
+  <div class="tz" id="tlook"></div>
+  <div class="knob" id="knob" hidden><i id="knobI"></i></div>
+  <button class="tb fire" id="tFire" style="right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px))">ยิง</button>
+  <button class="tb" id="tJump" style="right:calc(120px + env(safe-area-inset-right,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px))">โดด</button>
+  <button class="tb" id="tUse" style="right:calc(120px + env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px))">E</button>
+  <button class="tb" id="tGad" style="right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(220px + env(safe-area-inset-bottom,0px))">Q</button>
+  <button class="tb" id="tSpec" style="right:calc(110px + env(safe-area-inset-right,0px));bottom:calc(210px + env(safe-area-inset-bottom,0px))">F</button>
+  <button class="tb" id="tCrouch" style="right:calc(28px + env(safe-area-inset-right,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px))">ย่อ</button>
+  <button class="tb" id="tReload" style="right:calc(200px + env(safe-area-inset-right,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px))">R</button>
+  <button class="tb" id="tAim" style="right:calc(200px + env(safe-area-inset-right,0px));bottom:calc(120px + env(safe-area-inset-bottom,0px))">เล็ง</button>
+  <button class="tb" id="tEmote" style="left:calc(16px + env(safe-area-inset-left,0px));top:calc(72px + env(safe-area-inset-top,0px));width:44px;height:44px;font-size:11px">T</button>
+  <button class="tb" id="tMenu" style="left:calc(16px + env(safe-area-inset-left,0px));top:calc(16px + env(safe-area-inset-top,0px));width:44px;height:44px">II</button>
+</section>
+
+<!-- PAUSE -->
+<section class="scr shade-full" id="pause" hidden>
+  <div class="menu" style="margin:auto">
+    <h2 class="ttl">หยุดชั่วคราว</h2>
+    <p class="mut" style="margin:0;font-size:13px">เกมยังเดินต่อสำหรับผู้เล่นคนอื่น</p>
+    <div class="col">
+      <button class="btn primary" id="bResume">กลับเข้าเกม <span class="k">RESUME</span></button>
+      <label class="range panel"><span>ความไว</span><input type="range" id="sens2" min="0.3" max="3" step="0.05"></label>
+      <button class="btn" id="bQuit">ออกจากแมตช์ <span class="k">LEAVE</span></button>
+    </div>
+  </div>
+</section>
+
+<!-- RESULTS -->
+<section class="scr shade-full" id="res" hidden>
+  <div class="res">
+    <span class="live">FINAL</span>
+    <div><div class="eyebrow" id="rsSub">ผลการแข่งขัน</div><div class="winner" id="rsWin"></div></div>
+    <div class="panel" style="overflow-x:auto"><table><thead><tr><th>ผู้เล่น</th><th>ทีม</th><th class="num">ฆ่า</th><th class="num">ตาย</th><th class="num" id="rsCol">เงินที่ทำได้</th></tr></thead><tbody id="rsBody"></tbody></table></div>
+    <div class="row" style="justify-content:space-between"><button class="btn sm" id="rsLeave">ออกจากห้อง</button><button class="btn primary" style="width:auto" id="rsBack">กลับล็อบบี้</button></div>
+    <div class="mut" style="font-size:13px" id="rsWait"></div>
+  </div>
+</section>
+<!--SCRIPTS-->
